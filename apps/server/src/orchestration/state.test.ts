@@ -798,6 +798,72 @@ describe("what a running turn is doing", () => {
   });
 });
 
+describe("since when a running thread has been working", () => {
+  const REQUESTED = "2026-01-02T03:10:00.000Z";
+  const at = (occurredAt: string, planned: OrchestrationEvent): OrchestrationEvent => ({
+    ...planned,
+    occurredAt,
+  });
+
+  it("stamps the request time and keeps it for the whole turn", () => {
+    const turnId = makeTurnId();
+    const itemId = makeItemId();
+    const events = [
+      created(),
+      at(REQUESTED, turnRequested(turnId)),
+      at("2026-01-02T03:10:02.000Z", event("thread.turn.started", { turnId })),
+      at(
+        "2026-01-02T03:12:00.000Z",
+        event("thread.item.upserted", {
+          turnId,
+          item: { itemId, kind: "command_execution", status: "in_progress" },
+        }),
+      ),
+      at(
+        "2026-01-02T03:15:00.000Z",
+        event("thread.turn.completed", { turnId, stopReason: "end_turn" }),
+      ),
+    ];
+    const summaryAfter = (count: number) => threadSummaryOf(foldThread(events.slice(0, count))!);
+
+    expect(summaryAfter(1)).not.toHaveProperty("runningSince");
+    expect(summaryAfter(2).runningSince).toBe(REQUESTED);
+    expect(summaryAfter(3).runningSince).toBe(REQUESTED);
+    expect(summaryAfter(4).runningSince).toBe(REQUESTED);
+    // `updatedAt` moves on every event; the turn's start does not.
+    expect(summaryAfter(4).updatedAt).not.toBe(REQUESTED);
+    expect(summaryAfter(5).status).toBe("idle");
+    expect(summaryAfter(5)).not.toHaveProperty("runningSince");
+  });
+
+  it("is absent while the thread waits on the user or has failed", () => {
+    const turnId = makeTurnId();
+    const waiting = foldThread([
+      created(),
+      at(REQUESTED, turnRequested(turnId)),
+      event("thread.plan.proposed", { turnId, planMarkdown: "# plan" }),
+    ])!;
+    expect(waiting.status).toBe("waiting");
+    expect(threadSummaryOf(waiting)).not.toHaveProperty("runningSince");
+
+    const failed = foldThread([
+      created(),
+      at(REQUESTED, turnRequested(turnId)),
+      event("thread.error", { message: "the connector failed", fatal: true }),
+    ])!;
+    expect(failed.status).toBe("error");
+    expect(threadSummaryOf(failed)).not.toHaveProperty("runningSince");
+  });
+
+  it("is absent for a turn folded before the field existed", () => {
+    const doc = foldThread([created(), turnRequested()])!;
+    const { startedAt: _startedAt, ...turn } = doc.currentTurn!;
+    const stored = { ...doc, currentTurn: turn } as ThreadDoc;
+    expect(stored.status).toBe("running");
+    expect(threadSummaryOf(stored)).not.toHaveProperty("runningSince");
+  });
+});
+
 describe("the thread's worktree", () => {
   const worktree = { path: "/wt/demo/fix", branch: "poseidon/fix", baseBranch: "main" };
 

@@ -647,6 +647,12 @@ export const ThreadSummary = Schema.Struct({
    * written before this field existed still decodes.
    */
   activity: Schema.optional(ThreadActivity),
+  /**
+   * When the turn in flight was requested, while the thread is `running`.
+   * Absent otherwise, and optional so a summary written before this field
+   * existed still decodes.
+   */
+  runningSince: Schema.optional(IsoDateTime),
   /** The thread's own worktree; absent for a local thread. */
   worktree: Schema.optional(ThreadWorktree),
   createdAt: IsoDateTime,

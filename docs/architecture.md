@@ -1033,6 +1033,9 @@ The sidebar's `ThreadSummary` says whether anything waits on the user
 (`awaitingInput`) and which card it is (`awaiting`): the most urgent open one,
 `approval` before `question` before `plan`, and absent when nothing waits. A
 row can tell "needs you" from "plan ready" without subscribing to the thread.
+While the thread is `running`, `runningSince` is when the turn in flight was
+requested (stamped on `ThreadDoc.currentTurn.startedAt`); it is absent
+otherwise and optional, so older summaries still decode.
 
 `projection_state` holds one row per projector: `last_applied_sequence`,
 `updated_at` and `projector_version`. Projections are written inside the
@@ -1060,7 +1063,7 @@ provides the migrations layer, so the graph itself says the schema exists first.
 
 `threads.doc_json` is parsed straight back into a `ThreadDoc` with no schema and
 no version, so the first release that adds a field would serve stale rows
-missing it. The engine stamps `PROJECTOR_VERSION` (currently `2`) on every
+missing it. The engine stamps `PROJECTOR_VERSION` (currently `3`) on every
 watermark write and compares it at boot: on a mismatch it clears the projection
 tables inside one transaction, re-folds every stream from `allEvents`, writes
 the documents back and stamps the new version. Rows written before the column

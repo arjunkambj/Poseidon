@@ -9,6 +9,7 @@ import {
   OrchestrationEvent,
   OrchestrationEventType,
   ThreadStreamItem,
+  ThreadSummary,
   TurnReference,
   commandTypes,
   latestTurnId,
@@ -173,6 +174,42 @@ describe("ThreadSettings.connectorInstanceId", () => {
       );
       if (command.type !== "thread.settings.update") throw new Error(command.type);
       expect(command.connectorInstanceId).toBe(INSTANCE);
+    }),
+  );
+});
+
+describe("ThreadSummary.runningSince", () => {
+  const decode = Schema.decodeUnknownSync(ThreadSummary);
+  const encode = Schema.encodeSync(ThreadSummary);
+  const summary = {
+    threadId: "0199c0de-0002-7000-8000-000000000001",
+    projectId: "0199c0de-0001-7000-8000-000000000001",
+    title: "Health check endpoint",
+    status: "running",
+    settings: {
+      model: "vendor/model",
+      runtimeMode: "approval-required",
+      interactionMode: "default",
+    },
+    awaitingInput: false,
+    activity: "thinking",
+    createdAt: "2026-09-15T12:00:00.000Z",
+    updatedAt: "2026-09-15T12:04:00.000Z",
+  };
+
+  it.effect("still decodes a summary written before the field existed", () =>
+    Effect.gen(function* () {
+      const decoded = yield* Effect.sync(() => decode(summary));
+      expect(decoded.runningSince).toBeUndefined();
+    }),
+  );
+
+  it.effect("round-trips the turn's start", () =>
+    Effect.gen(function* () {
+      const withStart = { ...summary, runningSince: "2026-09-15T12:01:00.000Z" };
+      const decoded = yield* Effect.sync(() => decode(withStart));
+      expect(decoded.runningSince).toBe("2026-09-15T12:01:00.000Z");
+      expect(encode(decoded)).toEqual(withStart);
     }),
   );
 });

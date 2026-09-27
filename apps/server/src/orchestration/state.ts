@@ -86,6 +86,11 @@ export interface ThreadDoc {
       /** Optional, as on the connector's `TurnInput`; absent means none. */
       readonly references?: ReadonlyArray<TurnReference>;
     };
+    /**
+     * When the turn was requested, for the sidebar's elapsed-time label.
+     * Optional: a document folded before the field existed has none.
+     */
+    readonly startedAt?: string;
   } | null;
   /**
    * True between `thread.turn.interrupted` and the connector's own
@@ -345,6 +350,7 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
             mentions: (payload.mentions ?? []) as ReadonlyArray<Mention>,
             references: (payload.references ?? []) as ReadonlyArray<TurnReference>,
           },
+          startedAt: event.occurredAt,
         },
         status: "running",
       };
@@ -732,6 +738,9 @@ export const threadSummaryOf = (doc: ThreadDoc): ThreadSummary => {
     awaitingInput: awaiting !== undefined,
     ...(awaiting === undefined ? {} : { awaiting }),
     ...(activity === undefined ? {} : { activity }),
+    ...(doc.status === "running" && doc.currentTurn?.startedAt !== undefined
+      ? { runningSince: doc.currentTurn.startedAt }
+      : {}),
     ...worktreeField(doc),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
