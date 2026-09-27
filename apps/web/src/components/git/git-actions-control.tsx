@@ -124,7 +124,7 @@ export function GitActionsControl({
   const status = readOf<GitStatus>(useAtomValue(statusAtom), connected);
   const branches = readOf<GitBranchList>(useAtomValue(gitBranchesAtom(scope)), connected);
   const refreshStatus = useAtomRefresh(statusAtom);
-  const { run } = useGitActions(scope);
+  const { run } = useGitActions(scope, status._tag === "ok" ? status.value.branch : null);
 
   const [dialog, setDialog] = React.useState<OpenDialog | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);

@@ -587,13 +587,22 @@ export const parsePullRequestLinks = (
   }
 };
 
-/** The map with one thread's link set; a link that is not a web URL changes nothing. */
+/** The map with one key's link set; a link that is not a web URL changes nothing. */
 export const withPullRequestLink = (
   links: Readonly<Record<string, string>>,
-  threadId: string,
+  key: string,
   url: string,
 ): Readonly<Record<string, string>> =>
-  links[threadId] === url || !isWebUrl(url) ? links : { ...links, [threadId]: url };
+  links[key] === url || !isWebUrl(url) ? links : { ...links, [key]: url };
+
+/**
+ * Where a pull request link is kept: one workspace (`workspaceKey`) on one
+ * branch, so a thread that moves to another branch does not show the old
+ * branch's pull request. `null` on a detached HEAD, where nothing is kept.
+ * Links stored before this, keyed by the workspace alone, are never read.
+ */
+export const pullRequestLinkKey = (workspace: string, branch: string | null): string | null =>
+  branch === null ? null : `${workspace}#${branch}`;
 
 const readPullRequestLinks = (): Readonly<Record<string, string>> => {
   try {
@@ -605,28 +614,35 @@ const readPullRequestLinks = (): Readonly<Record<string, string>> => {
 
 /**
  * The last pull request the git actions control opened (or found open) for
- * each thread — or project folder, keyed `project:<id>`, for the New task
- * page's control — kept across reloads. Nothing in the UI reads it back yet:
- * the pull request toast's Open action is the way to the link today. The
- * server keeps no record of it, and a cleared store loses nothing else.
+ * each branch of each thread — or project folder, `project:<id>`, for the New
+ * task page's control — kept across reloads (`pullRequestLinkKey`). The
+ * header's View PR button reads it back. The server keeps no record of it,
+ * and a cleared store loses nothing else.
  */
 const pullRequestLinksAtom =
   rememberedAtom<Readonly<Record<string, string>>>(readPullRequestLinks());
 
-/** `[url, remember]` for one thread; `url` is `null` until a pull request is known. */
-export const usePullRequestLink = (threadId: string) => {
+/**
+ * `[url, remember]` for one `pullRequestLinkKey`; `url` is `null` until a
+ * pull request is known, and always on a `null` key. `remember` stores under
+ * `at` (the hook's key by default) and does nothing for a `null` one.
+ */
+export const usePullRequestLink = (key: string | null) => {
   const url = useAtomValue(
     pullRequestLinksAtom,
     React.useCallback(
-      (links: Readonly<Record<string, string>>) => links[threadId] ?? null,
-      [threadId],
+      (links: Readonly<Record<string, string>>) => (key === null ? null : (links[key] ?? null)),
+      [key],
     ),
   );
   const setLinks = useAtomSet(pullRequestLinksAtom);
   const remember = React.useCallback(
-    (next: string) =>
+    (next: string, at: string | null = key) =>
       setLinks((current) => {
-        const links = withPullRequestLink(current, threadId, next);
+        if (at === null) {
+          return current;
+        }
+        const links = withPullRequestLink(current, at, next);
         if (links !== current) {
           try {
             globalThis.localStorage?.setItem(PULL_REQUESTS_KEY, JSON.stringify(links));
@@ -636,7 +652,7 @@ export const usePullRequestLink = (threadId: string) => {
         }
         return links;
       }),
-    [setLinks, threadId],
+    [setLinks, key],
   );
   return [url, remember] as const;
 };

@@ -1,6 +1,9 @@
 import * as Atom from "effect/unstable/reactivity/Atom";
 import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry";
+import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import { describe, expect, it } from "vitest";
+
+import { workspaceKey } from "@/lib/workspace-key";
 
 import {
   emptyComposerDraft,
@@ -10,6 +13,7 @@ import {
   parseDiffStyle,
   parsePullRequestLinks,
   parseWorkspaceModes,
+  pullRequestLinkKey,
   rememberedAtom,
   withComposerDraft,
   withDockMemory,
@@ -186,6 +190,17 @@ describe("pull request link memory", () => {
     expect(withPullRequestLink(links, "t1", URL_7)).toBe(links);
     expect(withPullRequestLink(links, "t2", "javascript:alert(1)")).toBe(links);
     expect(withPullRequestLink(links, "t2", "not a url")).toBe(links);
+  });
+
+  it("keys each branch of a workspace apart, and keeps nothing on a detached HEAD", () => {
+    const thread = workspaceKey({ projectId: "p1" as ProjectId, threadId: "t1" as ThreadId });
+    const project = workspaceKey({ projectId: "p1" as ProjectId });
+    expect(pullRequestLinkKey(thread, "feature/a")).not.toBe(
+      pullRequestLinkKey(thread, "feature/b"),
+    );
+    expect(pullRequestLinkKey(thread, "main")).not.toBe(pullRequestLinkKey(project, "main"));
+    expect(pullRequestLinkKey(thread, null)).toBeNull();
+    expect(pullRequestLinkKey(project, null)).toBeNull();
   });
 
   it("reads unreadable storage as empty, and drops entries that are not web links", () => {

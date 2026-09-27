@@ -1961,11 +1961,12 @@ has one toast that starts as `Committing…`, `Pushing to origin/<branch>…` or
 with an Open action — or `<Step> failed: <the server's message>`, which is how
 a hook's refusal, a rejected push or `gh not available` reach the user. After a
 commit or a push every git read of the project refetches, the way a branch
-switch does. The last pull request URL is also remembered per thread (or,
-from the New task page, per project folder) in localStorage
-(`usePullRequestLink` in `apps/web/src/state/ui.ts`, web links only); nothing
-in the UI reads it back yet, so the toast's Open action, through
-`openExternal`, is the one way to it.
+switch does. The last pull request URL is also remembered per branch of each
+thread (or, from the New task page, of the project folder) in localStorage
+(`usePullRequestLink` and `pullRequestLinkKey` in `apps/web/src/state/ui.ts`,
+web links only, nothing on a detached HEAD), under the branch the push
+reported. The header's View PR button reads it back and opens it through
+`openExternal`, as the toast's Open action does.
 
 ### Worktrees
 

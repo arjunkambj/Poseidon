@@ -4,9 +4,9 @@
  *
  * Each step's toast has its own id for the run, so its "…ing" toast turns
  * into the done or failed one in place. A pull request's toast carries an
- * Open action, and its URL is remembered for the thread — or, on the New task
- * page, for the project's own folder (`usePullRequestLink`), which nothing in
- * the UI reads back yet.
+ * Open action, and its URL is remembered for the branch in the thread — or,
+ * on the New task page, in the project's own folder (`usePullRequestLink`,
+ * `pullRequestLinkKey`) — where the header's View PR button reads it back.
  */
 
 import type { GitCommitResult, GitPullRequestResult, GitPushResult } from "@poseidon/contracts/git";
@@ -26,7 +26,7 @@ import {
   type StepNotice,
   type StepOutcome,
 } from "@/lib/git-actions";
-import { usePullRequestLink } from "@/state/ui";
+import { pullRequestLinkKey, usePullRequestLink } from "@/state/ui";
 
 /** What the dialog decided; a commit without `paths` takes every change. */
 export interface GitRunInput {
@@ -64,10 +64,17 @@ const toastNotice = (run: number) => (notice: StepNotice) => {
   }
 };
 
-/** Acts in the thread's workspace when `scope` names one, else in the project's own folder. */
-export const useGitActions = (scope: GitScope) => {
+/**
+ * Acts in the thread's workspace when `scope` names one, else in the project's
+ * own folder. `branch` is the workspace's checked-out branch (`null` on a
+ * detached HEAD) and keys the remembered pull request link.
+ */
+export const useGitActions = (scope: GitScope, branch: string | null) => {
   const { commit, push, openPullRequest } = useGitCommands();
-  const [pullRequestUrl, rememberPullRequest] = usePullRequestLink(workspaceKey(scope));
+  const workspace = workspaceKey(scope);
+  const [pullRequestUrl, rememberPullRequest] = usePullRequestLink(
+    pullRequestLinkKey(workspace, branch),
+  );
 
   const run = async (
     steps: ReadonlyArray<GitStep>,
@@ -103,7 +110,12 @@ export const useGitActions = (scope: GitScope) => {
       pushTarget,
     );
     if (result.pullRequest !== undefined) {
-      rememberPullRequest(result.pullRequest.url);
+      // The branch the push reported is the one the pull request is for,
+      // even if the status the header read has not caught up yet.
+      rememberPullRequest(
+        result.pullRequest.url,
+        pullRequestLinkKey(workspace, result.push?.branch ?? branch),
+      );
     }
     return result;
   };
