@@ -47,14 +47,23 @@ const tabs = (...list: ReadonlyArray<BrowserTab>): ThreadTabs => ({
 /**
  * One thread's timeline, as the thread view sees it: agent observations and
  * the user's dock moves, in order. Returns how often the pane auto-opened.
+ * The thread starts on screen with the agent idle, unless `from` says what
+ * the window remembered before the first step.
  */
 type Step =
   | { readonly agent: boolean }
   | { readonly user: string | undefined }
   | { readonly dock: string | undefined };
 
-const run = (setting: boolean, initialDock: string | undefined, steps: ReadonlyArray<Step>) => {
-  let activity: ThreadAgentActivity = idleActivity;
+const onScreen: ThreadAgentActivity = { ...idleActivity, seen: true };
+
+const run = (
+  setting: boolean,
+  initialDock: string | undefined,
+  steps: ReadonlyArray<Step>,
+  from: ThreadAgentActivity = onScreen,
+) => {
+  let activity: ThreadAgentActivity = from;
   let dockTab = initialDock;
   let opens = 0;
   for (const step of steps) {
@@ -186,6 +195,26 @@ describe("agentUsingBrowser", () => {
   });
 });
 
+describe("arriving at a thread", () => {
+  it("never opens the pane for an activity that began while the thread was off screen", () => {
+    // Its agent opened a tab while the user was elsewhere; the thread's record
+    // was never observed.
+    const result = run(true, undefined, [{ agent: true }, { agent: true }], idleActivity);
+    expect(result.opens).toBe(0);
+    expect(result.activity).toMatchObject({ seen: true, active: true });
+  });
+
+  it("opens for the next activity that starts while the thread is on screen", () => {
+    const result = run(
+      true,
+      undefined,
+      [{ agent: true }, { agent: false }, { agent: true }],
+      idleActivity,
+    );
+    expect(result.opens).toBe(1);
+  });
+});
+
 describe("showAgentIndicator", () => {
   it("shows while the agent uses the browser and the pane is not on screen", () => {
     expect(showAgentIndicator(true, undefined)).toBe(true);
@@ -197,7 +226,7 @@ describe("showAgentIndicator", () => {
 
 describe("observeAgentUse", () => {
   it("reports the start of an activity once", () => {
-    const first = observeAgentUse(idleActivity, true);
+    const first = observeAgentUse(onScreen, true);
     expect(first.agentJustStarted).toBe(true);
     const second = observeAgentUse(first.activity, true);
     expect(second.agentJustStarted).toBe(false);

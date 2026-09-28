@@ -609,8 +609,9 @@ opened — and the pane is not on screen, the thread header shows "Agent is
 using the browser" with a Show button
 (`apps/web/src/components/thread/agent-browser-indicator.tsx`). The
 `browser.openPaneOnAgentUse` setting (off by default) opens the pane once per
-agent activity, never over a pane the user closed while the agent was active,
-and without remembering it as the thread's dock tab; the rules are pure
+agent activity that starts while the thread is on screen (the first sight of a
+thread is only a baseline), never over a pane the user closed while the agent
+was active, and without remembering it as the thread's dock tab; the rules are pure
 (`apps/web/src/components/panes/browser/auto-open.ts`) and the per-thread
 record is in `apps/web/src/state/browser-activity.ts`, in memory only. Other
 surfaces open a page through one entry point, `openInThreadBrowser(threadId,

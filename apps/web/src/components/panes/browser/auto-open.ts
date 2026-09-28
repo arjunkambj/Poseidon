@@ -9,7 +9,8 @@
  * - **Once per agent activity.** An activity starts when the agent begins
  *   using the thread's browser — a `browser_*` call in flight, or a tab it
  *   opened — and lasts while either is true. The agent's tabs outlive its
- *   calls, so one task's many calls are one activity.
+ *   calls, so one task's many calls are one activity. Only a start seen while
+ *   the thread is on screen counts: opening a thread never opens its pane.
  * - **Never over the user.** Closing the pane (or leaving it for another dock
  *   tab) while the agent is active means "not now" for that thread, until the
  *   user opens the pane again themselves.
@@ -22,23 +23,36 @@ import type { BrowserState } from "@poseidon/contracts/rpc";
 import type { ThreadAgentActivity } from "@/state/browser-activity";
 import type { ThreadTabs } from "@/state/browser-tabs";
 
+/** A `browser_*` call is running right now. */
+export const agentCalling = (state: BrowserState | null): boolean =>
+  typeof state?.activeTool === "string" && state.activeTool !== "";
+
 /** A `browser_*` call is running, or the agent has a tab open in the thread. */
 export const agentUsingBrowser = (state: BrowserState | null, tabs: ThreadTabs): boolean =>
-  (typeof state?.activeTool === "string" && state.activeTool !== "") ||
-  tabs.tabs.some((tab) => tab.openedBy === "agent");
+  agentCalling(state) || tabs.tabs.some((tab) => tab.openedBy === "agent");
 
 /** The indicator shows while the agent uses the browser and the pane is not on screen. */
 export const showAgentIndicator = (using: boolean, dockTab: string | undefined): boolean =>
   using && dockTab !== "browser";
 
-/** A new observation of the agent: the next record, and whether an activity just began. */
+/**
+ * A new observation of the agent: the next record, and whether an activity
+ * just began. The first observation of a thread only sets the baseline: an
+ * activity already under way when the thread came on screen did not start
+ * now.
+ */
 export const observeAgentUse = (
   previous: ThreadAgentActivity,
   using: boolean,
-): { readonly activity: ThreadAgentActivity; readonly agentJustStarted: boolean } => ({
-  activity: previous.active === using ? previous : { ...previous, active: using },
-  agentJustStarted: using && !previous.active,
-});
+): { readonly activity: ThreadAgentActivity; readonly agentJustStarted: boolean } => {
+  if (!previous.seen) {
+    return { activity: { ...previous, seen: true, active: using }, agentJustStarted: false };
+  }
+  return {
+    activity: previous.active === using ? previous : { ...previous, active: using },
+    agentJustStarted: using && !previous.active,
+  };
+};
 
 /**
  * The user moved the dock from `from` to `to` (`undefined` is closed).

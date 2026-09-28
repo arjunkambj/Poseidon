@@ -2872,7 +2872,8 @@ using the browser — Show" for as long as a `browser_*` call runs or a tab the
 agent opened is open, and the pane is not on screen. Settings → Browser →
 "Open the browser pane when the agent starts using it"
 (`browser.openPaneOnAgentUse`, off by default) opens the pane instead, once per
-agent activity; closing it while the agent is active keeps it closed for that
+agent activity that starts while you are on the thread (arriving at a thread
+whose agent is already using the browser opens nothing); closing it while the agent is active keeps it closed for that
 thread until you open it yourself, and an auto-open is not remembered as the
 thread's dock tab. Other surfaces — the terminal's links, the Run menu's
 dev-server items and the terminal drawer's "Open in browser" — call
