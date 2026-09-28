@@ -1609,8 +1609,10 @@ more watcher of its own, subscribed the same eager way inside its layer: on
 `thread.deleted` or `thread.archived` it kills that thread's shells.
 
 **`ProviderCommandReactor`.** `turn.requested` → ensure the session and
-`handle.send(turnId, turn)`. A fork's first turn — no user message of another
-turn exists yet — is sent with the source's transcript and a line saying what
+`handle.send(turnId, turn)`. A fork's first turn — no session of the fork bound in
+an earlier turn (the fold records the turn one first binds in as
+`forkSeededIn`), so a first turn that failed before reaching the harness
+leaves the next one first — is sent with the source's transcript and a line saying what
 it is ahead of the user's text (`withForkContext`), here and in the mid-turn
 resend after `session.bound`; the user's row keeps only what they typed, so
 the transcript never reaches the timeline or message search. A fork whose

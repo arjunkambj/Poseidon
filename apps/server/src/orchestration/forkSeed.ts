@@ -132,9 +132,10 @@ interface TurnText {
 /**
  * The input a turn is sent with: for a fork's first turn, the source's
  * transcript and a line saying what it is ahead of what the user typed;
- * otherwise the input unchanged. "First" means no user message of another
- * turn exists, so a resend of the same turn after a lost session is prefixed
- * again, which the fresh session needs.
+ * otherwise the input unchanged. "First" means no session of the fork has
+ * bound in an earlier turn (`isFirstTurn`): a first turn that never reached
+ * the harness leaves the next one first, and a resend of the same turn after
+ * a lost session is prefixed again, which the fresh session needs.
  *
  * `forkedNatively` is the session manager's word that the thread's session is
  * the harness's own fork of the source (`nativeFork.ts`): it already holds the

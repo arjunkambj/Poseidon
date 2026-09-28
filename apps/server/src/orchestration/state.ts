@@ -151,6 +151,8 @@ export interface ThreadDoc {
   readonly lastActivityAt?: string;
   /** The thread this one was forked from; `./forkSeed` reads it, tolerating older documents. */
   readonly fork?: ThreadFork;
+  /** A fork's turn its first session bound in (`null`: none ran); absent until then. */
+  readonly forkSeededIn?: TurnId | null;
   // Internal bookkeeping, not on the wire.
   readonly approvals: ReadonlyArray<ApprovalRequest>;
   readonly userInputs: ReadonlyArray<PendingUserInput>;
@@ -333,6 +335,9 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
       // recorded has none: not known to steer, so a steer is queued.
       return {
         ...next,
+        ...(next.fork === undefined || next.forkSeededIn !== undefined
+          ? {}
+          : { forkSeededIn: next.currentTurn?.turnId ?? null }),
         session: {
           connectorInstanceId: payload.connectorInstanceId as ThreadSession["connectorInstanceId"],
           connectorKind: payload.connectorKind as string,

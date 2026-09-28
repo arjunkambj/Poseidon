@@ -114,22 +114,32 @@ describe("withForkContext", () => {
     expect(sent.attachments).toBe(input.attachments);
   });
 
-  it("leaves every later turn alone", () => {
+  it("leaves every turn after the one its session bound in alone", () => {
     const later = doc({
       fork,
+      forkSeededIn: t1,
       items: [row("user_message", t1, "first"), row("user_message", t2, "second")],
     });
     expect(withForkContext(later, t2, input)).toBe(input);
+    expect(withForkContext({ ...later, forkSeededIn: null }, t2, input)).toBe(input);
   });
 
   it("prefixes the first turn again when it is resent, a steered message and all", () => {
     const resent = doc({
       fork,
+      forkSeededIn: t1,
       items: [row("user_message", t1, "first"), row("user_message", t1, "steered")],
     });
     expect(withForkContext(resent, t1, input).text).toContain(fork.transcript);
   });
 
+  it("prefixes the next turn when the first never reached the harness", () => {
+    const failed = doc({
+      fork,
+      items: [row("user_message", t1, "first"), row("user_message", t2, "second")],
+    });
+    expect(withForkContext(failed, t2, input).text).toContain(fork.transcript);
+  });
 
   it("leaves the first turn alone when the harness forked the source's session", () => {
     const first = row("user_message", t1, "Now test it.");
@@ -165,12 +175,21 @@ describe("pendingNativeFork", () => {
     expect(pendingNativeFork(doc({ fork, session: { sessionRef: {} } as never }))).toBeNull();
     const later = doc({
       fork,
+      forkSeededIn: t1,
       items: [row("user_message", t1, "first"), row("user_message", t2, "second")],
       currentTurn: running(t2),
     });
     expect(pendingNativeFork(later)).toBeNull();
   });
 
+  it("still forks on the next turn when the first never reached the harness", () => {
+    const retried = doc({
+      fork,
+      items: [row("user_message", t1, "first"), row("user_message", t2, "second")],
+      currentTurn: running(t2),
+    });
+    expect(pendingNativeFork(retried)).toBe(session);
+  });
 
   it("never for a copy, or a thread that is not a fork", () => {
     expect(pendingNativeFork(doc({ fork: { ...fork, session: undefined } }))).toBeNull();

@@ -1052,6 +1052,47 @@ describe("a forked thread", () => {
     expect(JSON.stringify(threadSnapshotOf(doc))).not.toContain("Add it.");
   });
 
+  it("records the turn its first session bound in, and only the first", () => {
+    const [first, second] = [makeTurnId(), makeTurnId()];
+    const bound = () =>
+      event("thread.session.bound", {
+        connectorInstanceId: makeConnectorInstanceId(),
+        connectorKind: "fake",
+        sessionRef: { id: "session-1" },
+      });
+    const forkCreated = event("thread.created", {
+      threadId,
+      projectId,
+      title: "Health check (fork)",
+      settings: {
+        model: "fake/model",
+        runtimeMode: "approval-required",
+        interactionMode: "default",
+      },
+      fork,
+    });
+    // A first turn that failed before its session bound leaves it unset.
+    const failed = foldThread([
+      forkCreated,
+      turnRequested(first),
+      event("thread.turn.completed", { turnId: first, stopReason: "error" }),
+    ])!;
+    expect(failed.forkSeededIn).toBeUndefined();
+    const doc = foldThread([
+      forkCreated,
+      turnRequested(first),
+      event("thread.turn.completed", { turnId: first, stopReason: "error" }),
+      turnRequested(second),
+      bound(),
+      event("thread.session.lost", { reason: "gone" }),
+      bound(),
+    ])!;
+    expect(doc.forkSeededIn).toBe(second);
+    expect(foldThread([created(), turnRequested(first), bound()])).not.toHaveProperty(
+      "forkSeededIn",
+    );
+  });
+
   it("leaves a thread that is not a fork, or one projected before forks, without one", () => {
     const doc = foldThread([created()])!;
     expect(doc).not.toHaveProperty("fork");

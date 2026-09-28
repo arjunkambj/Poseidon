@@ -32,13 +32,16 @@ export const forkOf = (doc: ThreadDoc): ThreadFork | null =>
   (doc.fork as ThreadFork | null | undefined) ?? null;
 
 /**
- * Whether `turnId` is the fork's first turn: no user message of another turn
- * exists. A resend of the same turn after a lost session still counts.
+ * Whether `turnId` still has to carry the fork's context: no session of the
+ * fork has bound yet, or it bound in this very turn. A session binds once the
+ * harness has the turn, so a first turn that failed before reaching it — the
+ * instance gone, the binary missing — leaves the next one first, and a resend
+ * of the same turn after a lost session still counts.
  */
-export const isFirstTurn = (doc: ThreadDoc, turnId: TurnId | undefined): boolean =>
-  !doc.items.some(
-    (item) => item.kind === "user_message" && item.turnId !== undefined && item.turnId !== turnId,
-  );
+export const isFirstTurn = (doc: ThreadDoc, turnId: TurnId | undefined): boolean => {
+  const seededIn = doc.forkSeededIn;
+  return seededIn === undefined || (seededIn !== null && seededIn === turnId);
+};
 
 /**
  * The source session a new fork should continue natively, or `undefined` for
