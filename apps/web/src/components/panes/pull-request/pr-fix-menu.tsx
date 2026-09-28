@@ -18,6 +18,7 @@ import type { PullRequestDetail } from "@poseidon/contracts/pullRequest";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useLastPresent } from "@/lib/use-last-present";
 
 import { Hammer } from "@honeyicons/react";
 
@@ -46,6 +47,8 @@ export function PrFixMenuView({
   onFix,
 }: PrFixMenuViewProps) {
   const kinds = fixKinds(pullRequest);
+  // What the confirm shows, kept while it animates closed.
+  const shown = useLastPresent(confirming);
   if (kinds.length === 0) {
     return null;
   }
@@ -71,7 +74,7 @@ export function PrFixMenuView({
             onConfirming(null);
           }
         }}
-        title={confirming === null ? "" : `${FIX_LABELS[confirming]} in a new thread?`}
+        title={shown === null ? "" : `${FIX_LABELS[shown]} in a new thread?`}
         description={`A new thread starts on ${pullRequest.headRefName} in ${target}, with this as its first message.`}
         confirmLabel="Start thread"
         onConfirm={() => {
@@ -80,13 +83,13 @@ export function PrFixMenuView({
           }
         }}
       >
-        {confirming === null ? null : (
+        {shown === null ? null : (
           <div className="flex min-w-0 flex-col gap-1.5">
             <pre className="max-h-48 overflow-auto rounded-md bg-muted px-2.5 py-2 font-mono text-xs whitespace-pre-wrap text-muted-foreground wrap-anywhere">
-              {previewText(buildFixPrompt(confirming, pullRequest, null))}
+              {previewText(buildFixPrompt(shown, pullRequest, null))}
             </pre>
-            {FIX_NOTES[confirming] === "" ? null : (
-              <p className="text-xs text-muted-foreground">{FIX_NOTES[confirming]}</p>
+            {FIX_NOTES[shown] === "" ? null : (
+              <p className="text-xs text-muted-foreground">{FIX_NOTES[shown]}</p>
             )}
           </div>
         )}

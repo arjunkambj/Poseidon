@@ -29,6 +29,7 @@ import type { PullRequestDetail } from "@poseidon/contracts/pullRequest";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useLastPresent } from "@/lib/use-last-present";
 
 import { AlertTriangle, MoreHorizontal } from "@honeyicons/react";
 
@@ -101,10 +102,12 @@ export function PrActionsMenuView({
   const offers = prActions(pullRequest);
   const primary = offers.find((offer) => offer.disabledReason === null);
   const rest = offers.filter((offer) => offer !== primary);
+  // What the confirm shows, kept while it animates closed.
+  const shown = useLastPresent(confirming);
   if (offers.length === 0) {
     return null;
   }
-  const copy = confirming === null ? null : prActionCopy(confirming, pullRequest);
+  const copy = shown === null ? null : prActionCopy(shown, pullRequest);
   return (
     <div className="flex items-center gap-1">
       {primary === undefined ? null : (
@@ -175,7 +178,7 @@ export function PrActionsMenuView({
           }
         }}
       >
-        {confirming === "merge" ? (
+        {shown === "merge" ? (
           <MergeOptions pullRequest={pullRequest} method={method} onMethod={onMethod} />
         ) : null}
       </ConfirmDialog>
