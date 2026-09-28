@@ -17,6 +17,11 @@
  *   tab is picked, the toggle going back to the last tab — with its memory
  *   kept per project (`workspaceKey`).
  *
+ * A file link in the project's terminal asks to show a file in the Files tab
+ * (`useFileRevealRequests`, under the project's `workspaceKey`); the page
+ * answers by writing it into the project's Files view and opening the dock on
+ * Files, as a thread view does for its own.
+ *
  * It publishes `newTaskOpen`, which the dock keys' clause names beside
  * `threadOpen`, and answers `dock.toggle`, `dock.changes` and `dock.files`
  * (`DockShortcuts`); `terminal.toggle` is the drawer's, and `git.commit` and
@@ -31,11 +36,13 @@ import * as React from "react";
 import type { DockPane } from "@/components/dock/dock-toggle";
 import { RightDock } from "@/components/dock/right-dock";
 import { useDockState } from "@/components/dock/use-dock-state";
+import { useRevealFile } from "@/components/panes/files/files-view";
 import { ProjectTerminal } from "@/components/terminal/owned-terminal";
 import { StartThreadHeader } from "@/components/thread/start-thread-header";
 import { DockShortcuts } from "@/components/thread/thread-shortcuts";
 import { useKeybindingFlag } from "@/lib/shortcuts";
 import { workspaceKey } from "@/lib/workspace-key";
+import { type FileRevealTarget, useFileRevealRequests } from "@/state/file-reveal";
 
 export function StartThreadWorkspace({
   projectId,
@@ -58,6 +65,17 @@ export function StartThreadWorkspace({
   );
   const dock = useDockState({ memoryKey: workspaceKey({ projectId }), dockTab, navigateDock });
   useKeybindingFlag("newTaskOpen", true);
+
+  const revealFile = useRevealFile(workspaceKey({ projectId }));
+  const { showDockTab } = dock;
+  const showFile = React.useCallback(
+    (target: FileRevealTarget) => {
+      revealFile(target);
+      showDockTab("files");
+    },
+    [revealFile, showDockTab],
+  );
+  useFileRevealRequests(workspaceKey({ projectId }), showFile);
 
   return (
     // The same row as a thread's: the dock overlays when it cannot fit both.

@@ -3034,11 +3034,12 @@ directory, a missing path or one outside the root — is underlined
 (`file-link-provider.ts`). Every answer is kept for the xterm's life, so a
 file created after its path was first hovered links once the tab is next
 mounted, and a reference the terminal wrapped across two rows is not a link.
-A plain click opens the file in the thread's Files tab at that line, through
-the same request a timeline file chip makes; a mod-click opens it at that line
-in the favourite editor (`editors.open`), or in the Files tab when no editor
-was found (`use-file-links.ts`). On the New task page there is no Files tab to
-answer, so a plain click does nothing and only the mod-click opens the editor.
+A plain click opens the file in the dock's Files tab at that line, through
+the same request a timeline file chip makes (`state/file-reveal.ts`, keyed by
+`workspaceKey`): the thread's, or on the New task page the project's, which
+`StartThreadWorkspace` answers by opening its dock on Files. A mod-click opens
+it at that line in the favourite editor (`editors.open`), or in the Files tab
+when no editor was found (`use-file-links.ts`).
 
 Find is a row under the drawer's toolbar (`terminal-find.tsx`) that searches
 the xterm in front as the user types: Enter for the next match, Shift+Enter for

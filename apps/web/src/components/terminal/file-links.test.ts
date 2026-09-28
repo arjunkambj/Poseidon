@@ -127,28 +127,22 @@ describe("fileLinkAction", () => {
   const plain = { metaKey: false, ctrlKey: false };
   const meta = { metaKey: true, ctrlKey: false };
   const ctrl = { metaKey: false, ctrlKey: true };
-  const everything = { hasThread: true, hasEditor: true };
+  const editor = { hasEditor: true };
 
-  it("a plain click shows the file in the thread's Files tab", () => {
-    expect(fileLinkAction(plain, "meta", everything)).toBe("files");
-    expect(fileLinkAction(plain, "ctrl", { hasThread: true, hasEditor: false })).toBe("files");
+  it("a plain click shows the file in the owner's Files tab", () => {
+    expect(fileLinkAction(plain, "meta", editor)).toBe("files");
+    expect(fileLinkAction(plain, "ctrl", { hasEditor: false })).toBe("files");
   });
 
   it("a mod-click opens the favourite editor, on the platform's own modifier", () => {
-    expect(fileLinkAction(meta, "meta", everything)).toBe("editor");
-    expect(fileLinkAction(ctrl, "ctrl", everything)).toBe("editor");
-    expect(fileLinkAction(ctrl, "meta", everything)).toBe("files");
-    expect(fileLinkAction(meta, "ctrl", everything)).toBe("files");
+    expect(fileLinkAction(meta, "meta", editor)).toBe("editor");
+    expect(fileLinkAction(ctrl, "ctrl", editor)).toBe("editor");
+    expect(fileLinkAction(ctrl, "meta", editor)).toBe("files");
+    expect(fileLinkAction(meta, "ctrl", editor)).toBe("files");
   });
 
-  it("a mod-click with no editor falls back to the Files tab", () => {
-    expect(fileLinkAction(meta, "meta", { hasThread: true, hasEditor: false })).toBe("files");
-  });
-
-  it("with no thread, only a mod-click with an editor does anything", () => {
-    expect(fileLinkAction(plain, "meta", { hasThread: false, hasEditor: true })).toBeNull();
-    expect(fileLinkAction(meta, "meta", { hasThread: false, hasEditor: true })).toBe("editor");
-    expect(fileLinkAction(meta, "meta", { hasThread: false, hasEditor: false })).toBeNull();
-    expect(fileLinkAction(plain, "meta", { hasThread: false, hasEditor: false })).toBeNull();
+  it("a mod-click with no editor falls back to the Files tab, so no link is dead", () => {
+    expect(fileLinkAction(meta, "meta", { hasEditor: false })).toBe("files");
+    expect(fileLinkAction(ctrl, "ctrl", { hasEditor: false })).toBe("files");
   });
 });

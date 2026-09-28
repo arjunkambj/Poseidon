@@ -93,17 +93,15 @@ export const findFileReferences = (lineText: string): ReadonlyArray<FileReferenc
 
 /**
  * What a click on a confirmed file link does. A plain click shows the file in
- * the thread's Files tab; a mod-click (⌘ on macOS, Ctrl elsewhere) opens it in
- * the favourite editor, or in the Files tab when no editor was found. With no
- * thread (the New task page) nothing answers the Files tab, so only a
- * mod-click with an editor does anything.
+ * the owner's Files tab — the thread's, or on the New task page the
+ * project's; a mod-click (⌘ on macOS, Ctrl elsewhere) opens it in the
+ * favourite editor, or in the Files tab when no editor was found.
  */
 export const fileLinkAction = (
   event: { readonly metaKey: boolean; readonly ctrlKey: boolean },
   modKey: ModKey,
-  scope: { readonly hasThread: boolean; readonly hasEditor: boolean },
-): "files" | "editor" | null => {
+  scope: { readonly hasEditor: boolean },
+): "files" | "editor" => {
   const mod = modKey === "meta" ? event.metaKey : event.ctrlKey;
-  if (mod && scope.hasEditor) return "editor";
-  return scope.hasThread ? "files" : null;
+  return mod && scope.hasEditor ? "editor" : "files";
 };

@@ -18,9 +18,9 @@
  * (`openInThreadBrowser`), or on the New task page the system browser.
  *
  * A printed `path:line[:col]` the owner's root holds is a link too
- * (`./use-file-links`): a plain click shows it in the thread's Files tab, a
- * mod-click opens it in the favourite editor. The New task page has no Files
- * tab to answer, so there only the mod-click does anything.
+ * (`./use-file-links`): a plain click shows it in the Files tab — the
+ * thread's, or on the New task page the project's — and a mod-click opens it
+ * in the favourite editor.
  */
 
 import { useAtomSet } from "@effect/atom-react";

@@ -5,9 +5,10 @@
  * `resolve` asks `files.stat` in the owner's root — the thread's workspace, or
  * the project's folder — where a relative path resolves against the root and
  * an absolute one counts only inside it. `activate` does what `fileLinkAction`
- * picks: the thread's Files tab at the line (`@/state/file-reveal`, which the
- * thread view answers by opening the dock on Files), or the favourite editor
- * at the line through `editors.open`, toasting a refusal.
+ * picks: the owner's Files tab at the line (`@/state/file-reveal`, keyed by
+ * `workspaceKey`, which the thread view — or the New task page, for the
+ * project — answers by opening the dock on Files), or the favourite editor at
+ * the line through `editors.open`, toasting a refusal.
  */
 
 import { detectModKey } from "@poseidon/client-runtime/keybindings";
@@ -20,6 +21,7 @@ import { useFavouriteEditor, useOpenInWithToast } from "@/components/open-in/use
 import { useStatFiles } from "@/components/panes/files/file-atoms";
 import type { FileLinkHandlers } from "@/components/terminal/file-link-provider";
 import { fileLinkAction } from "@/components/terminal/file-links";
+import { workspaceKey } from "@/lib/workspace-key";
 import { useRequestFileReveal } from "@/state/file-reveal";
 
 export function useFileLinks(scope: {
@@ -47,13 +49,13 @@ export function useFileLinks(scope: {
 
   const activate = React.useCallback<FileLinkHandlers["activate"]>(
     (stat, reference, event) => {
-      const action = fileLinkAction(event, detectModKey(), {
-        hasThread: threadId !== undefined,
-        hasEditor: favourite !== null,
-      });
-      if (action === "files" && threadId !== undefined) {
-        requestReveal(threadId, { path: stat.relativePath, line: reference.line });
-      } else if (action === "editor" && favourite !== null) {
+      const action = fileLinkAction(event, detectModKey(), { hasEditor: favourite !== null });
+      if (action === "files") {
+        requestReveal(workspaceKey({ projectId, threadId }), {
+          path: stat.relativePath,
+          line: reference.line,
+        });
+      } else if (favourite !== null) {
         void openIn(favourite, {
           projectId,
           ...(threadId === undefined ? {} : { threadId }),

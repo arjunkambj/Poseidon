@@ -1,12 +1,15 @@
 /**
- * Requests to open a file in a thread's Files tab — presentation state, in
+ * Requests to open a file in a workspace's Files tab — presentation state, in
  * memory only, the way `browser-activity.ts` asks for the browser pane.
  *
- * A file chip in the timeline asks with `useRequestFileReveal`; the thread
- * view answers with `useFileRevealRequests`, which opens the dock on Files at
- * that file and line and clears the request, now or when the thread is next
- * on screen. One pending request per thread: a second click before the first
- * is answered replaces it.
+ * Requests are keyed by `workspaceKey` (`@/lib/workspace-key`): a thread's
+ * bare id, or on the New task page the project's own key. A file chip in the
+ * timeline, or a file link in a terminal, asks with `useRequestFileReveal`;
+ * the thread view — or the New task page, for its project — answers with
+ * `useFileRevealRequests`, which opens the dock on Files at that file and
+ * line and clears the request, now or when the workspace is next on screen.
+ * One pending request per workspace: a second click before the first is
+ * answered replaces it.
  */
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
@@ -15,7 +18,7 @@ import * as React from "react";
 
 /** A workspace file to show, and the 1-based line to show it at. */
 export interface FileRevealTarget {
-  /** Relative to the thread's workspace root, as `files.read` takes it. */
+  /** Relative to the workspace root, as `files.read` takes it. */
   readonly path: string;
   readonly line?: number;
 }
@@ -26,32 +29,32 @@ type Requests = Readonly<Record<string, FileRevealTarget>>;
 // and has to outlive the moment between the two.
 const fileRevealRequestsAtom = Atom.keepAlive(Atom.make<Requests>({}));
 
-/** A function that asks for a file to be shown in a thread's Files tab. */
+/**
+ * A function that asks for a file to be shown in a workspace's Files tab, by
+ * its `workspaceKey` (a thread's bare id).
+ */
 export const useRequestFileReveal = () => {
   const setRequests = useAtomSet(fileRevealRequestsAtom);
   return React.useCallback(
-    (threadId: string, target: FileRevealTarget) =>
-      setRequests((current) => ({ ...current, [threadId]: target })),
+    (key: string, target: FileRevealTarget) =>
+      setRequests((current) => ({ ...current, [key]: target })),
     [setRequests],
   );
 };
 
-/** Calls `reveal` whenever the thread has a request pending, and clears it. */
-export const useFileRevealRequests = (
-  threadId: string,
-  reveal: (target: FileRevealTarget) => void,
-) => {
+/** Calls `reveal` whenever the workspace has a request pending, and clears it. */
+export const useFileRevealRequests = (key: string, reveal: (target: FileRevealTarget) => void) => {
   const pending = useAtomValue(
     fileRevealRequestsAtom,
-    React.useCallback((requests: Requests) => requests[threadId], [threadId]),
+    React.useCallback((requests: Requests) => requests[key], [key]),
   );
   const setRequests = useAtomSet(fileRevealRequestsAtom);
   React.useEffect(() => {
     if (pending === undefined) return;
     setRequests((current) => {
-      const { [threadId]: _answered, ...rest } = current;
+      const { [key]: _answered, ...rest } = current;
       return rest;
     });
     reveal(pending);
-  }, [pending, reveal, setRequests, threadId]);
+  }, [key, pending, reveal, setRequests]);
 };
