@@ -3082,12 +3082,16 @@ tabs starts a shell of its own. A refusal — the ninth terminal, say — is a
 toast.
 
 Stop, on the control, in the menu or on the script's drawer tab, writes
-Ctrl-C to the terminal, which the pty turns into SIGINT for the script's
-foreground process group; the tab's close button stays the hard kill. Only
-the tab in front has an xterm attached, so the exit of a script in another
-tab, or in a closed drawer, shows on the next `terminal.list`: the control
-reads the owner's listing, folds it into the drawer's tabs while the drawer is
-closed, and reads it again when the menu opens and shortly after a Stop.
+Ctrl-C to the terminal (`terminal/use-stop-script.ts`), which the pty turns
+into SIGINT for the script's foreground process group; the tab's close
+button stays the hard kill. Only the tab in front has an xterm attached, so
+the exit of a script in another tab, or in a closed drawer, shows on the next
+`terminal.list`: the control reads the owner's listing, folds it into the
+drawer's tabs while the drawer is closed, and reads it again when the menu
+opens, shortly after any of the Stops, and every two seconds while a script
+runs where no xterm watches it (`hasUnwatchedScript`). A build that finishes
+behind a closed drawer thus turns the control's Stop back into Run on its
+own.
 
 "Edit scripts…" opens a dialog (`run/edit-scripts-dialog.tsx`) with a row
 per saved script — name, command, a Primary checkbox that clears the others,

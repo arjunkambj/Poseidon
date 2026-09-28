@@ -6,15 +6,17 @@
  * in a new tab titled with its name, and the drawer opens on it. Running a
  * script whose tab is still running brings that tab to the front instead;
  * one whose tab has exited gets a fresh tab, and the old one is closed
- * (`planRun`). Stop writes Ctrl-C, which the pty turns into SIGINT for the
- * script's foreground process group; the tab's close button stays the hard
- * kill.
+ * (`planRun`). Stop writes Ctrl-C (`@/components/terminal/use-stop-script`);
+ * the tab's close button stays the hard kill.
  *
  * Only the tab in front has an xterm attached, so a script in another tab —
  * or in a drawer that is closed — is seen to exit only on a listing. The hook
  * reads the owner's `terminal.list`, folds it into the tabs while the drawer
  * is closed (the open drawer folds it itself), and `relist` reads it again,
- * as the Run menu does when it opens.
+ * as the Run menu does when it opens. While such an unwatched script runs
+ * (`hasUnwatchedScript`), the listing is read again every
+ * `UNWATCHED_RELIST_MS`, so a build that ends behind a closed drawer turns
+ * the header's Stop back into Run on its own.
  *
  * The order of `run` matters: the terminal is opened over RPC, its tab added
  * to the drawer's state, and only then is the drawer opened. A drawer opened
@@ -22,7 +24,7 @@
  */
 
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
-import { makeTerminalId, type TerminalId } from "@poseidon/contracts/ids";
+import { makeTerminalId } from "@poseidon/contracts/ids";
 import { decodeTerminalOwnerKey } from "@poseidon/contracts/terminal";
 import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
@@ -31,24 +33,26 @@ import { toast } from "sonner";
 import { useForgetDevServer } from "@/components/terminal/dev-servers";
 import { useDrawerState } from "@/components/terminal/drawer-state";
 import { useOpenTerminal, useTerminalAtoms } from "@/components/terminal/terminal-atoms";
+import { useStopScript } from "@/components/terminal/use-stop-script";
 import { describeExitError } from "@/lib/app-runtime";
 import { useTerminalOpen } from "@/state/terminal-ui";
 
-import { planRun, runningTerminalOf, type RunnableScript } from "./project-scripts";
+import {
+  hasUnwatchedScript,
+  planRun,
+  runningTerminalOf,
+  type RunnableScript,
+} from "./project-scripts";
 
-/**
- * How long after a Stop the listing is read again. A script in a tab that is
- * not in front has no xterm attached, so its exit is only seen on a listing;
- * most scripts end well within this after SIGINT.
- */
-const STOP_RELIST_MS = 750;
+/** How often the listing is read while a script runs where no xterm watches it. */
+const UNWATCHED_RELIST_MS = 2000;
 
 export function useRunScript(ownerKey: string) {
   const atoms = useTerminalAtoms();
   const [state, dispatch] = useDrawerState(ownerKey);
   const [drawerOpen, setOpen] = useTerminalOpen(ownerKey);
   const openTerminal = useOpenTerminal();
-  const writeTerminal = useAtomSet(atoms.writeTerminal);
+  const stop = useStopScript(ownerKey);
   const closeTerminal = useAtomSet(atoms.closeTerminal);
   const forgetDevServer = useForgetDevServer();
   const refreshList = useAtomRefresh(atoms.terminalListAtom(ownerKey));
@@ -68,6 +72,13 @@ export function useRunScript(ownerKey: string) {
     refreshList();
     refreshRunning();
   }, [refreshList, refreshRunning]);
+
+  const unwatched = hasUnwatchedScript(state.tabs, state.activeId, drawerOpen);
+  React.useEffect(() => {
+    if (!unwatched) return;
+    const timer = window.setInterval(relist, UNWATCHED_RELIST_MS);
+    return () => window.clearInterval(timer);
+  }, [relist, unwatched]);
 
   const run = React.useCallback(
     async (script: RunnableScript) => {
@@ -102,14 +113,6 @@ export function useRunScript(ownerKey: string) {
       setOpen(true);
     },
     [closeTerminal, dispatch, forgetDevServer, openTerminal, ownerKey, relist, setOpen],
-  );
-
-  const stop = React.useCallback(
-    (terminalId: TerminalId) => {
-      writeTerminal({ ...decodeTerminalOwnerKey(ownerKey), terminalId, data: "\u0003" });
-      window.setTimeout(relist, STOP_RELIST_MS);
-    },
-    [ownerKey, relist, writeTerminal],
   );
 
   const runningOf = React.useCallback(

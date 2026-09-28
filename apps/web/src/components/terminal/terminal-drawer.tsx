@@ -26,7 +26,7 @@
  * eases only while it opens or closes, so a drag still tracks the pointer.
  */
 
-import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
 import { makeTerminalId, type TerminalId, type ThreadId } from "@poseidon/contracts/ids";
 import {
   TERMINALS_PER_OWNER,
@@ -40,6 +40,7 @@ import * as React from "react";
 
 import { AddSelectionButton } from "@/components/terminal/add-selection-button";
 import { DevServerButton } from "@/components/terminal/dev-server-button";
+import { useStopScript } from "@/components/terminal/use-stop-script";
 import { useForgetDevServer } from "@/components/terminal/dev-servers";
 import {
   DrawerMessage,
@@ -132,9 +133,9 @@ export function TerminalDrawer({
   const refreshList = useAtomRefresh(atoms.terminalListAtom(ownerKey));
   const refreshRunning = useAtomRefresh(atoms.runningTerminalsAtom);
   const openTerminal = useOpenTerminal();
-  const writeTerminal = useAtomSet(atoms.writeTerminal);
   const [state, dispatch] = useDrawerState(ownerKey);
   const forgetDevServer = useForgetDevServer();
+  const stopScript = useStopScript(ownerKey);
   const drawerRef = React.useRef<HTMLDivElement>(null);
   const { shown, onPointerDown } = useDrawerResize(drawerRef);
 
@@ -327,7 +328,7 @@ export function TerminalDrawer({
                 bumpTabFocus();
               }}
               onClose={() => close(tab.terminalId)}
-              onStop={() => writeTerminal({ ...owner, terminalId: tab.terminalId, data: "\u0003" })}
+              onStop={() => stopScript(tab.terminalId)}
             />
           ))}
           {opening ? (

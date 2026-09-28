@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { TerminalTab } from "@/components/terminal/drawer-state";
 
 import {
+  hasUnwatchedScript,
   nextScriptId,
   planRun,
   primaryScript,
@@ -173,5 +174,26 @@ describe("planRun", () => {
   it("finds the running terminal of a script", () => {
     expect(runningTerminalOf([devTab(1, "exited"), devTab(2, "running")], "dev")).toBe(id(2));
     expect(runningTerminalOf([devTab(1, "exited")], "dev")).toBeNull();
+  });
+});
+
+describe("hasUnwatchedScript", () => {
+  const devTab = (n: number, status: "running" | "exited") =>
+    tab(n, { status, script: { id: "dev", name: "Dev" } });
+
+  it("holds for a running script behind a closed drawer", () => {
+    expect(hasUnwatchedScript([devTab(1, "running")], id(1), false)).toBe(true);
+  });
+
+  it("holds for a running script in a tab not in front", () => {
+    expect(hasUnwatchedScript([devTab(1, "running"), tab(2)], id(2), true)).toBe(true);
+  });
+
+  it("does not hold for the script in front of an open drawer, which its xterm watches", () => {
+    expect(hasUnwatchedScript([devTab(1, "running"), tab(2)], id(1), true)).toBe(false);
+  });
+
+  it("ignores plain shells and scripts that have exited", () => {
+    expect(hasUnwatchedScript([tab(1), devTab(2, "exited")], null, false)).toBe(false);
   });
 });

@@ -183,3 +183,21 @@ export const runningTerminalOf = (
   scriptId: string,
 ): TerminalId | null =>
   tabs.find((tab) => tab.script?.id === scriptId && tab.status === "running")?.terminalId ?? null;
+
+/**
+ * Whether a script is running where no xterm watches it: in a tab not in
+ * front, or in a drawer that is closed. Only the attached xterm sees an exit
+ * as it happens, so such a script is seen to end only on a listing, and the
+ * Run control reads the listing again while this holds.
+ */
+export const hasUnwatchedScript = (
+  tabs: ReadonlyArray<TerminalTab>,
+  activeId: TerminalId | null,
+  drawerOpen: boolean,
+): boolean =>
+  tabs.some(
+    (tab) =>
+      tab.script !== null &&
+      tab.status === "running" &&
+      !(drawerOpen && tab.terminalId === activeId),
+  );
