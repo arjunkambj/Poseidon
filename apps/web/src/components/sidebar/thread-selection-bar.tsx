@@ -34,7 +34,10 @@ import { worktreeRemovers } from "@/components/sidebar/delete-thread";
 import { THREAD_DELETE_DESCRIPTION } from "@/components/sidebar/thread-actions";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
+import { selectionDoneBlockedReason } from "@/components/sidebar/thread-done";
+import { useThreadPins } from "@/components/sidebar/thread-pins";
 import { useThreadIsDone } from "@/components/sidebar/use-thread-done";
+import { cn } from "@/lib/utils";
 import { useThreadList } from "@/state/hooks";
 import { Archive, CheckDouble, Close, Email, Inbox, Trash } from "@honeyicons/react";
 
@@ -129,30 +132,39 @@ function DeleteThreadsDialog({
 
 function BarAction({
   label,
+  blocked = null,
   onClick,
   children,
 }: {
   readonly label: string;
+  /** Why the action does nothing for this selection; disables it, keeping its focus stop. */
+  readonly blocked?: string | null;
   readonly onClick: () => void;
   readonly children: React.ReactNode;
 }) {
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={label}
-            onClick={onClick}
-          />
-        }
-      >
-        {children}
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
+    // Dimmed by its wrapper while disabled: the button is `aria-disabled`,
+    // not natively disabled, so its own disabled look does not apply.
+    <span className={cn("inline-flex", blocked !== null && "opacity-50")}>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={blocked === null ? label : `${label}: ${blocked}`}
+              disabled={blocked !== null}
+              focusableWhenDisabled
+              onClick={onClick}
+            />
+          }
+        >
+          {children}
+        </TooltipTrigger>
+        <TooltipContent>{blocked ?? label}</TooltipContent>
+      </Tooltip>
+    </span>
   );
 }
 
@@ -167,7 +179,13 @@ export function ThreadSelectionBar({
   const actions = useSidebarActions();
   const remove = useDeleteThread();
   const isDone = useThreadIsDone();
+  const [pins] = useThreadPins();
   const allDone = threads.length > 0 && threads.every(isDone);
+  // Marking done skips pinned and busy threads; with nothing else picked it
+  // would do nothing, so it says why instead.
+  const doneBlocked = selectionDoneBlockedReason(threads, isDone, (thread) =>
+    pins.includes(thread.threadId),
+  );
   // The dialog keeps the threads it was opened for: the selection can change
   // under it (Escape clears it) and the copy must not.
   const [deleting, setDeleting] = React.useState<ReadonlyArray<ThreadSummary> | null>(null);
@@ -208,7 +226,11 @@ export function ThreadSelectionBar({
           <BarAction label="Mark unread" onClick={markUnread}>
             <Email variant="bold" />
           </BarAction>
-          <BarAction label={allDone ? "Mark active" : "Mark done"} onClick={setDone}>
+          <BarAction
+            label={allDone ? "Mark active" : "Mark done"}
+            blocked={doneBlocked}
+            onClick={setDone}
+          >
             {allDone ? <Inbox variant="bold" /> : <CheckDouble variant="bold" />}
           </BarAction>
           <BarAction label="Delete" onClick={() => setDeleting(threads)}>

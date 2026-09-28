@@ -4211,7 +4211,10 @@ running or waiting thread is never done. **Mark done** in a row's menu, the
 selection bar's button and `thread.done` (`Mod+Alt+K`) send `thread.done.mark`;
 on a done thread they read **Mark active** and send `thread.done.clear`. Each
 is one undo entry that sends the inverse, and the toast offers Undo, as an
-archive's does. A collapsed section still lists the open thread, and the
+archive's does. Where it would move nothing it is disabled and says why: the
+menu item names the reason (Pinned, Running, Waiting) at its end, and the
+selection bar's button, when every picked thread is pinned, busy or done
+already, says so in its tooltip. A collapsed section still lists the open thread, and the
 thread keys walk a section's rows only while it is expanded.
 
 A done thread comes back to the active list on any new activity — a turn, a

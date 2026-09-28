@@ -45,7 +45,7 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 import { useThreadPullRequestMark } from "@/components/panes/pull-request/use-thread-pull-request";
 import { threadCommandBase, useThreadCommand } from "@/components/sidebar/thread-actions";
 import { threadCopyTargets } from "@/components/sidebar/thread-copy-targets";
-import { canMarkDone } from "@/components/sidebar/thread-done";
+import { markDoneBlockedReason } from "@/components/sidebar/thread-done";
 import { useThreadPins } from "@/components/sidebar/thread-pins";
 import { useOpenPullRequestTab } from "@/components/sidebar/thread-pr-mark";
 import { useRenamingThread } from "@/components/sidebar/thread-rename";
@@ -139,6 +139,7 @@ export function ThreadMenuItems({
   const pullRequest = useThreadPullRequestMark(thread.projectId, thread.threadId);
   const openPullRequest = useOpenPullRequestTab(thread.threadId);
   const done = useThreadIsDone()(thread);
+  const doneBlocked = done ? null : markDoneBlockedReason(thread, pinned);
   // `""` is the stamp "Mark unread" leaves until the thread is opened again.
   const markedUnread = seen[thread.threadId] === "";
   const forkBlocked = threadForkBlockedReason({
@@ -185,13 +186,10 @@ export function ThreadMenuItems({
         Mark unread
       </Item>
       {/* A pinned, archived or busy thread never shows under Done. */}
-      <Item
-        disabled={!done && !canMarkDone(thread, pinned)}
-        onClick={() => void actions.setDone([thread], !done)}
-      >
+      <Item disabled={doneBlocked !== null} onClick={() => void actions.setDone([thread], !done)}>
         {done ? <Inbox variant="bold" /> : <CheckDouble variant="bold" />}
         {done ? "Mark active" : "Mark done"}
-        {keys("thread.done")}
+        {doneBlocked === null ? keys("thread.done") : <MenuHint>{doneBlocked}</MenuHint>}
       </Item>
       <Sub>
         <SubTrigger>

@@ -72,6 +72,36 @@ export const threadIsDone = (thread: DoneCandidate, context: DoneContext): boole
 export const canMarkDone = (thread: DoneCandidate, pinned: boolean): boolean =>
   !pinned && !neverDone(thread.status);
 
+/** Why "Mark done" does not apply to `thread`, as short as a menu item's hint; `null` when it does. */
+export const markDoneBlockedReason = (thread: DoneCandidate, pinned: boolean): string | null =>
+  pinned
+    ? "Pinned"
+    : thread.status === "running"
+      ? "Running"
+      : thread.status === "waiting"
+        ? "Waiting"
+        : thread.status === "archived" || thread.status === "deleted"
+          ? "Archived"
+          : null;
+
+/**
+ * Why the selection bar's "Mark done" would do nothing, or `null`: every
+ * picked thread is pinned, busy or done already, and the bar is not offering
+ * "Mark active" (which it does only when all of them are done).
+ */
+export const selectionDoneBlockedReason = <Thread extends DoneCandidate>(
+  threads: ReadonlyArray<Thread>,
+  isDone: (thread: Thread) => boolean,
+  isPinned: (thread: Thread) => boolean,
+): string | null => {
+  if (threads.every(isDone)) {
+    return null;
+  }
+  return threads.some((thread) => canMarkDone(thread, isPinned(thread)) && !isDone(thread))
+    ? null
+    : "Pinned, running and waiting threads stay active";
+};
+
 const DONE_EXPANDED_KEY = "poseidon:done-expanded";
 
 const readDoneExpanded = (): ReadonlySet<string> => {

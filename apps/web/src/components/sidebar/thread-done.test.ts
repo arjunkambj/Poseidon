@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { canMarkDone, lastActivityOf, threadIsDone, type DoneCandidate } from "./thread-done";
+import {
+  canMarkDone,
+  lastActivityOf,
+  markDoneBlockedReason,
+  selectionDoneBlockedReason,
+  threadIsDone,
+  type DoneCandidate,
+} from "./thread-done";
 
 const DAY = 86_400_000;
 const at = (ms: number) => new Date(ms).toISOString();
@@ -69,5 +76,31 @@ describe("canMarkDone", () => {
     expect(canMarkDone(thread(), true)).toBe(false);
     expect(canMarkDone(thread({ status: "running" }), false)).toBe(false);
     expect(canMarkDone(thread({ status: "archived" }), false)).toBe(false);
+  });
+});
+
+describe("why Mark done does not apply", () => {
+  it("names the reason for one thread", () => {
+    expect(markDoneBlockedReason(thread(), false)).toBeNull();
+    expect(markDoneBlockedReason(thread(), true)).toBe("Pinned");
+    expect(markDoneBlockedReason(thread({ status: "running" }), false)).toBe("Running");
+    expect(markDoneBlockedReason(thread({ status: "waiting" }), false)).toBe("Waiting");
+    expect(markDoneBlockedReason(thread({ status: "archived" }), false)).toBe("Archived");
+  });
+
+  it("blocks a selection only when no picked thread would move", () => {
+    const idle = thread();
+    const busy = thread({ status: "running" });
+    const finished = thread({ doneAt: at(T0) });
+    const doneOnly = (each: DoneCandidate) => each === finished;
+    const none = () => false;
+    expect(selectionDoneBlockedReason([busy, idle], doneOnly, none)).toBeNull();
+    expect(selectionDoneBlockedReason([busy, idle], doneOnly, (each) => each === idle)).toBe(
+      "Pinned, running and waiting threads stay active",
+    );
+    expect(selectionDoneBlockedReason([busy, finished], doneOnly, none)).toContain("stay active");
+    // Every one done already: the bar offers Mark active instead.
+    expect(selectionDoneBlockedReason([finished], doneOnly, none)).toBeNull();
+    expect(selectionDoneBlockedReason([], doneOnly, none)).toBeNull();
   });
 });
