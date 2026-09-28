@@ -37,3 +37,13 @@ export const projectNameFromPath = (path: string): string => {
     .filter((segment) => segment !== "");
   return segments[segments.length - 1] ?? "";
 };
+
+/**
+ * The project name once `picked` replaces `previousRoot` as the chosen
+ * folder: the new folder's name, unless the user typed a name of their own —
+ * one that is neither empty nor the old folder's name.
+ */
+export const nameAfterPick = (current: string, previousRoot: string, picked: string): string =>
+  current.trim() === "" || current === projectNameFromPath(previousRoot)
+    ? projectNameFromPath(picked)
+    : current;
