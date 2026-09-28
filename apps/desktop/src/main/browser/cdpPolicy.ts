@@ -165,6 +165,14 @@ const FOCUSED_INPUT = new Set([
 
 type Params = Readonly<Record<string, unknown>> | undefined;
 
+/** Whether a drag event's `data` names any local files. */
+const carriesFiles = (params: Params): boolean => {
+  const data = params?.["data"];
+  if (typeof data !== "object" || data === null) return false;
+  const files = (data as Record<string, unknown>)["files"];
+  return files !== undefined && !(Array.isArray(files) && files.length === 0);
+};
+
 const classifyRoot = (method: string, params: Params): PolicyDecision => {
   if (method === "Browser.getVersion") {
     return ANSWER;
@@ -209,6 +217,11 @@ const classifyPage = (method: string, params: Params): PolicyDecision => {
   const denied = PAGE_DENIED.get(method);
   if (denied !== undefined) {
     return deny(`${method}: ${denied}`);
+  }
+  // A drag's `data.files` are local paths the guest is granted and handed as
+  // `File`s on drop: an upload by another name.
+  if (method === "Input.dispatchDragEvent" && carriesFiles(params)) {
+    return deny(`${method}: file uploads are not granted`);
   }
   const urlParam = URL_PARAM.get(method);
   if (urlParam !== undefined) {

@@ -163,6 +163,32 @@ describe("classify on a page session", () => {
     expect(kind("page", method, {})).toBe("deny");
   });
 
+  it("forwards a drag without files and refuses one that carries local files", () => {
+    const drag = { type: "dragEnter", x: 1, y: 1, modifiers: 0 };
+    expect(kind("page", "Input.dispatchDragEvent", drag)).toBe("forward");
+    expect(
+      kind("page", "Input.dispatchDragEvent", {
+        ...drag,
+        data: { items: [], dragOperationsMask: 1 },
+      }),
+    ).toBe("forward");
+    expect(
+      kind("page", "Input.dispatchDragEvent", {
+        ...drag,
+        data: { items: [], files: [], dragOperationsMask: 1 },
+      }),
+    ).toBe("forward");
+    for (const files of [["/etc/passwd"], "/etc/passwd", null]) {
+      expect(
+        kind("page", "Input.dispatchDragEvent", {
+          ...drag,
+          type: "drop",
+          data: { items: [], files, dragOperationsMask: 1 },
+        }),
+      ).toBe("deny");
+    }
+  });
+
   it("never lets an emulated viewport replace the pane's size", () => {
     // What `agent-browser set viewport 1280 720` sends first.
     expect(

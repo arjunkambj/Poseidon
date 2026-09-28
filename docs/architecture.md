@@ -2356,7 +2356,8 @@ attach to the app window. A page session is a flat session on that guest's
 (Runtime, Page, DOM, Accessibility, Input, Network, CSS, DOMSnapshot, Overlay,
 Log, Performance, Fetch, WebMCP), grants `Emulation` method by method (media,
 geolocation, locale, timezone, user agent and the clears), and refuses the
-rest — cookie-jar calls, file uploads, downloads, `Page.close`/`crash`,
+rest — cookie-jar calls, file uploads (`DOM.setFileInputFiles`, and an
+`Input.dispatchDragEvent` whose data carries local files), downloads, `Page.close`/`crash`,
 `IO.*`, `Security.*`, the calls that would lay the page out at a size of its
 own (`Emulation.setDeviceMetricsOverride`, `setVisibleSize`,
 `setPageScaleFactor`), and navigation to anything but http(s) or
