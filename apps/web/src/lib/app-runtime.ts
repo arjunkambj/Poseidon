@@ -212,6 +212,34 @@ const makeSettingsAtoms = (base: BaseAppAtoms) => {
     }),
   );
 
+  /**
+   * Settings → Import's list of harness sessions. Not kept alive: it reads up
+   * to every instance's session files, so it loads while the page is open and
+   * again each time it opens, never in the background.
+   */
+  const importableSessionsAtom = runtime.atom(
+    Effect.flatMap(client, (c) => c["sessions.importable"]({})),
+  );
+
+  /**
+   * Imports one session as a thread. The thread arrives through the thread
+   * list subscription, but projects have none, so the list reloads here: an
+   * import into a folder with no project yet adds one. Concurrent, so a
+   * Retry does not cut off a run's import in flight, and kept alive, so an
+   * import that has started finishes even when the page closes.
+   */
+  const importSessionAtom = Atom.keepAlive(
+    runtime.fn(
+      (input: { connectorInstanceId: ConnectorInstanceId; sourceId: string }, get) =>
+        Effect.gen(function* () {
+          const result = yield* Effect.flatMap(client, (c) => c["sessions.import"](input));
+          get.registry.refresh(base.projectsAtom);
+          return result;
+        }),
+      { concurrent: true },
+    ),
+  );
+
   return {
     ...base,
     settingsUpdateAtom,
@@ -225,6 +253,8 @@ const makeSettingsAtoms = (base: BaseAppAtoms) => {
     skillsLinkAtom,
     customizeCountAtom,
     pluginsCountAtom,
+    importableSessionsAtom,
+    importSessionAtom,
   };
 };
 
