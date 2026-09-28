@@ -2721,7 +2721,9 @@ waits for any such stop in that worktree to finish before it removes anything.
 The start screen's composer has a second picker beside the project's
 (`apps/web/src/components/thread/workspace-mode-picker.tsx`): **Local**, the
 project's own folder that its other local threads share, or **New worktree**.
-The choice is remembered per project in localStorage (`useWorkspaceMode`). New
+The choice is remembered per project in localStorage (`useWorkspaceMode`), a
+pick of Local included; a project never picked for opens on Settings → Models'
+Default workspace (`defaults.workspace`, Local unless set). New
 worktree is disabled, with a tooltip saying why, when `git.branches` answers
 that the folder is not a repository. With it picked, a second select offers
 the base branch — local branches, then remote ones — opening on the list's
@@ -2905,8 +2907,8 @@ gone; the title is the source's when the fork was made.
 
 ### Deleting a worktree thread
 
-The sidebar row menu and Settings → Archived threads confirm a delete with the
-same dialog (`apps/web/src/components/sidebar/delete-thread-dialog.tsx`). For a
+The sidebar row menu, the `thread.delete` key and Settings → Archived threads
+confirm a delete with the same dialog (`apps/web/src/components/sidebar/delete-thread-dialog.tsx`). For a
 local thread it is only the delete: the project's folder is left alone. A
 thread with a worktree adds a checkbox, checked by default, **Also remove the
 worktree at `<path>`**, saying the branch is kept with its commits. Two
@@ -2916,7 +2918,12 @@ archived included, still works in. So when another thread still uses it the
 dialog offers no checkbox and says the worktree is kept; the selection bar's
 bulk delete leaves such worktrees out too, and a worktree shared only among
 the threads it deletes is removed once, by the last of them
-(`worktreeRemovers`). `delete-thread.ts` runs the steps:
+(`worktreeRemovers`). Settings → General's "Confirm before deleting a thread"
+(`confirmThreadDelete`, on by default) skips every one of these confirmations
+when off: the delete runs at once with the dialog's defaults, removing the
+worktrees it would have offered to (`use-confirm-thread-delete.ts`). The
+second confirmation below, for uncommitted work, still asks.
+`delete-thread.ts` runs the steps:
 
 1. `thread.delete`. A refusal is the usual toast, and nothing else happens.
 2. Only after an accepted delete, and only with the box checked,
@@ -3701,13 +3708,14 @@ JSON row in the `settings` table.
 ```
 Settings
   connectors         ConnectorInstanceConfig[]  id, kind, displayName, enabled, config
-  defaults           { model, effort, runtimeMode }
+  defaults           { model, effort, runtimeMode, workspace? }  workspace: local | worktree, Local when absent
   theme              system | light | dark
   chatWidth          comfortable | wide | full  the thread column's max width
   keybindings        Keybinding[]               the user's overrides on DEFAULT_KEYBINDINGS
   keybindingsFormat  "overrides"                absent on a document from before overrides
   permissions        PermissionRule[]           a projection of the permission_rules table
-  git                { branchPrefix }           what a new worktree's branch starts with
+  git                { branchPrefix, writingStyle, customInstructions, followPrTemplate,
+                       draftCommitMessages, worktreeFromOrigin }  branch names, commit and PR text
   projectSettings    { [projectId]: { setupScript?, scripts? } }
   browser            { openPaneOnAgentUse }     off by default
   diffView           { ignoreWhitespace, wrapLines }  the Changes pane's View menu, both off
@@ -3715,6 +3723,8 @@ Settings
   preferredEditor    string?                    the "Open in" button's editor; unset until picked
   autoDoneAfterDays  positive int | null?       days idle before a thread moves to Done; absent or null is off
   modelPicker        { harnesses, models }      which harnesses and models the pickers offer
+  generation         { writingModel, writingEffort, autoTitle }  who writes generated text
+  confirmThreadDelete boolean                   whether a delete asks first; on by default
 ```
 
 `git` and `projectSettings`, like the two font sizes, are defaulted on decode
@@ -3764,6 +3774,19 @@ the moment of the click (`apps/web/src/components/Settings/git-settings.ts`):
 editing one project keeps every other project's script, and a blank script
 removes the project's entry.
 
+The Branches section also holds "Start new worktrees from origin"
+(`git.worktreeFromOrigin`, §8 "Worktrees"); when a worktree was cut from the
+local branch instead, the start shows the answer's notice in a toast
+(`showWorktreeNotice` in `apps/web/src/components/panes/changes/git-atoms.ts`)
+and `thread.create` never sees it. Under it, "Commit and PR text"
+(`commit-text-section.tsx`) sets the Writing style (Repository conventions,
+Conventional Commits or Custom), the Custom instructions — shown only for
+Custom, saved on blur and trimmed, refused over 20 000 characters with a
+counter under the field — "Follow the repository's PR template", and "Draft
+commit messages" (Template, or Generate when the dialog opens). Every one of
+these writes the whole `git` struct spread from the latest document, so the
+branch prefix survives.
+
 Every field carries a `settingsForm` annotation — label, description, control —
 so the settings pages render from the schema and cannot drift from it. A
 connector's `config` is its own document: the connector's definition owns the
@@ -3775,7 +3798,16 @@ no change to the contracts package.
 Settings → Models (`apps/web/src/components/Settings/models-panel.tsx`) has
 the `defaults` form — its default model chosen with the same harness picker
 (`default-model-row.tsx`), filtered like the others and keeping the saved
-default, which it stores as a bare model id — and under it one card per enabled connector
+default, which it stores as a bare model id; its effort select reads readable
+labels (`EFFORT_LABELS` in `apps/web/src/lib/efforts.ts`: Minimal … Extra high,
+Max), and Default workspace is Local or New worktree. Under it, "Generated
+text" (`generated-text-section.tsx`) sets the `generation` struct: the Writing
+model, a grouped select whose first choice is "Same as the thread" (stored as
+null) followed by every model the pickers offer from each harness that
+declares `textGeneration`, stored as `{connectorInstanceId, model}`
+(`writing-model-options.ts`, keeping the saved pick even when it is switched
+off); the Writing effort (Low, Medium, High); and "Name new threads
+automatically". Then one card per enabled connector
 instance (`harness-models-section.tsx`, `harness-card.tsx`), in
 `modelCatalogAtom`'s order. A card's header is the instance's monogram avatar
 (`harnessMonograms` in `apps/web/src/lib/harness-monogram.ts`: the initials of
