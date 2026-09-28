@@ -40,6 +40,11 @@ export interface BuildArgsInput {
   readonly toolsEnable?: ReadonlyArray<string>;
   /** Omit the session record entirely (`--no-session`, probe turns). */
   readonly noSession?: boolean;
+  /**
+   * Extra skill directories, each a directory of `<name>/SKILL.md` folders
+   * (`--skill <path>`, repeatable): the enabled plugins' skills.
+   */
+  readonly skills?: ReadonlyArray<string>;
 }
 
 /**
@@ -95,6 +100,9 @@ export const buildArgs = (input: BuildArgsInput): Array<string> => {
   }
   for (const tool of input.toolsEnable ?? []) {
     args.push("--tools-enable", tool);
+  }
+  for (const dir of input.skills ?? []) {
+    args.push("--skill", dir);
   }
   return args;
 };

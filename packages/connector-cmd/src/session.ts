@@ -29,14 +29,13 @@ import type {
   TurnInput,
 } from "@poseidon/connector-sdk/definition";
 import { SessionClosed, SpawnFailed, TurnInProgress } from "@poseidon/connector-sdk/definition";
+import { loadSessionPlugins } from "@poseidon/connector-sdk/plugins";
 import { makeBoundedEventQueue, type SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
 import { makeEventId, makeItemId, makeTurnId } from "@poseidon/contracts/ids";
 
 import {
   installProjectHooks,
-  removeMcpEntry,
   uninstallProjectHooks,
-  upsertMcpEntry,
   type InstalledFile,
   type McpRegistration,
 } from "./config";
@@ -50,6 +49,7 @@ import { contextWindowFor } from "./probe";
 import { materializePlan, planProposalFor, planWriteIn, releasePlanClaims } from "./plans";
 import type { PlanWrite } from "./plans";
 import { envAllowlist, spawnProcess } from "./spawn";
+import { registerSessionMcp } from "./sessionMcp";
 import { prepareTurn } from "./turnArgs";
 import { makeSessionRefLocator, type CmdSessionRef } from "./sessionRef";
 import { findTranscriptPath, readTranscriptLines, tailTranscript } from "./transcript";
@@ -367,9 +367,8 @@ export const makeCmdSession = (
         warn(`could not write the hook script: ${String(error)}`).pipe(Effect.as(null)),
       ),
     );
-    // What the two installs below wrote, so close() can put both files back.
+    // What the hook install below wrote, so close() can put the file back.
     const installedHooks = yield* Ref.make<InstalledFile | null>(null);
-    const installedMcp = yield* Ref.make(false);
     /**
      * What a `cmd mcp` call needs. The environment is the session's own, so
      * the CLI resolves `~/.commandcode` against the same `HOME` its turns do.
@@ -396,24 +395,17 @@ export const makeCmdSession = (
       }
       yield* Ref.set(installedHooks, written ?? null);
     }
-    const mcp = yield* options.services
-      .mcpEndpoint(options.threadId)
-      .pipe(Effect.catch(() => Effect.succeed(null)));
-    // An empty url is how a server without an MCP endpoint says "nothing to
-    // configure": skip writing mcp.json entirely.
-    if (mcp !== null && mcp.url !== "") {
-      const registered = yield* upsertMcpEntry(mcpRegistration, { url: mcp.url }).pipe(
-        Effect.catch((error) =>
-          warn(`could not register the MCP server: ${String(error)}`).pipe(Effect.as(false)),
-        ),
-      );
-      if (!registered) {
-        yield* warn(
-          "the harness refused to register Poseidon's MCP server, so its tools are unavailable this session",
-        );
-      }
-      yield* Ref.set(installedMcp, registered);
-    }
+    // The enabled plugins, once: their skills go on every turn's argv, their
+    // MCP servers into the project's local scope beside Poseidon's own.
+    const plugins = yield* loadSessionPlugins(options.services, options.threadId);
+    const sessionMcp = yield* registerSessionMcp({
+      registration: mcpRegistration,
+      services: options.services,
+      threadId: options.threadId,
+      plugins,
+      warn,
+    });
+    const mcp = sessionMcp.endpoint;
     if (options.services.registerHookHandler !== undefined) {
       yield* options.services.registerHookHandler(options.threadId, hookAnswers.onHookPost);
     }
@@ -659,6 +651,7 @@ export const makeCmdSession = (
                 attachmentsDir: options.services.attachmentsDir,
                 threadId: options.threadId,
                 resumeSessionId: prior?.sessionId ?? null,
+                plugins,
               }),
             );
             for (const message of prepared.warnings) {
@@ -738,7 +731,7 @@ export const makeCmdSession = (
           yield* active.proc.kill;
         }
         yield* hookAnswers.releasePending;
-        // The project is the user's, not ours: the hook block and the MCP entry
+        // The project is the user's, not ours: the hook block and the MCP entries
         // go out with the session that put them there. Both reverts no-op when
         // the file has changed since or another session still holds it.
         const hooks = yield* Ref.get(installedHooks);
@@ -747,9 +740,7 @@ export const makeCmdSession = (
             Effect.catch(() => Effect.void),
           );
         }
-        if (yield* Ref.get(installedMcp)) {
-          yield* removeMcpEntry(mcpRegistration).pipe(Effect.catch(() => Effect.void));
-        }
+        yield* sessionMcp.release;
         // The bearer outlives nothing: the session that minted it is over.
         yield* removeHookTicket(hookTicketPath(options.threadId)).pipe(
           Effect.catch(() => Effect.void),

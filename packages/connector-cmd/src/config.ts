@@ -13,7 +13,9 @@
  *   `${POSEIDON_MCP_TOKEN}` placeholder, since the harness resolves env
  *   references at launch and the per-session token must never touch
  *   disk. That file lives under a slug of the workspace path that only the CLI
- *   knows how to spell, so the CLI writes it — see `upsertMcpEntry`.
+ *   knows how to spell, so the CLI writes it — see `upsertMcpEntry`. An
+ *   enabled plugin's MCP servers join it the same way, each under
+ *   `poseidon-plugin-<plugin>-<server>` (`sessionMcp.ts`).
  *
  * Teardown of the hook block is conditional twice over. The install returns the
  * hash of the exact bytes it wrote, and the uninstall reverts only while the
@@ -471,14 +473,14 @@ export const uninstallProjectHooks = (
  * the workspace root, resolved through symlinks, is the handle. Prefixed so it
  * cannot collide with the settings files held by path.
  */
-const mcpKey = (projectRoot: string): string => {
+const mcpKey = (projectRoot: string, name: string): string => {
   let resolved = projectRoot;
   try {
     resolved = NodeFS.realpathSync(projectRoot);
   } catch {
     // A workspace that has gone away keys on the path we were given.
   }
-  return `mcp:${resolved}`;
+  return name === POSEIDON_MCP_NAME ? `mcp:${resolved}` : `mcp:${name}:${resolved}`;
 };
 
 export interface McpRegistration {
@@ -505,6 +507,24 @@ export interface McpRegistration {
  * handler could not run until it returned.
  */
 const MCP_TIMEOUT_MS = 10_000;
+
+/**
+ * One server entry as `cmd mcp add-json` takes it. The CLI writes it verbatim,
+ * so its keys are the harness's own: `transport`, then `url` and `headers` or
+ * `command`, `args` and `env`.
+ */
+export type McpEntry =
+  | {
+      readonly transport: "http";
+      readonly url: string;
+      readonly headers?: Readonly<Record<string, string>>;
+    }
+  | {
+      readonly transport: "stdio";
+      readonly command: string;
+      readonly args?: ReadonlyArray<string>;
+      readonly env?: Readonly<Record<string, string>>;
+    };
 
 /** Runs one `cmd mcp …` subcommand for its exit code. Never throws. */
 const runCmdMcp = (
@@ -559,27 +579,37 @@ const runCmdMcp = (
  * recording MCP server. Answers `false` when the CLI refused, so the caller
  * can say the tools are unavailable this session rather than assume they are
  * there.
+ *
+ * `name` defaults to `poseidon`, whose entry is Poseidon's own server: `http`
+ * to the endpoint's url with the bearer as the placeholder. Under any other
+ * name the entry is registered as given — a plugin's server — and held by the
+ * same per-project count, kept per name.
  */
 export const upsertMcpEntry = (
   registration: McpRegistration,
-  endpoint: { readonly url: string },
+  endpoint: { readonly url: string } | McpEntry,
+  name: string = POSEIDON_MCP_NAME,
 ): Effect.Effect<boolean> =>
   runCmdMcp(registration, [
     "add-json",
-    POSEIDON_MCP_NAME,
-    JSON.stringify({
-      transport: "http",
-      enabled: true,
-      url: endpoint.url,
-      headers: { Authorization: "Bearer ${POSEIDON_MCP_TOKEN}" },
-    }),
+    name,
+    JSON.stringify(
+      "transport" in endpoint
+        ? { ...endpoint, enabled: true }
+        : {
+            transport: "http",
+            enabled: true,
+            url: endpoint.url,
+            headers: { Authorization: "Bearer ${POSEIDON_MCP_TOKEN}" },
+          },
+    ),
     "--scope",
     "local",
   ]).pipe(
     Effect.tap((registered) =>
       Effect.sync(() => {
         if (registered) {
-          retainKey(mcpKey(registration.projectRoot));
+          retainKey(mcpKey(registration.projectRoot, name));
         }
       }),
     ),
@@ -597,11 +627,12 @@ export const upsertMcpEntry = (
  * running turns, and the model was offered none of Poseidon's browser tools for
  * the rest of that session, with no warning, because the removal succeeded.
  */
-export const removeMcpEntry = (registration: McpRegistration): Effect.Effect<void> =>
+export const removeMcpEntry = (
+  registration: McpRegistration,
+  name: string = POSEIDON_MCP_NAME,
+): Effect.Effect<void> =>
   Effect.suspend(() =>
-    release(mcpKey(registration.projectRoot))
-      ? runCmdMcp(registration, ["remove", POSEIDON_MCP_NAME, "--scope", "local"]).pipe(
-          Effect.asVoid,
-        )
+    release(mcpKey(registration.projectRoot, name))
+      ? runCmdMcp(registration, ["remove", name, "--scope", "local"]).pipe(Effect.asVoid)
       : Effect.void,
   );

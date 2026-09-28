@@ -11,6 +11,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { makeThreadId } from "@poseidon/contracts/ids";
 import type { ThreadSettings } from "@poseidon/contracts/orchestration";
 import type { TurnInput } from "@poseidon/connector-sdk/definition";
+import type { SessionPlugin } from "@poseidon/connector-sdk/plugins";
 
 import { cmdEffort, prepareTurn } from "./turnArgs";
 
@@ -101,10 +102,21 @@ describe("prepareTurn", () => {
   });
 });
 
+/** The built-in Browser plugin as the server hands it to a session. */
+const browserPlugin: SessionPlugin = {
+  name: "browser",
+  root: "/home/builtin-plugins/browser",
+  builtin: true,
+  skills: [{ name: "browser", path: "/home/builtin-plugins/browser/skills/browser" }],
+  skillsDirs: ["/home/builtin-plugins/browser/skills"],
+  mcpServers: [],
+};
+
 /** The prompt `prepareTurn` builds for one turn: argv's second element. */
 const promptOf = async (
   turn: TurnInput,
   attachmentsDir = NodePath.join(NodeFS.realpathSync(NodePath.resolve("/tmp")), "poseidon-none"),
+  plugins?: ReadonlyArray<SessionPlugin>,
 ) => {
   const prepared = await prepareTurn({
     turn,
@@ -112,6 +124,7 @@ const promptOf = async (
     attachmentsDir,
     threadId: makeThreadId(),
     resumeSessionId: null,
+    ...(plugins === undefined ? {} : { plugins }),
   });
   expect(prepared.args[0]).toBe("-p");
   return { prompt: prepared.args[1], warnings: prepared.warnings, args: prepared.args };
@@ -190,7 +203,33 @@ describe("skill and plugin references in the prompt", () => {
       ["Ship it with @release-notes", 'Use the "commit" skill.'].join("\n\n"),
     );
     expect(withPlugin.warnings).toEqual([
-      'the plugin "release-notes" was left out of the prompt: Command Code has no plugins to reference',
+      'the plugin "release-notes" was left out of the prompt: it is not a Poseidon plugin enabled for this session',
+    ]);
+  });
+
+  it("names a plugin the session loaded, once, and still warns about any other", async () => {
+    const withPlugins = await promptOf(
+      {
+        text: "Check the page with @browser",
+        attachments: [],
+        mentions: [],
+        references: [
+          { kind: "plugin", name: "browser" },
+          { kind: "skill", name: "commit" },
+          { kind: "plugin", name: "browser" },
+          { kind: "plugin", name: "release-notes" },
+        ],
+      },
+      undefined,
+      [browserPlugin],
+    );
+    expect(withPlugins.prompt).toBe(
+      ["Check the page with @browser", 'Use the "commit" skill.', 'Use the "browser" plugin.'].join(
+        "\n\n",
+      ),
+    );
+    expect(withPlugins.warnings).toEqual([
+      'the plugin "release-notes" was left out of the prompt: it is not a Poseidon plugin enabled for this session',
     ]);
   });
 
@@ -211,5 +250,44 @@ describe("skill and plugin references in the prompt", () => {
     });
     expect(prompt).toBe(recorded.turns[0]!.prompt);
     expect(prompt).toBe(recorded.turns[0]!.connectorArgs[1]);
+  });
+});
+
+describe("plugin skills on the argv", () => {
+  it("adds one --skill per enabled plugin's skills directory, after everything else", async () => {
+    const tools: SessionPlugin = {
+      ...browserPlugin,
+      name: "tools",
+      root: "/home/plugins/tools",
+      builtin: false,
+      skillsDirs: ["/home/plugins/tools/skills", "/home/plugins/tools/extra"],
+    };
+    const { args } = await promptOf({ text: "hi", attachments: [], mentions: [] }, undefined, [
+      browserPlugin,
+      tools,
+      browserPlugin,
+    ]);
+    const plain = (await promptOf({ text: "hi", attachments: [], mentions: [] })).args;
+    expect(args).toEqual([
+      ...plain,
+      "--skill",
+      "/home/builtin-plugins/browser/skills",
+      "--skill",
+      "/home/plugins/tools/skills",
+      "--skill",
+      "/home/plugins/tools/extra",
+    ]);
+  });
+
+  it("adds nothing when no plugin carries skills", async () => {
+    const turn = { text: "hi", attachments: [], mentions: [] };
+    const none = await promptOf(turn, undefined, []);
+    const bare = await promptOf(turn, undefined, [
+      { ...browserPlugin, skills: [], skillsDirs: [] },
+    ]);
+    const absent = await promptOf(turn);
+    expect(none.args).toEqual(absent.args);
+    expect(bare.args).toEqual(absent.args);
+    expect(absent.args).not.toContain("--skill");
   });
 });

@@ -5,8 +5,10 @@
  * `<attachmentsDir>/<threadId>/`, that directory joins the run's scope through
  * `--add-dir`, and the prompt names the absolute paths.
  * Mentions become `@name` lines and skill references `Use the "<name>" skill.`
- * lines (`fixtures/cmd/skill/`); a plugin reference is left out with a
- * warning, because Command Code has no plugins. Everything else is
+ * lines (`fixtures/cmd/skill/`); a reference to one of the session's Poseidon
+ * plugins becomes `Use the "<name>" plugin.`, any other plugin is left out
+ * with a warning. The enabled plugins' skill directories go on the argv as
+ * `--skill <dir>`, which is how Command Code loads them. Everything else is
  * `buildArgs`.
  *
  * `--yolo` goes on every ordinary turn: print mode refuses writes and shell
@@ -21,6 +23,7 @@ import type { ThreadId } from "@poseidon/contracts/ids";
 import type { ThreadSettings } from "@poseidon/contracts/orchestration";
 import type { TurnReference } from "@poseidon/contracts/runtime";
 import type { TurnInput } from "@poseidon/connector-sdk/definition";
+import type { SessionPlugin } from "@poseidon/connector-sdk/plugins";
 
 import { stageTurnAttachments } from "./attachments";
 import { buildArgs, TOOLS_ENABLED } from "./spawn";
@@ -53,24 +56,34 @@ export const cmdEffort = (effort: Effort): string => (effort === "minimal" ? "lo
  * `fixtures/cmd/skill/` records it calling `activate_skill` for exactly that
  * skill. A repeated reference is named once.
  *
- * Command Code has no plugins, so its menus never offer one. A plugin
- * reference that arrives anyway is not written as text the harness could not
- * resolve: it is left out, and the user is told.
+ * Command Code has no plugins of its own; the only ones it has are the
+ * session's Poseidon plugins, whose skills its argv loads. A reference to one
+ * of those is one more sentence naming it. Any other plugin reference is not
+ * written as text the harness could not resolve: it is left out, and the user
+ * is told.
  */
 const referenceParts = (
   references: ReadonlyArray<TurnReference>,
+  sessionPlugins: ReadonlyArray<SessionPlugin>,
 ): { readonly lines: ReadonlyArray<string>; readonly warnings: ReadonlyArray<string> } => {
+  const loaded = new Set(sessionPlugins.map((plugin) => plugin.name));
   const skills = new Set<string>();
   const plugins = new Set<string>();
   for (const reference of references) {
     (reference.kind === "skill" ? skills : plugins).add(reference.name);
   }
+  const known = [...plugins].filter((name) => loaded.has(name));
   return {
-    lines: [...skills].map((name) => `Use the ${JSON.stringify(name)} skill.`),
-    warnings: [...plugins].map(
-      (name) =>
-        `the plugin "${name}" was left out of the prompt: Command Code has no plugins to reference`,
-    ),
+    lines: [
+      ...[...skills].map((name) => `Use the ${JSON.stringify(name)} skill.`),
+      ...known.map((name) => `Use the ${JSON.stringify(name)} plugin.`),
+    ],
+    warnings: [...plugins]
+      .filter((name) => !loaded.has(name))
+      .map(
+        (name) =>
+          `the plugin "${name}" was left out of the prompt: it is not a Poseidon plugin enabled for this session`,
+      ),
   };
 };
 
@@ -81,14 +94,18 @@ export const prepareTurn = async (input: {
   readonly threadId: ThreadId;
   /** The session to resume, or null to let the harness open a new one. */
   readonly resumeSessionId: string | null;
+  /** The session's enabled Poseidon plugins; absent means none. */
+  readonly plugins?: ReadonlyArray<SessionPlugin>;
 }): Promise<PreparedTurn> => {
+  const plugins = input.plugins ?? [];
+  const skills = [...new Set(plugins.flatMap((plugin) => plugin.skillsDirs))];
   const attached = await stageTurnAttachments({
     attachmentsDir: input.attachmentsDir,
     threadId: input.threadId,
     attachments: input.turn.attachments,
   });
   const mentioned = input.turn.mentions.map((mention) => `@${mention}`);
-  const referenced = referenceParts(input.turn.references ?? []);
+  const referenced = referenceParts(input.turn.references ?? [], plugins);
   const prompt = [input.turn.text, ...mentioned, ...referenced.lines, ...attached.promptLines]
     .filter((part) => part.length > 0)
     .join("\n\n");
@@ -116,6 +133,7 @@ export const prepareTurn = async (input: {
       ...(plan ? { permissionMode: "plan" as const } : {}),
       ...(attached.addDirs.length === 0 ? {} : { addDir: attached.addDirs }),
       toolsEnable: TOOLS_ENABLED,
+      ...(skills.length === 0 ? {} : { skills }),
     }),
   };
 };

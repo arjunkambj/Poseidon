@@ -44,6 +44,7 @@ connector in the tree.
 | `hookAnswers.ts`   | answering hook posts: allow, deny, or park for the user            |
 | `approvals.ts`     | tool name → approval kind and "allow always" pattern               |
 | `config.ts`        | the two files we write into the user's machine, and their teardown |
+| `sessionMcp.ts`    | the MCP entries one session registers: Poseidon's and its plugins' |
 | `mcpServers.ts`    | the MCP servers extension: the user and project `mcp.json` files   |
 | `skills.ts`        | the skills extension: skill discovery and linking shared skills    |
 | `plans.ts`         | reading (and saving) the plan a plan turn produced                 |
@@ -254,6 +255,7 @@ cmd -p "<prompt>" --output-format json --verbose -t --skip-onboarding --no-auto-
     [--max-turns <n>]
     [--add-dir <dir>]...
     [--tools-enable <name>]...
+    [--skill <dir>]...
 ```
 
 The npx fallback's `prefixArgs` (`-y command-code@latest`) go in front of all
@@ -285,6 +287,13 @@ a real turn:
 - **`--tools-enable ask_user_question`**, always. `TOOLS_ENABLED` lists that
   one tool and nothing else; `--tools-all` would also un-withhold whatever else
   a headless run hides, sight unseen.
+- **`--skill <dir>`** once per skills directory of the session's enabled
+  Poseidon plugins (`SessionPlugin.skillsDirs`, each a directory of
+  `<name>/SKILL.md` folders), read once at session start. `cmd --help`: "Load
+  extra skills from a path (a skill directory or a directory of skills);
+  repeatable". With no plugin enabled, or none carrying skills, the argv is
+  what it was before plugins existed, which is why every recording still
+  rebuilds.
 
 `--max-turns` and `--no-session` are supported by `buildArgs` but no production
 caller passes them, so a turn runs at the CLI's own default cap — `cmd --help`
@@ -298,7 +307,8 @@ it, and demands the same list.
 ### The prompt
 
 One string, assembled by `prepareTurn`: the user's text, then one `@path` line
-per mention, then one line per skill reference, then one line per attachment,
+per mention, then one line per skill reference, then one line per plugin
+reference to one of the session's plugins, then one line per attachment,
 joined by blank lines. Empty parts are dropped. A mention is a
 workspace-relative path and nothing else (`Mention` in
 `packages/contracts/src/orchestration.ts`) — the connector writes it as `@path`
@@ -317,11 +327,12 @@ skill's body told it to. `turnArgs.test.ts` fails if `prepareTurn` stops
 building that prompt, and `recordedSession.test.ts` replays the recording
 through a session sent that reference.
 
-A plugin reference is never written into the prompt. Command Code has no
-plugins, so the connector implements no plugins extension and the composer
-never offers one for its threads; a plugin reference that arrives anyway is
-left out and reported as a `session.warning` naming it. A turn with no
-references builds the same prompt it did before references existed.
+Command Code has no plugins of its own. The only plugins a session has are
+Poseidon's enabled ones, whose skills its argv loads (`--skill`, above); a
+reference to one of those becomes `Use the "<name>" plugin.`, named once. Any
+other plugin reference is left out of the prompt and reported as a
+`session.warning` naming it. A turn with no references builds the same prompt
+it did before references existed.
 
 ### Environment
 
@@ -1217,7 +1228,15 @@ approval card hung, no timer fired.
 A refusal is reported rather than assumed away: `the harness refused to register
 Poseidon's MCP server, so its tools are unavailable this session`.
 
-The entry is held per workspace root (resolved through symlinks), because every
+Each enabled Poseidon plugin's MCP servers are registered beside it by
+`sessionMcp.ts`, through the same command, as
+`poseidon-plugin-<plugin>-<server>` (characters outside `[A-Za-z0-9_-]` become
+`-`), with `transport` `http` (`url`, `headers`) or `stdio` (`command`, `args`,
+`env`) as the plugin's `.mcp.json` declared them, `${CLAUDE_PLUGIN_ROOT}`
+already expanded. A refused one is a `session.warning` naming the server and
+its plugin; the session goes on without it.
+
+Every entry is held per workspace root (resolved through symlinks) and name, because every
 thread of a project shares one file; the first thread to close must not remove
 it under a second one still running turns. The **name** is the ownership
 marker, so a server the user added under any other name is untouched.

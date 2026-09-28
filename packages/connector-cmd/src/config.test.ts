@@ -11,6 +11,7 @@ import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import { describe, expect, it } from "@effect/vitest";
+import { makeThreadId } from "@poseidon/contracts/ids";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 
@@ -24,6 +25,7 @@ import {
   type InstalledFile,
 } from "./config";
 import { ensureHookScript, hookScriptPath, hookScriptSource } from "./hookScript";
+import { pluginMcpName, registerSessionMcp } from "./sessionMcp";
 
 const tempDir = (): Effect.Effect<string, never, Scope.Scope> =>
   Effect.acquireRelease(
@@ -586,6 +588,137 @@ describe("mcp entry", () => {
           { url: "http://127.0.0.1:1/mcp" },
         ),
       ).toBe(false);
+    }),
+  );
+
+  it.effect("registers a named entry as given and removes it by that name", () =>
+    Effect.gen(function* () {
+      const root = yield* tempDir();
+      const stub = stubCmd(root);
+      const registration = { binaryPath: stub.binary, projectRoot: root, env: stubEnv };
+      const entry = {
+        transport: "stdio" as const,
+        command: "/plugins/tools/bin/server",
+        args: ["--fast"],
+        env: { MODE: "x" },
+      };
+
+      expect(yield* upsertMcpEntry(registration, entry, "poseidon-plugin-tools-local")).toBe(true);
+      yield* removeMcpEntry(registration, "poseidon-plugin-tools-local");
+
+      const [add, remove] = stub.calls();
+      expect(add?.slice(0, 3)).toEqual(["mcp", "add-json", "poseidon-plugin-tools-local"]);
+      expect(JSON.parse(add![3]!)).toEqual({ ...entry, enabled: true });
+      expect(add?.[add.indexOf("--scope") + 1]).toBe("local");
+      expect(remove?.slice(0, 3)).toEqual(["mcp", "remove", "poseidon-plugin-tools-local"]);
+    }),
+  );
+
+  it.effect("holds each name on its own, so a plugin entry never keeps poseidon's", () =>
+    Effect.gen(function* () {
+      const root = yield* tempDir();
+      const stub = stubCmd(root);
+      const registration = { binaryPath: stub.binary, projectRoot: root, env: stubEnv };
+      const plugin = { transport: "http" as const, url: "https://search.example/mcp" };
+
+      yield* upsertMcpEntry(registration, { url: "http://127.0.0.1:4321/mcp" });
+      yield* upsertMcpEntry(registration, plugin, "poseidon-plugin-tools-search");
+      yield* upsertMcpEntry(registration, plugin, "poseidon-plugin-tools-search");
+
+      yield* removeMcpEntry(registration);
+      yield* removeMcpEntry(registration, "poseidon-plugin-tools-search");
+      const removed = () =>
+        stub
+          .calls()
+          .filter((argv) => argv[1] === "remove")
+          .map((argv) => argv[2]);
+      expect(removed()).toEqual([POSEIDON_MCP_NAME]);
+
+      yield* removeMcpEntry(registration, "poseidon-plugin-tools-search");
+      expect(removed()).toEqual([POSEIDON_MCP_NAME, "poseidon-plugin-tools-search"]);
+    }),
+  );
+
+  it.effect("registers a session's plugin servers beside poseidon and releases them once", () =>
+    Effect.gen(function* () {
+      const root = yield* tempDir();
+      const stub = stubCmd(root);
+      const registration = { binaryPath: stub.binary, projectRoot: root, env: stubEnv };
+      const warnings: Array<string> = [];
+      const session = yield* registerSessionMcp({
+        registration,
+        services: {
+          mcpEndpoint: () => Effect.succeed({ url: "http://127.0.0.1:4321/mcp", bearer: "b" }),
+        },
+        threadId: makeThreadId(),
+        plugins: [
+          {
+            name: "tools",
+            root: "/plugins/tools",
+            builtin: false,
+            skills: [],
+            skillsDirs: [],
+            mcpServers: [
+              { name: "search", transport: "http", url: "https://search.example/mcp" },
+              { name: "local.v2", transport: "stdio", command: "/plugins/tools/bin/server" },
+              // Nothing to reach it by: skipped, not registered broken.
+              { name: "broken", transport: "stdio" },
+            ],
+          },
+        ],
+        warn: (message) => Effect.sync(() => void warnings.push(message)),
+      });
+      expect(session.endpoint).toEqual({ url: "http://127.0.0.1:4321/mcp", bearer: "b" });
+      expect(stub.calls().map((argv) => argv[2])).toEqual([
+        POSEIDON_MCP_NAME,
+        "poseidon-plugin-tools-search",
+        pluginMcpName("tools", "local.v2"),
+      ]);
+      expect(pluginMcpName("tools", "local.v2")).toBe("poseidon-plugin-tools-local-v2");
+      expect(warnings).toEqual([]);
+
+      yield* session.release;
+      yield* session.release;
+      expect(
+        stub
+          .calls()
+          .filter((argv) => argv[1] === "remove")
+          .map((argv) => argv[2]),
+      ).toEqual([
+        POSEIDON_MCP_NAME,
+        "poseidon-plugin-tools-search",
+        "poseidon-plugin-tools-local-v2",
+      ]);
+    }),
+  );
+
+  it.effect("warns about a plugin server the harness refused and holds nothing for it", () =>
+    Effect.gen(function* () {
+      const root = yield* tempDir();
+      const refusing = stubCmd(root, 1);
+      const registration = { binaryPath: refusing.binary, projectRoot: root, env: stubEnv };
+      const warnings: Array<string> = [];
+      const session = yield* registerSessionMcp({
+        registration,
+        services: { mcpEndpoint: () => Effect.succeed({ url: "", bearer: "" }) },
+        threadId: makeThreadId(),
+        plugins: [
+          {
+            name: "tools",
+            root: "/plugins/tools",
+            builtin: false,
+            skills: [],
+            skillsDirs: [],
+            mcpServers: [{ name: "search", transport: "http", url: "https://search.example/mcp" }],
+          },
+        ],
+        warn: (message) => Effect.sync(() => void warnings.push(message)),
+      });
+      expect(warnings).toEqual([
+        'the harness refused to register the MCP server "search" of the plugin "tools", so its tools are unavailable this session',
+      ]);
+      yield* session.release;
+      expect(refusing.calls().filter((argv) => argv[1] === "remove")).toEqual([]);
     }),
   );
 });
