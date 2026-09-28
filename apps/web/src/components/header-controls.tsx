@@ -31,6 +31,10 @@
  * (Shift+Tab in the composer), the runtime-mode cycle, the pickers and the
  * effort steps through the same `onChange` a click uses; the pickers are
  * controlled here so a key can open them.
+ *
+ * Ultracode: the toggle beside Plan mode (`./ultracode-toggle`), and every
+ * other patch passes `settleUltracode` (`@/lib/ultracode`) so an effort pick,
+ * or a model that cannot run it, turns ultracode off.
  */
 
 import { Button } from "@poseidon/ui/components/button";
@@ -63,6 +67,7 @@ import { findModel, modelPickPatch } from "@/lib/model-picks";
 import { RUNTIME_MODE_LABELS, runtimeModeOptions } from "@/lib/runtime-modes";
 import { CommandKbd } from "@/lib/shortcuts";
 import { turnInFlight } from "@/lib/turn";
+import { settleUltracode, ultracodeOfferedIn } from "@/lib/ultracode";
 import { Lightning, ListChecks, Lock } from "@honeyicons/react";
 
 import { canCompact, compactRefusal } from "./composer/compact-now";
@@ -71,6 +76,7 @@ import { useCompactNow } from "./composer/use-compact-now";
 import { type HeaderOption, HeaderSelect, NEXT_TURN_HINT, RESTART_TOOLTIP } from "./header-select";
 import { ThreadSettingsKeys } from "./thread-settings-keys";
 import { ModelPicker } from "./model-picker";
+import { UltracodeToggle } from "./ultracode-toggle";
 
 export function HeaderControls({
   threadId,
@@ -206,6 +212,11 @@ export function ThreadSettingsControls({
   readonly modelPicker?: (control: ModelPickerOpen) => React.ReactNode;
   readonly onChange: (patch: ThreadSettingsPatch) => void;
 }) {
+  const offeredOn = (instance: ConnectorInstanceId | null, model: string | undefined) =>
+    ultracodeOfferedIn(catalog, instance, model);
+  const ultracode = settings.ultracode === true;
+  const change = (patch: ThreadSettingsPatch) =>
+    onChange(settleUltracode(patch, ultracode, offeredOn, connectorInstanceId));
   const currentModel =
     settings.model === undefined
       ? undefined
@@ -256,7 +267,7 @@ export function ThreadSettingsControls({
         effort={effort}
         efforts={currentModel?.efforts}
         effortLocked={effortSwitch === "restart"}
-        onChange={onChange}
+        onChange={change}
         onOpenModel={() =>
           setModelOpen(standIn || (settings.model !== undefined && modelSwitch !== "restart"))
         }
@@ -273,7 +284,7 @@ export function ThreadSettingsControls({
           capability="next-turn"
           open={modeOpen}
           onOpenChange={setModeOpen}
-          onPick={(mode) => onChange({ runtimeMode: mode as RuntimeMode })}
+          onPick={(mode) => change({ runtimeMode: mode as RuntimeMode })}
         />
         {canPlan || planning ? (
           <Tooltip>
@@ -287,7 +298,7 @@ export function ThreadSettingsControls({
                   className="shrink-0"
                   aria-label="Plan mode"
                   aria-pressed={planning}
-                  onClick={() => onChange({ interactionMode: planning ? "default" : "plan" })}
+                  onClick={() => change({ interactionMode: planning ? "default" : "plan" })}
                 />
               }
             >
@@ -300,6 +311,11 @@ export function ThreadSettingsControls({
             </TooltipContent>
           </Tooltip>
         ) : null}
+        <UltracodeToggle
+          offered={offeredOn(connectorInstanceId, settings.model)}
+          on={ultracode}
+          onChange={onChange}
+        />
         <div className="order-1 flex min-w-0 @max-xl/toolbar:order-3 @max-xl/toolbar:basis-full">
           <div className="flex max-w-full min-w-0 items-center gap-1">
             {modelPicker !== undefined ? (
@@ -318,7 +334,7 @@ export function ThreadSettingsControls({
                 disabledReason={modelSwitch === "restart" ? RESTART_TOOLTIP : undefined}
                 open={modelOpen}
                 onOpenChange={setModelOpen}
-                onPick={(pick) => onChange(modelPickPatch(pick, locked))}
+                onPick={(pick) => change(modelPickPatch(pick, locked))}
               />
             ) : null}
             <HeaderSelect
@@ -330,7 +346,7 @@ export function ThreadSettingsControls({
               capability={effortSwitch}
               open={effortOpen}
               onOpenChange={setEffortOpen}
-              onPick={(next) => onChange({ effort: next as Effort })}
+              onPick={(next) => change({ effort: next as Effort })}
             />
           </div>
         </div>
