@@ -605,8 +605,14 @@ export const decide = (
       // The event is the durable work order and nothing more: the
       // CheckpointReactor does the git work off it and records the outcome as
       // `thread.checkpoint.restored` or `thread.checkpoint.restore.failed`. A
-      // crash between receipt and restore is replayed at the next boot.
-      return accepted([emit("thread.checkpoint.restore.requested", { checkpoint })]);
+      // crash between receipt and restore is replayed at the next boot. An
+      // edited message rides on the order, sent only once the restore lands.
+      return accepted([
+        emit("thread.checkpoint.restore.requested", {
+          checkpoint,
+          ...(command.resend === undefined ? {} : { resend: command.resend }),
+        }),
+      ]);
     }
   }
 };

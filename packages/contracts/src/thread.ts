@@ -231,3 +231,18 @@ export type ThreadFork = typeof ThreadFork.Type;
  */
 export const ForkedFrom = Schema.Struct({ threadId: ThreadId, title: NonEmptyString });
 export type ForkedFrom = typeof ForkedFrom.Type;
+
+/**
+ * The edited message an "Edit and resend" carries on its restore: once the
+ * worktree is back at the checkpoint before the original message, the server
+ * starts a turn with this, exactly as `thread.turn.start` would. It rides on
+ * the durable restore work order, so a restart between the restore and the
+ * send loses nothing, and a restore that fails sends nothing.
+ */
+export const TurnResend = Schema.Struct({
+  text: NonEmptyString,
+  attachments: Schema.Array(Attachment),
+  mentions: Schema.Array(Mention),
+  references: Schema.optional(Schema.Array(TurnReference)),
+});
+export type TurnResend = typeof TurnResend.Type;

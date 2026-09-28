@@ -9,17 +9,23 @@
  * `CheckpointReactor` wires it to the log: `turn.completed` → capture →
  * `thread.checkpoint.created`; a `thread.checkpoint.restore.requested` work
  * order → the git work → `thread.checkpoint.restored` or
- * `thread.checkpoint.restore.failed`, never before. Work orders with no
- * outcome recorded are replayed at layer build, so a crash between the
- * accepted command and the git work cannot drop the restore. Thread deletion
+ * `thread.checkpoint.restore.failed`, never before. A work order that carries
+ * an edited message (`resend`) starts a turn with it once `restored` is in the
+ * log, and only then. Work orders with no outcome recorded are replayed at
+ * layer build, so a crash between the accepted command and the git work cannot
+ * drop the restore, or the message riding on it. Thread deletion
  * and project removal each prune the hidden refs under the thread's prefix —
  * the project case enumerates the thread streams, because the removal's
  * transaction has already deleted the read-model rows.
  */
 
-import { makeEventId } from "@poseidon/contracts/ids";
+import { makeCommandId, makeEventId } from "@poseidon/contracts/ids";
 import type { ThreadId, TurnId } from "@poseidon/contracts/ids";
-import type { CheckpointSummary, OrchestrationEvent } from "@poseidon/contracts/orchestration";
+import type {
+  CheckpointSummary,
+  OrchestrationEvent,
+  TurnResend,
+} from "@poseidon/contracts/orchestration";
 import * as Context from "effect/Context";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
@@ -161,6 +167,41 @@ export const CheckpointReactor: Layer.Layer<
     const restoreMutex = yield* Semaphore.make(1);
 
     /**
+     * Edit and resend: the edited message goes out as an ordinary turn, once
+     * the worktree is back where it was before the original. Called only
+     * after `restored` is appended, so a failed restore sends nothing; and
+     * only from the run that appended it, so a settled work order — which the
+     * boot replay skips — never sends twice. A refusal lands on the thread as
+     * an error line rather than vanishing, since the composer has let go of
+     * the text by then.
+     */
+    const sendResend = (threadId: ThreadId, resend: TurnResend, causedBy: string) =>
+      engine
+        .dispatch({
+          commandId: makeCommandId(),
+          createdAt: new Date().toISOString(),
+          type: "thread.turn.start",
+          threadId,
+          text: resend.text,
+          attachments: resend.attachments,
+          mentions: resend.mentions,
+          ...(resend.references === undefined ? {} : { references: resend.references }),
+          queued: false,
+        })
+        .pipe(
+          Effect.flatMap((receipt) =>
+            receipt.status === "accepted"
+              ? Effect.void
+              : recordError(
+                  threadId,
+                  `the edited message was not sent: ${receipt.reason ?? "rejected"}`,
+                  causedBy,
+                ).pipe(Effect.asVoid),
+          ),
+          Effect.catch((error) => Effect.logWarning("edited message send failed", error)),
+        );
+
+    /**
      * The git work for one accepted restore, and the durable record of how it
      * went. `restored` is written only after git succeeded — a client that
      * folded the work order sees the thread leave `restoring` either way.
@@ -169,6 +210,7 @@ export const CheckpointReactor: Layer.Layer<
       threadId: ThreadId,
       checkpoint: CheckpointSummary,
       causedBy: string,
+      resend: TurnResend | undefined,
     ): Effect.Effect<void, EngineError> =>
       Effect.gen(function* () {
         const doc = yield* engine.threadDoc(threadId);
@@ -189,14 +231,19 @@ export const CheckpointReactor: Layer.Layer<
           Effect.as(null),
           Effect.catch((error) => Effect.succeed(error.message)),
         );
-        yield* failure === null
-          ? settle(threadId, "thread.checkpoint.restored", { checkpoint }, causedBy)
-          : settle(
-              threadId,
-              "thread.checkpoint.restore.failed",
-              { checkpointId: checkpoint.checkpointId, message: failure },
-              causedBy,
-            );
+        if (failure !== null) {
+          yield* settle(
+            threadId,
+            "thread.checkpoint.restore.failed",
+            { checkpointId: checkpoint.checkpointId, message: failure },
+            causedBy,
+          );
+          return;
+        }
+        yield* settle(threadId, "thread.checkpoint.restored", { checkpoint }, causedBy);
+        if (resend !== undefined) {
+          yield* sendResend(threadId, resend, causedBy);
+        }
       });
 
     /** Work orders this process has already acted on — see `runRestore`. */
@@ -212,6 +259,7 @@ export const CheckpointReactor: Layer.Layer<
       threadId: ThreadId,
       checkpoint: CheckpointSummary,
       causedBy: string,
+      resend: TurnResend | undefined,
     ): Effect.Effect<void, EngineError> =>
       restoreMutex.withPermits(1)(
         Effect.gen(function* () {
@@ -219,7 +267,7 @@ export const CheckpointReactor: Layer.Layer<
             return;
           }
           yield* Ref.update(handled, (seen) => new Set(seen).add(causedBy));
-          yield* restoreOnce(threadId, checkpoint, causedBy);
+          yield* restoreOnce(threadId, checkpoint, causedBy, resend);
         }),
       );
 
@@ -281,13 +329,13 @@ export const CheckpointReactor: Layer.Layer<
     // Only the git work is forked: it must not hold up the layer build, and
     // each thread stays `restoring` (and so unusable for turns) until its own
     // replay finishes.
-    yield* Effect.forEach(pending, (entry) =>
-      runRestore(
-        entry.streamId as ThreadId,
-        (entry.payload as { readonly checkpoint: CheckpointSummary }).checkpoint,
-        entry.eventId,
-      ),
-    ).pipe(
+    yield* Effect.forEach(pending, (entry) => {
+      const order = entry.payload as {
+        readonly checkpoint: CheckpointSummary;
+        readonly resend?: TurnResend;
+      };
+      return runRestore(entry.streamId as ThreadId, order.checkpoint, entry.eventId, order.resend);
+    }).pipe(
       Effect.catch((error) => Effect.logWarning("checkpoint restore replay failed", error)),
       Effect.forkScoped,
     );
@@ -354,6 +402,7 @@ export const CheckpointReactor: Layer.Layer<
             event.streamId as ThreadId,
             event.payload.checkpoint,
             event.eventId,
+            event.payload.resend,
           );
         }
         if (event.type !== "thread.turn.completed") {

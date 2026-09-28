@@ -1,0 +1,13 @@
+{
+  "commandId": "0199c0de-0008-7000-8000-000000000032",
+  "createdAt": "2026-09-15T12:20:00.000Z",
+  "type": "thread.checkpoint.restore",
+  "threadId": "0199c0de-0002-7000-8000-000000000001",
+  "checkpointId": "0199c0de-0009-7000-8000-000000000001",
+  "resend": {
+    "text": "Add a health check endpoint at /livez instead.",
+    "attachments": [],
+    "mentions": ["apps/server/src/http/router.ts"],
+    "references": [{ "kind": "skill", "name": "health-checks" }]
+  }
+}

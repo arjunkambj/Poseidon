@@ -55,6 +55,7 @@ import {
   ThreadDoneFields,
   ThreadSettingsPatch,
   ThreadStatus,
+  TurnResend,
   TurnUsage,
 } from "./thread";
 
@@ -84,6 +85,7 @@ export {
   ThreadSettingsPatch,
   ThreadStatus,
   threadLocksConnector,
+  TurnResend,
   TurnUsage,
 } from "./thread";
 
@@ -230,6 +232,7 @@ const ThreadQueueReorderCommand = command("thread.queue.reorder", {
 const ThreadCheckpointRestoreCommand = command("thread.checkpoint.restore", {
   threadId: ThreadId,
   checkpointId: CheckpointId,
+  resend: Schema.optional(TurnResend),
 });
 
 export const Command = Schema.Union([
@@ -540,7 +543,7 @@ const ThreadCheckpointCreatedEvent = orchestrationEvent(
  */
 const ThreadCheckpointRestoreRequestedEvent = orchestrationEvent(
   "thread.checkpoint.restore.requested",
-  Schema.Struct({ checkpoint: CheckpointSummary }),
+  Schema.Struct({ checkpoint: CheckpointSummary, resend: Schema.optional(TurnResend) }),
 );
 
 /** The worktree really moved — emitted only after the git work succeeded. */

@@ -1,0 +1,25 @@
+{
+  "sequence": 41,
+  "eventId": "0199c0de-0006-7000-8000-000000000141",
+  "streamKind": "thread",
+  "streamId": "0199c0de-0002-7000-8000-000000000001",
+  "streamVersion": 25,
+  "occurredAt": "2026-09-15T12:20:00.000Z",
+  "commandId": "0199c0de-0008-7000-8000-000000000032",
+  "actor": "user",
+  "type": "thread.checkpoint.restore.requested",
+  "payload": {
+    "checkpoint": {
+      "checkpointId": "0199c0de-0009-7000-8000-000000000001",
+      "turnId": "0199c0de-0004-7000-8000-000000000001",
+      "ref": "refs/poseidon/checkpoints/0199c0de-0002-7000-8000-000000000001/0199c0de-0004-7000-8000-000000000001",
+      "createdAt": "2026-09-15T12:00:00.000Z"
+    },
+    "resend": {
+      "text": "Add a health check endpoint at /livez instead.",
+      "attachments": [],
+      "mentions": ["apps/server/src/http/router.ts"],
+      "references": [{ "kind": "skill", "name": "health-checks" }]
+    }
+  }
+}

@@ -217,6 +217,10 @@ const singles: ReadonlyArray<{ readonly path: string; readonly schema: FixtureSc
   // families hold one file per variant, so these sit apart.
   { path: "variants/thread.create.fork.json", schema: Command },
   { path: "variants/thread.created.fork.json", schema: OrchestrationEvent },
+  // Edit and resend: a restore that carries the edited message to send once
+  // it lands, on the command and on the durable work order.
+  { path: "variants/thread.checkpoint.restore.resend.json", schema: Command },
+  { path: "variants/thread.checkpoint.restore.requested.resend.json", schema: OrchestrationEvent },
   { path: "settings.json", schema: Settings },
   { path: "read-models/project-summary.json", schema: ProjectSummary },
   { path: "read-models/thread-summary.json", schema: ThreadSummary },
@@ -565,4 +569,41 @@ describe("a forked thread", () => {
       expect(fork?.transcript).toContain("User:\nAdd a health check endpoint.");
     }),
   );
+});
+
+describe("an edit and resend", () => {
+  it.effect("carries the edited message on the restore; a plain restore carries none", () =>
+    Effect.gen(function* () {
+      const decode = <S extends FixtureSchema>(schema: S, path: string) =>
+        Effect.sync(() => Schema.decodeUnknownSync(schema)(read(path)) as S["Type"]);
+      const plain = yield* decode(Command, "commands/thread.checkpoint.restore.json");
+      expect(plain.type === "thread.checkpoint.restore" && plain.resend).toBeUndefined();
+      const stored = yield* decode(
+        OrchestrationEvent,
+        "orchestration-events/thread.checkpoint.restore.requested.json",
+      );
+      expect(stored.type === "thread.checkpoint.restore.requested" && stored.payload.resend).toBe(
+        undefined,
+      );
+      const command = yield* decode(Command, "variants/thread.checkpoint.restore.resend.json");
+      expect(command.type === "thread.checkpoint.restore" ? command.resend?.text : null).toBe(
+        "Add a health check endpoint at /livez instead.",
+      );
+      const order = yield* decode(
+        OrchestrationEvent,
+        "variants/thread.checkpoint.restore.requested.resend.json",
+      );
+      expect(
+        order.type === "thread.checkpoint.restore.requested"
+          ? order.payload.resend?.mentions
+          : null,
+      ).toEqual(["apps/server/src/http/router.ts"]);
+    }),
+  );
+
+  it("refuses an empty resend", () => {
+    const raw = read("variants/thread.checkpoint.restore.resend.json") as Record<string, unknown>;
+    const empty = { ...raw, resend: { text: "", attachments: [], mentions: [] } };
+    expect(() => Schema.decodeUnknownSync(Command)(empty)).toThrow();
+  });
 });

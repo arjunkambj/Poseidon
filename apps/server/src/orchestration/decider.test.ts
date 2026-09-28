@@ -1614,3 +1614,72 @@ describe("forking a thread", () => {
     expect(result.events[0]!.payload).not.toHaveProperty("fork");
   });
 });
+
+describe("editing and resending a message", () => {
+  const checkpoints = [
+    {
+      checkpointId: "cp-1" as never,
+      turnId: makeTurnId(),
+      ref: "refs/ade/checkpoint/cp-1",
+      createdAt: NOW,
+    },
+  ];
+  const resend = {
+    text: "Use /livez instead.",
+    attachments: [],
+    mentions: ["src/health.ts"],
+    references: [{ kind: "skill" as const, name: "health-checks" }],
+  };
+  const restore = (withResend: boolean) =>
+    ({
+      ...baseCommand,
+      type: "thread.checkpoint.restore",
+      threadId: makeThreadId(),
+      checkpointId: "cp-1",
+      ...(withResend ? { resend } : {}),
+    }) as unknown as Command;
+
+  it("carries the edited message on the work order", () => {
+    const result = decide(
+      restore(true),
+      { project: null, thread: threadDoc({ checkpoints }) },
+      ctx(),
+      env,
+    );
+    expect(result.accepted).toBe(true);
+    if (result.accepted) {
+      const [order] = result.events;
+      expect(order?.type).toBe("thread.checkpoint.restore.requested");
+      expect(order?.payload).toEqual({ checkpoint: checkpoints[0], resend });
+    }
+  });
+
+  it("leaves a plain restore's work order without one", () => {
+    const result = decide(
+      restore(false),
+      { project: null, thread: threadDoc({ checkpoints }) },
+      ctx(),
+      env,
+    );
+    expect(result.accepted).toBe(true);
+    if (result.accepted) {
+      expect(result.events[0]?.payload).toEqual({ checkpoint: checkpoints[0] });
+    }
+  });
+
+  it("is refused while a turn runs, like any restore", () => {
+    const thread = threadDoc({
+      checkpoints,
+      status: "running",
+      currentTurn: {
+        turnId: makeTurnId(),
+        input: { text: "in-flight", attachments: [], mentions: [] },
+      },
+    });
+    const result = decide(restore(true), { project: null, thread }, ctx(), env);
+    expect(result.accepted).toBe(false);
+    if (!result.accepted) {
+      expect(result.reason).toContain("running turn");
+    }
+  });
+});

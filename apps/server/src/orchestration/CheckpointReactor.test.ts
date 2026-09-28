@@ -14,7 +14,8 @@ import {
   makeTurnId,
 } from "@poseidon/contracts/ids";
 import type { CheckpointId } from "@poseidon/contracts/ids";
-import type { Command, CheckpointSummary } from "@poseidon/contracts/orchestration";
+import type { Command, CheckpointSummary, TurnResend } from "@poseidon/contracts/orchestration";
+import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -76,6 +77,22 @@ const restoreCommand = (checkpointId: CheckpointId): Command => ({
   threadId,
   checkpointId,
 });
+
+const resend: TurnResend = {
+  text: "Use /livez instead.",
+  attachments: [],
+  mentions: ["src/health.ts"],
+};
+
+const restoreAndResend = (checkpointId: CheckpointId): Command =>
+  ({
+    ...restoreCommand(checkpointId),
+    resend,
+  }) as Command;
+
+/** The user messages the thread has, by text — the resend adds one per send. */
+const userTexts = (doc: { readonly items: ReadonlyArray<ItemSnapshot> } | null) =>
+  (doc?.items ?? []).flatMap((item) => (item.kind === "user_message" ? [item.text] : []));
 
 const checkpoint: CheckpointSummary = {
   checkpointId: makeCheckpointId(),
@@ -497,5 +514,132 @@ describe("CheckpointReactor", () => {
           expect(prune.workspaceRoot).toBe("/repo");
         }).pipe(Effect.provide(layer));
       }),
+  );
+
+  it.effect("an edited message is sent once, after the restore lands", () =>
+    Effect.gen(function* () {
+      const events = yield* Queue.unbounded<string>();
+      const layer = stack({ restore: () => Effect.void });
+      yield* Effect.gen(function* () {
+        const engine = yield* OrchestrationEngine;
+        yield* engine.dispatch(createProject);
+        yield* engine.dispatch(createThread);
+        yield* engine.appendThreadEvents(threadId, [
+          planned("thread.checkpoint.created", { checkpoint }),
+        ]);
+        yield* Stream.runForEach(engine.events, (entry) =>
+          entry.type.startsWith("thread.checkpoint.restore") ||
+          entry.type === "thread.turn.requested"
+            ? Queue.offer(events, entry.type)
+            : Effect.void,
+        ).pipe(Effect.forkChild);
+        yield* Effect.yieldNow;
+
+        const receipt = yield* engine.dispatch(restoreAndResend(checkpoint.checkpointId));
+        expect(receipt.status).toBe("accepted");
+        const take = Queue.take(events).pipe(Effect.timeout("5 seconds"));
+        expect(yield* take).toBe("thread.checkpoint.restore.requested");
+        expect(yield* take).toBe("thread.checkpoint.restored");
+        expect(yield* take).toBe("thread.turn.requested");
+
+        const doc = yield* engine.threadDoc(threadId);
+        expect(userTexts(doc)).toEqual([resend.text]);
+        expect(doc?.currentTurn?.input.mentions).toEqual(resend.mentions);
+      }).pipe(Effect.provide(layer));
+    }),
+  );
+
+  it.effect("a failed restore sends nothing", () =>
+    Effect.gen(function* () {
+      // The first restore fails; a plain one after it goes through. The
+      // reactor runs one order at a time, so by the second's outcome anything
+      // the first would have sent is already in the log.
+      let calls = 0;
+      const layer = stack({
+        restore: () =>
+          Effect.suspend(() =>
+            (calls += 1) === 1
+              ? Effect.fail(new CheckpointHookError({ message: "index.lock exists" }))
+              : Effect.void,
+          ),
+      });
+      yield* Effect.gen(function* () {
+        const engine = yield* OrchestrationEngine;
+        yield* engine.dispatch(createProject);
+        yield* engine.dispatch(createThread);
+        yield* engine.appendThreadEvents(threadId, [
+          planned("thread.checkpoint.created", { checkpoint }),
+        ]);
+        const outcomes = yield* Queue.unbounded<string>();
+        yield* Stream.runForEach(engine.events, (entry) =>
+          entry.type === "thread.checkpoint.restored" ||
+          entry.type === "thread.checkpoint.restore.failed"
+            ? Queue.offer(outcomes, entry.type)
+            : Effect.void,
+        ).pipe(Effect.forkChild);
+        yield* Effect.yieldNow;
+
+        yield* engine.dispatch(restoreAndResend(checkpoint.checkpointId));
+        const take = Queue.take(outcomes).pipe(Effect.timeout("5 seconds"));
+        expect(yield* take).toBe("thread.checkpoint.restore.failed");
+        yield* engine.dispatch(restoreCommand(checkpoint.checkpointId));
+        expect(yield* take).toBe("thread.checkpoint.restored");
+
+        const doc = yield* engine.threadDoc(threadId);
+        expect(userTexts(doc)).toEqual([]);
+        expect(doc?.currentTurn).toBeNull();
+      }).pipe(Effect.provide(layer));
+    }),
+  );
+
+  it.effect("a replayed work order sends its edited message once, across boots", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const persistence = Layer.succeedContext(yield* Layer.build(persistenceLayer()));
+        const engineOnly = OrchestrationEngine.layer.pipe(Layer.provide(persistence));
+
+        // The last process accepted the edit and stopped before any git ran.
+        yield* Effect.gen(function* () {
+          const engine = yield* OrchestrationEngine;
+          yield* engine.dispatch(createProject);
+          yield* engine.dispatch(createThread);
+          yield* engine.appendThreadEvents(threadId, [
+            planned("thread.checkpoint.created", { checkpoint }),
+            planned("thread.checkpoint.restore.requested", { checkpoint, resend }),
+          ]);
+        }).pipe(Effect.provide(engineOnly));
+
+        // The next boot replays it: restore, then the send. The git work
+        // waits until the test is listening.
+        const release = yield* Deferred.make<void>();
+        yield* Effect.gen(function* () {
+          const engine = yield* OrchestrationEngine;
+          const requested = yield* Stream.runHead(
+            engine.events.pipe(Stream.filter((entry) => entry.type === "thread.turn.requested")),
+          ).pipe(Effect.forkChild);
+          yield* Effect.yieldNow;
+          yield* Deferred.succeed(release, undefined);
+          yield* Fiber.join(requested).pipe(Effect.timeout("5 seconds"));
+          expect(userTexts(yield* engine.threadDoc(threadId))).toEqual([resend.text]);
+        }).pipe(Effect.provide(stackOver(persistence, { restore: () => Deferred.await(release) })));
+
+        // A third boot finds the order settled: no git, no second send.
+        let restores = 0;
+        yield* Effect.gen(function* () {
+          const engine = yield* OrchestrationEngine;
+          expect(restores).toBe(0);
+          expect(userTexts(yield* engine.threadDoc(threadId))).toEqual([resend.text]);
+        }).pipe(
+          Effect.provide(
+            stackOver(persistence, {
+              restore: () =>
+                Effect.sync(() => {
+                  restores += 1;
+                }),
+            }),
+          ),
+        );
+      }),
+    ),
   );
 });

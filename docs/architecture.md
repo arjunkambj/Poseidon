@@ -1630,7 +1630,13 @@ git work does `thread.checkpoint.restored` or `restore.failed` follow. Orders
 with no recorded outcome are replayed at layer build, so a crash between receipt
 and git cannot drop the request. A restore that went through is kept on the
 thread snapshot (`restores`, with the latest turn at the time), since it records
-no checkpoint and the next turn starts from the restored one. Thread deletion and project removal each prune
+no checkpoint and the next turn starts from the restored one. An edit and
+resend rides on the same order: `thread.checkpoint.restore` takes an optional
+`resend` (text, attachments, mentions, references), the decider copies it onto
+`restore.requested`, and the reactor dispatches `thread.turn.start` with it
+right after appending `restored`, in the same run. A failed restore sends
+nothing, a replayed order sends on replay, and a settled order is never run
+again, so the edited message goes out at most once. Thread deletion and project removal each prune
 the hidden refs under the thread's prefix.
 
 **`SessionManager`.** Not a reactor but the thing reactors act through: one
