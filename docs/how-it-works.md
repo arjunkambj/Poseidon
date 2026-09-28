@@ -505,12 +505,13 @@ The `/` popover offers `/model`, `/effort`, `/mode`, `/plan`, `/default`,
 `/compact`, `/clear-draft` and the skills the thread's connector instance loads
 for the project. `/model` lists the thread's models by name, each with its
 tagline (or its family) beside it, and its query matches a word of either. A
-skill picked here is plain text, with no chip and no reference. `/compact` is listed only when the thread's bound session declared
-`capabilities.compaction` — the same test as "Compact now", so never on
-Command Code or on a thread no session has bound yet. Picking it removes the
-`/compact` query from the textarea, keeps the rest of the draft and its
-attachments, and starts a turn whose text is `/compact` through
-`use-compact-now.ts`, exactly as a typed `/compact` would reach the harness.
+skill picked here is plain text, with no chip and no reference. `/compact` is
+listed only when the thread's bound session declared `capabilities.compaction`
+— the same test as "Compact now", so never on Command Code or on a thread no
+session has bound yet. Picking it removes the `/compact` query from the
+textarea, keeps the rest of the draft and its attachments, and starts a turn
+whose text is `/compact` through `use-compact-now.ts`, exactly as a typed
+`/compact` would reach the harness.
 While a turn runs it starts nothing and the notice under the input says why.
 `/clear` is deliberately not offered:
 in Command Code it drops the session's context, no command in the union does
@@ -599,11 +600,11 @@ current one, and its tagline (`ModelOption.description`, or the family when the
 connector gives none) as the row's native hover tooltip. The trigger shows the
 name alone. Typing swaps the column for one list of matches across every
 harness, each led by its harness's monogram: a match on the name or id ranks
-first, then a word of the family, tagline or harness name. Focus stays in the search input, which names the
-highlighted option with `aria-activedescendant`: Up and Down move along the
-column or the flyout, Right or Enter goes into a flyout, Enter picks, Left goes
-back to the column, and Escape clears the query, then leaves the flyout, then
-closes the picker. Choose model (`Mod+Shift+M`) opens it. The keyboard and
+first, then a word of the family, tagline or harness name. Focus stays in the
+search input, which names the highlighted option with `aria-activedescendant`:
+Up and Down move along the column or the flyout, Right or Enter goes into a
+flyout, Enter picks, Left goes back to the column, and Escape clears the query,
+then leaves the flyout, then closes the picker. Choose model (`Mod+Shift+M`) opens it. The keyboard and
 search model is `apps/web/src/lib/harness-picker.ts`, the popup
 `apps/web/src/components/model-picker/`. It lists only the harnesses and models switched on in Settings → Models
 (`visibleCatalog` in `apps/web/src/lib/model-visibility.ts`), and always the
