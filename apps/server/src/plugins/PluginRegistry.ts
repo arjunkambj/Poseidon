@@ -29,6 +29,7 @@ import * as Semaphore from "effect/Semaphore";
 
 import { openInFileManager } from "../editors/EditorLauncher";
 import { SettingsStore } from "../rpc/services";
+import { materializeBuiltins } from "./builtin/materialize";
 import { readPlugin, type LoadedPlugin } from "./manifest";
 
 /** The built-in Browser plugin's id; its switch gates the in-app browser tools. */
@@ -95,6 +96,11 @@ export class PluginRegistry extends Context.Service<
      * otherwise.
      */
     readonly browserEnabled: Effect.Effect<boolean>;
+    /**
+     * Writes the plugins that ship with the app into the built-in folder. The
+     * booted server calls it once; a failure is logged, never fatal.
+     */
+    readonly materializeBuiltins: Effect.Effect<void>;
   }
 >()("server/plugins/PluginRegistry") {
   /** The registry over the given folders; tests point it at temporary ones. */
@@ -128,6 +134,12 @@ export class PluginRegistry extends Context.Service<
 
         return PluginRegistry.of({
           list,
+          materializeBuiltins: Effect.promise(() => materializeBuiltins(options.builtinDir)).pipe(
+            Effect.ignoreCause({
+              log: "Warn",
+              message: `could not write the built-in plugins into ${options.builtinDir}`,
+            }),
+          ),
           setEnabled: (pluginId, enabled) =>
             writeMutex.withPermits(1)(
               Effect.gen(function* () {
@@ -191,6 +203,7 @@ export class PluginRegistry extends Context.Service<
       openFolder: Effect.fail(failure("unavailable", "there is no plugins folder")),
       sessionPlugins: () => Effect.succeed([]),
       browserEnabled: Effect.succeed(true),
+      materializeBuiltins: Effect.void,
     }),
   );
 }
