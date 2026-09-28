@@ -833,11 +833,11 @@ Recordings are scrubbed on the way in: the scratch root becomes `<SCRATCH>`,
 the home directory becomes `<HOME>`, the account name and the home directory's
 basename become `user`, and anything token-shaped becomes `<REDACTED>`. Session
 ids and trace ids are left alone — they are per-run identifiers with no meaning
-off the machine, and the tests match on them. The replayer puts `<HOME>` and
+off the machine, and the tests match on them. The replayers put `<HOME>` and
 `<SCRATCH>` back from the running process's own directories.
 
-The `sdk-stream` finaliser adds more rules, because its captures carry the
-account and the MCP bearer:
+The `sdk-stream` and `stdio-jsonrpc` finaliser adds more rules, because its
+captures carry the account and the MCP bearer:
 
 - The account's email, organisation name and ids, and account uuid are read out
   of the init, account and `auth status` payloads. They are replaced
@@ -860,12 +860,19 @@ account and the MCP bearer:
   working directory live there. Paths are replaced longest spelling first and
   only as whole paths, so a scratch root under the temp directory stays
   `<SCRATCH>` and a temp directory spelled `/tmp` leaves `/var/tmp` alone. The
-  `sdk-stream` replayer puts `<TMP>` back as its own temp directory.
+  replayers put `<TMP>` back as their own temp directory.
 - The operator's own skills, commands and agents — every entry of the
   harness's config directory's `skills/`, `commands/` and `agents/`
   (`<home>/.claude` unless `configDir` says otherwise) — are listed by name in
   the CLI's handshake and `system/init`. Each becomes `user-skill-<n>`: as a
   list item, and as an object's `name`, whose `description` goes with it.
+- Names the recorder passes in `operatorNames` — the operator's own MCP
+  servers from their configuration, skills from a directory the rule above does
+  not read — join those stand-ins, and are replaced in text and keys too,
+  wherever they stand alone.
+- The installation's id (`installationId`) is replaced like an account uuid,
+  and the machine's name (`os.hostname()`, with and without `.local`) becomes
+  `<HOST>`.
 
 ### When to re-record
 

@@ -7,7 +7,8 @@
  * `control_request` / `control_response` on stdout and stdin — is recorded
  * here, at the process boundary, rather than inside the SDK: what lands on disk
  * is then exactly what the real CLI said and was told, whichever SDK version or
- * connector code produced the other half.
+ * connector code produced the other half. A harness that speaks JSON-RPC over
+ * stdio is recorded here too: the tee frames lines, whatever they hold.
  *
  * It is launched by the `#!/bin/sh` launcher `makeTeeLauncher` writes
  * (`packages/testkit/src/sdkStreamRecording.ts`), which a recording points the

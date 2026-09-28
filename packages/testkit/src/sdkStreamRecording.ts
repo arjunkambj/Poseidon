@@ -20,6 +20,12 @@
  *
  * `loadSdkStreamRecording` reads one back for a test to assert against. The
  * replay half is `replaySdkStream.ts`.
+ *
+ * Nothing in the tee or the finaliser knows the envelope: every NDJSON line is
+ * one frame whichever way it went. So a harness that speaks JSON-RPC over stdio
+ * (`stdio-jsonrpc`) is recorded by the same two halves, through
+ * `finalizeStdioRecording` and `loadStdioRecording` with its own transport and
+ * its own idea of which launches are runs (`stdioJsonRpcRecording.ts`).
  */
 
 import * as NodeFS from "node:fs";
@@ -32,6 +38,7 @@ import {
   readManifest,
   type RecordedFrame,
   type RecordingManifest,
+  type RecordingTransport,
 } from "./recording";
 
 const HERE = NodePath.dirname(NodeURL.fileURLToPath(import.meta.url));
@@ -84,8 +91,11 @@ export const makeTeeLauncher = (options: TeeLauncherOptions): string => {
 
 // ── the manifest ───────────────────────────────────────────────
 
+/** The transports whose captures are the tee's NDJSON lines. */
+export type StdioTransport = Extract<RecordingTransport, "sdk-stream" | "stdio-jsonrpc">;
+
 /** One launch of the harness, as the manifest lists it. */
-export interface SdkStreamInvocation {
+export interface StdioInvocation {
   /** The argv the SDK or connector passed, scrubbed. */
   readonly argv: ReadonlyArray<string>;
   /** The working directory it ran in, scrubbed. */
@@ -97,11 +107,17 @@ export interface SdkStreamInvocation {
   readonly signal: string | null;
 }
 
-/** The fields an `sdk-stream` manifest adds to the common ones. */
-export interface SdkStreamManifestExtra {
-  readonly sdkVersion: string;
+/** The fields a tee-recorded manifest adds to the common ones. */
+export interface StdioManifestExtra {
+  /** The SDK that drove the harness, when one did. */
+  readonly sdkVersion?: string;
   readonly prompts: ReadonlyArray<string>;
-  readonly invocations: ReadonlyArray<SdkStreamInvocation>;
+  readonly invocations: ReadonlyArray<StdioInvocation>;
+}
+
+/** The fields an `sdk-stream` manifest adds to the common ones. */
+export interface SdkStreamManifestExtra extends StdioManifestExtra {
+  readonly sdkVersion: string;
 }
 
 /** What the tee wrote for one invocation before finalising. */
@@ -143,9 +159,12 @@ const readRawInvocations = (rawDir: string): ReadonlyArray<RawInvocation> =>
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Keys whose string value names the account, wherever they appear. */
+/**
+ * Keys whose string value names the account, wherever they appear — and the
+ * installation's own id, which names the machine as surely.
+ */
 const IDENTITY_KEY =
-  /^(e-?mail(_?address)?|user_?email|(org|organi[sz]ation)(_?(name|id|uuid))?|(account|user)_?(name|id|uuid))$/i;
+  /^(e-?mail(_?address)?|user_?email|(org|organi[sz]ation)(_?(name|id|uuid))?|(account|user)_?(name|id|uuid)|installation_?id)$/i;
 /** Objects whose identifying members name the account… */
 const ACCOUNT_SCOPE = /^(account|org|organi[sz]ation|user)$/i;
 /** …and those members. */
@@ -250,6 +269,27 @@ const operatorEntries = (configDir: string): Map<string, string> => {
 };
 
 /**
+ * Names the caller knows are the operator's own — MCP servers from their
+ * configuration, skills from a directory `operatorEntries` does not read —
+ * added to the entries, the stand-ins numbered over the whole set.
+ */
+const withOperatorNames = (
+  entries: ReadonlyMap<string, string>,
+  names: ReadonlyArray<string>,
+): Map<string, string> =>
+  new Map(
+    [...new Set([...entries.keys(), ...names.filter((name) => name.length > 0)])]
+      .sort()
+      .map((name, index) => [name, `user-skill-${index + 1}`]),
+  );
+
+const escapeRegExp = (text: string): string => text.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** `word` standing alone: not inside a longer name or path segment. */
+const standalone = (word: string): RegExp =>
+  new RegExp(`(?<![A-Za-z0-9_-])${escapeRegExp(word)}(?![A-Za-z0-9_-])`, "g");
+
+/**
  * The handshake keys whose lists are drawn from the operator's installation —
  * their own skills and commands, and the plugins they installed — rather than
  * from the harness alone. A stand-in per name is not enough: a plugin's entry
@@ -283,6 +323,10 @@ interface ScrubContext {
   readonly account: ReadonlyMap<string, string>;
   /** The operator's own skills, commands and agents: name → stand-in. */
   readonly entries: ReadonlyMap<string, string>;
+  /** Of those, the ones the caller named, replaced wherever they stand alone. */
+  readonly operatorNames: ReadonlyArray<string>;
+  /** The machine's name. */
+  readonly hostname: string;
 }
 
 /**
@@ -296,7 +340,8 @@ interface ScrubContext {
  * `skills`, `slash_commands` and `commands` lists become one scrubbed entry
  * each. Elsewhere an operator entry is replaced where it is listed: a list
  * item that is its name, and an object whose `name` it is, whose `description`
- * goes with it.
+ * goes with it. A name the caller gave is replaced in text and keys too,
+ * wherever it stands alone, and the machine's name becomes `<HOST>`.
  */
 const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
   const paths = [
@@ -304,16 +349,25 @@ const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
     ...spellings(context.tmp).map((p) => [p, "<TMP>"]),
     ...spellings(context.home).map((p) => [p, "<HOME>"]),
   ]
+    .filter(([from]) => from!.length > 1)
     .sort((a, b) => b[0]!.length - a[0]!.length)
     .map(([from, to]) => [wholePath(from!), to!] as const);
   const account = [...context.account].sort((a, b) => b[0].length - a[0].length);
   const username = context.username.length > 2 ? context.username : null;
+  const hosts = [context.hostname, context.hostname.replace(/\.local$/, "")]
+    .filter((host) => host.length > 3)
+    .map(standalone);
+  const named = [...context.operatorNames]
+    .sort((a, b) => b.length - a.length)
+    .map((name) => [standalone(name), context.entries.get(name)!] as const);
 
   const text = (value: string): string => {
     let out = value;
     for (const [from, to] of account) out = out.split(from).join(to);
     out = out.replaceAll(EMAIL, "user@example.com");
     for (const [from, to] of paths) out = out.replaceAll(from, to);
+    for (const host of hosts) out = out.replaceAll(host, "<HOST>");
+    for (const [name, stand] of named) out = out.replaceAll(name, stand);
     if (username !== null) {
       out = out.replaceAll(new RegExp(`\\b${username}\\b`, "g"), "user");
     }
@@ -362,7 +416,22 @@ export interface FinalizeOptions {
   readonly rawDir: string;
   readonly description: string;
   readonly cliVersion: string;
-  readonly sdkVersion: string;
+  /** The SDK that drove the harness; left out of the manifest when there is none. */
+  readonly sdkVersion?: string;
+  /** Defaults to `sdk-stream`. */
+  readonly transport?: StdioTransport;
+  /**
+   * Which launches are runs rather than one-shot probes like `--version`; the
+   * first one's working directory places the scratch root. Defaults to an argv
+   * holding `stream-json`.
+   */
+  readonly isStreamRun?: (argv: ReadonlyArray<string>) => boolean;
+  /**
+   * Names of the operator's own that the capture carries — their MCP servers,
+   * skills the config directory does not hold. Each becomes `user-skill-<n>`
+   * wherever it stands alone: a list item, an object's `name`, a key, a word.
+   */
+  readonly operatorNames?: ReadonlyArray<string>;
   /** The model the harness's own frames name. */
   readonly model: string;
   readonly prompts: ReadonlyArray<string>;
@@ -381,6 +450,10 @@ export interface FinalizeOptions {
    * directory, the same directory a replay restores `<SCRATCH>` from.
    */
   readonly scratch?: string;
+  /** The system temp directory, scrubbed to `<TMP>`; defaults to `os.tmpdir()`. */
+  readonly tmpdir?: string;
+  /** The machine's name, scrubbed to `<HOST>`; defaults to `os.hostname()`. */
+  readonly hostname?: string;
   readonly recordedOn?: string;
 }
 
@@ -393,31 +466,38 @@ const scratchOf = (cwd: string | undefined, home: string): string | null => {
   return parent === NodePath.parse(parent).root || within(parent, home) ? null : parent;
 };
 
+const isStreamJson = (argv: ReadonlyArray<string>): boolean => argv.includes("stream-json");
+
 /**
  * Writes `fixtures/<kind>/<scenario>/` from a raw directory the tee filled:
  * `manifest.json`, and one scrubbed `invocation-<n>.ndjson` per launch. The
  * scenario directory is replaced whole. Returns its path.
  */
-export const finalizeSdkStreamRecording = (options: FinalizeOptions): string => {
+export const finalizeStdioRecording = (options: FinalizeOptions): string => {
   const invocations = readRawInvocations(options.rawDir);
   const home = options.home ?? NodeOS.homedir();
-  const firstStream = invocations.find((invocation) =>
-    invocation.argv.some((word) => word === "stream-json"),
-  );
+  const isStreamRun = options.isStreamRun ?? isStreamJson;
+  const firstStream = invocations.find((invocation) => isStreamRun(invocation.argv));
+  const operatorNames = (options.operatorNames ?? []).filter((name) => name.length > 0);
   const scrub = makeScrubber({
     home,
     scratch: options.scratch ?? scratchOf(firstStream?.cwd, home),
-    tmp: NodeOS.tmpdir(),
+    tmp: options.tmpdir ?? NodeOS.tmpdir(),
     username: options.username ?? NodeOS.userInfo().username,
     account: accountValues(invocations.flatMap((invocation) => invocation.frames)),
-    entries: operatorEntries(options.configDir ?? NodePath.join(home, ".claude")),
+    entries: withOperatorNames(
+      operatorEntries(options.configDir ?? NodePath.join(home, ".claude")),
+      operatorNames,
+    ),
+    operatorNames,
+    hostname: options.hostname ?? NodeOS.hostname(),
   });
 
   const dir = NodePath.join(fixturesRoot(options.kind, options.fixturesRoot), options.scenario);
   NodeFS.rmSync(dir, { recursive: true, force: true });
   NodeFS.mkdirSync(dir, { recursive: true });
 
-  const listed = invocations.map((invocation, index): SdkStreamInvocation => {
+  const listed = invocations.map((invocation, index): StdioInvocation => {
     const file = `invocation-${index + 1}.ndjson`;
     NodeFS.writeFileSync(
       NodePath.join(dir, file),
@@ -433,14 +513,14 @@ export const finalizeSdkStreamRecording = (options: FinalizeOptions): string => 
     };
   });
 
-  const manifest: RecordingManifest & SdkStreamManifestExtra = {
+  const manifest: RecordingManifest & StdioManifestExtra = {
     formatVersion: 1,
     kind: options.kind,
-    transport: "sdk-stream",
+    transport: options.transport ?? "sdk-stream",
     scenario: options.scenario,
     description: options.description,
     cliVersion: options.cliVersion,
-    sdkVersion: options.sdkVersion,
+    ...(options.sdkVersion === undefined ? {} : { sdkVersion: options.sdkVersion }),
     recordedOn: options.recordedOn ?? new Date().toISOString().slice(0, 10),
     model: options.model,
     real: true,
@@ -455,29 +535,37 @@ export const finalizeSdkStreamRecording = (options: FinalizeOptions): string => 
   return dir;
 };
 
+/** Finalises an `sdk-stream` recording; see `finalizeStdioRecording`. */
+export const finalizeSdkStreamRecording = (options: FinalizeOptions): string =>
+  finalizeStdioRecording(options);
+
 // ── reading one back ───────────────────────────────────────────
 
-export interface SdkStreamRecording {
-  readonly manifest: RecordingManifest & SdkStreamManifestExtra;
+/** A tee-recorded scenario with each invocation's frames. */
+export interface StdioRecording<Extra extends StdioManifestExtra = StdioManifestExtra> {
+  readonly manifest: RecordingManifest & Extra;
   /** Each invocation with its frames, in launch order. */
   readonly invocations: ReadonlyArray<
-    SdkStreamInvocation & { readonly frames: ReadonlyArray<RecordedFrame> }
+    StdioInvocation & { readonly frames: ReadonlyArray<RecordedFrame> }
   >;
 }
 
+export type SdkStreamRecording = StdioRecording<SdkStreamManifestExtra>;
+
 /**
- * Reads one `sdk-stream` recording. Throws rather than degrading: a manifest
- * that is not real, not this transport, or lists a file that does not parse is
- * a recording nobody should be testing against.
+ * Reads one tee-recorded scenario of `transport`. Throws rather than
+ * degrading: a manifest that is not real, not this transport, or lists a file
+ * that does not parse is a recording nobody should be testing against.
  */
-export const loadSdkStreamRecording = (
+export const loadStdioRecording = <Extra extends StdioManifestExtra = StdioManifestExtra>(
+  transport: StdioTransport,
   kind: string,
   scenario: string,
   root?: string,
-): SdkStreamRecording => {
-  const manifest = readManifest<SdkStreamManifestExtra>(kind, scenario, root);
-  if (manifest.transport !== "sdk-stream") {
-    throw new Error(`${kind}/${scenario}: recorded over ${manifest.transport}, not sdk-stream`);
+): StdioRecording<Extra> => {
+  const manifest = readManifest<Extra>(kind, scenario, root);
+  if (manifest.transport !== transport) {
+    throw new Error(`${kind}/${scenario}: recorded over ${manifest.transport}, not ${transport}`);
   }
   const dir = NodePath.join(fixturesRoot(kind, root), scenario);
   return {
@@ -488,3 +576,11 @@ export const loadSdkStreamRecording = (
     })),
   };
 };
+
+/** Reads one `sdk-stream` recording; see `loadStdioRecording`. */
+export const loadSdkStreamRecording = (
+  kind: string,
+  scenario: string,
+  root?: string,
+): SdkStreamRecording =>
+  loadStdioRecording<SdkStreamManifestExtra>("sdk-stream", kind, scenario, root);
