@@ -7,7 +7,6 @@
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
 import { Button } from "@poseidon/ui/components/button";
-import { Toggle } from "@poseidon/ui/components/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 
 import { LineCounts } from "./file-section";
@@ -96,12 +95,13 @@ export function TreeToggle({
     <Tooltip>
       <TooltipTrigger
         render={
-          <Toggle
-            size="icon-sm"
-            className="size-6"
+          <Button
+            type="button"
+            variant={open ? "secondary" : "ghost"}
+            size="icon-xs"
             aria-label={label}
-            pressed={open}
-            onPressedChange={onOpenChange}
+            aria-pressed={open}
+            onClick={() => onOpenChange(!open)}
           />
         }
       >
