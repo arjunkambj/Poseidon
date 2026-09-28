@@ -154,10 +154,69 @@ describe("buildTimeline live bursts", () => {
       [2, false],
       [1, true],
     ]);
-    // a decision after the last step leaves no burst running
-    const last = live([user, asked], { decisions: [{ ...decision, afterItemId: asked.itemId }] });
-    expect(labels(last)).toEqual(["user_message", "work-group", "decision:req-1", "working"]);
-    expect(groups(last)[0].live).toBe(false);
+  });
+
+  it("keeps a burst live when only the answer to its approval follows it", () => {
+    const approval: ResolvedDecision = {
+      kind: "approval",
+      id: "req-1",
+      outcome: "allow-once",
+      resolvedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const question: ResolvedDecision = {
+      kind: "question",
+      id: "req-2",
+      outcome: "answered",
+      resolvedAt: "2026-01-01T00:00:01.000Z",
+    };
+    const user = item("user_message");
+    const read = item("tool_call");
+    const asked = item("command_execution", { status: "in_progress" });
+    const answers = [
+      { ...approval, afterItemId: asked.itemId },
+      { ...question, afterItemId: asked.itemId },
+    ];
+    const rows = live([user, read, asked], { decisions: answers });
+    expect(labels(rows)).toEqual([
+      "user_message",
+      "work-group",
+      "decision:req-1",
+      "decision:req-2",
+      "working",
+    ]);
+    const [burst] = groups(rows);
+    expect(burst.live).toBe(true);
+    expect(burst.items).toEqual([read, asked]);
+    // the next step opens a burst of its own, and the approved one settles
+    const next = item("command_execution", { status: "in_progress" });
+    const after = groups(live([user, read, asked, next], { decisions: answers }));
+    expect(after.map((group) => [group.items.length, group.live])).toEqual([
+      [2, false],
+      [1, true],
+    ]);
+    // once the turn settles nothing is live
+    const settled = buildTimeline([user, read, asked], {
+      turnActive: false,
+      decisions: answers,
+      isFoldOpen: () => true,
+    }).rows;
+    expect(groups(settled).map((group) => group.live)).toEqual([false]);
+  });
+
+  it("keeps no burst live when narration follows the answered one", () => {
+    const user = item("user_message");
+    const asked = item("command_execution");
+    const decision: ResolvedDecision = {
+      kind: "approval",
+      id: "req-1",
+      outcome: "deny",
+      resolvedAt: "2026-01-01T00:00:00.000Z",
+      afterItemId: asked.itemId,
+    };
+    const rows = live([user, asked, item("assistant_message", { text: "Skipping it." })], {
+      decisions: [decision],
+    });
+    expect(groups(rows).map((group) => group.live)).toEqual([false]);
   });
 
   it("keeps task children nested: a burst holds roots only", () => {

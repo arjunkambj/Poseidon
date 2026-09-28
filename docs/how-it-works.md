@@ -775,7 +775,9 @@ turns the flat item list into rows:
   stream in (and matches the group the same run becomes in an opened settled
   fold). Narration, todos, plans, errors, compactions, steered messages and
   decision records stay inline and split the runs; the trailing burst, when
-  nothing follows it, is marked `live`. The live burst is one line reading its
+  nothing follows it but the answers to the approvals and questions it asked
+  (a decision anchors to the step that asked, and an approved command runs
+  on), is marked `live`. The live burst is one line reading its
   newest step (`timeline/live-step.ts`): "Running pnpm test" while the step
   runs and "Ran pnpm test" once it is done, "Editing app.tsx", "Searching
   useMemo", a browser call's sentence, a task's title — the target cut to a

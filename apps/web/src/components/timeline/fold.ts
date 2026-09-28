@@ -10,8 +10,9 @@
  *   (reasoning included) into a `work-group` burst from its first step, keyed
  *   by that step, so the row keeps its key as steps stream in; narration,
  *   todos, plans, errors, compactions, steered messages and decisions split
- *   the runs and stay inline. The trailing burst, when nothing comes after
- *   it, is marked `live`: it is the work still going on. A `working` row with
+ *   the runs and stay inline. The trailing burst, when nothing but the
+ *   answers to its approvals comes after it, is marked `live`: it is the
+ *   work still going on — an approved command runs on under its record. A `working` row with
  *   its clock ends the turn. Once the turn settles it folds as below.
  * - A settled turn opened by a user message shows the message, then ONE
  *   `turn-fold` row, "Worked for 2m 3s · Ran 3 commands, edited 2 files"
@@ -281,9 +282,15 @@ export const buildTimeline = (
     if (options.turnActive && index === turns.length - 1) {
       const start = rows.length;
       pushWorkRuns(turn.items, plainRow);
-      const last = rows.at(-1);
-      if (rows.length > start && last?.kind === "work-group") {
-        rows[rows.length - 1] = workGroupRow(last.items, true);
+      // The burst still going on is the turn's last row, or sits just before
+      // the answers to the approvals it asked for: an approved step runs on.
+      let index = rows.length - 1;
+      while (index >= start && rows[index].kind === "decision") {
+        index -= 1;
+      }
+      const last = rows[index];
+      if (index >= start && last.kind === "work-group") {
+        rows[index] = { ...last, live: true };
       }
     } else if (turn.opener === undefined) {
       pushWorkRuns(turn.items, plainRow);
