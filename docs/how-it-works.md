@@ -2261,6 +2261,40 @@ run, and the new thread shares the directory and branch. From a local thread
 the same item starts a local thread, or opens the project's blank newest one
 as the per-project button does.
 
+### Starting in the background
+
+New task can start a thread and stay put, so the next task can be typed
+straight away: `composer.startInBackground` (`Mod+Alt+Enter`, bound only while
+New task is open) or **Start in background** in the menu behind the chevron
+beside Send (`start-send-menu.tsx`), which shows the same keys. Both need what
+Send needs, and neither runs while a foreground start is under way.
+
+The press takes a snapshot of the draft — text, mentions, references, images —
+empties it, and moves the page to a fresh draft id (`StartThread` owns it), so
+the composer is blank with the focus back in it and the picked model kept. The
+thread takes the old id. Nothing moves to it: no navigation, and no terminal
+hand-over, since the user is still on New task with the project's terminals.
+
+`use-background-start.ts` then runs the start as one lane of
+`background-start.ts`. Every write is a one-shot call —
+`git.worktree.create`, `git.worktree.setup` as `worktreeSetupRun`,
+`thread.create`, the image uploads and `thread.turn.start` through
+`@/lib/one-shot-commands` — so the user's next send, or leaving New task,
+interrupts none of it. With **New worktree** picked the lane cuts the worktree
+from the picked base branch and runs setup with no panel to watch. A setup that
+fails still creates the thread in the worktree, as Start anyway would, but
+leaves the message unsent in that thread's composer; so does a first send that
+fails. A thread refused after its worktree was cut has the worktree removed
+(`force`, the branch kept). A reload of the window ends a setup run still
+streaming, and the server kills its script.
+
+One toast follows the start: "Starting in <project>…", then in place
+"Started in <project>", "Created a thread in <project>" with the reason and a
+note that the message waits in the composer, or "Could not start in
+<project>" with the reason. The first two carry **Open**, which goes to the
+thread. When no thread came to exist, the message goes back into New task's
+draft, unless the user has begun another one there.
+
 ### Deleting a worktree thread
 
 The sidebar row menu and Settings → Archived threads confirm a delete with the

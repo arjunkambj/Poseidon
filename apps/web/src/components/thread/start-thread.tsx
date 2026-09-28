@@ -35,8 +35,12 @@
  *
  * Its keys are the thread composer's (`use-composer-commands`): focus, attach,
  * clear the draft, and `composer.queue`, which here simply sends — a thread
- * that does not exist yet has no turn to queue behind. Enter is decided by the
- * same `composerEnter` rule, so chorded Enter is left to the keymap.
+ * that does not exist yet has no turn to queue behind. The textarea's own keys
+ * are `start-composer-keys.ts`.
+ *
+ * "Start in background" — its chord, or the menu beside Send — starts the
+ * draft as a thread without leaving (`use-background-start.ts`): the page
+ * moves to a fresh draft id, which empties the composer for the next task.
  *
  * Around them sits the frame a thread has, for the picked project's own
  * folder (`StartThreadWorkspace`): a header with the git actions and the
@@ -71,6 +75,8 @@ import { useSendDraft } from "@/components/composer/use-send-draft";
 import { HarnessHealthBanner } from "@/components/thread/harness-health-banner";
 import { ProjectPicker } from "@/components/thread/project-picker";
 import { startComposerKeyDown } from "@/components/thread/start-composer-keys";
+import { StartSendMenu } from "@/components/thread/start-send-menu";
+import { useStartInBackground } from "@/components/thread/use-background-start";
 import { worktreeName } from "@/components/thread/start-in-worktree";
 import { useStartInWorktree } from "@/components/thread/use-start-in-worktree";
 import { useStartSend } from "@/components/thread/use-start-send";
@@ -96,12 +102,15 @@ function StartComposer({
   projects,
   project,
   onPickProject,
+  onNextDraft,
 }: {
   /** Minted as the page mounts: the draft is kept under it, and the thread gets it. */
   readonly threadId: ThreadId;
   readonly projects: ReadonlyArray<ProjectSummary>;
   readonly project: ProjectSummary;
   readonly onPickProject: (projectId: ProjectId) => void;
+  /** Moves the page to a fresh draft id, once a start in the background took this one. */
+  readonly onNextDraft: () => void;
 }) {
   const navigate = useNavigate();
   const { create, pending } = useCreateThread();
@@ -207,24 +216,36 @@ function StartComposer({
     starting || pending || sending || (inWorktreeFlow && worktreeState.step !== "failed");
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const keymapAnswers = useKeymapAnswers();
   const onKeyDown = startComposerKeyDown({
     menus,
     triggers,
-    keymapAnswers,
+    keymapAnswers: useKeymapAnswers(),
     onSend: () => void send(),
+  });
+  const clearDraft = () => {
+    setText("");
+    setMentions([]);
+    setReferences([]);
+    attachments.clear();
+    triggers.close();
+  };
+  const startInBackground = useStartInBackground({
+    project,
+    threadId,
+    settings: shownSettings,
+    choice,
+    canSend,
+    clearDraft,
+    onNextDraft,
+    draft: { text, mentions, references, files: attachments.files },
+    blocked: busy,
+    textareaRef,
   });
   useComposerCommands({
     textareaRef,
     fileInputRef,
     attachments,
-    clearDraft: () => {
-      setText("");
-      setMentions([]);
-      setReferences([]);
-      attachments.clear();
-      triggers.close();
-    },
+    clearDraft,
     submit: () => {
       triggers.close();
       void send();
@@ -312,6 +333,13 @@ function StartComposer({
           onSend={() => void send()}
           onInterrupt={() => {}}
           attachDisabledReason={attachRefusal ?? undefined}
+          sendMenu={
+            <StartSendMenu
+              disabled={!canSend || busy}
+              onStartInBackground={startInBackground}
+              returnFocus={textareaRef}
+            />
+          }
           settings={
             defaults ? (
               <ThreadSettingsControls
@@ -335,7 +363,7 @@ function StartComposer({
 }
 
 export function StartThread({ dockTab }: { readonly dockTab: DockPane | undefined }) {
-  const [draftId] = React.useState(makeThreadId);
+  const [draftId, setDraftId] = React.useState(makeThreadId);
   const projects = useProjects();
   const connection = useConnectionState();
   const connected = connection.status === "connected";
@@ -362,6 +390,7 @@ export function StartThread({ dockTab }: { readonly dockTab: DockPane | undefine
           projects={projects}
           project={project}
           onPickProject={rememberProject}
+          onNextDraft={() => setDraftId(makeThreadId())}
         />
       </div>
     </StartThreadWorkspace>
