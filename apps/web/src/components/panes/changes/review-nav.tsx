@@ -14,38 +14,46 @@ function NavButton({
   label,
   command,
   icon: Icon,
-  disabled = false,
+  disabledReason = null,
   onClick,
 }: {
   label: string;
   command: string;
   icon: HoneyIcon;
-  disabled?: boolean;
+  /** Why the button does nothing right now, or `null` when it is enabled. */
+  disabledReason?: string | null;
   onClick: () => void;
 }) {
   return (
     <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            aria-label={label}
-            disabled={disabled}
-            onClick={onClick}
-          />
-        }
-      >
-        <Icon variant="bold" />
+      {/* A disabled button takes no pointer events: the wrapper keeps the reason reachable. */}
+      <TooltipTrigger render={<span className="inline-flex" />}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={label}
+          disabled={disabledReason !== null}
+          onClick={onClick}
+        >
+          <Icon variant="bold" />
+        </Button>
       </TooltipTrigger>
       <TooltipContent>
-        {label}
-        <CommandKbd command={command} />
+        {disabledReason === null ? (
+          <>
+            {label}
+            <CommandKbd command={command} />
+          </>
+        ) : (
+          `${label}: ${disabledReason}`
+        )}
       </TooltipContent>
     </Tooltip>
   );
 }
+
+const NO_CHANGES = "no changed lines to step through";
 
 export function ReviewNav({
   canStepChange,
@@ -66,21 +74,21 @@ export function ReviewNav({
         label="Previous change"
         command="changes.previousChange"
         icon={ChevronUp}
-        disabled={!canStepChange}
+        disabledReason={canStepChange ? null : NO_CHANGES}
         onClick={() => onStepChange(-1)}
       />
       <NavButton
         label="Next change"
         command="changes.nextChange"
         icon={ChevronDown}
-        disabled={!canStepChange}
+        disabledReason={canStepChange ? null : NO_CHANGES}
         onClick={() => onStepChange(1)}
       />
       <NavButton
         label="Next unviewed file"
         command="changes.nextUnviewed"
         icon={Eye}
-        disabled={allViewed}
+        disabledReason={allViewed ? "every file is viewed" : null}
         onClick={onNextUnviewed}
       />
     </>

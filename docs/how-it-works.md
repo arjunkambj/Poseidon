@@ -1886,7 +1886,8 @@ scroll its header to the top. `Alt+U` (`changes.nextUnviewed`), and the eye
 button in the summary line, does the same for the first file after the
 current one that is not viewed as its patch is now, wrapping round to the top
 (`nextUnviewed` in `review.ts`); the button is disabled once every file is
-viewed.
+viewed, and the chevrons below while no file has a patch, each with the reason
+in its tooltip (`review-nav.tsx`).
 
 `Alt+]` / `Alt+[` (`changes.nextChange` / `previousChange`), and the up and
 down chevrons beside the eye, step through the list's changes in scroll order
