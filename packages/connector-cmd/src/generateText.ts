@@ -17,6 +17,11 @@
  * - Print mode has no system-prompt flag, so `system` goes in front of the
  *   prompt. It has no schema flag either: `jsonSchema` is not sent, and the
  *   caller parses the text.
+ * - The prompt is one argv string, and the OS caps those: Linux at 128 KiB
+ *   per string, Windows at 32,767 characters for the whole command line. The
+ *   caller's caps count characters, so a diff of CJK text or emoji can still
+ *   pass Linux's limit in bytes. `fitArgument` cuts the prompt's end (where the
+ *   diff is) to fit, with a line saying so, instead of failing the spawn.
  *
  * `--no-session` writes no transcript, but the CLI still leaves
  * `<id>.checkpoints.jsonl` and `<id>.meta.json` in a project directory named
@@ -70,10 +75,35 @@ const promptOf = (input: GenerateTextInput): string =>
     ? input.prompt
     : `${input.system}\n\n${input.prompt}`;
 
+/** The most of one argv string, in UTF-8 bytes, under Linux's 128 KiB, with room to spare. */
+const ARGUMENT_BYTES = 120 * 1024;
+/** The most of the prompt on Windows, in characters, under its 32,767 for the command line. */
+const WINDOWS_ARGUMENT_CHARS = 30_000;
+
+/**
+ * `text` cut at the end to fit one argv string on `platform`, with a line
+ * saying so; never splits a character.
+ */
+export const fitArgument = (text: string, platform: NodeJS.Platform = process.platform): string => {
+  const note = "\n[… the rest was left out to fit the command line]";
+  if (platform === "win32") {
+    if (text.length <= WINDOWS_ARGUMENT_CHARS) return text;
+    const cut = text.slice(0, WINDOWS_ARGUMENT_CHARS - note.length);
+    return `${/[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut}${note}`;
+  }
+  const bytes = Buffer.from(text, "utf8");
+  if (bytes.length <= ARGUMENT_BYTES) return text;
+  // Decoding a cut mid-character leaves a replacement character at the end.
+  const cut = new TextDecoder()
+    .decode(bytes.subarray(0, ARGUMENT_BYTES - Buffer.byteLength(note)))
+    .replace(/\uFFFD$/, "");
+  return `${cut}${note}`;
+};
+
 /** The one-shot argv, in `buildArgs`'s order. */
 export const generateTextArgs = (input: GenerateTextInput): Array<string> =>
   buildArgs({
-    prompt: promptOf(input),
+    prompt: fitArgument(promptOf(input)),
     noSession: true,
     model: input.model,
     ...(input.effort === undefined ? {} : { effort: cmdEffort(input.effort) }),

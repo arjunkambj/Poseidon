@@ -22,7 +22,13 @@ import { makeConnectorInstanceId } from "@poseidon/contracts/ids";
 import * as Effect from "effect/Effect";
 
 import { cmdConnectorDefinition } from "./definition";
-import { answerOf, generateTextArgs, refusedEffort, removeLeftovers } from "./generateText";
+import {
+  answerOf,
+  fitArgument,
+  generateTextArgs,
+  refusedEffort,
+  removeLeftovers,
+} from "./generateText";
 
 const TESTKIT = NodePath.resolve(NodeURL.fileURLToPath(import.meta.url), "../../../testkit");
 const REPLAY_BINARY = NodePath.join(TESTKIT, "bin", "replay-cmd.mjs");
@@ -222,6 +228,29 @@ describe("generateTextArgs", () => {
     const args = generateTextArgs({ prompt: "Title?", model: "m", jsonSchema: { type: "object" } });
     expect(args).not.toContain("--effort");
     expect(args.join(" ")).not.toContain("object");
+  });
+});
+
+describe("fitArgument", () => {
+  it("leaves a prompt that fits alone", () => {
+    expect(fitArgument("Title?", "linux")).toBe("Title?");
+  });
+
+  it("cuts a prompt of multi-byte text under Linux's per-string limit in bytes", () => {
+    // 50,000 characters of CJK is about 150 KB in UTF-8: past the limit though
+    // the caller's character caps let it through.
+    const prompt = `Write a message.\n\nDiff:\n${"漢".repeat(50_000)}`;
+    const fitted = fitArgument(prompt, "linux");
+    expect(Buffer.byteLength(fitted)).toBeLessThan(128 * 1024);
+    expect(fitted.startsWith("Write a message.")).toBe(true);
+    expect(fitted).toMatch(/漢\n\[… the rest was left out to fit the command line\]$/);
+    expect(fitted).not.toContain("\uFFFD");
+  });
+
+  it("cuts by characters on Windows, never splitting a surrogate pair", () => {
+    const fitted = fitArgument("😀".repeat(20_000), "win32");
+    expect(fitted.length).toBeLessThanOrEqual(30_000);
+    expect(fitted).not.toMatch(/[\uD800-\uDBFF]\n/);
   });
 });
 

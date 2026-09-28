@@ -329,6 +329,12 @@ cmd -p "<system>\n\n<prompt>" --output-format json --verbose -t --skip-onboardin
 - **The system text goes in front of the prompt**, because print mode has no
   system-prompt flag. It has no schema flag either, so `jsonSchema` is not sent
   and the caller parses the text.
+- **The prompt fits one argv string.** Linux caps a single argument at
+  128 KiB and Windows the whole command line at 32,767 characters, while the
+  caller's caps count characters. `fitArgument` cuts the prompt's end, where
+  the diff is, to 120 KiB of UTF-8 (30,000 characters on Windows) with a line
+  saying so, so a diff of CJK text or emoji is shortened instead of failing
+  the spawn with `E2BIG`.
 - **Effort only when asked for, and dropped when refused.** The model listing
   marks no effort ladder, so every model offers every level and the caller
   cannot tell which take one. A model that takes none refuses the flag before
