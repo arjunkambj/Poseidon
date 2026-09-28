@@ -211,6 +211,12 @@ const singles: ReadonlyArray<{ readonly path: string; readonly schema: FixtureSc
   { path: "thread-detail-snapshot.restored.json", schema: ThreadDetailSnapshot },
   // A thread working in its own git worktree rather than the project's root.
   { path: "thread-detail-snapshot.worktree.json", schema: ThreadDetailSnapshot },
+  // A fresh fork: the snapshot names the thread it was forked from.
+  { path: "thread-detail-snapshot.forked.json", schema: ThreadDetailSnapshot },
+  // A second shape of one command and one event: forking a thread. The
+  // families hold one file per variant, so these sit apart.
+  { path: "variants/thread.create.fork.json", schema: Command },
+  { path: "variants/thread.created.fork.json", schema: OrchestrationEvent },
   { path: "settings.json", schema: Settings },
   { path: "read-models/project-summary.json", schema: ProjectSummary },
   { path: "read-models/thread-summary.json", schema: ThreadSummary },
@@ -220,6 +226,7 @@ const singles: ReadonlyArray<{ readonly path: string; readonly schema: FixtureSc
   { path: "read-models/thread-summary.worktree.json", schema: ThreadSummary },
   // A thread the user marked done after its last activity.
   { path: "read-models/thread-summary.done.json", schema: ThreadSummary },
+  { path: "read-models/thread-summary.forked.json", schema: ThreadSummary },
   { path: "read-models/command-receipt.accepted.json", schema: CommandReceipt },
   { path: "read-models/command-receipt.rejected.json", schema: CommandReceipt },
   { path: "rpc/server-hello.json", schema: ServerHello },
@@ -517,6 +524,45 @@ describe("a thread's worktree", () => {
         }),
       );
       expect(decoded.type === "thread.created" ? decoded.payload.worktree : null).toEqual(worktree);
+    }),
+  );
+});
+
+describe("a forked thread", () => {
+  it.effect("names its source on the summary and snapshot; older ones name none", () =>
+    Effect.gen(function* () {
+      const decode = <S extends FixtureSchema>(schema: S, path: string) =>
+        Effect.sync(() => Schema.decodeUnknownSync(schema)(read(path)) as S["Type"]);
+      const older = yield* decode(ThreadSummary, "read-models/thread-summary.json");
+      expect(older.forkedFrom).toBeUndefined();
+      const olderSnapshot = yield* decode(ThreadDetailSnapshot, "thread-detail-snapshot.json");
+      expect(olderSnapshot.forkedFrom).toBeUndefined();
+      const source = { threadId: older.threadId, title: "Health check endpoint" };
+      const fork = yield* decode(ThreadSummary, "read-models/thread-summary.forked.json");
+      expect(fork.forkedFrom).toEqual(source);
+      const snapshot = yield* decode(ThreadDetailSnapshot, "thread-detail-snapshot.forked.json");
+      expect(snapshot.forkedFrom).toEqual(source);
+    }),
+  );
+
+  it.effect("carries its fork on the create command and on `thread.created`", () =>
+    Effect.gen(function* () {
+      const plain = yield* Effect.sync(() =>
+        Schema.decodeUnknownSync(Command)(read("commands/thread.create.json")),
+      );
+      expect(plain.type === "thread.create" && plain.fork).toBeUndefined();
+      const command = yield* Effect.sync(() =>
+        Schema.decodeUnknownSync(Command)(read("variants/thread.create.fork.json")),
+      );
+      expect(command.type === "thread.create" ? command.fork?.throughItemId : null).toBe(
+        "0199c0de-0005-7000-8000-000000000001",
+      );
+      const created = yield* Effect.sync(() =>
+        Schema.decodeUnknownSync(OrchestrationEvent)(read("variants/thread.created.fork.json")),
+      );
+      const fork = created.type === "thread.created" ? created.payload.fork : undefined;
+      expect(fork?.title).toBe("Health check endpoint");
+      expect(fork?.transcript).toContain("User:\nAdd a health check endpoint.");
     }),
   );
 });

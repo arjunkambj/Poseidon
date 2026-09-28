@@ -1,0 +1,29 @@
+{
+  "threadId": "0199c0de-0002-7000-8000-000000000002",
+  "projectId": "0199c0de-0001-7000-8000-000000000001",
+  "title": "Health check endpoint (fork)",
+  "status": "idle",
+  "settings": {
+    "model": "stealth/ox-alpha",
+    "effort": "medium",
+    "runtimeMode": "approval-required",
+    "interactionMode": "default"
+  },
+  "forkedFrom": {
+    "threadId": "0199c0de-0002-7000-8000-000000000001",
+    "title": "Health check endpoint"
+  },
+  "snapshotSequence": 40,
+  "items": [],
+  "queue": [],
+  "checkpoints": [],
+  "session": null,
+  "currentTurnId": null,
+  "pendingApproval": null,
+  "pendingUserInput": null,
+  "pendingPlan": null,
+  "usage": null,
+  "context": null,
+  "createdAt": "2026-09-15T12:10:00.000Z",
+  "updatedAt": "2026-09-15T12:10:00.000Z"
+}

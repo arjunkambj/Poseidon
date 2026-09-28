@@ -43,9 +43,12 @@ import {
   CheckpointRestore,
   CheckpointSummary,
   ContextWindowUsage,
+  ForkedFrom,
   Mention,
   PlanResponseAction,
   QueuedMessage,
+  ThreadFork,
+  ThreadForkRequest,
   ThreadSession,
   ThreadSettings,
   ThreadActivity,
@@ -69,11 +72,13 @@ export {
   CheckpointRestore,
   CheckpointSummary,
   ContextWindowUsage,
+  ForkedFrom,
   latestTurnId,
   Mention,
   PlanResponseAction,
   QueuedMessage,
   ThreadActivity,
+  ThreadFork,
   ThreadSession,
   ThreadSettings,
   ThreadSettingsPatch,
@@ -110,6 +115,8 @@ const ThreadCreateCommand = command("thread.create", {
   settings: Schema.optional(ThreadSettingsPatch),
   /** Absent: a local thread on the project's root. Fixed once created. */
   worktree: Schema.optional(ThreadWorktree),
+  /** Fork another thread of the project: title and settings default to its. */
+  fork: Schema.optional(ThreadForkRequest),
 });
 
 const ThreadRenameCommand = command("thread.rename", {
@@ -357,6 +364,7 @@ const ThreadCreatedEvent = orchestrationEvent(
     settings: ThreadSettings,
     // Optional: every event written before threads had worktrees lacks it.
     worktree: Schema.optional(ThreadWorktree),
+    fork: Schema.optional(ThreadFork),
   }),
 );
 
@@ -691,6 +699,7 @@ export const ThreadSummary = Schema.Struct({
   worktree: Schema.optional(ThreadWorktree),
   /** `doneAt` and `lastActivityAt`, for the Active/Done split. */
   ...ThreadDoneFields,
+  forkedFrom: Schema.optional(ForkedFrom),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
@@ -709,6 +718,7 @@ export const ThreadDetailSnapshot = Schema.Struct({
   settings: ThreadSettings,
   /** The thread's own worktree; absent for a local thread. */
   worktree: Schema.optional(ThreadWorktree),
+  forkedFrom: Schema.optional(ForkedFrom),
   snapshotSequence: NonNegativeInt,
   items: Schema.Array(ItemSnapshot),
   queue: Schema.Array(QueuedMessage),

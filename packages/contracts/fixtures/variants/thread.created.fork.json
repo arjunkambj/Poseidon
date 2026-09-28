@@ -1,0 +1,28 @@
+{
+  "sequence": 40,
+  "eventId": "0199c0de-0006-7000-8000-000000000140",
+  "streamKind": "thread",
+  "streamId": "0199c0de-0002-7000-8000-000000000002",
+  "streamVersion": 1,
+  "occurredAt": "2026-09-15T12:10:00.000Z",
+  "commandId": "0199c0de-0008-7000-8000-000000000031",
+  "actor": "user",
+  "type": "thread.created",
+  "payload": {
+    "threadId": "0199c0de-0002-7000-8000-000000000002",
+    "projectId": "0199c0de-0001-7000-8000-000000000001",
+    "title": "Health check endpoint (fork)",
+    "settings": {
+      "model": "stealth/ox-alpha",
+      "effort": "medium",
+      "runtimeMode": "approval-required",
+      "interactionMode": "default"
+    },
+    "fork": {
+      "threadId": "0199c0de-0002-7000-8000-000000000001",
+      "title": "Health check endpoint",
+      "throughItemId": "0199c0de-0005-7000-8000-000000000001",
+      "transcript": "User:\nAdd a health check endpoint.\n\nAssistant:\nAdded GET /healthz returning 200 with the build id."
+    }
+  }
+}

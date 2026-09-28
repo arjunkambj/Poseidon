@@ -1,0 +1,12 @@
+{
+  "commandId": "0199c0de-0008-7000-8000-000000000031",
+  "createdAt": "2026-09-15T12:10:00.000Z",
+  "type": "thread.create",
+  "threadId": "0199c0de-0002-7000-8000-000000000002",
+  "projectId": "0199c0de-0001-7000-8000-000000000001",
+  "title": "Health check endpoint (fork)",
+  "fork": {
+    "threadId": "0199c0de-0002-7000-8000-000000000001",
+    "throughItemId": "0199c0de-0005-7000-8000-000000000001"
+  }
+}

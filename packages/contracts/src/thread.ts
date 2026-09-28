@@ -11,7 +11,7 @@ import * as Schema from "effect/Schema";
 
 import { IsoDateTime, NonEmptyString, NonNegativeInt } from "./base";
 import { Effort, InteractionMode, RuntimeMode } from "./enums";
-import { CheckpointId, ConnectorInstanceId, ConnectorKind, ItemId, TurnId } from "./ids";
+import { CheckpointId, ConnectorInstanceId, ConnectorKind, ItemId, ThreadId, TurnId } from "./ids";
 import { Attachment, ConnectorCapabilities, TurnReference } from "./runtime";
 
 /** A `#` file mention from the composer: a workspace-relative path. */
@@ -196,3 +196,38 @@ export const ThreadDoneFields = {
   doneAt: Schema.optional(IsoDateTime),
   lastActivityAt: Schema.optional(IsoDateTime),
 };
+
+/**
+ * What `thread.create` asks for to fork a thread: the source, and the user
+ * message to fork from. The fork carries the source's conversation through
+ * the end of that message's turn; without `throughItemId`, the whole thread.
+ */
+export const ThreadForkRequest = Schema.Struct({
+  threadId: ThreadId,
+  throughItemId: Schema.optional(ItemId),
+});
+export type ThreadForkRequest = typeof ThreadForkRequest.Type;
+
+/**
+ * A fork as `thread.created` records it: the source and its title when the
+ * fork was made, the message it was forked from, and the transcript the
+ * server built from the source at that moment. The transcript is kept here,
+ * not read from the source later, so the fork's first turn still has it after
+ * the source is renamed, changed or deleted. It is sent to the harness ahead
+ * of the fork's first message and never shown as a row.
+ */
+export const ThreadFork = Schema.Struct({
+  threadId: ThreadId,
+  title: NonEmptyString,
+  throughItemId: Schema.optional(ItemId),
+  transcript: Schema.String,
+});
+export type ThreadFork = typeof ThreadFork.Type;
+
+/**
+ * The "Forked from" link a forked thread's summary and snapshot carry: the
+ * source and its title when the fork was made. Absent on every thread that
+ * is not a fork, and on everything written before forks existed.
+ */
+export const ForkedFrom = Schema.Struct({ threadId: ThreadId, title: NonEmptyString });
+export type ForkedFrom = typeof ForkedFrom.Type;
