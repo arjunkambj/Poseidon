@@ -1,0 +1,33 @@
+{
+  "sequence": 42,
+  "eventId": "0199c0de-0006-7000-8000-000000000142",
+  "streamKind": "thread",
+  "streamId": "0199c0de-0002-7000-8000-000000000004",
+  "streamVersion": 1,
+  "occurredAt": "2026-09-15T12:20:00.000Z",
+  "commandId": "0199c0de-0008-7000-8000-000000000032",
+  "actor": "user",
+  "type": "thread.created",
+  "payload": {
+    "threadId": "0199c0de-0002-7000-8000-000000000004",
+    "projectId": "0199c0de-0001-7000-8000-000000000001",
+    "title": "Add a health check endpoint",
+    "settings": {
+      "model": "stealth/ox-alpha",
+      "runtimeMode": "approval-required",
+      "interactionMode": "default",
+      "connectorInstanceId": "0199c0de-0003-7000-8000-000000000002"
+    },
+    "imported": {
+      "connectorKind": "claude",
+      "sourceId": "5b1f3c2e-7a4d-4e8b-9c61-2f0d8a7e4b13",
+      "session": {
+        "connectorInstanceId": "0199c0de-0003-7000-8000-000000000002",
+        "sessionRef": {
+          "sessionId": "5b1f3c2e-7a4d-4e8b-9c61-2f0d8a7e4b13",
+          "cwd": "/home/user/app"
+        }
+      }
+    }
+  }
+}

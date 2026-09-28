@@ -46,6 +46,7 @@ import {
   QueuedMessage,
   ThreadFork,
   ThreadForkRequest,
+  ThreadImport,
   ThreadSession,
   ThreadSettings,
   ThreadSettingsPatch,
@@ -76,6 +77,7 @@ export {
   QueuedMessage,
   ThreadActivity,
   ThreadFork,
+  ThreadImport,
   ThreadSession,
   ThreadSettings,
   ThreadSettingsPatch,
@@ -115,6 +117,8 @@ const ThreadCreateCommand = command("thread.create", {
   worktree: Schema.optional(ThreadWorktree),
   /** Fork another thread of the project: title and settings default to its. */
   fork: Schema.optional(ThreadForkRequest),
+  /** A session the harness recorded on its own, brought in by `sessions.import`. */
+  imported: Schema.optional(ThreadImport),
 });
 
 const ThreadRenameCommand = command("thread.rename", {
@@ -364,6 +368,8 @@ const ThreadCreatedEvent = orchestrationEvent(
     // Optional: every event written before threads had worktrees lacks it.
     worktree: Schema.optional(ThreadWorktree),
     fork: Schema.optional(ThreadFork),
+    // Optional: only an imported thread has it, and older events lack it.
+    imported: Schema.optional(ThreadImport),
   }),
 );
 

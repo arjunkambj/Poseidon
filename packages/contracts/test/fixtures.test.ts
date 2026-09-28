@@ -220,6 +220,9 @@ const singles: ReadonlyArray<{ readonly path: string; readonly schema: FixtureSc
   { path: "variants/thread.created.fork.json", schema: OrchestrationEvent },
   // A fork the harness makes itself: the source's session rides along.
   { path: "variants/thread.created.fork-native.json", schema: OrchestrationEvent },
+  // An imported session: the harness's session to resume rides along.
+  { path: "variants/thread.create.import.json", schema: Command },
+  { path: "variants/thread.created.import.json", schema: OrchestrationEvent },
   // Edit and resend: a restore that carries the edited message to send once
   // it lands, on the command and on the durable work order.
   { path: "variants/thread.checkpoint.restore.resend.json", schema: Command },
@@ -582,6 +585,30 @@ describe("a forked thread", () => {
       const session = native.type === "thread.created" ? native.payload.fork?.session : undefined;
       expect(session?.connectorInstanceId).toBe("0199c0de-0003-7000-8000-000000000001");
       expect(session?.sessionRef).toMatchObject({ sessionId: expect.any(String) });
+    }),
+  );
+});
+
+describe("an imported thread", () => {
+  it.effect("carries its import on the create command and on `thread.created`", () =>
+    Effect.gen(function* () {
+      const decode = <S extends FixtureSchema>(schema: S, path: string) =>
+        Effect.sync(() => Schema.decodeUnknownSync(schema)(read(path)) as S["Type"]);
+      const plain = yield* decode(Command, "commands/thread.create.json");
+      expect(plain.type === "thread.create" && plain.imported).toBeUndefined();
+      const older = yield* decode(OrchestrationEvent, "orchestration-events/thread.created.json");
+      expect(older.type === "thread.created" && older.payload.imported).toBeUndefined();
+      const command = yield* decode(Command, "variants/thread.create.import.json");
+      const requested = command.type === "thread.create" ? command.imported : undefined;
+      expect(requested?.sourceId).toBe("5b1f3c2e-7a4d-4e8b-9c61-2f0d8a7e4b13");
+      const created = yield* decode(OrchestrationEvent, "variants/thread.created.import.json");
+      const imported = created.type === "thread.created" ? created.payload.imported : undefined;
+      expect(imported?.connectorKind).toBe("claude");
+      expect(imported?.session?.connectorInstanceId).toBe("0199c0de-0003-7000-8000-000000000002");
+      expect(imported?.session?.sessionRef).toEqual({
+        sessionId: "5b1f3c2e-7a4d-4e8b-9c61-2f0d8a7e4b13",
+        cwd: "/home/user/app",
+      });
     }),
   );
 });

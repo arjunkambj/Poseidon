@@ -254,6 +254,25 @@ export const ThreadFork = Schema.Struct({
 export type ThreadFork = typeof ThreadFork.Type;
 
 /**
+ * A thread imported from a session the harness recorded on its own: the
+ * connector kind and the session's `sourceId` (what `sessions.import` named),
+ * and, when the instance can resume it, the session to continue. The thread
+ * has no bound session until its first turn: that turn resumes `session` by
+ * its reference while the thread is still on that instance, and otherwise —
+ * or when the resume fails — starts fresh with the imported rows as a
+ * transcript ahead of the first message. No transcript text is kept here:
+ * the imported messages are the thread's own rows.
+ */
+export const ThreadImport = Schema.Struct({
+  connectorKind: ConnectorKind,
+  sourceId: NonEmptyString,
+  session: Schema.optional(
+    Schema.Struct({ connectorInstanceId: ConnectorInstanceId, sessionRef: Schema.Unknown }),
+  ),
+});
+export type ThreadImport = typeof ThreadImport.Type;
+
+/**
  * The "Forked from" link a forked thread's summary and snapshot carry: the
  * source and its title when the fork was made. Absent on every thread that
  * is not a fork, and on everything written before forks existed.
