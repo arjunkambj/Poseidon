@@ -73,6 +73,7 @@ function SessionRow({
   state,
   selected,
   monogram,
+  iconKey,
   now,
   onSelect,
   onRetry,
@@ -81,6 +82,7 @@ function SessionRow({
   readonly state: RowState;
   readonly selected: boolean;
   readonly monogram: string;
+  readonly iconKey: string | undefined;
   readonly now: number;
   readonly onSelect: (next: boolean) => void;
   readonly onRetry: () => void;
@@ -106,7 +108,7 @@ function SessionRow({
           />
         )}
       </span>
-      <HarnessAvatar monogram={monogram} />
+      <HarnessAvatar monogram={monogram} iconKey={iconKey} />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm">{entry.title}</span>
         <span className="truncate text-xs text-muted-foreground">{details.join(" · ")}</span>
@@ -124,6 +126,7 @@ export function SessionImportList({
   states,
   selected,
   monograms,
+  iconKeys,
   now,
   onSelect,
   onRetry,
@@ -133,6 +136,8 @@ export function SessionImportList({
   readonly selected: ReadonlySet<string>;
   /** Each connector instance's monogram, by instance id. */
   readonly monograms: ReadonlyMap<string, string>;
+  /** Each connector kind's `iconKey`, for its logo in place of the monogram. */
+  readonly iconKeys: ReadonlyMap<string, string>;
   readonly now: number;
   readonly onSelect: (key: string, next: boolean) => void;
   readonly onRetry: (key: string) => void;
@@ -163,6 +168,7 @@ export function SessionImportList({
                   harnessMonograms([entry.connectorName])[0] ??
                   ""
                 }
+                iconKey={iconKeys.get(entry.connectorKind)}
                 now={now}
                 onSelect={(next) => onSelect(key, next)}
                 onRetry={() => onRetry(key)}

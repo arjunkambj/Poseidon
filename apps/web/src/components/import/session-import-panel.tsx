@@ -16,6 +16,7 @@ import * as React from "react";
 
 import { Button } from "@poseidon/ui/components/button";
 
+import { useConnectorIconKeys } from "@/components/ui/icons/use-connector-icon-keys";
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
 import { catalogMonograms } from "@/lib/harness-monogram";
 import {
@@ -42,6 +43,7 @@ export function SessionImportPanel() {
   const connectors = AsyncResult.getOrElse(useAtomValue(atoms.connectorsAtom), () => []);
   const importSession = useAtomSet(atoms.importSessionAtom, { mode: "promiseExit" });
   const now = useNow(MINUTE);
+  const iconKeys = useConnectorIconKeys();
 
   const [states, setStates] = React.useState<ReadonlyMap<string, RowState>>(new Map());
   const [selected, setSelected] = React.useState<ReadonlySet<string>>(new Set());
@@ -180,6 +182,7 @@ export function SessionImportPanel() {
         states={states}
         selected={selected}
         monograms={monograms}
+        iconKeys={iconKeys}
         now={now}
         onSelect={toggle}
         onRetry={retry}
