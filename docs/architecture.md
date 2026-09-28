@@ -402,7 +402,23 @@ which unarchives or deletes them. The import settings page
 (`apps/web/src/components/import/`) lists the sessions `sessions.importable`
 answers, grouped by folder, and imports a selection one row at a time
 (`apps/web/src/lib/session-import.ts`); its list atom is not kept alive, so
-the harnesses' session files are read only while the page is open. The keybindings settings page
+the harnesses' session files are read only while the page is open.
+First-run setup (`apps/web/src/components/onboarding/`) is one dialog,
+mounted once at the root (`OnboardingHost` in `routes/__root.tsx`) and opened
+by an atom (`apps/web/src/state/onboarding.ts`): by itself once, when
+`projects.list` and the settings have both answered with no projects and
+`onboardingCompleted` false (`shouldOpenOnboarding` in
+`apps/web/src/lib/onboarding.ts`, fed by `useLoadedProjects`, which is `null`
+while loading), and again from the palette's "Set up Poseidon…"
+(`onboarding.open`) or Settings → General's "Run setup again". Its steps are
+harnesses, theme, a project and — only when `sessions.importable` has entries
+— import; Skip setup, Finish and closing it all write `onboardingCompleted:
+true`. The harness step draws a row per enabled connector summary with what
+its probe found, re-probes on Re-check, and runs the connector's own install
+or sign-in command as a script in home's terminal (`HomeTerminal`), whose
+drawer opens inside the dialog. The project step and the sidebar's Add project
+dialog share one form (`apps/web/src/components/sidebar/add-project-form.tsx`),
+and the import step is the import page's panel. The keybindings settings page
 (`apps/web/src/components/keybindings/keybindings-editor.tsx`) lists every
 catalog command by area, each with its chords and `when` clauses, and warns
 when a chord collides with another binding in a context that can overlap, when
@@ -1049,10 +1065,13 @@ stored `git` rows hold only `branchPrefix`, so each is defaulted on decode, and
 because a patch's `git` replaces the whole struct a client always spreads the
 current one. `defaults.workspace` (`local` or `worktree`) is optional and
 absent means Local. `generation` (`GenerationSettings`) and
-`confirmThreadDelete` (default true) are defaulted on decode. The server reads
-`generation`, the writing style, custom instructions, `followPrTemplate` and
-`worktreeFromOrigin`; `draftCommitMessages`, `defaults.workspace` and
-`confirmThreadDelete` are the renderer's alone.
+`confirmThreadDelete` (default true) are defaulted on decode.
+`onboardingCompleted` is too, as true, so an install from before first-run
+setup never gets it, while `defaultSettings()` writes false for a fresh one.
+The server reads `generation`, the writing style, custom instructions,
+`followPrTemplate` and `worktreeFromOrigin`; `draftCommitMessages`,
+`defaults.workspace`, `confirmThreadDelete` and `onboardingCompleted` are the
+renderer's alone.
 
 Public seam: its `exports` map. May import `shared` only.
 

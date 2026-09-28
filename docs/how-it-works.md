@@ -260,8 +260,45 @@ Read models with no subscription (`projects.list`, `connectors.list`,
 
 ## 3. First run
 
-A fresh install has no projects, so `/` shows "No projects yet" and the same
-Add project dialog the sidebar opens
+A fresh install opens first-run setup
+(`apps/web/src/components/onboarding/onboarding-dialog.tsx`) over `/`. It
+opens by itself only once the project list and the settings have both loaded,
+with no projects and `onboardingCompleted` false (`shouldOpenOnboarding` in
+`apps/web/src/lib/onboarding.ts`). `useLoadedProjects` is `null` until
+`projects.list` answers, so a slow start does not flash it. `defaultSettings()`
+writes `onboardingCompleted: false`, and a settings row written before the
+field existed decodes it as true, so an existing install never gets it.
+Whichever way it ends — Skip setup on any step, Finish, or the close button —
+it writes `onboardingCompleted: true`, and it opens by itself at most once per
+launch. The palette's "Set up Poseidon…" (`onboarding.open`, no default chord)
+and Settings → General's "Run setup again" open it again at any time. Nothing
+else opens with it, and the dock stays closed.
+
+Its steps, each with Back and Next:
+
+1. **Harnesses.** One row per enabled connector instance, in the order
+   `connectors.list` gives them — the registry's, Command Code first. A row
+   shows the harness's logo (or its monogram), a spinner while the probe
+   below runs or a Re-check is pending, then its status badge, whether it is
+   installed, its version and whether it is signed in (`harnessFacts`). A
+   missing or signed-out harness shows the command its connector named
+   (`connectorHealth`) and a Run in terminal button, which runs that command
+   as a script (`setup:<instanceId>`, titled "<name> setup") in home's
+   terminal. There is no project yet to own one (section 11), and its drawer
+   opens under the list, inside the dialog. Re-check re-probes every connector,
+   as Settings → Connectors' Probe all does.
+2. **Theme.** Settings → General's System, Light and Dark cards.
+3. **Add a project.** The Add project form
+   (`apps/web/src/components/sidebar/add-project-form.tsx`, which the
+   sidebar's dialog uses too): the native folder picker on the desktop, the
+   server's (below) elsewhere. Each project it adds is named above the form,
+   which clears for another.
+4. **Import sessions**, only when `sessions.importable` lists something:
+   Settings → Import's panel (below) in a short scrolling box. The list is
+   read when setup opens, which is the only other time it is read.
+
+Skipped, `/` with no projects shows "No projects yet" and the same Add project
+dialog the sidebar opens
 (`apps/web/src/components/sidebar/add-project-dialog.tsx`). Connectors are
 checked in Settings → Connectors.
 
@@ -409,8 +446,9 @@ rejected path in the field so it can be corrected.
 
 Settings → Import (`apps/web/src/routes/settings/import.tsx`, also in the
 palette's Settings group) brings in sessions Claude Code and Codex recorded on
-their own. Opening the page calls `sessions.importable`; nothing else does, so
-the harnesses' session files are read only then. The answer is grouped by the
+their own. Opening the page calls `sessions.importable`, as opening first-run
+setup does; nothing else does, so the harnesses' session files are read only
+then. The answer is grouped by the
 folder each session ran in, the group with the newest session first, each
 group saying whether a project is already open on that folder or one will be
 added (`groupSessions` in `apps/web/src/lib/session-import.ts`). A row shows
@@ -3467,8 +3505,8 @@ Each thread has a terminal drawer at the bottom of its column: real shells,
 running on the server in the thread's workspace, shown in xterm. The New task
 page has one too, before any thread exists: its shells belong to the picked
 project and run in the project's folder. First-run setup, before any project
-exists, can mount one as well (`HomeTerminal`): its shells belong to home and
-run in the user's home folder.
+exists, mounts one under its harness list once a setup command runs
+(`HomeTerminal`): its shells belong to home and run in the user's home folder.
 
 ### Opening one
 
@@ -3883,6 +3921,7 @@ Settings
   modelPicker        { harnesses, models }      which harnesses and models the pickers offer
   generation         { writingModel, writingEffort, autoTitle }  who writes generated text
   confirmThreadDelete boolean                   whether a delete asks first; on by default
+  onboardingCompleted boolean                   whether first-run setup was finished or skipped
 ```
 
 `git` and `projectSettings`, like the two font sizes, are defaulted on decode
