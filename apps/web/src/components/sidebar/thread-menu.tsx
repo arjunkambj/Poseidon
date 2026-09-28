@@ -1,10 +1,12 @@
 /**
- * The per-thread menu: pin or unpin, mark unread, archive or unarchive,
- * delete. It opens from the row's overflow button or a right-click anywhere on
- * the row. Pins and the unread mark are this window's, never the server's —
- * see `./thread-pins` and `./thread-seen`. Rename is not in it —
- * that is `thread.rename` on the open thread, which this module's
- * `RenameThreadDialog` answers from `@/components/thread/thread-shortcuts`.
+ * The per-thread menu. It opens from the row's overflow button or a
+ * right-click anywhere on the row, and both draw one item list
+ * (`./thread-menu-items`): rename, pin, mark unread, copy, open a terminal,
+ * start a thread beside it, archive, delete. Rename edits the title in the row
+ * itself (`./thread-title-input`); this module's `RenameThreadDialog` is the
+ * other path, for `thread.rename` on the open thread, answered from
+ * `@/components/thread/thread-shortcuts`. Pins and the unread mark are this
+ * window's, never the server's — see `./thread-pins` and `./thread-seen`.
  *
  * `thread.rename`, `thread.archive`, `thread.unarchive` and `thread.delete`
  * run through the command union, the decider and the reactors — closing the
@@ -19,17 +21,17 @@
  * is not — the thread stays, and an archived row offers Unarchive in place of
  * Archive, as the Archived threads settings page does.
  *
- * Pin, Mark unread and Archive go through `./use-sidebar-actions`, so each
- * can be undone — Archive from its toast, all three with `sidebar.undo`.
+ * Rename, Pin, Mark unread and Archive go through `./use-sidebar-actions`, so
+ * each can be undone — Archive from its toast, all four with `sidebar.undo`.
  *
  * The open thread's menu names the keys that do the same from anywhere —
- * `thread.pin` (`./triage-shortcuts`), `thread.archive` and `thread.delete`
- * (`@/components/thread/thread-shortcuts`) while a thread is open.
+ * `thread.rename`, `thread.pin` (`./triage-shortcuts`), `thread.archive` and
+ * `thread.delete` (`@/components/thread/thread-shortcuts`) while a thread is
+ * open.
  *
- * Both menus draw one item list (`ThreadMenuItems`) and each keeps its own
- * delete dialog. The dialog is a sibling of its menu, not a child of it: two modal
- * surfaces each own a focus trap, and a menu that is closing while a dialog
- * opens inside it fights the dialog for focus.
+ * Each menu keeps its own delete dialog. The dialog is a sibling of its menu,
+ * not a child of it: two modal surfaces each own a focus trap, and a menu that
+ * is closing while a dialog opens inside it fights the dialog for focus.
  */
 
 import * as React from "react";
@@ -46,17 +48,11 @@ import {
 import {
   ContextMenu,
   ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuShortcut,
   ContextMenuTrigger,
 } from "@poseidon/ui/components/context-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@poseidon/ui/components/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
@@ -65,20 +61,13 @@ import { Label } from "@poseidon/ui/components/label";
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { DeleteThreadDialog } from "@/components/sidebar/delete-thread-dialog";
-import { threadCommandBase, useThreadCommand } from "@/components/sidebar/thread-actions";
-import { useThreadPins } from "@/components/sidebar/thread-pins";
-import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
-import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
-import { CommandKbd } from "@/lib/shortcuts";
 import {
-  Archive as ArchiveIcon,
-  ArchiveUp,
-  Email,
-  MoreVertical,
-  Pin,
-  PinOff,
-  Trash,
-} from "@honeyicons/react";
+  CONTEXT_PARTS,
+  DROPDOWN_PARTS,
+  ThreadMenuItems,
+} from "@/components/sidebar/thread-menu-items";
+import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
+import { MoreVertical } from "@honeyicons/react";
 
 /**
  * The rename form, for `thread.rename` on the open thread
@@ -164,96 +153,6 @@ export function RenameThreadDialog({
   );
 }
 
-/** The item parts of one menu flavour, so both menus share one item list. */
-type MenuParts = {
-  readonly Item: typeof DropdownMenuItem | typeof ContextMenuItem;
-  readonly Separator: typeof DropdownMenuSeparator | typeof ContextMenuSeparator;
-  readonly Shortcut: typeof DropdownMenuShortcut | typeof ContextMenuShortcut;
-};
-
-const DROPDOWN_PARTS: MenuParts = {
-  Item: DropdownMenuItem,
-  Separator: DropdownMenuSeparator,
-  Shortcut: DropdownMenuShortcut,
-};
-
-const CONTEXT_PARTS: MenuParts = {
-  Item: ContextMenuItem,
-  Separator: ContextMenuSeparator,
-  Shortcut: ContextMenuShortcut,
-};
-
-/**
- * Pin or unpin and mark unread, archive or unarchive, then delete. `active`
- * marks the open thread's row: the lifecycle keys act on the open thread, so
- * only its menu names them.
- */
-function ThreadMenuItems({
-  parts: { Item, Separator, Shortcut },
-  thread,
-  active,
-  onDelete,
-}: {
-  readonly parts: MenuParts;
-  readonly thread: ThreadSummary;
-  readonly active: boolean;
-  readonly onDelete: () => void;
-}) {
-  const send = useThreadCommand();
-  const actions = useSidebarActions();
-  const [pins] = useThreadPins();
-  const pinned = pins.includes(thread.threadId);
-  const base = () => threadCommandBase(thread.threadId);
-  const keys = (command: string) =>
-    active ? (
-      <Shortcut>
-        <CommandKbd command={command} />
-      </Shortcut>
-    ) : null;
-
-  return (
-    <>
-      <Item onClick={() => actions.setPinned(thread, !pinned)}>
-        {pinned ? <PinOff variant="bold" /> : <Pin variant="bold" />}
-        {pinned ? "Unpin" : "Pin"}
-        {keys("thread.pin")}
-      </Item>
-      <Item onClick={() => actions.markUnread([thread])}>
-        <Email variant="bold" />
-        Mark unread
-      </Item>
-      <Separator />
-      {thread.status === "archived" ? (
-        <Item
-          onClick={() =>
-            void send(
-              { ...base(), type: "thread.unarchive" },
-              "Thread was not unarchived",
-              "Unarchived",
-            )
-          }
-        >
-          <ArchiveUp variant="bold" />
-          Unarchive
-          {keys("thread.archive")}
-        </Item>
-      ) : (
-        <Item onClick={() => void actions.archive([thread])}>
-          <ArchiveIcon variant="bold" />
-          Archive
-          {keys("thread.archive")}
-        </Item>
-      )}
-      <Separator />
-      <Item variant="destructive" onClick={onDelete}>
-        <Trash variant="bold" />
-        Delete
-        {keys("thread.delete")}
-      </Item>
-    </>
-  );
-}
-
 /** The delete confirmation, for either menu. */
 function useDeleteDialog(thread: ThreadSummary) {
   const remove = useDeleteThread();
@@ -301,7 +200,7 @@ export function ThreadRowMenu({
           </TooltipTrigger>
           <TooltipContent>More actions</TooltipContent>
         </Tooltip>
-        <DropdownMenuContent align="end" className={active ? "w-52" : "w-44"}>
+        <DropdownMenuContent align="end" className="w-56">
           <ThreadMenuItems
             parts={DROPDOWN_PARTS}
             thread={thread}
@@ -337,7 +236,7 @@ export function ThreadContextMenu({
     <>
       <ContextMenu>
         <ContextMenuTrigger render={row}>{children}</ContextMenuTrigger>
-        <ContextMenuContent className={active ? "w-52" : "w-44"}>
+        <ContextMenuContent className="w-56">
           <ThreadMenuItems
             parts={CONTEXT_PARTS}
             thread={thread}

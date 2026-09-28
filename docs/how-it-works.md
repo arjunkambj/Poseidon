@@ -2055,6 +2055,13 @@ thread's own composer. Once the thread exists, its header's branch picker
 shows the branch with a fork mark and the path in a tooltip, and its sidebar
 row carries a fork mark.
 
+A second thread can start in a worktree that already exists: **New thread in
+this project** in a worktree thread's sidebar menu sends `thread.create` with
+that thread's `worktree` and a fresh id, with no new worktree and no setup
+run, and the new thread shares the directory and branch. From a local thread
+the same item starts a local thread, or opens the project's blank newest one
+as the per-project button does.
+
 ### Deleting a worktree thread
 
 The sidebar row menu and Settings → Archived threads confirm a delete with the

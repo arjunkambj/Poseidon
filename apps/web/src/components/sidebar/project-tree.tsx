@@ -34,8 +34,9 @@
  * can be archived or deleted together from the bar under the tree — see
  * `./thread-selection` and `./thread-selection-bar`.
  *
- * Every row has an overflow menu, revealed on hover: pin, mark unread,
- * archive and delete for a thread, remove for a project. A thread row also
+ * Every row has an overflow menu, revealed on hover: for a thread, rename,
+ * pin, mark unread, copy, open a terminal, start a thread beside it, archive
+ * and delete (`./thread-menu-items`); for a project, remove. A thread row also
  * offers archive on its own.
  * Those four commands existed end to end — decider, reactors, tests — with
  * nothing in the UI that could send them, so the sidebar only ever grew and a

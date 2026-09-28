@@ -343,9 +343,13 @@ more than one runs and a tooltip naming them
 (`apps/web/src/components/terminal/thread-terminals-mark.tsx`); every row reads
 one `terminal.listRunning` listing, so a long sidebar costs one call per
 refetch rather than one per row. On hover the time gives
-way to two actions: archive, and the overflow menu (pin or unpin, mark
-unread, archive or unarchive, delete). An archived row, listed only while it is
-open, offers the menu alone. "Mark unread" lights the dot and the bold title
+way to two actions: archive, and the overflow menu, which a right-click on
+the row opens too (`apps/web/src/components/sidebar/thread-menu-items.tsx`):
+rename, pin or unpin, mark unread, a Copy submenu (the workspace path, the
+branch of a worktree thread, the thread ID), open terminal here (the thread
+with its terminal drawer open), new thread in this project (in the same
+worktree for a worktree thread), then archive or unarchive and delete. An
+archived row, listed only while it is open, offers the menu alone. "Mark unread" lights the dot and the bold title
 until the thread is opened again. Pinned threads leave their project for a
 "Pinned" group above Projects (`apps/web/src/components/sidebar/pinned-threads.tsx`),
 newest pin first, whether or not their project is folded. Archive, pin and
@@ -355,7 +359,7 @@ toast offers Undo, and `Mod+Z` outside text fields, the terminal and the
 browser pane undoes the latest of them. Archiving unpins a thread; undoing
 the archive unarchives it, pins it again and, when it was the open thread,
 opens it again. `Mod+Shift+P` pins or unpins the open thread. A
-double-click on any row's title swaps it for a title field, prefilled and
+double-click on any row's title, or Rename in its menu, swaps it for a title field, prefilled and
 selected (`apps/web/src/components/sidebar/thread-title-input.tsx`, with
 `thread-rename.ts` naming the one row being renamed): Enter sends
 `thread.rename` when the trimmed title is new and not empty, and Escape or a
