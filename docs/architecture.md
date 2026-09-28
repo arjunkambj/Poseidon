@@ -913,6 +913,15 @@ package.
 rungs a model accepts is `ModelOption.efforts`, and a harness maps its own names
 onto these. The union only grows, so a stored thread's effort always decodes.
 
+`ModelOption.hidden` is optional: a connector may list a model it does not want
+offered by default. The settings document's `modelPicker` holds the user's
+switches over that — `harnesses` keyed by connector instance id, `models` by
+instance id then model id, plain string keys so a stale id still decodes. Only
+a flipped switch is stored, like `plugins`, so a default a connector changes
+later still applies. It is defaulted on decode, so older rows read as nothing
+switched. The rules that read it — every harness on, every model on unless
+hidden, the current pick always kept — are `apps/web/src/lib/model-visibility.ts`.
+
 Public seam: its `exports` map. May import `shared` only.
 
 ### packages/connector-sdk
