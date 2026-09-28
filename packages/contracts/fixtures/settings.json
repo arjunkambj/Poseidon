@@ -88,5 +88,6 @@
     "writingEffort": "low",
     "autoTitle": true
   },
-  "confirmThreadDelete": false
+  "confirmThreadDelete": false,
+  "onboardingCompleted": true
 }

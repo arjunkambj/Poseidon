@@ -135,6 +135,7 @@ describe("settingsForm annotations", () => {
         "mainFontSize",
         "modelPicker",
         "notifications",
+        "onboardingCompleted",
         "permissions",
         "plugins",
         "projectSettings",
@@ -612,6 +613,7 @@ describe("generated text settings", () => {
       const {
         generation: _generation,
         confirmThreadDelete: _confirm,
+        onboardingCompleted: _onboarding,
         git: _git,
         ...older
       } = Schema.encodeUnknownSync(Settings)(defaultSettings()) as Record<string, unknown>;
@@ -634,6 +636,8 @@ describe("generated text settings", () => {
       });
       expect(decoded.generation).toEqual(DEFAULT_GENERATION_SETTINGS);
       expect(decoded.confirmThreadDelete).toBe(true);
+      // An install from before first-run setup existed never gets it.
+      expect(decoded.onboardingCompleted).toBe(true);
       expect(decoded.defaults.workspace).toBeUndefined();
     }),
   );
@@ -668,6 +672,7 @@ describe("generated text settings", () => {
           autoTitle: false,
         },
         confirmThreadDelete: false,
+        onboardingCompleted: true,
       };
       const decoded = yield* Schema.decodeUnknownEffect(Settings)(
         JSON.parse(JSON.stringify(Schema.encodeUnknownSync(Settings)(settings))),
@@ -675,6 +680,7 @@ describe("generated text settings", () => {
       expect(decoded).toEqual(settings);
       expect(defaultSettings().generation).toEqual(DEFAULT_GENERATION_SETTINGS);
       expect(defaultSettings().confirmThreadDelete).toBe(true);
+      expect(defaultSettings().onboardingCompleted).toBe(false);
     }),
   );
 
@@ -684,11 +690,13 @@ describe("generated text settings", () => {
       const patch = yield* Schema.decodeUnknownEffect(SettingsPatch)({
         generation: { writingModel: null, writingEffort: "medium", autoTitle: true },
         confirmThreadDelete: false,
+        onboardingCompleted: true,
         defaults: { model: null, effort: "medium", runtimeMode: "full-access", workspace: "local" },
       });
       const applied = yield* Schema.decodeUnknownEffect(Settings)({ ...base, ...patch });
       expect(applied.generation.writingEffort).toBe("medium");
       expect(applied.confirmThreadDelete).toBe(false);
+      expect(applied.onboardingCompleted).toBe(true);
       expect(applied.defaults.workspace).toBe("local");
     }),
   );
@@ -737,6 +745,7 @@ describe("generated text settings", () => {
       const hidden = fields.filter((field) => field.control === "hidden").map((field) => field.key);
       expect(hidden).toContain("generation");
       expect(hidden).toContain("confirmThreadDelete");
+      expect(hidden).toContain("onboardingCompleted");
     }),
   );
 });

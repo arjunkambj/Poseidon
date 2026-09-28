@@ -564,6 +564,14 @@ export const Settings = Schema.Struct({
     Schema.withDecodingDefaultKey(Effect.succeed(true)),
     settingsForm({ label: "Confirm before deleting a thread", control: "hidden" }),
   ),
+  // Whether the first-run setup was finished or skipped. A fresh install
+  // writes false (`defaultSettings`), so setup opens once; a row written
+  // before the field existed decodes as true, so an existing install never
+  // gets it. Settings → General and the palette open it again either way.
+  onboardingCompleted: Schema.Boolean.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed(true)),
+    settingsForm({ label: "Setup completed", control: "hidden" }),
+  ),
 });
 export type Settings = typeof Settings.Type;
 
@@ -588,13 +596,15 @@ export const SettingsPatch = Schema.Struct({
   modelPicker: Schema.optional(ModelPickerSettings),
   generation: Schema.optional(GenerationSettings),
   confirmThreadDelete: Schema.optional(Schema.Boolean),
+  onboardingCompleted: Schema.optional(Schema.Boolean),
 });
 export type SettingsPatch = typeof SettingsPatch.Type;
 
 /**
  * The document a fresh install writes. No connectors are configured yet, so no
  * model is chosen, and the runtime mode is the one that asks before acting.
- * No keybinding is overridden, so every shipped default applies.
+ * No keybinding is overridden, so every shipped default applies. Setup has not
+ * run, so the renderer offers it once.
  */
 export const defaultSettings = (): Settings => ({
   connectors: [],
@@ -615,4 +625,5 @@ export const defaultSettings = (): Settings => ({
   modelPicker: DEFAULT_MODEL_PICKER_SETTINGS,
   generation: DEFAULT_GENERATION_SETTINGS,
   confirmThreadDelete: true,
+  onboardingCompleted: false,
 });
