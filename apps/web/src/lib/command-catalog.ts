@@ -55,6 +55,7 @@ import {
   Pin,
   Play,
   Refresh,
+  Rocket,
   Search,
   Server,
   Settings,
@@ -171,6 +172,9 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   command("Composer", "thread.interrupt", "Stop turn", Stop, { paletteWhen: "turnRunning" }),
   command("Composer", "composer.attach", "Attach files", Paperclip),
   command("Composer", "composer.clearDraft", "Clear draft", Eraser),
+  command("Composer", "composer.startInBackground", "Start in background", Rocket, {
+    description: "Starts the task and stays on New task",
+  }),
 
   // View
   command("View", "sidebar.toggle", "Toggle sidebar", SidebarLeft),

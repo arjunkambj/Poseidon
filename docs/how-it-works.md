@@ -3038,6 +3038,7 @@ fields entirely.
 | Composer | `thread.interrupt`                                    | `Escape`                      | `turnRunning && !dialogOpen && (composerFocus \|\| (!inputFocus && !approvalPending))` |
 | Composer | `composer.attach`                                     | `Mod+U`                       |                                                                                        |
 | Composer | `composer.clearDraft`                                 | `Mod+Shift+Backspace`         | `composerFocus`                                                                        |
+| Composer | `composer.startInBackground`                          | `Mod+Alt+Enter`               | `newTaskOpen`                                                                          |
 | View     | `sidebar.toggle`                                      | `Mod+B`                       |                                                                                        |
 | View     | `dock.toggle`                                         | `Mod+Alt+B`                   | `threadOpen \|\| newTaskOpen`                                                          |
 | View     | `dock.changes` / `dock.files`                         | `Mod+Shift+D` / `Mod+P`       | `threadOpen \|\| newTaskOpen`                                                          |

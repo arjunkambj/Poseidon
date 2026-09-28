@@ -177,6 +177,16 @@ describe("the default table and the matcher agree", () => {
     expect(resolve(press("]", { metaKey: true }), inPane)).toBe("browser.forward");
   });
 
+  it("starts in the background only on New task", () => {
+    const chord = press("Enter", { metaKey: true, altKey: true });
+    expect(resolve(chord)).toBeNull();
+    expect(resolve(chord, { newTaskOpen: true })).toBe("composer.startInBackground");
+    // The plain queue chord is not taken by it.
+    expect(resolve(press("Enter", { metaKey: true }), { newTaskOpen: true })).toBe(
+      "composer.queue",
+    );
+  });
+
   it("does not fire a bare chord when an extra modifier is held", () => {
     expect(resolve(press("Escape", { shiftKey: true }), { turnRunning: true })).toBeNull();
   });

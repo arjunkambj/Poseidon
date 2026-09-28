@@ -50,6 +50,7 @@ describe("DEFAULT_KEYBINDINGS", () => {
       expect(byCommand.get("sidebar.toggle")).toBe("Mod+B");
       expect(byCommand.get("skills.open")).toBe("Mod+Shift+S");
       expect(byCommand.get("settings.open")).toBe("Mod+,");
+      expect(byCommand.get("composer.startInBackground")).toBe("Mod+Alt+Enter");
     }),
   );
 

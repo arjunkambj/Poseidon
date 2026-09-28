@@ -139,6 +139,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<Keybinding> = [
   },
   { command: "composer.attach", shortcut: "Mod+U" },
   { command: "composer.clearDraft", shortcut: "Mod+Shift+Backspace", when: "composerFocus" },
+  { command: "composer.startInBackground", shortcut: "Mod+Alt+Enter", when: "newTaskOpen" },
   // View
   { command: "sidebar.toggle", shortcut: "Mod+B" },
   { command: "dock.toggle", shortcut: "Mod+Alt+B", when: DOCK },
