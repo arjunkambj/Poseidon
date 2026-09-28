@@ -222,6 +222,8 @@ const singles: ReadonlyArray<{ readonly path: string; readonly schema: FixtureSc
   // it lands, on the command and on the durable work order.
   { path: "variants/thread.checkpoint.restore.resend.json", schema: Command },
   { path: "variants/thread.checkpoint.restore.requested.resend.json", schema: OrchestrationEvent },
+  // A plan closed because it went to a new thread to be implemented there.
+  { path: "variants/thread.plan.responded.handoff.json", schema: OrchestrationEvent },
   { path: "settings.json", schema: Settings },
   { path: "read-models/project-summary.json", schema: ProjectSummary },
   { path: "read-models/thread-summary.json", schema: ThreadSummary },

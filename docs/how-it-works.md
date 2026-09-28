@@ -1455,6 +1455,7 @@ has nothing to deny. `ProviderCommandReactor` acts on
 | `accept`      | `interactionMode: "default"`                                     | "Implement the approved plan at `<path>`" |
 | `accept-auto` | `interactionMode: "default"`, `runtimeMode: "auto-accept-edits"` | the same                                  |
 | `revise`      | `interactionMode: "plan"`                                        | the feedback text, or "Revise the plan"   |
+| `handoff`     | `interactionMode: "default"`                                     | none: the plan runs in a new thread       |
 
 The plan's path travels on the `thread.plan.responded` event rather than in a
 reactor's memory: the fold clears `pendingPlan` on that very event, so carrying

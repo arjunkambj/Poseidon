@@ -643,6 +643,21 @@ const rows: ReadonlyArray<Row> = [
     events: ["thread.plan.responded"],
   },
   {
+    name: "thread.plan.respond accepts a handoff to a new thread",
+    command: {
+      ...baseCommand,
+      type: "thread.plan.respond",
+      threadId: makeThreadId(),
+      turnId: "turn-1",
+      action: "handoff",
+    } as unknown as Command,
+    thread: threadDoc({
+      pendingPlan: { turnId: "turn-1" as never, planMarkdown: "# Plan" },
+      status: "waiting",
+    }),
+    events: ["thread.plan.responded"],
+  },
+  {
     name: "thread.plan.respond rejects a mismatched turn",
     command: {
       ...baseCommand,

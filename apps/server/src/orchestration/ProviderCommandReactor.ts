@@ -425,6 +425,10 @@ export const ProviderCommandReactor = Layer.effectDiscard(
                 attachments: [],
                 mentions: [],
               });
+            } else if (action === "handoff") {
+              // The plan is implemented in a thread of its own. This one only
+              // leaves plan mode, so its next message is not another plan.
+              yield* dispatchSettings(threadId, { interactionMode: "default" });
             }
             return;
           }

@@ -1,0 +1,15 @@
+{
+  "sequence": 21,
+  "eventId": "0199c0de-0006-7000-8000-000000000122",
+  "streamKind": "thread",
+  "streamId": "0199c0de-0002-7000-8000-000000000001",
+  "streamVersion": 19,
+  "occurredAt": "2026-09-15T12:00:21.000Z",
+  "commandId": "0199c0de-0008-7000-8000-000000000002",
+  "actor": "user",
+  "type": "thread.plan.responded",
+  "payload": {
+    "turnId": "0199c0de-0004-7000-8000-000000000001",
+    "action": "handoff"
+  }
+}

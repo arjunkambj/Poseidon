@@ -1601,7 +1601,8 @@ refused, so it is never lost. `turn.interrupted` → `handle.interrupt(turnId)`,
 and the turn stays in flight until the connector settles it — this fiber settles
 it itself only when there is no live session left to do so.
 `approval.resolved` / `userInput.resolved` / `plan.responded` → the matching
-`respond*` on the live handle, plus the plan follow-up. `settings.updated` →
+`respond*` on the live handle, plus the plan follow-up (a `handoff` answer only
+leaves plan mode and starts no turn: the plan went to a new thread). `settings.updated` →
 `handle.updateSettings`. `turn.completed` → dequeue the head of the queue and
 dispatch it as a new turn, whatever its `stopReason`. After an interrupt that
 is on purpose: a message sent while an interrupt settles is queued so it runs

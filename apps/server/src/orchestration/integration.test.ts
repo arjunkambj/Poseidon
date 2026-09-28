@@ -373,6 +373,55 @@ describe("orchestration with a fake connector", () => {
     }),
   );
 
+  it.effect("plan handoff closes the plan and leaves plan mode without starting a turn", () =>
+    Effect.gen(function* () {
+      const planTurnScript: FakeTurnScript = ({ turnId }) => [
+        {
+          turnId,
+          type: "turn.plan.proposed",
+          payload: { turnId, planMarkdown: "# the plan" },
+        },
+      ];
+      const { fake, instance } = yield* openFake({ script: planTurnScript });
+      yield* Effect.gen(function* () {
+        const engine = yield* OrchestrationEngine;
+        yield* engine.dispatch(createProject);
+        yield* engine.dispatch(createPlanThread);
+
+        const firstCompleted = yield* awaitEvent(engine, isType("thread.turn.completed"));
+        yield* engine.dispatch(turnStart("plan it"));
+        yield* Fiber.join(firstCompleted);
+        const planTurnId = (yield* engine.threadDetail(threadId))!.pendingPlan!.turnId;
+
+        const settled = yield* awaitEvent(engine, isType("thread.settings.updated"));
+        yield* engine.dispatch({
+          commandId: makeCommandId(),
+          createdAt: NOW,
+          type: "thread.plan.respond",
+          threadId,
+          turnId: planTurnId,
+          action: "handoff",
+        });
+        yield* Fiber.join(settled);
+
+        const after = yield* engine.threadDetail(threadId);
+        expect(after?.pendingPlan).toBeNull();
+        expect(after?.settings.interactionMode).toBe("default");
+        expect(after?.status).toBe("idle");
+        expect(after?.decisions?.at(-1)?.outcome).toBe("handoff");
+        // The plan runs in the new thread: nothing more is asked here.
+        expect(
+          after?.items.filter((item) => item.kind === "user_message").map((item) => item.text),
+        ).toEqual(["plan it"]);
+      }).pipe(Effect.provide(stackLayer({ instance })));
+
+      const session = yield* fake.session(threadId);
+      const calls = yield* session!.calls;
+      expect(calls.filter((call) => call.method === "send")).toHaveLength(1);
+      expect(calls.find((call) => call.method === "respondToPlan")?.detail.action).toBe("handoff");
+    }),
+  );
+
   it.effect("plan accept-auto leaves plan mode and switches runtime mode", () =>
     Effect.gen(function* () {
       const planTurnScript: FakeTurnScript = ({ turnId }) => [

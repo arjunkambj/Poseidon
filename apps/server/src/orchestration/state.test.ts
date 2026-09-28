@@ -176,6 +176,20 @@ describe("the thread fold", () => {
     expect(doc?.status).toBe("idle");
   });
 
+  it("closes a plan handed off to a new thread and records the handoff", () => {
+    const turnId = makeTurnId();
+    const doc = foldThread([
+      created(),
+      turnRequested(turnId),
+      event("thread.plan.proposed", { turnId, planMarkdown: "# plan" }),
+      event("thread.turn.completed", { turnId, stopReason: "end_turn" }),
+      event("thread.plan.responded", { turnId, action: "handoff" }),
+    ]);
+    expect(doc?.pendingPlan).toBeNull();
+    expect(doc?.status).toBe("idle");
+    expect(doc?.decisions.map((decision) => decision.outcome)).toEqual(["handoff"]);
+  });
+
   it("keeps the turn's references for a resume to re-send, and none from an old event", () => {
     const references = [{ kind: "skill" as const, name: "release-notes" }];
     const withReferences = foldThread([

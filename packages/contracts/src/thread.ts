@@ -177,8 +177,12 @@ export type ThreadStatus = typeof ThreadStatus.Type;
 export const ThreadActivity = Schema.Literals(["thinking", "working"]);
 export type ThreadActivity = typeof ThreadActivity.Type;
 
-/** What the user chose on a proposed plan. */
-export const PlanResponseAction = Schema.Literals(["accept", "accept-auto", "revise"]);
+/**
+ * What the user chose on a proposed plan. `handoff` closes the plan without
+ * running it here: it went to a new thread to be implemented there, so this
+ * thread leaves plan mode and starts no turn.
+ */
+export const PlanResponseAction = Schema.Literals(["accept", "accept-auto", "revise", "handoff"]);
 export type PlanResponseAction = typeof PlanResponseAction.Type;
 
 /**
