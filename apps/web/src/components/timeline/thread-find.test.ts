@@ -205,6 +205,18 @@ describe("locateItem", () => {
     });
   });
 
+  it("opens a long user message clamped under its fade", () => {
+    const long = item("user_message", {
+      text: Array.from({ length: 14 }, (_, i) => `line ${i}`).join("\n"),
+    });
+    const reply = item("assistant_message", { text: "done" });
+    const { open, closed } = projections([long, reply]);
+    expect(locateItem(open, closed, long.itemId)).toEqual({
+      rowId: long.itemId,
+      open: [`user-message:${long.itemId}`],
+    });
+  });
+
   it("finds nothing for an unknown item", () => {
     const { open, closed } = projections([item("user_message")]);
     expect(locateItem(open, closed, "missing")).toBeUndefined();

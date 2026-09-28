@@ -27,6 +27,7 @@ import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 
 import type { TimelineProjection } from "@/components/timeline/fold";
 import { toolPathTarget } from "@/components/timeline/tool-target";
+import { userMessageOverflows } from "@/components/timeline/user-message-collapse";
 
 /**
  * Which text of an item a document holds. `body` is text inside the row's own
@@ -203,7 +204,8 @@ export const currentMatchIndex = (
  * and one built with the folds as they are (`shown`, or every fold closed).
  * A top-level row of `allOpen` missing from `shown` sits behind the turn fold
  * before it, so that fold opens first; then the work group holding the item,
- * each task above it, and — for a reasoning or plan body — the row itself.
+ * each task above it, and — for a reasoning or plan body — the row itself. A
+ * long user message is clamped (`user-message-row.tsx`), so it opens too.
  */
 export const locateItem = (
   allOpen: TimelineProjection,
@@ -248,6 +250,14 @@ export const locateItem = (
     open.push(...ancestors);
     if (field === "body") {
       open.push(itemId);
+    }
+    if (
+      row.kind === "item" &&
+      row.item.itemId === itemId &&
+      row.item.kind === "user_message" &&
+      userMessageOverflows(row.item.text ?? "")
+    ) {
+      open.push(`user-message:${itemId}`);
     }
     return { rowId: row.id, open };
   }

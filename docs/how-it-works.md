@@ -1073,8 +1073,8 @@ an error (`timeline/thread-find.ts`). Command output and tool payloads are
 left out. Typing is debounced and a new query goes to its first match; the
 bar shows "3/12", and Enter, Shift+Enter or its arrows step through the
 matches, wrapping at either end. A step opens whatever hides the match — its
-turn fold, its work group, the tasks above it, its own reasoning or plan body
-— hands the scroll to the reader as the rail does, and scrolls the row to
+turn fold, its work group, the tasks above it, its own reasoning or plan body,
+the clamp on a long user message — hands the scroll to the reader as the rail does, and scrolls the row to
 30% down the viewport once the list holds it. The match the reader is on
 keeps its place while a reply streams in more matches. Escape closes the bar
 and puts the focus back in the composer. Pressing Mod+F again with the bar
