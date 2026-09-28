@@ -363,6 +363,23 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 /** Days of inactivity before a thread moves to Done on its own: a positive whole number. */
 export const AutoDoneAfterDays = Schema.Int.check(Schema.isGreaterThan(0));
 
+/**
+ * Which harnesses and models the model pickers offer. Keys are connector
+ * instance ids, and inside `models` model ids — plain strings, so an id that
+ * no longer exists still decodes. Only a switch the user flipped has an entry,
+ * like `plugins`: everything else keeps its default (every harness on, every
+ * model on unless its connector marks it `hidden`), so a default a connector
+ * changes later still reaches this install. It filters the pickers only; a
+ * thread already on a switched-off harness or model keeps it.
+ */
+export const ModelPickerSettings = Schema.Struct({
+  harnesses: Schema.Record(Schema.String, Schema.Boolean),
+  models: Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Boolean)),
+});
+export type ModelPickerSettings = typeof ModelPickerSettings.Type;
+
+export const DEFAULT_MODEL_PICKER_SETTINGS: ModelPickerSettings = { harnesses: {}, models: {} };
+
 export const Settings = Schema.Struct({
   connectors: Schema.Array(ConnectorInstanceConfig).pipe(
     settingsForm({ label: "Connectors", control: "hidden" }),
@@ -459,6 +476,12 @@ export const Settings = Schema.Struct({
   autoDoneAfterDays: Schema.optional(Schema.NullOr(AutoDoneAfterDays)).pipe(
     settingsForm({ label: "Move to Done after", control: "hidden" }),
   ),
+  // Harness and model switches for the pickers. Defaulted on decode like
+  // `plugins`: rows written before it existed decode with nothing switched.
+  modelPicker: ModelPickerSettings.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_MODEL_PICKER_SETTINGS)),
+    settingsForm({ label: "Model picker", control: "hidden" }),
+  ),
 });
 export type Settings = typeof Settings.Type;
 
@@ -480,6 +503,7 @@ export const SettingsPatch = Schema.Struct({
   preferredEditor: Schema.optional(Schema.String),
   plugins: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
   autoDoneAfterDays: Schema.optional(Schema.NullOr(AutoDoneAfterDays)),
+  modelPicker: Schema.optional(ModelPickerSettings),
 });
 export type SettingsPatch = typeof SettingsPatch.Type;
 
@@ -504,4 +528,5 @@ export const defaultSettings = (): Settings => ({
   diffView: DEFAULT_DIFF_VIEW_SETTINGS,
   notifications: DEFAULT_NOTIFICATION_SETTINGS,
   plugins: {},
+  modelPicker: DEFAULT_MODEL_PICKER_SETTINGS,
 });

@@ -69,5 +69,9 @@
     "dockBadge": true,
     "keepAwake": true
   },
-  "plugins": { "builtin:browser": false }
+  "plugins": { "builtin:browser": false },
+  "modelPicker": {
+    "harnesses": { "0199c0de-0002-7000-8000-000000000002": false },
+    "models": { "0199c0de-0003-7000-8000-000000000001": { "model-hidden-by-default": true } }
+  }
 }

@@ -10,6 +10,7 @@ import {
   DEFAULT_CHAT_WIDTH,
   DEFAULT_DIFF_VIEW_SETTINGS,
   DEFAULT_FONT_SIZE,
+  DEFAULT_MODEL_PICKER_SETTINGS,
   DEFAULT_NOTIFICATION_SETTINGS,
   MAX_FONT_SIZE,
   PermissionRule,
@@ -128,6 +129,7 @@ describe("settingsForm annotations", () => {
         "keybindings",
         "keybindingsFormat",
         "mainFontSize",
+        "modelPicker",
         "notifications",
         "permissions",
         "plugins",
@@ -365,6 +367,63 @@ describe("plugin overrides", () => {
         Schema.decodeUnknownEffect(SettingsPatch)({ plugins: { "builtin:browser": "off" } }),
       );
       expect(exit._tag).toBe("Failure");
+    }),
+  );
+});
+
+describe("model picker switches", () => {
+  it.effect("switch nothing on a fresh install", () =>
+    Effect.gen(function* () {
+      const settings = yield* Effect.sync(defaultSettings);
+      expect(settings.modelPicker).toEqual({ harnesses: {}, models: {} });
+    }),
+  );
+
+  it.effect("decode a stored document that predates them as nothing switched", () =>
+    Effect.gen(function* () {
+      const { modelPicker: _modelPicker, ...older } = Schema.encodeUnknownSync(Settings)(
+        defaultSettings(),
+      ) as Record<string, unknown>;
+      const decoded = yield* Schema.decodeUnknownEffect(Settings)(older);
+      expect(decoded.modelPicker).toEqual(DEFAULT_MODEL_PICKER_SETTINGS);
+    }),
+  );
+
+  it.effect("round-trip through a patch", () =>
+    Effect.gen(function* () {
+      const patch = {
+        modelPicker: {
+          harnesses: { "instance-a": false },
+          models: { "instance-b": { "model-1": false, "model-2": true } },
+        },
+      };
+      const encoded = yield* Schema.encodeUnknownEffect(SettingsPatch)(patch);
+      const decoded = yield* Schema.decodeUnknownEffect(SettingsPatch)(
+        JSON.parse(JSON.stringify(encoded)),
+      );
+      expect(decoded).toEqual(patch);
+      const applied = yield* Schema.decodeUnknownEffect(Settings)({
+        ...(Schema.encodeUnknownSync(Settings)(defaultSettings()) as object),
+        ...decoded,
+      });
+      expect(applied.modelPicker).toEqual(patch.modelPicker);
+    }),
+  );
+
+  it.effect("reject a switch that is not a boolean", () =>
+    Effect.gen(function* () {
+      const badHarness = yield* Effect.exit(
+        Schema.decodeUnknownEffect(SettingsPatch)({
+          modelPicker: { harnesses: { "instance-a": "off" }, models: {} },
+        }),
+      );
+      expect(badHarness._tag).toBe("Failure");
+      const badModel = yield* Effect.exit(
+        Schema.decodeUnknownEffect(SettingsPatch)({
+          modelPicker: { harnesses: {}, models: { "instance-a": { "model-1": 0 } } },
+        }),
+      );
+      expect(badModel._tag).toBe("Failure");
     }),
   );
 });

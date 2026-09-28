@@ -26,6 +26,12 @@ export const ModelOption = Schema.Struct({
   contextWindow: Schema.optional(NonNegativeInt),
   vision: Schema.optional(Schema.Boolean),
   free: Schema.optional(Schema.Boolean),
+  /**
+   * A model the connector lists but does not want offered by default. The
+   * pickers leave it out until the user switches it on in Settings → Models.
+   * Optional, so a payload recorded before it existed still decodes.
+   */
+  hidden: Schema.optional(Schema.Boolean),
 });
 export type ModelOption = typeof ModelOption.Type;
 
