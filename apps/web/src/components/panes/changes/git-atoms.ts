@@ -73,8 +73,10 @@ export const useGitCommands = () => {
       worktreeSetupAtom: commands.worktreeSetupAtom,
       worktreeCreate: (input: Parameters<GitCommands["worktreeCreate"]>[1]) =>
         commands.worktreeCreate(registry, input),
-      worktreeSetupRun: (input: Parameters<GitCommands["worktreeSetupRun"]>[1]) =>
-        commands.worktreeSetupRun(registry, input),
+      worktreeSetupRun: (
+        input: Parameters<GitCommands["worktreeSetupRun"]>[1],
+        options?: Parameters<GitCommands["worktreeSetupRun"]>[2],
+      ) => commands.worktreeSetupRun(registry, input, options),
       worktreeRemove: (input: Parameters<GitCommands["worktreeRemove"]>[1]) =>
         commands.worktreeRemove(registry, input),
       commit: (input: Parameters<GitCommands["commit"]>[1]) => commands.commit(registry, input),

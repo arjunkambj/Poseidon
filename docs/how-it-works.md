@@ -2286,7 +2286,11 @@ fails still creates the thread in the worktree, as Start anyway would, but
 leaves the message unsent in that thread's composer; so does a first send that
 fails. A thread refused after its worktree was cut has the worktree removed
 (`force`, the branch kept). A reload of the window ends a setup run still
-streaming, and the server kills its script.
+streaming, and the server kills its script. So does **Stop setup** on the
+loading toast, shown while the start has a worktree: it ends that start's
+setups still running or yet to run, as the start panel's Stop does, so each
+such lane creates its thread and parks the message with "Setup script
+stopped".
 
 One toast follows the start: "Starting in <project>…", then in place
 "Started in <project>", "Created a thread in <project>" with the reason and a

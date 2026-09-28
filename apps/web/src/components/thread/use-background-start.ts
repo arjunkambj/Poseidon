@@ -14,9 +14,12 @@
  * One toast follows a start: "Starting in <project>…" while it runs, then the
  * same toast turns into the result (`backgroundSummary`), with an Open action
  * for the first thread that started — or, failing that, the first that
- * exists. Nothing navigates on its own. A start in which no thread came to
- * exist hands the message back to the start screen's current draft, if the
- * user has not begun typing another one there.
+ * exists. When a lane has a worktree, the loading toast offers Stop setup:
+ * it ends every setup of that start still running or yet to run, as the
+ * start panel's Stop does, so each such lane creates its thread with the
+ * message parked. Nothing navigates on its own. A start in which no thread
+ * came to exist hands the message back to the start screen's current draft,
+ * if the user has not begun typing another one there.
  *
  * `useStartInBackground` is the start composer's side: the
  * `composer.startInBackground` command and the send menu's item take the
@@ -78,6 +81,7 @@ export interface BackgroundStart {
 }
 
 const UPLOAD_FAILED = "the attachment could not be uploaded";
+const SETUP_STOPPED = "Setup script stopped";
 
 /** Runs lanes in the background and reports them in one toast; resolves with their outcomes. */
 const useBackgroundStart = () => {
@@ -92,6 +96,8 @@ const useBackgroundStart = () => {
       const projectId = project.projectId;
       // One upload at a time across the lanes, as the composer does for one.
       const uploads = serialized();
+      // Stop setup on the loading toast: ends this start's setups.
+      const setupStop = new AbortController();
 
       const upload = async (threadId: ThreadId): Promise<ReadonlyArray<Attachment> | null> => {
         const staged: Array<Attachment> = [];
@@ -119,12 +125,20 @@ const useBackgroundStart = () => {
           throw Cause.squash(exit.cause);
         },
         runSetup: async (worktree) => {
-          const exit = await git.worktreeSetupRun({ projectId, path: worktree.path });
+          if (setupStop.signal.aborted) {
+            throw { message: SETUP_STOPPED };
+          }
+          const exit = await git.worktreeSetupRun(
+            { projectId, path: worktree.path },
+            { signal: setupStop.signal },
+          );
           if (Exit.isSuccess(exit)) {
             return exit.value;
           }
           throw {
-            message: `Setup script could not run: ${describeExitError(exit, "the stream failed")}`,
+            message: setupStop.signal.aborted
+              ? SETUP_STOPPED
+              : `Setup script could not run: ${describeExitError(exit, "the stream failed")}`,
           };
         },
         createThread: async (lane, worktree) => {
@@ -175,6 +189,22 @@ const useBackgroundStart = () => {
         lanes.length === 1
           ? `Starting in ${project.name}…`
           : `Starting ${lanes.length} threads in ${project.name}…`,
+        {
+          action: lanes.some((lane) => lane.worktree !== undefined)
+            ? {
+                label: "Stop setup",
+                onClick: (event) => {
+                  // The toast stays until the lanes have settled.
+                  event.preventDefault();
+                  setupStop.abort();
+                  toast.loading(`Stopping setup in ${project.name}…`, {
+                    id: toastId,
+                    action: undefined,
+                  });
+                },
+              }
+            : undefined,
+        },
       );
       const outcomes = await runBackgroundLanes(lanes, steps).catch((error: unknown) =>
         lanes.map((): BackgroundOutcome => ({
