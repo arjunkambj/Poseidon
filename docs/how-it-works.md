@@ -488,7 +488,7 @@ whitespace:
 | ------- | --------------------------------------------------------------------- | ----------------------------------- | ---------------------- |
 | `/`     | commands, then the instance's skills, then the harness's own commands | the command, or `/name ` as text    | text                   |
 | `#`     | the project's files                                                   | `#path ` and a chip                 | `mentions`             |
-| `@`     | the instance's plugins, then its skills, never files                  | `@plugin ` or `$skill `, and a chip | `references`           |
+| `@`     | Poseidon's and the instance's plugins, then skills                    | `@plugin ` or `$skill `, and a chip | `references`           |
 | `$`     | the instance's skills alone                                           | `$skill ` and a chip                | `references`           |
 
 The start screen's composer (`start-thread.tsx`) opens the same `#`, `@` and
@@ -539,11 +539,15 @@ closes at the space, and `##` headings, `fixes #12`, `a#b` and
 `files.search` is a substring match: `#12` would list every path with a 12 in
 it, and Enter would pick one instead of sending.
 
-`@` lists the thread instance's enabled plugins under "Plugins", then its
-enabled skills under "Skills" (`pluginsAtom` and `skillsAtom`, wired in
-`use-reference-mentions.ts`; the rows come from `reference-menu.ts`). `$` lists
-the skills alone, ungrouped. An instance without the plugins extension answers
-no plugins, so `@` then shows its skills. A menu with no rows says why
+`@` lists the enabled plugins under "Plugins", then the thread instance's
+enabled skills under "Skills" (`pluginsAtom`, `poseidonPluginsAtom` and
+`skillsAtom`, wired in `use-reference-mentions.ts`; the rows come from
+`reference-menu.ts`). The plugins are Poseidon's own first — the built-in
+Browser plugin and any global ones, on every harness — then the instance's,
+one row per name (`plugin-sources.ts`). `$` lists the skills alone, ungrouped.
+An instance without the plugins extension answers no plugins, so `@` then
+shows Poseidon's plugins and its skills. A failed Poseidon list reads like a
+failed instance list. A menu with no rows says why
 (`referenceMenuEmptyLabel`): "No plugins or skills" (`$`: "No skills") only
 when the harness answered with none, "No plugins or skills match" when the
 query filtered them all out, "Loading plugins and skills…" while a list is

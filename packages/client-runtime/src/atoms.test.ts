@@ -29,6 +29,7 @@ import type {
   PluginSummary,
   SkillSummary,
 } from "@poseidon/contracts/connectors";
+import type { PluginsState, PoseidonPlugin } from "@poseidon/contracts/plugins";
 import type { Settings } from "@poseidon/contracts/settings";
 import { defaultSettings } from "@poseidon/contracts/settings";
 import * as Cause from "effect/Cause";
@@ -141,6 +142,8 @@ interface StubData {
     readonly instanceId: ConnectorInstanceId;
     readonly projectId?: ProjectId;
   }) => Effect.Effect<ReadonlyArray<HarnessCommand>, PoseidonRpcError>;
+  /** Answers `plugins.list` — Poseidon's own plugins. */
+  readonly poseidonPlugins?: () => PluginsState;
 }
 
 /**
@@ -212,6 +215,10 @@ const fakeClient = (
         const commands = data.commands;
         return (payload: { instanceId: ConnectorInstanceId; projectId?: ProjectId }) =>
           commands(payload);
+      }
+      if (key === "plugins.list" && data.poseidonPlugins !== undefined) {
+        const poseidonPlugins = data.poseidonPlugins;
+        return () => Effect.sync(poseidonPlugins);
       }
       if (key === "settings.subscribe" && data.settings !== undefined) {
         const settings = data.settings;
@@ -853,6 +860,57 @@ describe("atoms", () => {
           { instanceId: "without" },
           { instanceId: "broken" },
         ]);
+      }),
+    ),
+  );
+
+  it.live("poseidon's plugins come from plugins.list and read again on refresh", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const instance = yield* Ref.make(INSTANCE);
+        let asked = 0;
+        const browser: PoseidonPlugin = {
+          pluginId: "builtin:browser",
+          name: "browser",
+          source: "builtin",
+          path: "/home/.poseidon/builtin-plugins/browser",
+          enabled: true,
+          contents: {
+            skills: [{ name: "browser" }],
+            mcpServers: [],
+            commands: 0,
+            agents: 0,
+            hooks: false,
+          },
+        };
+        const { registry, poseidonPluginsAtom } = yield* runtimeWith(
+          fakeClient(new Map(), instance, {
+            poseidonPlugins: () => {
+              asked += 1;
+              return {
+                globalDir: "/home/.poseidon/plugins",
+                plugins: [{ ...browser, enabled: asked === 1 }],
+              };
+            },
+          }),
+          { status: "connected", serverInstanceId: INSTANCE },
+        );
+
+        registry.mount(poseidonPluginsAtom);
+        const first = yield* Effect.promise(() =>
+          awaitValue(registry, poseidonPluginsAtom, () => true),
+        );
+        expect(first.globalDir).toBe("/home/.poseidon/plugins");
+        expect(first.plugins.map((plugin) => [plugin.pluginId, plugin.enabled])).toEqual([
+          ["builtin:browser", true],
+        ]);
+
+        registry.refresh(poseidonPluginsAtom);
+        const second = yield* Effect.promise(() =>
+          awaitValue(registry, poseidonPluginsAtom, (state) => !state.plugins[0]!.enabled),
+        );
+        expect(second.plugins[0]?.enabled).toBe(false);
+        expect(asked).toBe(2);
       }),
     ),
   );

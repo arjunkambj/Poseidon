@@ -477,6 +477,19 @@ export const makeRuntime = (connectionLayer: ConnectionLayer) => {
   );
 
   /**
+   * Poseidon's own plugins — built-in and global, invalid ones with their
+   * error — whatever harness a thread runs on. The composer's `@` menu lists
+   * the enabled ones ahead of the instance's; the settings runtime refreshes
+   * this after `plugins.setEnabled`.
+   */
+  const poseidonPluginsAtom = runtime.atom(
+    Effect.gen(function* () {
+      const client = yield* (yield* Connection).client;
+      return yield* client["plugins.list"]({});
+    }),
+  );
+
+  /**
    * The user's keybinding overrides, as the server stores them. The editor and
    * the matcher layer them on `DEFAULT_KEYBINDINGS` with `resolveKeymap`.
    */
@@ -568,6 +581,7 @@ export const makeRuntime = (connectionLayer: ConnectionLayer) => {
     skillsAtom,
     pluginsAtom,
     harnessCommandsAtom,
+    poseidonPluginsAtom,
     keybindingsAtom,
     keybindingsUpdateAtom,
     browserStateAtom,

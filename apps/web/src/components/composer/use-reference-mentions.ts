@@ -4,8 +4,10 @@
  * and records it, and the two ways a reference leaves again — its chip's
  * remove button, or its token being edited out of the text.
  *
- * An instance whose harness has no plugins answers `[]` (see `pluginsAtom`),
- * so `@` then lists skills alone; one with neither shows the empty state.
+ * Poseidon's own enabled plugins (`poseidonPluginsAtom`) lead the `@` list on
+ * every harness, ahead of the instance's (`plugin-sources.ts`). An instance
+ * whose harness has no plugins answers `[]` (see `pluginsAtom`), so `@` then
+ * lists Poseidon's plugins and the skills.
  * While a list is still being asked, or when it fails, the empty row says that
  * instead (`menuSource`, `referenceMenuEmptyLabel`).
  * How a reference reaches the harness is the connector's business: the turn
@@ -21,9 +23,11 @@ import {
   retainComposerReferences,
   type ComposerTrigger,
 } from "@poseidon/client-runtime/composerTrigger";
+import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
 
 import { menuSource } from "@/components/composer/menu-source";
+import { mergePluginSources, poseidonPluginSummaries } from "@/components/composer/plugin-sources";
 import {
   REFERENCE_MENU_LABELS,
   referenceMenuEmptyLabel,
@@ -64,10 +68,18 @@ export function useReferenceMentions({
   readonly setReferences: React.Dispatch<React.SetStateAction<ReadonlyArray<TurnReference>>>;
   readonly setTextAndCaret: (text: string, caret: number) => void;
 }): ReferenceMentions {
-  const { pluginsAtom, skillsAtom } = useClientRuntime();
+  const { pluginsAtom, poseidonPluginsAtom, skillsAtom } = useClientRuntime();
   const pluginsResult = useAtomValue(pluginsAtom(instanceId)(projectId));
+  const poseidonResult = useAtomValue(poseidonPluginsAtom);
   const skillsResult = useAtomValue(skillsAtom(instanceId)(projectId));
-  const pluginSource = menuSource(pluginsResult);
+  const pluginSource = React.useMemo(
+    () =>
+      mergePluginSources(
+        menuSource(AsyncResult.map(poseidonResult, poseidonPluginSummaries)),
+        menuSource(pluginsResult),
+      ),
+    [poseidonResult, pluginsResult],
+  );
   const skillSource = menuSource(skillsResult);
   const plugins = pluginSource.entries;
   const skills = skillSource.entries;

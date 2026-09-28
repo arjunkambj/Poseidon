@@ -29,6 +29,7 @@ import type {
   SkillSummary,
 } from "@poseidon/contracts/connectors";
 import type { FileSearchResult, HarnessCommand } from "@poseidon/contracts/rpc";
+import type { PluginsState } from "@poseidon/contracts/plugins";
 import { defaultSettings } from "@poseidon/contracts/settings";
 import type { Keybinding } from "@poseidon/contracts/settings";
 import * as Effect from "effect/Effect";
@@ -134,6 +135,29 @@ const FIXTURE_HARNESS_COMMANDS: ReadonlyArray<HarnessCommand> = [
   { name: "review", description: "Review the current branch", argumentHint: "[focus]" },
   { name: "cost", description: "Show what this session has spent" },
 ];
+
+/** Poseidon's own plugins: the built-in Browser plugin, on. */
+const FIXTURE_POSEIDON_PLUGINS: PluginsState = {
+  globalDir: "/fixture/.poseidon/plugins",
+  plugins: [
+    {
+      pluginId: "builtin:browser",
+      name: "browser",
+      description:
+        "Drive Poseidon's in-app browser: open pages, read them, click, type and take screenshots.",
+      source: "builtin",
+      path: "/fixture/.poseidon/builtin-plugins/browser",
+      enabled: true,
+      contents: {
+        skills: [{ name: "browser" }],
+        mcpServers: [],
+        commands: 0,
+        agents: 0,
+        hooks: false,
+      },
+    },
+  ],
+};
 
 /** What the fixture build "ships": the one connector kind above, with a form. */
 const FIXTURE_DESCRIPTOR: ConnectorDescriptor = {
@@ -271,6 +295,8 @@ export const makeFixtureRpc = (context: FixtureRpcContext): PoseidonRpcClient =>
                     message: `connector instance ${instanceId} does not manage harness commands`,
                   }),
                 );
+        case "plugins.list":
+          return () => Effect.succeed(FIXTURE_POSEIDON_PLUGINS);
         case "keybindings.get":
           return () => Effect.succeed(keybindings);
         case "keybindings.update":

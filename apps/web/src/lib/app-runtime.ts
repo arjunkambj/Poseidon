@@ -6,7 +6,7 @@
  * query/mutation atoms the settings pages need that the
  * shared client runtime does not carry, built once on top of that instance.
  * Atoms the shared runtime already publishes — `skillsAtom`,
- * `connectorModelsAtom`, `modelCatalogAtom`, `keybindingsAtom`,
+ * `poseidonPluginsAtom`, `connectorModelsAtom`, `modelCatalogAtom`, `keybindingsAtom`,
  * `keybindingsUpdateAtom` — are
  * re-exported through the same bag rather than redefined here.
  */
@@ -14,6 +14,7 @@
 import { Connection } from "@poseidon/client-runtime/connection";
 import type { ConnectorInstanceId, ProjectId } from "@poseidon/contracts/ids";
 import type { AgentSkill, McpServerConfig, McpServerScope } from "@poseidon/contracts/connectors";
+import type { PluginId } from "@poseidon/contracts/plugins";
 import type { SettingsPatch } from "@poseidon/contracts/settings";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
@@ -49,6 +50,18 @@ const makeSettingsAtoms = (base: BaseAppAtoms) => {
 
   const settingsUpdateAtom = runtime.fn((patch: SettingsPatch) =>
     Effect.flatMap(client, (c) => c["settings.update"]({ patch })),
+  );
+
+  /**
+   * Turns one Poseidon plugin on or off for new sessions, then reloads the
+   * list so the Plugins page and the composer's `@` menu show the change.
+   */
+  const pluginsSetEnabledAtom = runtime.fn((input: { pluginId: PluginId; enabled: boolean }, get) =>
+    Effect.gen(function* () {
+      const next = yield* Effect.flatMap(client, (c) => c["plugins.setEnabled"](input));
+      get.registry.refresh(base.poseidonPluginsAtom);
+      return next;
+    }),
   );
 
   /**
@@ -177,6 +190,7 @@ const makeSettingsAtoms = (base: BaseAppAtoms) => {
   return {
     ...base,
     settingsUpdateAtom,
+    pluginsSetEnabledAtom,
     probeConnectorsAtom,
     mcpServersAtom,
     mcpUpsertAtom,

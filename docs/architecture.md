@@ -1638,13 +1638,15 @@ the composer's `/`, `@` and `$` menus ask the thread's own instance for its
 skills, and `@` for its plugins too. The client runtime's `pluginsAtom` asks
 one instance for its plugins and reads an `unavailable` answer, like no
 instance at all, as an empty list, so an instance without plugins is not an
-error and `@` just lists its skills. `harnessCommandsAtom` reads
-`connectors.commands.list` the same way, so an instance without a commands
-extension lists none, and the `/` menu (`slash-menu.tsx`) shows what it lists
-last, under a Harness heading, leaving out names Poseidon offers itself and the
-harness's `/clear`; a pick inserts `/name ` as plain text. There is no
-`commands` flag on `ConnectorSummary.extensions`: the renderer only ever asks
-the thread's own instance.
+error and `@` just lists Poseidon's own plugins (`poseidonPluginsAtom`, over
+`plugins.list`, listed first on every harness) and its skills.
+`harnessCommandsAtom` reads `connectors.commands.list` the same way, so an
+instance without a commands extension lists none, and the `/` menu
+(`slash-menu.tsx`) shows what it lists last, under a Harness heading, leaving
+out names Poseidon offers itself and the harness's `/clear`; a pick inserts
+`/name ` as plain text. There is no `commands` flag on
+`ConnectorSummary.extensions`: the renderer only ever asks the thread's own
+instance.
 
 Instances
 are per configuration, not per thread. The registry (`registry.ts`) routes by
