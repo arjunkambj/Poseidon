@@ -1069,6 +1069,10 @@ before its first turn, so the translator knows what a previous runtime already
 emitted and the `run_end` `nextState` replay does not re-emit the whole
 conversation with fresh item ids.
 
+The fold stops at the marker only on a message line. The translator starts out
+holding the marker, so a check after the transcript's header line used to end
+the fold before it had read a single message.
+
 `fork` is advertised in the capabilities and `--fork-session` is in `cmd --help`
 ("with --resume/--continue, fork the session into a new one"), but nothing in
 the tree builds that argv today.

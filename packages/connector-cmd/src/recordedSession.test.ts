@@ -73,7 +73,11 @@ const services = (): Effect.Effect<ConnectorServices> =>
 const openSession = (
   scenario: string,
   b: Box,
-  options: { readonly plan?: boolean; readonly argvLog?: string } = {},
+  options: {
+    readonly plan?: boolean;
+    readonly argvLog?: string;
+    readonly sessionRef?: CmdSessionRef;
+  } = {},
 ) =>
   Effect.gen(function* () {
     const handle = yield* makeCmdSession({
@@ -88,6 +92,7 @@ const openSession = (
         ...(options.argvLog === undefined ? {} : { POSEIDON_REPLAY_ARGV_LOG: options.argvLog }),
       },
       home: b.home,
+      ...(options.sessionRef === undefined ? {} : { sessionRef: options.sessionRef }),
       services: yield* services(),
       settings: {
         model: manifestOf(scenario).model,
@@ -315,6 +320,44 @@ describe("a recorded pair of turns", () => {
         expect(ref?.sessionId).toBe(recorded.turns[0]!.sessionId);
         // The second turn's thinking made it through as a reasoning row.
         expect(itemsOf(events).some((item) => item.kind === "reasoning")).toBe(true);
+
+        yield* handle.close();
+      }),
+    ),
+  );
+});
+
+describe("a recorded session resumed by a new runtime", () => {
+  /**
+   * What a server restart does: the second turn runs in a session opened
+   * over the ref the first one left. Everything the first turn said is in
+   * the transcript the second turn's drain reads, and none of it is new.
+   */
+  it.live("does not show the earlier turn's messages again", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const b = yield* box();
+        const recorded = manifestOf("resume");
+        const first = yield* openSession("resume", b);
+        yield* first.handle.send({
+          text: recorded.turns[0]!.prompt,
+          attachments: [],
+          mentions: [],
+        });
+        yield* first.collector.awaitItem((event) => event.type === "turn.completed");
+        const ref = (yield* first.handle.sessionRef()) as CmdSessionRef;
+        yield* first.handle.close();
+        expect(ref.lastMessageId).not.toBeNull();
+
+        const { handle, collector } = yield* openSession("resume", b, { sessionRef: ref });
+        yield* handle.send({ text: recorded.turns[1]!.prompt, attachments: [], mentions: [] });
+        yield* collector.awaitItem((event) => event.type === "turn.completed");
+        const answers = new Map(
+          itemsOf(yield* collector.collected)
+            .filter((item) => item.kind === "assistant_message" && item.status === "completed")
+            .map((item) => [item.itemId, item.text]),
+        );
+        expect([...answers.values()]).toEqual(["pineapple"]);
 
         yield* handle.close();
       }),

@@ -320,6 +320,15 @@ export const tailTranscript = (
     return { lines: Stream.fromQueue(queue), stop };
   });
 
+/** Whether a transcript line is a message, as opposed to a header or anything else. */
+export const isMessageLine = (line: string): boolean => {
+  try {
+    return (JSON.parse(line) as { readonly type?: unknown } | null)?.type === "message";
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Every non-blank line of a session's transcript, or none when there is no
  * file to read.

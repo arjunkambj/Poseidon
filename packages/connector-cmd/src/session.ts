@@ -52,7 +52,12 @@ import { envAllowlist, spawnProcess } from "./spawn";
 import { registerSessionMcp } from "./sessionMcp";
 import { prepareTurn } from "./turnArgs";
 import { makeSessionRefLocator, type CmdSessionRef } from "./sessionRef";
-import { findTranscriptPath, readTranscriptLines, tailTranscript } from "./transcript";
+import {
+  findTranscriptPath,
+  isMessageLine,
+  readTranscriptLines,
+  tailTranscript,
+} from "./transcript";
 import { makeTranslator, type PendingRuntimeEvent } from "./translate";
 
 /** Re-exported so consumers keep importing the session's own vocabulary from it. */
@@ -252,7 +257,14 @@ export const makeCmdSession = (
           if (input.emitEvents) {
             yield* emitAll(pendings);
           }
-          if (input.stopAfter != null && translator.lastMessageId === input.stopAfter) {
+          // Only a message line can reach the marker: the translator starts
+          // out holding it, so checking after the header stopped the seed
+          // before it had folded a single message.
+          if (
+            input.stopAfter != null &&
+            isMessageLine(line) &&
+            translator.lastMessageId === input.stopAfter
+          ) {
             return;
           }
         }
