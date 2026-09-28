@@ -1,7 +1,12 @@
 import type { DetectedEditor } from "@poseidon/contracts/editors";
 import { describe, expect, it } from "vitest";
 
-import { type FileMenuEntry, type FileMenuInput, fileMenuEntries } from "./file-menu";
+import {
+  type FileMenuEntry,
+  type FileMenuInput,
+  fileMenuEntries,
+  workspacePath,
+} from "./file-menu";
 
 const cursor: DetectedEditor = {
   id: "cursor",
@@ -27,6 +32,7 @@ const base: FileMenuInput = {
   path: "src/app.ts",
   isDirectory: false,
   exists: true,
+  inWorkspace: true,
   root: "/work/repo",
   editors: [cursor, zed, finder, terminal],
   favourite: zed,
@@ -96,8 +102,26 @@ describe("fileMenuEntries", () => {
     );
   });
 
+  it("only copies the relative path, or adds to the chat, a file outside the workspace", () => {
+    expect(shape({ ...base, path: "docs/readme.md", inWorkspace: false })).toBe(
+      "Copy relative path=docs/readme.md | chat",
+    );
+  });
+
   it("copies only the relative path when the root is not known", () => {
     expect(shape({ ...base, root: null })).toContain("| Copy relative path=src/app.ts |");
     expect(shape({ ...base, root: null })).not.toContain("Copy path=");
+  });
+});
+
+describe("workspacePath", () => {
+  it("keeps a path when the workspace is the repository's top level", () => {
+    expect(workspacePath("src/app.ts", "")).toBe("src/app.ts");
+  });
+
+  it("strips a subfolder workspace's prefix, and has no path for a file outside it", () => {
+    expect(workspacePath("packages/app/src/a.ts", "packages/app/")).toBe("src/a.ts");
+    expect(workspacePath("packages/other/a.ts", "packages/app/")).toBeNull();
+    expect(workspacePath("packages/application/a.ts", "packages/app/")).toBeNull();
   });
 });

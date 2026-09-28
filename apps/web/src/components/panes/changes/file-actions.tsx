@@ -23,11 +23,14 @@ export function FileActions({
   threadId,
   path,
   exists,
+  inWorkspace,
 }: {
   threadId: string;
+  /** Relative to the workspace root, or to the repository when not `inWorkspace`. */
   path: string;
   /** `false` for a deleted file, whose menu only copies or adds to the chat. */
   exists: boolean;
+  inWorkspace: boolean;
 }) {
   return (
     <DropdownMenu>
@@ -44,7 +47,12 @@ export function FileActions({
         <TooltipContent>More</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-52">
-        <FileDropdownItems path={path} exists={exists} chatId={threadId} />
+        <FileDropdownItems
+          path={path}
+          exists={exists}
+          inWorkspace={inWorkspace}
+          chatId={threadId}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );

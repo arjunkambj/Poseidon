@@ -119,6 +119,7 @@ export function ChangesList({
     <ReviewList
       threadId={threadId}
       files={diff.value.files}
+      prefix={diff.value.prefix ?? ""}
       diffStyle={diffStyle}
       reveal={reveal}
       onRevealed={onRevealed}

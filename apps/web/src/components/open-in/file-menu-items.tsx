@@ -80,8 +80,10 @@ const CONTEXT: MenuParts = {
 };
 
 export interface FileMenuProps {
-  /** Relative to the workspace root. */
+  /** Relative to the workspace root, or to the repository when not `inWorkspace`. */
   readonly path: string;
+  /** `false` for a Changes file outside the workspace, which is only copied or added to the chat. */
+  readonly inWorkspace?: boolean;
   readonly isDirectory?: boolean;
   /** `false` for a file no longer on disk, which is only copied or added to the chat. */
   readonly exists?: boolean;
@@ -122,6 +124,7 @@ function FileMenuItems({
   path,
   isDirectory = false,
   exists = true,
+  inWorkspace = true,
   chatId,
   onOpenInFiles,
 }: FileMenuProps & { parts: MenuParts }) {
@@ -138,6 +141,7 @@ function FileMenuItems({
     path,
     isDirectory,
     exists,
+    inWorkspace,
     root: scope?.root ?? null,
     editors,
     favourite,

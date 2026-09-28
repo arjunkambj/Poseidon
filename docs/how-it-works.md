@@ -2035,7 +2035,11 @@ path", then "Add to chat". What cannot work there is left out rather than
 disabled: no editor detected drops the two "Open" entries, a directory in the
 Files tab has no preview entry, the New task page has no thread to answer
 "Open in Files tab", and "Copy path" waits for the project list, which names
-the root. The pane that lists the files provides the workspace
+the root. A Changes file deleted in the comparison keeps only the copy entries
+and "Add to chat". Changes paths are git's, relative to the repository's top
+level; the rows map them under the workspace root with `GitDiff.prefix`
+(`workspacePath`), and a file outside the workspace — a project in a subfolder
+of its repository — keeps only "Copy relative path" and "Add to chat". The pane that lists the files provides the workspace
 (`FileMenuScopeProvider` in `open-in/file-menu-scope.tsx`): the thread and its
 worktree, or on the New task page the project alone — its Changes list is keyed
 by the page's draft, which is not a thread, so opens go to the project's folder.

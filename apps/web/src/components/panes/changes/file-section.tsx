@@ -19,6 +19,7 @@ import {
 } from "@poseidon/ui/components/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 
+import { workspacePath } from "@/components/open-in/file-menu";
 import { FileContextItems } from "@/components/open-in/file-menu-items";
 import { InlineDiff } from "@/components/timeline/diff-pool";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,7 @@ function FilePath({ path, viewed }: { path: string; viewed: boolean }) {
 export function FileSection({
   threadId,
   file,
+  prefix,
   open,
   onOpenChange,
   viewed,
@@ -73,6 +75,8 @@ export function FileSection({
 }: {
   threadId: string;
   file: GitDiffFile;
+  /** Where the workspace root sits in the repository (`GitDiff.prefix`). */
+  prefix: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   viewed: boolean;
@@ -83,6 +87,9 @@ export function FileSection({
   const expandable = file.diff !== "";
   // A deleted file is gone from the workspace: its menu only copies or adds to the chat.
   const exists = file.kind !== "delete";
+  // git names the file from the repository's top level; the menu works from the root.
+  const inside = workspacePath(file.path, prefix);
+  const menu = { path: inside ?? file.path, exists, inWorkspace: inside !== null };
   return (
     <section>
       <ContextMenu>
@@ -129,10 +136,10 @@ export function FileSection({
             />
             <TooltipContent>{viewed ? "Viewed" : "Mark as viewed"}</TooltipContent>
           </Tooltip>
-          <FileActions threadId={threadId} path={file.path} exists={exists} />
+          <FileActions threadId={threadId} {...menu} />
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
-          <FileContextItems path={file.path} exists={exists} chatId={threadId} />
+          <FileContextItems {...menu} chatId={threadId} />
         </ContextMenuContent>
       </ContextMenu>
       {open && expandable ? (

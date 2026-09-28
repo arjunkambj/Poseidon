@@ -96,12 +96,15 @@ function ReviewSummary({
 export function ReviewList({
   threadId,
   files,
+  prefix,
   diffStyle,
   reveal,
   onRevealed,
 }: {
   threadId: string;
   files: ReadonlyArray<GitDiffFile>;
+  /** `GitDiff.prefix`, for the file menus. */
+  prefix: string;
   diffStyle: DiffStyle;
   reveal: string | null;
   onRevealed: () => void;
@@ -194,6 +197,7 @@ export function ReviewList({
             key={file.path}
             threadId={threadId}
             file={file}
+            prefix={prefix}
             open={isOpen(review, file.path)}
             onOpenChange={(open) => {
               cursor.current = file.path;
