@@ -37,7 +37,9 @@ export const toEffort = (value: unknown): Effort | undefined =>
 
 /**
  * The model's effort rungs that Poseidon knows, lowest first. A rung Poseidon
- * has no name for is dropped rather than guessed at.
+ * has no name for is dropped rather than guessed at. `ultra` — "Maximum
+ * reasoning with automatic task delegation", the rung above `max` — is kept
+ * where the row lists it, so only those models offer it; the others never do.
  */
 const effortsOf = (row: CodexModel): Array<Effort> => {
   const offered = new Set(row.supportedReasoningEfforts.map((option) => option.reasoningEffort));

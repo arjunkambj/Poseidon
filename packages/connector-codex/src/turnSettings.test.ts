@@ -62,6 +62,24 @@ describe("turnTarget", () => {
     });
   });
 
+  it("runs ultra on a model that lists it, and a luna model at its own default", () => {
+    // gpt-6-astra lists ultra; gpt-6-luna stops at max.
+    const astra = turnTarget({ settings: settings("default", "ultra"), opened: OPENED, factsFor });
+    expect(astra).toEqual({ model: "gpt-6-astra", effort: "ultra" });
+    expect(turnOverrides(astra, holdsOf(OPENED)).params).toEqual({ effort: "ultra" });
+    const luna = turnTarget({
+      settings: settings("gpt-6-luna", "ultra"),
+      opened: OPENED,
+      factsFor,
+    });
+    expect(luna).toEqual({ model: "gpt-6-luna", effort: facts.get("gpt-6-luna")?.defaultEffort });
+    expect(luna.effort).not.toBe("ultra");
+    expect(turnOverrides(luna, holdsOf(OPENED)).params).toEqual({
+      model: "gpt-6-luna",
+      effort: luna.effort,
+    });
+  });
+
   it("trusts the thread's effort when the models were never listed", () => {
     expect(turnTarget({ settings: settings("gpt-5.5", "max"), opened: OPENED })).toEqual({
       model: "gpt-5.5",

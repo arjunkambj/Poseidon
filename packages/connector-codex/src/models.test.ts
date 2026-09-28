@@ -100,6 +100,20 @@ describe("toModelOptions", () => {
     ).toEqual(bare);
   });
 
+  it("offers ultra only on the models whose model/list row lists it", () => {
+    const withUltra = toModelOptions(recordedRows())
+      .filter((option) => option.efforts.includes("ultra"))
+      .map((option) => option.id);
+    // The recorded catalogue lists ultra ("Maximum reasoning with automatic
+    // task delegation") on these four, and not on the luna models or gpt-5.5.
+    expect(withUltra.toSorted()).toEqual(
+      ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-6-astra", "gpt-6-sol"].toSorted(),
+    );
+    for (const option of toModelOptions(recordedRows())) {
+      if (option.efforts.includes("ultra")) expect(option.efforts.at(-1)).toBe("ultra");
+    }
+  });
+
   it("reads vision off the input modalities", () => {
     expect(toModelOptions(recordedRows()).every((option) => option.vision === true)).toBe(true);
     expect(toModelOptions([row({ inputModalities: ["text"] })])[0]?.vision).toBe(false);
