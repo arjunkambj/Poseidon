@@ -244,7 +244,8 @@ connector's own logo can be shipped under its own name. Its `brand-icons.ts` is
 the one brand → icon mapping: `connectorIconFor` (a connector's `iconKey` → the
 monochrome mark for a heading, or a generic glyph), `harnessLogoFor` (the
 colour logo for an avatar, or nothing so the monogram stays), `editorIconFor`
-and `providerKey`/`providerMarkFor`. Its map keys are unquoted, because the
+and `providerKey`/`providerMarkFor`/`spansProviders`; `provider-mark.tsx`
+draws a provider's mark or an aligned empty box. Its map keys are unquoted, because the
 connector-leak rule still refuses a quoted kind there. Callers pass data (an
 `iconKey` from `useConnectorIconKeys`, an editor, a model's id and family) and
 draw what comes back. A test outside the directory that needs a key with a
@@ -285,6 +286,20 @@ not) passes without the prop, because every `*Color` export is a brand
 fills. Monochrome brand logos (`Zed`, `Github`) still take `variant="bold"`:
 most draw the same either way, but meta and instagram are outlines in linear
 and their official mark is the bold drawing.
+
+**Brand icons.** Every logo the renderer draws comes from one module,
+`apps/web/src/components/ui/icons/brand-icons.ts`, which maps a connector's
+`metadata.iconKey`, an editor and a model's provider (its id prefix, else its
+family, never its label) to a Honeyicons export. The `-color` variants are
+only for a logo that stands alone: a harness avatar, the Open in menu's
+leading icons. Beside text (a connector heading, a model row's provider mark,
+the PR pane's GitHub mark) a logo is monochrome and bold at
+`text-foreground/85`, like any other icon. Every lookup has a clean fallback:
+a generic glyph in a heading (`Terminal`, `Server`, `Code`, `FolderOpen`), the
+monogram in an avatar, and an empty box the mark's size beside a model name.
+Never add a filler glyph that pretends to be a logo, and never use an icon
+that is a brand's logo for anything but that brand (the `X` export is the
+X/Twitter mark, not a close glyph).
 
 **Even padding.** An element reads as balanced when its vertical padding is
 smaller than its horizontal, so buttons, inputs, chips and badges, menu items,
