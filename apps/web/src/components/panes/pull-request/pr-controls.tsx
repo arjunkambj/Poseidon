@@ -1,6 +1,7 @@
 /**
  * The row of controls under the Pull request tab's summary: the lifecycle
- * actions (`PrActionsMenu`), bound to the tab's thread. A lifecycle write runs as a one-shot on the client runtime
+ * actions (`PrActionsMenu`) and the Fix menu (`PrFixMenu`), bound to the tab's
+ * thread. A lifecycle write runs as a one-shot on the client runtime
  * (`runPullRequestAction`), which rereads the tab and the sidebar's marks once
  * it settles.
  */
@@ -16,7 +17,10 @@ import { describeExitError } from "@/lib/app-runtime";
 
 import { prActions, runPrAction, type MergeMethod, type PrActionKind } from "./pr-actions";
 import { PrActionsMenu } from "./pr-actions-menu";
+import { PrFixMenu } from "./pr-fix-menu";
+import { fixKinds, type FixKind } from "./pr-fix-prompt";
 import { usePullRequestAtoms } from "./pull-request-atoms";
+import { useFixThread } from "./use-fix-thread";
 
 export function PrControls({
   projectId,
@@ -29,6 +33,7 @@ export function PrControls({
 }) {
   const registry = React.useContext(RegistryContext);
   const { runPullRequestAction } = usePullRequestAtoms();
+  const fix = useFixThread(projectId, threadId);
 
   const onRun = React.useCallback(
     (kind: PrActionKind, method: MergeMethod) =>
@@ -51,12 +56,19 @@ export function PrControls({
       ),
     [projectId, pullRequest, registry, runPullRequestAction, threadId],
   );
-  if (prActions(pullRequest).length === 0) {
+  const { start } = fix;
+  const onFix = React.useCallback(
+    (kind: FixKind) => void start(kind, pullRequest),
+    [start, pullRequest],
+  );
+
+  if (prActions(pullRequest).length === 0 && fixKinds(pullRequest).length === 0) {
     return null;
   }
   return (
     <div className="flex flex-wrap items-center gap-1">
       <PrActionsMenu pullRequest={pullRequest} onRun={onRun} />
+      <PrFixMenu pullRequest={pullRequest} target={fix.target} onFix={onFix} />
     </div>
   );
 }

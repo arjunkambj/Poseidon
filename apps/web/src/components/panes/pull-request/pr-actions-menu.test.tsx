@@ -1,7 +1,8 @@
 /**
- * The Pull request tab's actions, rendered statically with their popups in
- * place: which actions show, that a pick opens its confirm, Merge's method
- * picker, and a confirmed action run through a stubbed one-shot to its toast.
+ * The Pull request tab's actions and Fix menu, rendered statically with their
+ * popups in place: which actions and fixes show, that a pick opens its
+ * confirm, Merge's method picker, the fix's preview, and a confirmed action
+ * run through a stubbed one-shot to its toast.
  */
 
 import * as React from "react";
@@ -12,6 +13,7 @@ import type { PullRequestCheck, PullRequestDetail } from "@poseidon/contracts/pu
 
 import { runPrAction, type PrActionOutcome } from "./pr-actions";
 import { PrActionsMenuView, type PrActionsMenuViewProps } from "./pr-actions-menu";
+import { PrFixMenuView } from "./pr-fix-menu";
 
 // What the last render handed out, so a test can press a button without a DOM.
 const seen = vi.hoisted(() => ({
@@ -245,5 +247,42 @@ describe("a confirmed action through a stubbed one-shot", () => {
       "Merge failed: Pull request #42 is not mergeable: the merge commit cannot be cleanly created.",
       toasts[0]?.[2],
     ]);
+  });
+});
+
+describe("PrFixMenuView", () => {
+  const renderFix = (overrides: Partial<PullRequestDetail>, confirming: null | "checks" = null) => {
+    const onConfirming = vi.fn();
+    const onFix = vi.fn();
+    const html = renderToStaticMarkup(
+      <PrFixMenuView
+        pullRequest={{ ...pullRequest, ...overrides }}
+        target="the worktree at /w/tabs"
+        confirming={confirming}
+        onConfirming={onConfirming}
+        onFix={onFix}
+      />,
+    );
+    return { html, onConfirming, onFix };
+  };
+
+  it("lists only the fixes that apply", () => {
+    const { html, onConfirming } = renderFix({ mergeable: "conflicting" });
+    expect(html).toContain("Fix failing checks");
+    expect(html).toContain("Resolve conflicts");
+    expect(html).not.toContain("Address review comments");
+    seen.clicks.get("item:Resolve conflicts")?.();
+    expect(onConfirming).toHaveBeenCalledWith("conflicts");
+    expect(renderFix({ checks: [check("unit", "pass")] }).html).toBe("");
+  });
+
+  it("confirms with where the thread goes and a preview of its first message", () => {
+    const { html, onFix } = renderFix({}, "checks");
+    expect(html).toContain("Fix failing checks in a new thread?");
+    expect(html).toContain("A new thread starts on tabs in the worktree at /w/tabs");
+    expect(html).toContain("Fix the failing checks on pull request #42");
+    expect(html).toContain("- lint");
+    seen.clicks.get("Start thread")?.();
+    expect(onFix).toHaveBeenCalledWith("checks");
   });
 });
