@@ -8,8 +8,9 @@
  * detected editor), revealing it in the file manager, copying its path, and
  * adding it to the chat. Anything the menu cannot do here is left out rather
  * than disabled: no editor detected means no "Open in" or "Open with", an
- * unknown workspace root means no absolute path to copy, and a directory has
- * no Files-tab preview.
+ * unknown workspace root means no absolute path to copy, a directory has no
+ * Files-tab preview, and a file no longer on disk (deleted in Changes) can
+ * only be copied or added to the chat.
  */
 
 import type { DetectedEditor } from "@poseidon/contracts/editors";
@@ -29,6 +30,8 @@ export interface FileMenuInput {
   /** Relative to the workspace root, as the server lists it. */
   readonly path: string;
   readonly isDirectory: boolean;
+  /** Whether the file is on disk; a deleted one cannot be opened or revealed. */
+  readonly exists: boolean;
   /** The workspace root the path is under, or `null` when it is not known. */
   readonly root: string | null;
   /** Every app the server detected, editors first. */
@@ -51,17 +54,17 @@ export const fileMenuEntries = (
   const fileManager = input.editors.find((app) => app.kind === "file-manager");
 
   const show: Array<FileMenuEntry> = [];
-  if (input.filesTab !== null && !input.isDirectory) {
+  if (input.filesTab !== null && !input.isDirectory && input.exists) {
     show.push({
       kind: "files-tab",
       label: input.filesTab === "open" ? "Open" : "Open in Files tab",
     });
   }
-  if (favourite !== null) show.push({ kind: "open", editor: favourite });
-  if (editors.length > 0) show.push({ kind: "open-with", editors });
+  if (input.exists && favourite !== null) show.push({ kind: "open", editor: favourite });
+  if (input.exists && editors.length > 0) show.push({ kind: "open-with", editors });
 
   const reveal: Array<FileMenuEntry> =
-    fileManager === undefined ? [] : [{ kind: "reveal", app: fileManager }];
+    fileManager === undefined || !input.exists ? [] : [{ kind: "reveal", app: fileManager }];
 
   const copy: Array<FileMenuEntry> = [
     ...(root === null

@@ -83,6 +83,8 @@ export interface FileMenuProps {
   /** Relative to the workspace root. */
   readonly path: string;
   readonly isDirectory?: boolean;
+  /** `false` for a file no longer on disk, which is only copied or added to the chat. */
+  readonly exists?: boolean;
   /** The thread or draft "Add to chat" writes into; `null` leaves it out. */
   readonly chatId: string | null;
   /** The Files tab's own open, for its rows; elsewhere the thread view answers. */
@@ -119,6 +121,7 @@ function FileMenuItems({
   parts,
   path,
   isDirectory = false,
+  exists = true,
   chatId,
   onOpenInFiles,
 }: FileMenuProps & { parts: MenuParts }) {
@@ -134,6 +137,7 @@ function FileMenuItems({
   const groups = fileMenuEntries({
     path,
     isDirectory,
+    exists,
     root: scope?.root ?? null,
     editors,
     favourite,

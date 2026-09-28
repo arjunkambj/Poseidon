@@ -26,6 +26,7 @@ const terminal: DetectedEditor = {
 const base: FileMenuInput = {
   path: "src/app.ts",
   isDirectory: false,
+  exists: true,
   root: "/work/repo",
   editors: [cursor, zed, finder, terminal],
   favourite: zed,
@@ -87,6 +88,12 @@ describe("fileMenuEntries", () => {
     expect(
       shape({ ...base, editors: [], favourite: null, filesTab: null, canAddToChat: false }),
     ).toBe("Copy path=/work/repo/src/app.ts, Copy relative path=src/app.ts");
+  });
+
+  it("only copies or adds to the chat a file no longer on disk", () => {
+    expect(shape({ ...base, exists: false })).toBe(
+      "Copy path=/work/repo/src/app.ts, Copy relative path=src/app.ts | chat",
+    );
   });
 
   it("copies only the relative path when the root is not known", () => {

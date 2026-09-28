@@ -19,7 +19,16 @@ import { FileDropdownItems } from "@/components/open-in/file-menu-items";
 
 import { MoreHorizontal } from "@honeyicons/react";
 
-export function FileActions({ threadId, path }: { threadId: string; path: string }) {
+export function FileActions({
+  threadId,
+  path,
+  exists,
+}: {
+  threadId: string;
+  path: string;
+  /** `false` for a deleted file, whose menu only copies or adds to the chat. */
+  exists: boolean;
+}) {
   return (
     <DropdownMenu>
       <Tooltip>
@@ -35,7 +44,7 @@ export function FileActions({ threadId, path }: { threadId: string; path: string
         <TooltipContent>More</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-52">
-        <FileDropdownItems path={path} chatId={threadId} />
+        <FileDropdownItems path={path} exists={exists} chatId={threadId} />
       </DropdownMenuContent>
     </DropdownMenu>
   );

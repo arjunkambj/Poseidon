@@ -81,6 +81,8 @@ export function FileSection({
 }) {
   const Glyph = KIND_ICON[file.kind];
   const expandable = file.diff !== "";
+  // A deleted file is gone from the workspace: its menu only copies or adds to the chat.
+  const exists = file.kind !== "delete";
   return (
     <section>
       <ContextMenu>
@@ -127,10 +129,10 @@ export function FileSection({
             />
             <TooltipContent>{viewed ? "Viewed" : "Mark as viewed"}</TooltipContent>
           </Tooltip>
-          <FileActions threadId={threadId} path={file.path} />
+          <FileActions threadId={threadId} path={file.path} exists={exists} />
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
-          <FileContextItems path={file.path} chatId={threadId} />
+          <FileContextItems path={file.path} exists={exists} chatId={threadId} />
         </ContextMenuContent>
       </ContextMenu>
       {open && expandable ? (
