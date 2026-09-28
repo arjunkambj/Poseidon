@@ -21,6 +21,7 @@ import {
   Connect,
   GitBranch,
   Globe,
+  Import,
   Keyboard,
   Lock,
   SlidersHorizontal,
@@ -36,6 +37,7 @@ const ITEMS = [
   { to: "/settings/browser", label: "Browser", icon: Globe },
   { to: "/settings/notifications", label: "Notifications", icon: Bell },
   { to: "/settings/archived", label: "Archived threads", icon: Archive },
+  { to: "/settings/import", label: "Import", icon: Import },
 ] as const;
 
 /** The settings pages, for the command palette's deep links. */
