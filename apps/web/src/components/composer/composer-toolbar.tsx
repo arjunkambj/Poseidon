@@ -43,6 +43,7 @@ export function ComposerToolbar({
   onSend,
   onInterrupt,
   attachDisabledReason,
+  sendMenu,
 }: {
   readonly settings?: React.ReactNode;
   readonly running: boolean;
@@ -61,6 +62,8 @@ export function ComposerToolbar({
   readonly onInterrupt: () => void;
   /** Why attaching is refused; the button is disabled when it is set. */
   readonly attachDisabledReason?: string;
+  /** More ways to send, right after the send button (New task's "Start in background"). */
+  readonly sendMenu?: React.ReactNode;
 }) {
   const attachDisabled = attachDisabledReason !== undefined;
   return (
@@ -182,6 +185,7 @@ export function ComposerToolbar({
             )}
           </TooltipContent>
         </Tooltip>
+        {sendMenu}
       </div>
     </div>
   );
