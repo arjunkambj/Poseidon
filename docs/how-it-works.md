@@ -1719,7 +1719,9 @@ whether it was left open — is `DockMemory` (`dock-toggle.ts`), kept per thread
 `useDockMemory` (`apps/web/src/state/ui.ts`). It lasts the session and is
 never written to storage, so closing the dock and reopening it brings back
 that thread's tabs and active tab, and a relaunch starts every dock closed
-with no tabs.
+with no tabs. Arriving at a thread reopens its dock only on a pane the user
+chose there; closing a tab that is not on show is no such choice, so it never
+turns an auto-opened or linked pane into the one that comes back.
 
 Only the active tab's pane is mounted. Closing a tab hides its pane exactly
 as switching to another tab does: closing the active Browser tab is the same

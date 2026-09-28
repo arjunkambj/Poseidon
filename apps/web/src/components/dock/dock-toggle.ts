@@ -141,9 +141,12 @@ export const unopenedDockTabs = (
 
 /**
  * Closes `tab` in a dock showing `pane`. Closing the tab on show moves to its
- * right neighbour, else its left, else the launcher; closing another tab
- * leaves the pane alone. `lastTab` becomes the tab now shown, else stays when
- * still open, else falls to the last open tab or nothing.
+ * right neighbour, else its left, else the launcher — a user move, so that is
+ * what arriving reopens (`shown`). Closing another tab leaves the pane alone
+ * and is no choice of it: `shown` stays what the user chose (an auto-opened
+ * or linked pane never becomes it), and is forgotten only when it named the
+ * tab just closed. `lastTab` becomes the tab now shown, else stays when still
+ * open, else falls to the last open tab or nothing.
  */
 export const closeDockTab = (
   memory: DockMemory | undefined,
@@ -162,7 +165,8 @@ export const closeDockTab = (
     : memory?.lastTab !== undefined && openTabs.includes(memory.lastTab)
       ? memory.lastTab
       : openTabs.at(-1);
-  return { memory: { shown: next, lastTab, openTabs }, pane: next };
+  const shown = pane === tab ? next : memory?.shown === tab ? undefined : memory?.shown;
+  return { memory: { shown, lastTab, openTabs }, pane: next };
 };
 
 /** Where arriving at a thread with no `?pane=` puts its dock; `undefined` leaves it shut. */

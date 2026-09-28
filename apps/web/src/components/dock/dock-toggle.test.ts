@@ -206,6 +206,26 @@ describe("closeDockTab", () => {
     });
   });
 
+  it("never makes an auto-opened pane the one arriving reopens by closing another tab", () => {
+    // Files opened, the dock closed, then the agent's browser opened itself.
+    const shut = rememberDockMove(rememberDockMove(undefined, "files"), null);
+    const auto = noteDockShown(shut, "browser");
+    expect(auto?.shown).toBeUndefined();
+    const closed = closeDockTab(auto, "files", "browser");
+    expect(closed.pane).toBe("browser");
+    expect(closed.memory.openTabs).toEqual(["browser"]);
+    expect(closed.memory.shown).toBeUndefined();
+    expect(dockArrivalTarget(closed.memory)).toBeUndefined();
+  });
+
+  it("forgets the user's pane when the tab closed was it, behind an auto-opened one", () => {
+    const auto = noteDockShown(rememberDockMove(undefined, "files"), "browser");
+    expect(auto?.shown).toBe("files");
+    const closed = closeDockTab(auto, "files", "browser");
+    expect(closed.memory.shown).toBeUndefined();
+    expect(dockArrivalTarget(closed.memory)).toBeUndefined();
+  });
+
   it("falls back to the last open tab when the launcher shows and the last tab closes", () => {
     const closed = closeDockTab({ ...memory, shown: "home" }, "browser", "home");
     expect(closed.pane).toBe("home");
