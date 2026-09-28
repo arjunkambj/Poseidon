@@ -1,17 +1,14 @@
 /**
  * The Models page: `defaults` (model, effort, runtime mode) — what a new
  * thread starts with — rendered by `StructForm` off the schema's
- * `settingsForm` annotations. Model options come from every enabled
- * connector instance (`modelCatalogAtom`), each labelled with the instance it
- * is listed under; effort and runtime mode from their contract enums.
+ * `settingsForm` annotations; effort and runtime mode take their options from
+ * their contract enums.
  *
- * With no default model saved, the picker shows the first listed model: that
- * is the one New task seeds a new thread with, so the page says what will
- * actually happen instead of "Choose…".
- *
- * The model options are only what the harness and model switches leave on
- * (`visibleCatalog`), plus the saved default, which stays listed even when
- * switched off. The switches themselves are `HarnessModelsSection`, below.
+ * The default model is not a plain select but the composer's harness picker
+ * (`DefaultModelRow`): it lists only what the harness and model switches leave
+ * on, plus the saved default, and with none saved it shows the model New task
+ * seeds a new thread with. The switches themselves are `HarnessModelsSection`,
+ * below.
  */
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
@@ -22,11 +19,9 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import { toast } from "sonner";
 
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
-import { defaultModelPick } from "@/lib/model-picks";
-import { visibleCatalog } from "@/lib/model-visibility";
 import { RUNTIME_MODE_LABELS } from "@/lib/runtime-modes";
-import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
 
+import { DefaultModelRow } from "./default-model-row";
 import { HarnessModelsSection } from "./harness-models-section";
 import { StructForm, type SelectOption } from "./schema-form";
 import { SettingsPageHeader, SettingsSection } from "./settings-section";
@@ -39,28 +34,9 @@ export function ModelsPanel() {
   const settingsResult = useAtomValue(atoms.settingsAtom);
   const catalogResult = useAtomValue(atoms.modelCatalogAtom);
   const updateSettings = useAtomSet(atoms.settingsUpdateAtom, { mode: "promiseExit" });
-  const prefs = useModelPickerPrefs();
 
   const settings = AsyncResult.isSuccess(settingsResult) ? settingsResult.value : null;
-  const fullCatalog = AsyncResult.isSuccess(catalogResult) ? catalogResult.value : [];
-  // Only what the harness and model switches leave on, plus the saved default.
-  const catalog = visibleCatalog(
-    fullCatalog,
-    prefs,
-    settings?.defaults.model == null
-      ? null
-      : defaultModelPick(fullCatalog, settings.defaults.model),
-  );
-  // The default is a bare model id, so an id two instances both list is one
-  // option — under the first instance that lists it.
-  const modelOptions: ReadonlyArray<SelectOption> = catalog
-    .flatMap(({ connector, models }) =>
-      models.map((model) => ({
-        value: model.id,
-        label: `${connector.displayName} · ${model.label}`,
-      })),
-    )
-    .filter((option, index, all) => all.findIndex((o) => o.value === option.value) === index);
+  const catalog = AsyncResult.isSuccess(catalogResult) ? catalogResult.value : [];
 
   if (settings === null) {
     return <p className="text-sm text-muted-foreground">Loading settings…</p>;
@@ -84,24 +60,23 @@ export function ModelsPanel() {
     }
   };
 
-  const shown = {
-    ...settings.defaults,
-    model: settings.defaults.model ?? modelOptions[0]?.value ?? null,
-  };
-
   return (
     <div className="flex flex-col gap-6">
       <SettingsPageHeader title="Models" description="What new threads start with." />
 
       <SettingsSection>
+        <DefaultModelRow
+          catalog={catalog}
+          defaultModel={settings.defaults.model}
+          onPick={(model) => void setDefault("model", model)}
+        />
         <StructForm
           schema={SettingsDefaults}
-          value={shown as unknown as Record<string, unknown>}
+          skip={["model"]}
+          value={settings.defaults as unknown as Record<string, unknown>}
           onFieldChange={(key, value) => void setDefault(key, value)}
           optionsFor={(key) => {
             switch (key) {
-              case "model":
-                return modelOptions;
               case "effort":
                 return enumOptions(Effort.literals);
               case "runtimeMode":
