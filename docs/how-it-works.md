@@ -3529,7 +3529,9 @@ keep-awake on, the sound off. `preferredEditor`
 is a plain string, not the editor id enum, so an id a later build drops still
 decodes; the client treats an id it does not know, or one not detected on this
 machine, as unset. `autoDoneAfterDays` is optional and absent means off; since
-a patch leaves an absent field alone, a patch turns it off with `null`.
+a patch leaves an absent field alone, a patch turns it off with `null`. Settings → General's Sidebar section sets it: "Move idle
+threads to Done" offers Off (the default), 1, 3, 7, 14 or 30 days
+(`apps/web/src/components/Settings/auto-done-select.tsx`).
 
 `chatWidth` sets how far the thread column runs. One helper,
 `chatWidthClasses` in `apps/web/src/lib/chat-width.ts`, maps it to literal

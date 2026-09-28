@@ -1,6 +1,7 @@
 /**
  * The General page: the theme cards, the main and sidebar font sizes, the chat
- * width, and a reset that puts every appearance choice back to its default. New-thread defaults (model,
+ * width, when idle threads move to the sidebar's Done section, and a reset
+ * that puts every appearance choice back to its default. New-thread defaults (model,
  * effort, runtime mode) live on the Models page.
  */
 
@@ -14,6 +15,7 @@ import { useAppAtoms } from "@/lib/app-runtime";
 import { applyFontSizes } from "@/lib/font-size";
 import { useResetLayoutWidths } from "@/state/ui";
 
+import { AutoDoneSelect } from "./auto-done-select";
 import { ChatWidthToggle } from "./chat-width-toggle";
 import { FontSizeSteppers } from "./font-size-steppers";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "./settings-section";
@@ -60,6 +62,7 @@ export function GeneralPanel() {
       </SettingsSection>
       <FontSizeSteppers />
       <ChatWidthToggle />
+      <AutoDoneSelect />
       <ResetAppearance />
     </div>
   );
