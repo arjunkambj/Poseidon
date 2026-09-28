@@ -996,6 +996,21 @@ ran with no request ends with a `session.warning`. On the recording machine
 `serverRequests.ts` refuses what has no card: extra sandbox permissions,
 MCP elicitations and the older protocol's approvals, each with a warning.
 
+Plan mode, questions, steering and compaction (all four capabilities true,
+each backed by a recording): a plan turn sends `collaborationMode: plan` on
+`turn/start` (experimental, which is why the handshake sets
+`experimentalApi`), and from then on every turn names its mode with the turn's
+model and effort (`plans.ts`); a resumed thread does so from its first turn.
+The `plan` item is the plan row, and a turn that ends `end_turn` with one
+emits `turn.plan.proposed`; accepting is the server's next turn. The model's
+`item/tool/requestUserInput` is the question card (`questions.ts`), answered
+by option label; Stop answers it empty, and a withdrawal or close answers
+nothing, each resolving the card once. `steer` is `turn/steer` with the
+running turn's id as `expectedTurnId` (`steering.ts`); the CLI keeps the turn,
+and any refusal is `NotSteerable` for the server to queue. A `/compact` turn is
+`thread/compact/start` (`compaction.ts`); the CLI runs it as a turn of its
+own, whose id only its `turn/started` names.
+
 May import `connector-sdk`, `contracts` and `shared`; its tests also import
 `testkit`.
 

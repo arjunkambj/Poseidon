@@ -839,6 +839,8 @@ POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
   pnpm -F @poseidon/connector-codex vitest run test/recordSession.test.ts -t plain-reply
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
+  pnpm -F @poseidon/connector-codex vitest run test/recordInteractions.test.ts -t question
+POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
   pnpm -F @poseidon/connector-codex vitest run src/conformance.test.ts
 ```
 
@@ -849,7 +851,11 @@ each scenario in a throwaway git repo under `/tmp/poseidon-codex/scratch`, on
 the CLI's default model. The app-server has no turn or budget cap, so its
 prompts are trivial and ask for one-word answers. The approval scenarios
 (`edit-approval`, `deny`, `sensitive-full-access`, `approval-stop`) answer
-every card they open the way their description says. `src/conformance.test.ts`
+every card they open the way their description says. The interaction
+recorder (`test/recordInteractions.test.ts`: `plan-accept`, `question`,
+`steering`, `compaction`) shares the scenario helpers of `test/scenario.ts`;
+`question` answers the card with its first option, `steering` steers once the
+command row shows, and `compaction` compacts a one-turn thread. `src/conformance.test.ts`
 records the connector-sdk suite itself, one app-server launch per case, and
 replays it in the gate, approval case included. The finaliser is told the
 names of the operator's MCP servers (`codex mcp list --json`) and skills
