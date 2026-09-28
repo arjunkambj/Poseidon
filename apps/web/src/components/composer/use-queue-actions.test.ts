@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { queueRowItems } from "@/components/composer/queue-row-menu";
 import {
+  appendQueued,
   canEditQueued,
   draftHasContent,
   editQueued,
@@ -13,6 +14,10 @@ import {
 import { emptyComposerDraft } from "@/state/ui";
 
 const threadId = makeThreadId();
+
+const noKeep = () => {
+  throw new Error("nothing should go back into the composer");
+};
 
 const message = (fields: Partial<QueuedMessage> = {}): QueuedMessage => ({
   queuedMessageId: makeItemId(),
@@ -71,8 +76,12 @@ describe("steerQueued", () => {
     const { sent, dispatch } = recorder();
     const queued = message({ attachments: [{ path: "shot.png", mime: "image/png" }] });
     const notes: string[] = [];
-    const error = await steerQueued(dispatch, threadId, queued, () =>
-      notes.push(`noted after ${sent.length}`),
+    const error = await steerQueued(
+      dispatch,
+      threadId,
+      queued,
+      () => notes.push(`noted after ${sent.length}`),
+      noKeep,
     );
     expect(error).toBeNull();
     expect(sent.map((command) => command.type)).toEqual([
@@ -92,14 +101,14 @@ describe("steerQueued", () => {
 
   it("does not steer when the removal is refused", async () => {
     const { sent, dispatch } = recorder({ "thread.queue.remove": "not queued" });
-    expect(await steerQueued(dispatch, threadId, message(), () => {})).toBe("not queued");
+    expect(await steerQueued(dispatch, threadId, message(), () => {}, noKeep)).toBe("not queued");
     expect(sent.map((command) => command.type)).toEqual(["thread.queue.remove"]);
   });
 
   it("puts a refused steer back on the queue with the same fields", async () => {
     const { sent, dispatch } = recorder({ "thread.turn.steer": "the turn ended" });
     const queued = message();
-    const error = await steerQueued(dispatch, threadId, queued, () => {});
+    const error = await steerQueued(dispatch, threadId, queued, () => {}, noKeep);
     expect(error).toBe("the turn ended — it is back at the end of the queue");
     expect(sent.map((command) => command.type)).toEqual([
       "thread.queue.remove",
@@ -116,11 +125,69 @@ describe("steerQueued", () => {
     });
   });
 
-  it("re-queues when the steer never reached the server", async () => {
+  it("keeps an unanswered steer in the composer instead of re-sending it", async () => {
     const { sent, dispatch } = recorder({ "thread.turn.steer": "unreachable" });
-    const error = await steerQueued(dispatch, threadId, message(), () => {});
-    expect(error).toMatch(/could not reach the server/);
-    expect(sent.at(-1)?.type).toBe("thread.turn.start");
+    const queued = message();
+    const kept: QueuedMessage[] = [];
+    const error = await steerQueued(
+      dispatch,
+      threadId,
+      queued,
+      () => {},
+      (m) => kept.push(m),
+    );
+    expect(error).toBe("could not reach the server — the message is back in the composer");
+    expect(sent.map((command) => command.type)).toEqual([
+      "thread.queue.remove",
+      "thread.turn.steer",
+    ]);
+    expect(kept).toEqual([queued]);
+  });
+
+  it("keeps a refused steer in the composer when the queue will not take it back", async () => {
+    for (const answer of ["full", "unreachable"]) {
+      const { dispatch } = recorder({
+        "thread.turn.steer": "the turn ended",
+        "thread.turn.start": answer,
+      });
+      const queued = message();
+      const kept: QueuedMessage[] = [];
+      const error = await steerQueued(
+        dispatch,
+        threadId,
+        queued,
+        () => {},
+        (m) => kept.push(m),
+      );
+      expect(error).toBe("the turn ended — the message is back in the composer");
+      expect(kept).toEqual([queued]);
+    }
+  });
+});
+
+describe("appendQueued", () => {
+  const queued = message({
+    text: "and add a test",
+    mentions: ["src/app.tsx", "src/b.ts"],
+    references: [
+      { kind: "skill", name: "review" },
+      { kind: "plugin", name: "lint" },
+    ],
+  });
+
+  it("fills an empty draft with the message", () => {
+    expect(appendQueued.text("", queued)).toBe("and add a test");
+    expect(appendQueued.mentions([], queued)).toEqual(queued.mentions);
+    expect(appendQueued.references([], queued)).toEqual(queued.references);
+  });
+
+  it("adds the message after a draft, never over it, without duplicates", () => {
+    expect(appendQueued.text("wip", queued)).toBe("wip\n\nand add a test");
+    expect(appendQueued.mentions(["src/b.ts"], queued)).toEqual(["src/b.ts", "src/app.tsx"]);
+    expect(appendQueued.references([{ kind: "skill", name: "review" }], queued)).toEqual([
+      { kind: "skill", name: "review" },
+      { kind: "plugin", name: "lint" },
+    ]);
   });
 });
 

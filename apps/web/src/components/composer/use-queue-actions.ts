@@ -13,6 +13,9 @@
  * already took it, and nothing else happens. A refused steer puts the message
  * back with `thread.turn.start` `queued: true` — at the end of the queue, not
  * where it was, since there is no atomic "steer this queued message" command.
+ * A steer that got no answer is not re-sent blind — the server may have taken
+ * it — and neither is a message the queue would not take back: both go into
+ * the composer, after whatever is there, so the text is never lost.
  *
  * Queued attachments are server-staged paths; the composer holds browser
  * `File`s. "Edit" cannot bring images back, so a message with any is not
@@ -23,6 +26,7 @@ import { useAtomSet } from "@effect/atom-react";
 import { makeCommandId } from "@poseidon/contracts/ids";
 import type { ItemId, ThreadId } from "@poseidon/contracts/ids";
 import type { Command, CommandReceipt, QueuedMessage } from "@poseidon/contracts/orchestration";
+import type { TurnReference } from "@poseidon/contracts/runtime";
 import * as React from "react";
 
 import { useClientRuntime } from "@/lib/client-runtime";
@@ -73,35 +77,47 @@ const removeQueued = (
 /**
  * Remove, then steer, then re-queue if the steer was refused. `beforeSteer`
  * runs just before the steer goes out (the local-send note: the message row
- * can arrive before the receipt).
+ * can arrive before the receipt). `keep` takes the message into the composer
+ * when it can neither be steered nor safely put back on the queue.
  */
 export const steerQueued = async (
   dispatch: QueueDispatch,
   threadId: ThreadId,
   message: QueuedMessage,
   beforeSteer: () => void,
+  keep: (message: QueuedMessage) => void,
 ): Promise<string | null> => {
   const removed = await removeQueued(dispatch, threadId, message);
   if (removed !== null) {
     return removed;
   }
   beforeSteer();
-  const steered = await outcome(
-    dispatch,
-    { ...base(), type: "thread.turn.steer", ...payload(threadId, message) },
-    "the server rejected the steer",
+  // Not `outcome`: a refused steer and an unanswered one are handled apart.
+  const steered = await dispatch({
+    ...base(),
+    type: "thread.turn.steer",
+    ...payload(threadId, message),
+  }).then(
+    (receipt) => ({ reached: true, error: receiptError(receipt, "the server rejected the steer") }),
+    () => ({ reached: false, error: DISPATCH_UNREACHABLE }),
   );
-  if (steered === null) {
+  if (steered.error === null) {
     return null;
+  }
+  if (!steered.reached) {
+    keep(message);
+    return "could not reach the server — the message is back in the composer";
   }
   const requeued = await outcome(
     dispatch,
     { ...base(), type: "thread.turn.start", ...payload(threadId, message), queued: true },
     "the server rejected putting it back",
   );
-  return requeued === null
-    ? `${steered} — it is back at the end of the queue`
-    : `${steered}, and it could not be queued again`;
+  if (requeued === null) {
+    return `${steered.error} — it is back at the end of the queue`;
+  }
+  keep(message);
+  return `${steered.error} — the message is back in the composer`;
 };
 
 /** Remove, then hand the message to `fill` once the server has taken it off the queue. */
@@ -120,6 +136,38 @@ export const editQueued = async (
 
 /** Whether a queued message can go back into the composer: images cannot. */
 export const canEditQueued = (message: QueuedMessage): boolean => message.attachments.length === 0;
+
+/** `next` after `current`, dropping entries `current` already has. */
+const merged = <T>(
+  current: ReadonlyArray<T>,
+  next: ReadonlyArray<T>,
+  key: (entry: T) => string,
+): ReadonlyArray<T> => {
+  const seen = new Set(current.map(key));
+  return [...current, ...next.filter((entry) => !seen.has(key(entry)))];
+};
+
+/**
+ * Each draft field with `message` added after what is already there — a blank
+ * line between the texts, mentions and references merged — so taking a
+ * message back never overwrites what the user typed. Its images cannot come
+ * back. Per field, because the draft handle's setters are.
+ */
+export const appendQueued = {
+  text: (text: string, message: QueuedMessage): string =>
+    text === "" ? message.text : `${text}\n\n${message.text}`,
+  mentions: (mentions: ReadonlyArray<string>, message: QueuedMessage): ReadonlyArray<string> =>
+    merged(mentions, message.mentions, (path) => path),
+  references: (
+    references: ReadonlyArray<TurnReference>,
+    message: QueuedMessage,
+  ): ReadonlyArray<TurnReference> =>
+    merged(
+      references,
+      message.references ?? [],
+      (reference) => `${reference.kind}:${reference.name}`,
+    ),
+};
 
 /** Whether "Edit" would overwrite something the user typed. */
 export const draftHasContent = (draft: ComposerDraft): boolean =>
@@ -173,6 +221,13 @@ export function useQueueActions(threadId: ThreadId): QueueActions {
   const runEdit = (message: QueuedMessage) =>
     run(message, () => editQueued(dispatch, threadId, message, fill));
 
+  /** Put a message that could not be delivered after the draft, never over it. */
+  const keep = (message: QueuedMessage) => {
+    draft.setText((text) => appendQueued.text(text, message));
+    draft.setMentions((mentions) => appendQueued.mentions(mentions, message));
+    draft.setReferences((references) => appendQueued.references(references, message));
+  };
+
   return {
     busy,
     error,
@@ -192,7 +247,9 @@ export function useQueueActions(threadId: ThreadId): QueueActions {
       ),
     remove: (message) => run(message, () => removeQueued(dispatch, threadId, message)),
     steer: (message) =>
-      run(message, () => steerQueued(dispatch, threadId, message, () => noteLocalSend(threadId))),
+      run(message, () =>
+        steerQueued(dispatch, threadId, message, () => noteLocalSend(threadId), keep),
+      ),
     edit: (message) => {
       if (!canEditQueued(message)) {
         return;

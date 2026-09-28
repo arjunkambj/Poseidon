@@ -1476,13 +1476,17 @@ projector never replays arithmetic.
 
 Each row also has a "…" menu (`queue-row-menu.tsx`, commands in
 `use-queue-actions.ts`). **Remove** is `thread.queue.remove`. **Steer now**,
-offered only while a turn runs on a session that steers, is two commands: the
+offered only while a turn runs on a session that steers and no Stop is
+settling (the server would queue a steer then, at the back), is two commands: the
 remove first, so the drain on `thread.turn.completed` cannot send the message
 a second time, then `thread.turn.steer` with the same text, attachments,
 mentions and references. A refused remove means the drain already took it and
 nothing is steered; a refused steer puts the message back with
 `thread.turn.start { queued: true }`, at the end of the queue rather than where
-it was, since no single command steers a queued message. **Edit** removes the
+it was, since no single command steers a queued message. A steer that got no
+answer is not re-sent, since the server may have taken it, and neither it nor
+a message the queue refuses to take back is dropped: both are added to the
+composer after whatever the draft holds. **Edit** removes the
 message and, once the removal is accepted, puts its text, mentions and
 references in the composer, asking first when the draft already holds
 something. A message with attachments cannot be edited — they are
