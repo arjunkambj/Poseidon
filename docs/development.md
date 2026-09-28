@@ -1034,6 +1034,32 @@ a thread`. Scopes name the area, not the workspace path.
 - **Never `--no-verify`.** `pnpm check` is the gate; if it is red the change is
   not finished.
 
+## Colour roles
+
+The colour tokens live in `packages/ui/src/styles/globals.css`, one block for
+light (`:root`) and one for dark (`.dark`). Components use them through Tailwind
+utilities such as `bg-card` or `text-muted-foreground`, never through raw colour
+values.
+
+- **A purple-tinted neutral ladder** carries the canvas, cards, popovers,
+  borders and text in both themes. The tint is faint: light is a barely tinted
+  canvas under white cards and deep near-black text; dark is a black ladder
+  (sidebar, canvas, cards, popovers, muted surfaces, each a step lighter) that
+  shows its hue only on a close look, under softened off-white text.
+- **One calm purple accent** — `primary`, `ring`, `sidebar-primary`,
+  `sidebar-ring` and `chart-1`, all the same value — is kept for primary
+  actions, focus rings, checked controls and status dots.
+- **Hover and selected surfaces stay neutral.** `accent`, `sidebar-accent` and
+  `--hover` sit on the ladder, so a selected sidebar row or a hovered menu item
+  is never purple.
+- **Semantic colours keep their own hues**: `destructive`, `--added` and
+  `--removed` for diffs, `--permission`, and `--file` for file chips.
+
+`apps/web/src/lib/theme-tokens.test.ts` parses both blocks and guards the roles:
+text contrast of at least 4.5:1, a low-chroma purple hue on every ladder token,
+neutral hover surfaces, one shared accent value, and the dark surfaces stepping
+up in order. Change a value there and the test says which role it broke.
+
 ## Troubleshooting
 
 **The window sits on "starting", or the shell reports the server failed.** The

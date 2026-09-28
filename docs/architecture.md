@@ -373,6 +373,13 @@ catalog command by area, each with its chords and `when` clauses, and warns
 when a chord collides with another binding in a context that can overlap, when
 the system owns it, or when it does not parse. A command resets on its own, or
 every command at once, and Save stores only the overrides.
+Every settings page is built from one composition
+(`apps/web/src/components/Settings/settings-section.tsx`): a page header, then
+titled sections whose card holds rows — title and description on the left, a
+compact control on the right, hairlines between rows. Dialogs put a long body in
+`DialogBody` (`dialog-body.tsx`), which scrolls while the header stays put, and
+their buttons in `DialogActions` (`dialog-actions.tsx`), a tonal footer under
+one hairline.
 
 A thread row is built on the stock sidebar menu parts
 (`apps/web/src/components/sidebar/thread-row.tsx`). A fixed status slot sits
