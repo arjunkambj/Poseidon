@@ -61,6 +61,7 @@ describe("AgentsPane", () => {
     expect(section(html, "Done")).toContain("Read the router");
     expect(section(html, "Done")).toContain("Check the docs");
     expect(section(html, "Failed")).toContain("Lint the tree");
+    expect(html.match(/aria-label="Show in timeline"/g)).toHaveLength(4);
   });
 
   it("puts a task its settled turn left running under Failed, and leaves out empty groups", () => {

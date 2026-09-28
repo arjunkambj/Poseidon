@@ -5,6 +5,9 @@
  * `agents:<itemId>`, apart from the timeline's own row for the same task, so
  * something outside the tab (the strip's View) can open an entry too.
  *
+ * The row's target button asks the timeline to scroll to the subagent's task
+ * row (`lib/timeline-reveal-request.ts`), opening the folds that hide it.
+ *
  * The recent rows are one line each, drawn here rather than with the
  * timeline's rows, which lean on the timeline's thread and find providers.
  */
@@ -14,11 +17,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@poseidon/ui/components/collapsible";
+import { Button } from "@poseidon/ui/components/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 import type { ReactNode } from "react";
 
 import { toolTarget } from "@/components/timeline/tool-target";
 import { formatDurationMs, formatElapsed } from "@/lib/format";
+import { requestTimelineReveal } from "@/lib/timeline-reveal-request";
 import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 import { useRowDisclosure } from "@/state/ui";
@@ -35,6 +41,7 @@ import {
   Lightbulb,
   Server,
   Spinner,
+  Target,
   Terminal,
 } from "@honeyicons/react";
 
@@ -144,11 +151,45 @@ function Field({ label, children }: { readonly label: string; readonly children:
   );
 }
 
-export function AgentEntry({ subagent }: { readonly subagent: Subagent }) {
+function ShowInTimeline({
+  threadId,
+  itemId,
+}: {
+  readonly threadId: string;
+  readonly itemId: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Show in timeline"
+            className="shrink-0"
+            onClick={() => requestTimelineReveal({ threadId, itemId })}
+          />
+        }
+      >
+        <Target variant="bold" />
+      </TooltipTrigger>
+      <TooltipContent>Show in timeline</TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function AgentEntry({
+  threadId,
+  subagent,
+}: {
+  readonly threadId: string;
+  readonly subagent: Subagent;
+}) {
   const [open, setOpen] = useRowDisclosure(agentEntryRowId(subagent.item.itemId));
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="flex h-7 items-center px-3 py-0.5 hover:bg-hover">
+      <div className="flex h-7 items-center gap-1 px-3 py-0.5 hover:bg-hover">
         <CollapsibleTrigger variant="summary" className="h-full">
           <ChevronRight
             variant="bold"
@@ -164,6 +205,7 @@ export function AgentEntry({ subagent }: { readonly subagent: Subagent }) {
             <RunTime subagent={subagent} />
           </span>
         </CollapsibleTrigger>
+        <ShowInTimeline threadId={threadId} itemId={subagent.item.itemId} />
       </div>
       <CollapsibleContent>
         <div className="flex flex-col gap-2 pt-1 pr-3 pb-2 pl-9 type-body">

@@ -4,7 +4,7 @@
  * left out. Everything comes from the snapshot the dock already holds — the
  * thread's `task` rows (`./subagents`) — so nothing is fetched or polled; the
  * tab follows the thread as its snapshot updates. Each entry is an
- * `AgentEntry`.
+ * `AgentEntry`, whose target button scrolls the timeline to its task row.
  */
 
 import * as React from "react";
@@ -25,9 +25,11 @@ const SECTIONS: ReadonlyArray<{ readonly key: keyof SubagentGroups; readonly tit
 ];
 
 function Section({
+  threadId,
   title,
   subagents,
 }: {
+  readonly threadId: string;
   readonly title: string;
   readonly subagents: ReadonlyArray<Subagent>;
 }) {
@@ -44,7 +46,7 @@ function Section({
       <ul className="flex flex-col">
         {subagents.map((subagent) => (
           <li key={subagent.item.itemId}>
-            <AgentEntry subagent={subagent} />
+            <AgentEntry threadId={threadId} subagent={subagent} />
           </li>
         ))}
       </ul>
@@ -71,7 +73,7 @@ export function AgentsPane({ snapshot }: { readonly snapshot: ThreadDetailSnapsh
   return (
     <div className="flex flex-col gap-1 py-1">
       {shown.map(({ key, title }) => (
-        <Section key={key} title={title} subagents={groups[key]} />
+        <Section key={key} threadId={snapshot.threadId} title={title} subagents={groups[key]} />
       ))}
     </div>
   );

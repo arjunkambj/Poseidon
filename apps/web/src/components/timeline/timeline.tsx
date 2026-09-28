@@ -27,6 +27,8 @@
  * back (`use-reading-position.ts`). A thread left away from its end reopens
  * at the same row, free rather than following; one left at its end opens
  * there and follows.
+ *
+ * The Agents tab asks for a subagent's task row (`use-timeline-reveal.ts`).
  */
 
 import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
@@ -51,6 +53,7 @@ import { TurnRail, useTurnNavigation } from "@/components/timeline/turn-rail-vie
 import { useReadingPosition, useRestorePlace } from "@/components/timeline/use-reading-position";
 import { useSendAnchor } from "@/components/timeline/use-send-anchor";
 import { useThreadFind } from "@/components/timeline/use-thread-find";
+import { useTimelineReveal } from "@/components/timeline/use-timeline-reveal";
 import { useTimelineThreadValue } from "@/components/timeline/use-timeline-thread";
 import { useKeybindingCommand } from "@/lib/shortcuts";
 import { useChatWidth } from "@/lib/use-chat-width";
@@ -108,6 +111,7 @@ function ThreadTimeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
   });
   const navigation = useTurnNavigation({ listRef, rows: projection.rows, release: anchor.release });
   const find = useThreadFind({ snapshot, options, projection, listRef, release: anchor.release });
+  useTimelineReveal({ snapshot, options, projection, listRef, release: anchor.release });
   const setDisclosures = useSetRowDisclosures();
   useKeybindingCommand("timeline.jumpToLatest", anchor.jumpToLatest);
   // Folds above the viewport open and close too: the anchor holds the reader's place.

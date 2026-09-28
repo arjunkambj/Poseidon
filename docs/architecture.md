@@ -351,7 +351,9 @@ not lines; a file chip in the timeline opens it on a file at a line, through
 a per-thread request in `state/file-reveal.ts` that the thread view answers by
 writing the file into the thread's Files view and opening the dock on Files) and
 **agents** (the thread's subagents from its snapshot's task rows, grouped
-Working / Done / Failed; thread docks only). When less than 640px remains beside the sidebar, the dock overlays
+Working / Done / Failed; thread docks only; an entry's target button leaves a
+request in `lib/timeline-reveal-request.ts` that the timeline answers by
+opening what folds the task row and scrolling to it). When less than 640px remains beside the sidebar, the dock overlays
 the thread so its tabs stay reachable. Wider rows fit a thread column of at least 360px beside the dock.
 The dock has keys of its own, answered by the thread view: `dock.toggle`
 (Mod+Alt+B) closes it or reopens it on the tab it was closed on, and
