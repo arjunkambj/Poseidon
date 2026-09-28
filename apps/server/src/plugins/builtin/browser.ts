@@ -44,8 +44,9 @@ server, a headless browser started from the shell, curl for pages meant to be
 seen). The in-app browser is the one the person can see, and it runs with the
 permissions they set for this thread.
 
-If no \`browser_*\` tools are available, the Browser plugin or the in-app
-browser is turned off for this session. Say so and continue without a browser
+If no \`browser_*\` tools are available, the Browser plugin is turned off for
+this session. If the tools answer that the in-app browser is disabled, the
+person switched it off. Either way, say so and continue without a browser
 rather than starting another one.
 
 ## The tools
@@ -92,7 +93,7 @@ continuing, or stop and ask them what they want if it is not clear.
 
 When a task says "check the app" without a URL:
 
-1. Look at this thread's terminal output for a line like
+1. If you started the dev server yourself, read its output for a line like
    \`Local: http://localhost:5173/\` or \`listening on port 3000\`.
 2. Read the project's \`package.json\` scripts (\`dev\`, \`start\`, \`preview\`) and
    the framework's config for a configured port.
