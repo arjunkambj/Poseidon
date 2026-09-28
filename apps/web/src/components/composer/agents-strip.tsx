@@ -15,7 +15,6 @@ import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
 
 import { agentEntryRowId, agentsStripSummary } from "@/components/panes/agents/subagents";
 import { formatElapsed } from "@/lib/format";
-import { turnInFlight } from "@/lib/turn";
 import { useNow } from "@/lib/use-now";
 import { useRequestAgentsTab } from "@/state/agents-reveal";
 import { useSetRowDisclosures } from "@/state/ui";
@@ -39,7 +38,7 @@ export function AgentsStrip({
 }) {
   const requestAgentsTab = useRequestAgentsTab();
   const setDisclosures = useSetRowDisclosures();
-  const summary = agentsStripSummary(doc.items, turnInFlight(doc));
+  const summary = agentsStripSummary(doc.items, doc.currentTurnId);
   if (summary === null) {
     return null;
   }

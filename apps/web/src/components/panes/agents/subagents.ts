@@ -60,12 +60,16 @@ const promptOf = (item: ItemSnapshot): string | undefined => {
 /**
  * A task still `in_progress` once its turn has settled did not finish: the
  * harness ended the turn under it, which reads the same as a harness reporting
- * it killed or stopped.
+ * it killed or stopped. Nothing settles such a row later, so it is only
+ * working while its own turn is the one running — a row stranded by an
+ * interrupted turn stays "did not finish" when the next turn starts. A row
+ * with no turn stamp is read as belonging to the running turn.
  */
-const stateOf = (item: ItemSnapshot, turnActive: boolean): SubagentState => {
+const stateOf = (item: ItemSnapshot, liveTurnId: string | null): SubagentState => {
   if (item.status === "completed") return "done";
   if (item.status === "failed") return "failed";
-  return turnActive ? "working" : "failed";
+  const live = liveTurnId !== null && (item.turnId === undefined || item.turnId === liveTurnId);
+  return live ? "working" : "failed";
 };
 
 const descendantsOf = (
@@ -87,10 +91,14 @@ const descendantsOf = (
   return out;
 };
 
-/** Every task row in `items`, nested ones included, in item order. */
+/**
+ * Every task row in `items`, nested ones included, in item order.
+ * `liveTurnId` is the thread's running turn (`snapshot.currentTurnId`), null
+ * when none is.
+ */
 export const subagentsOf = (
   items: ReadonlyArray<ItemSnapshot>,
-  turnActive: boolean,
+  liveTurnId: string | null,
 ): ReadonlyArray<Subagent> => {
   const children = new Map<string, ItemSnapshot[]>();
   for (const item of items) {
@@ -104,7 +112,7 @@ export const subagentsOf = (
   for (const item of items) {
     if (item.kind !== "task") continue;
     const direct = children.get(item.itemId) ?? [];
-    const state = stateOf(item, turnActive);
+    const state = stateOf(item, liveTurnId);
     const startedAt = uuidV7Millis(item.itemId);
     const prompt = promptOf(item);
     // Approximate: a settled task's end is its last descendant's start, since
@@ -145,10 +153,10 @@ export const groupSubagents = (list: ReadonlyArray<Subagent>): SubagentGroups =>
 /** How many subagents are working and the newest of them; null when none is. */
 export const agentsStripSummary = (
   items: ReadonlyArray<ItemSnapshot>,
-  turnActive: boolean,
+  liveTurnId: string | null,
 ): AgentsStripSummary | null => {
-  if (!turnActive) return null;
-  const working = groupSubagents(subagentsOf(items, turnActive)).working;
+  if (liveTurnId === null) return null;
+  const working = groupSubagents(subagentsOf(items, liveTurnId)).working;
   const newest = working[0];
   return newest === undefined ? null : { count: working.length, newest };
 };

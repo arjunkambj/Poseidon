@@ -38,6 +38,10 @@ const child = (offsetMs: number, parent: ItemSnapshot, kind: ItemSnapshot["kind"
     parentItemId: parent.itemId,
   }) as ItemSnapshot;
 
+/** The running turn's id, as `snapshot.currentTurnId` carries it. */
+const LIVE = "0199c0de-0004-7000-8000-000000000002";
+const EARLIER = "0199c0de-0004-7000-8000-000000000001";
+
 const titles = (list: ReadonlyArray<Subagent>) => list.map((subagent) => subagent.title);
 
 describe("subagentsOf", () => {
@@ -51,7 +55,7 @@ describe("subagentsOf", () => {
       kind: "assistant_message",
       status: "completed",
     } as ItemSnapshot;
-    const list = subagentsOf([done, failed, running, nested, message], true);
+    const list = subagentsOf([done, failed, running, nested, message], LIVE);
     expect(list.map((subagent) => [subagent.title, subagent.state])).toEqual([
       ["Done one", "done"],
       ["Failed one", "failed"],
@@ -61,12 +65,30 @@ describe("subagentsOf", () => {
   });
 
   it("reads a task left running after its turn settled as failed", () => {
-    const [subagent] = subagentsOf([task(0, "in_progress")], false);
+    const [subagent] = subagentsOf([task(0, "in_progress")], null);
     expect(subagent?.state).toBe("failed");
   });
 
+  it("reads a task stranded by an earlier turn as failed while a newer turn runs", () => {
+    const stranded = task(0, "in_progress", {
+      text: "stranded",
+      turnId: EARLIER,
+    } as Partial<ItemSnapshot>);
+    const current = task(10, "in_progress", {
+      text: "current",
+      turnId: LIVE,
+    } as Partial<ItemSnapshot>);
+    const unstamped = task(20, "in_progress", { text: "unstamped" });
+    const list = subagentsOf([stranded, current, unstamped], LIVE);
+    expect(list.map((subagent) => [subagent.title, subagent.state])).toEqual([
+      ["stranded", "failed"],
+      ["current", "working"],
+      ["unstamped", "working"],
+    ]);
+  });
+
   it("falls back to a generic title when the row has no text", () => {
-    const [subagent] = subagentsOf([task(0, "completed", { text: "" })], false);
+    const [subagent] = subagentsOf([task(0, "completed", { text: "" })], null);
     expect(subagent?.title).toBe("Subagent task");
   });
 
@@ -77,7 +99,7 @@ describe("subagentsOf", () => {
     const noInput = task(10, "completed");
     const nonString = task(20, "completed", { tool: { name: "Task", input: { prompt: 42 } } });
     const blank = task(30, "completed", { tool: { name: "Task", input: { prompt: "   " } } });
-    const list = subagentsOf([withPrompt, noInput, nonString, blank], false);
+    const list = subagentsOf([withPrompt, noInput, nonString, blank], null);
     expect(list.map((subagent) => subagent.prompt)).toEqual([
       "Find the bug",
       undefined,
@@ -92,7 +114,7 @@ describe("subagentsOf", () => {
     const nested = task(900, "completed");
     const nestedWithParent = { ...nested, parentItemId: kids[6]!.itemId };
     const grandchild = child(1_000, nestedWithParent);
-    const [subagent] = subagentsOf([parent, ...kids, nestedWithParent, grandchild], true);
+    const [subagent] = subagentsOf([parent, ...kids, nestedWithParent, grandchild], LIVE);
     expect(subagent?.recent).toEqual(kids.slice(2));
   });
 
@@ -104,7 +126,7 @@ describe("subagentsOf", () => {
       tool: { name: "Task", input: {}, output: "ignored" },
     });
     const kid = child(20, withRows);
-    const list = subagentsOf([progressOnly, withRows, kid], true);
+    const list = subagentsOf([progressOnly, withRows, kid], LIVE);
     expect(list[0]?.progress).toBe("Reading src/\nRunning tests");
     expect(list[1]?.progress).toBeUndefined();
   });
@@ -116,7 +138,7 @@ describe("subagentsOf", () => {
     const deep = child(9_000, nested);
     const running = task(10_000, "in_progress");
     const lone = task(20_000, "completed");
-    const list = subagentsOf([parent, kid, nested, deep, running, lone], true);
+    const list = subagentsOf([parent, kid, nested, deep, running, lone], LIVE);
     expect(list.map((subagent) => subagent.startedAt)).toEqual([
       T0 + 1_000,
       T0 + 4_000,
@@ -142,7 +164,7 @@ describe("groupSubagents", () => {
         task(20, "in_progress", { text: "work-old" }),
         task(50, "in_progress", { text: "work-new" }),
       ],
-      true,
+      LIVE,
     );
     const groups = groupSubagents(list);
     expect(titles(groups.working)).toEqual(["work-new", "work-old"]);
@@ -160,7 +182,7 @@ describe("groupSubagents", () => {
         { itemId: at(1), kind: "task", status: "completed", text: "first" } as ItemSnapshot,
         { itemId: at(2), kind: "task", status: "completed", text: "second" } as ItemSnapshot,
       ],
-      false,
+      null,
     );
     expect(titles(groupSubagents(list).done)).toEqual(["second", "first"]);
   });
@@ -168,10 +190,10 @@ describe("groupSubagents", () => {
 
 describe("agentsStripSummary", () => {
   it("is null when no subagent is working", () => {
-    expect(agentsStripSummary([], true)).toBeNull();
-    expect(agentsStripSummary([task(0, "completed"), task(10, "failed")], true)).toBeNull();
+    expect(agentsStripSummary([], LIVE)).toBeNull();
+    expect(agentsStripSummary([task(0, "completed"), task(10, "failed")], LIVE)).toBeNull();
     // A turn that settled leaves nothing working, whatever the rows say.
-    expect(agentsStripSummary([task(0, "in_progress")], false)).toBeNull();
+    expect(agentsStripSummary([task(0, "in_progress")], null)).toBeNull();
   });
 
   it("counts the working subagents and names the newest", () => {
@@ -181,9 +203,27 @@ describe("agentsStripSummary", () => {
         task(10, "completed", { text: "finished" }),
         task(20, "in_progress", { text: "newer" }),
       ],
-      true,
+      LIVE,
     );
     expect(summary?.count).toBe(2);
     expect(summary?.newest.title).toBe("newer");
+  });
+
+  it("leaves out a task stranded by an earlier turn", () => {
+    const summary = agentsStripSummary(
+      [
+        task(0, "in_progress", { text: "current", turnId: LIVE } as Partial<ItemSnapshot>),
+        task(10, "in_progress", { text: "stranded", turnId: EARLIER } as Partial<ItemSnapshot>),
+      ],
+      LIVE,
+    );
+    expect(summary?.count).toBe(1);
+    expect(summary?.newest.title).toBe("current");
+    expect(
+      agentsStripSummary(
+        [task(0, "in_progress", { turnId: EARLIER } as Partial<ItemSnapshot>)],
+        LIVE,
+      ),
+    ).toBeNull();
   });
 });

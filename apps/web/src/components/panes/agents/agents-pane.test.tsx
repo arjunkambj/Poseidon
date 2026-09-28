@@ -72,6 +72,24 @@ describe("AgentsPane", () => {
     expect(section(html, "Failed")).toContain("Stranded");
   });
 
+  it("keeps a task an earlier turn stranded under Failed while a newer turn runs", () => {
+    const earlierTurn = "0199c0de-0004-7000-8000-000000000000";
+    const html = renderToStaticMarkup(
+      <AgentsPane
+        snapshot={snapshot(
+          [
+            { ...task("Stranded", "in_progress"), turnId: earlierTurn },
+            { ...task("Current", "in_progress"), turnId },
+          ],
+          true,
+        )}
+      />,
+    );
+    expect(headings(html)).toEqual(["Working 1", "Failed 1"]);
+    expect(section(html, "Working")).toContain("Current");
+    expect(section(html, "Failed")).toContain("Stranded");
+  });
+
   it("shows the empty state when the thread has no subagents", () => {
     const html = renderToStaticMarkup(
       <AgentsPane

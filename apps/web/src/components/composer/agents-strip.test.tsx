@@ -40,6 +40,21 @@ describe("AgentsStrip", () => {
     expect(render([task("Stranded", "in_progress")], false)).toBe("");
   });
 
+  it("leaves out a task an earlier turn stranded once a newer turn runs", () => {
+    const earlierTurn = "0199c0de-0004-7000-8000-000000000000";
+    const html = render(
+      [
+        { ...task("Current", "in_progress"), turnId },
+        { ...task("Stranded", "in_progress"), turnId: earlierTurn },
+      ],
+      true,
+    );
+    expect(html).toContain("1 agent working");
+    expect(html).toContain('title="Current"');
+    expect(html).not.toContain("Stranded");
+    expect(render([{ ...task("Stranded", "in_progress"), turnId: earlierTurn }], true)).toBe("");
+  });
+
   it("counts one working subagent in the singular and names it", () => {
     const html = render(
       [task("Read the router", "completed"), task("Write the tests", "in_progress")],

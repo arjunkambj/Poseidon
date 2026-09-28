@@ -12,7 +12,6 @@ import * as React from "react";
 import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
 
 import { PaneMessage } from "@/components/panes/files/pane-message";
-import { turnInFlight } from "@/lib/turn";
 import { Bot } from "@honeyicons/react";
 
 import { AgentEntry } from "./agent-entry";
@@ -55,10 +54,10 @@ function Section({
 }
 
 export function AgentsPane({ snapshot }: { readonly snapshot: ThreadDetailSnapshot }) {
-  const running = turnInFlight(snapshot);
+  const liveTurnId = snapshot.currentTurnId;
   const groups = React.useMemo(
-    () => groupSubagents(subagentsOf(snapshot.items, running)),
-    [snapshot.items, running],
+    () => groupSubagents(subagentsOf(snapshot.items, liveTurnId)),
+    [snapshot.items, liveTurnId],
   );
   const shown = SECTIONS.filter(({ key }) => groups[key].length > 0);
   if (shown.length === 0) {
