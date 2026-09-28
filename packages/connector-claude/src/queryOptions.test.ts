@@ -2,7 +2,12 @@ import type { SessionPlugin } from "@poseidon/connector-sdk/plugins";
 import { describe, expect, it } from "vitest";
 
 import { pluginMcpKey } from "./pluginOptions";
-import { buildQueryOptions, sdkEffortFor, type QueryOptionsInput } from "./queryOptions";
+import {
+  buildQueryOptions,
+  sdkEffortFor,
+  ultracodeLaunchOptions,
+  type QueryOptionsInput,
+} from "./queryOptions";
 import type { ToolGate } from "./toolGate";
 
 /** Never called: the options only wrap the gate's doors in closures. */
@@ -84,6 +89,36 @@ describe("sdkEffortFor", () => {
     });
     expect(options.effort).toBeUndefined();
     expect("effort" in options).toBe(false);
+  });
+});
+
+describe("buildQueryOptions ultracode", () => {
+  it("launches with the flag layer's ultracode and xhigh, whatever the thread's effort", () => {
+    for (const effort of [undefined, "low", "max", "ultra"] as const) {
+      const options = buildQueryOptions({
+        ...input,
+        settings: {
+          ...input.settings,
+          ultracode: true,
+          ...(effort === undefined ? {} : { effort }),
+        },
+      });
+      expect(options.settings).toEqual({ ultracode: true });
+      expect(options.effort).toBe("xhigh");
+    }
+  });
+
+  it("adds nothing when ultracode is off or absent", () => {
+    for (const settings of [
+      input.settings,
+      { ...input.settings, ultracode: false },
+      { ...input.settings, ultracode: false, effort: "high" as const },
+    ]) {
+      const options = buildQueryOptions({ ...input, settings });
+      expect("settings" in options).toBe(false);
+      expect(options.effort).toBe(settings.effort);
+      expect(ultracodeLaunchOptions(settings)).toEqual({});
+    }
   });
 });
 

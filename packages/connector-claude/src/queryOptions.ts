@@ -17,6 +17,8 @@
  * - Every tool call is gated (`toolGate.ts`).
  * - The thread's attachments directory is readable, so a file the user
  *   attached can be read by path.
+ * - A thread with ultracode on starts the session with it on
+ *   (`ultracodeLaunchOptions`).
  */
 
 import * as NodePath from "node:path";
@@ -78,6 +80,23 @@ export const permissionModeFor = (settings: ThreadSettings): PermissionMode => {
 export const sdkEffortFor = (effort: Effort | undefined): EffortLevel | undefined =>
   effort === undefined || effort === "minimal" || effort === "ultra" ? undefined : effort;
 
+/** The effort ultracode runs at; the CLI sets it itself when ultracode goes on. */
+export const ULTRACODE_EFFORT = "xhigh" satisfies EffortLevel;
+
+/**
+ * What a thread with ultracode on adds to the launch: the SDK's inline
+ * `settings` — the `--settings` flag layer, where the SDK documents
+ * `Settings.ultracode` is provided — and the effort ultracode runs at,
+ * whatever the thread's own effort says. The CLI reads `ultracode` from its
+ * merged settings at start and defaults the effort to xhigh with it (CLI
+ * 2.1.280 bundle); the explicit effort keeps the two in step. Off adds
+ * nothing, so the launch is exactly what it was before ultracode existed.
+ */
+export const ultracodeLaunchOptions = (
+  settings: ThreadSettings,
+): Pick<Options, "settings" | "effort"> =>
+  settings.ultracode === true ? { settings: { ultracode: true }, effort: ULTRACODE_EFFORT } : {};
+
 /** The directory a thread's attachments are staged under. */
 export const attachmentsDirFor = (attachmentsDir: string, threadId: ThreadId): string =>
   NodePath.join(NodePath.resolve(attachmentsDir), threadId);
@@ -135,6 +154,7 @@ export const buildQueryOptions = (input: QueryOptionsInput): Options => {
     allowDangerouslySkipPermissions: true,
     ...(model === undefined ? {} : { model }),
     ...(effort === undefined ? {} : { effort }),
+    ...ultracodeLaunchOptions(input.settings),
     ...(plugins.length === 0 ? {} : { plugins: sdkPluginsFor(plugins) }),
     mcpServers: {
       ...pluginMcpServersFor(plugins),
