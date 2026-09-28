@@ -8,6 +8,9 @@
  *   thread of the project whose branch has a pull request.
  * - `refreshPullRequests(registry, projectId)` — reread both now: the pane's
  *   refresh button, and after a write to the pull request.
+ * - `revisitPullRequestMarks(registry, projectId)` — the sidebar's window
+ *   return for a project whose threads carry marks: rereads the marks only,
+ *   and only past their throttle.
  * - `runPullRequestAction(registry, input)` — `git.pullRequest.action`, a
  *   one-shot (`./oneShot`) that resolves with its own `Exit`: the view as it
  *   is after the write, or the server's refusal. Either way the project's pull
@@ -104,6 +107,11 @@ export const makePullRequestAtoms = (
     Atom.make(0).pipe(Atom.keepAlive),
   );
 
+  /** Bumped by `revisitPullRequestMarks`: the marks only, and still throttled. */
+  const marksRevisionAtom = Atom.family((_projectId: ProjectId) =>
+    Atom.make(0).pipe(Atom.keepAlive),
+  );
+
   /** The last successful marks listing per project, and when it was taken. */
   const lastMarks = new Map<ProjectId, { readonly at: number; readonly value: PullRequestMarks }>();
   /** Projects whose next marks read skips the throttle: an explicit refresh. */
@@ -139,6 +147,7 @@ export const makePullRequestAtoms = (
     runtime.atom((get) => {
       get(git.projectRevisionAtom(projectId));
       get(pullRequestRevisionAtom(projectId));
+      get(marksRevisionAtom(projectId));
       return connectedEpochs.pipe(
         Stream.mapEffect(() => {
           const last = lastMarks.get(projectId);
@@ -173,6 +182,14 @@ export const makePullRequestAtoms = (
   const refreshPullRequests = (registry: AtomRegistry.AtomRegistry, projectId: ProjectId) => {
     forced.add(projectId);
     registry.update(pullRequestRevisionAtom(projectId), (revision) => revision + 1);
+  };
+
+  /**
+   * The user is back: list the project's marks again if the last listing is
+   * older than `MARKS_MIN_INTERVAL_MS`, else answer it again. Nothing else rereads.
+   */
+  const revisitPullRequestMarks = (registry: AtomRegistry.AtomRegistry, projectId: ProjectId) => {
+    registry.update(marksRevisionAtom(projectId), (revision) => revision + 1);
   };
 
   /**
@@ -218,6 +235,7 @@ export const makePullRequestAtoms = (
     pullRequestViewAtom,
     pullRequestMarksAtom,
     refreshPullRequests,
+    revisitPullRequestMarks,
     runPullRequestAction,
     pullRequestFixContext,
   };

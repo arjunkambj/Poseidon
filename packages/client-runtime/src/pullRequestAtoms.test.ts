@@ -263,6 +263,48 @@ describe("pull request atoms", () => {
     ),
   );
 
+  it.live("a sidebar revisit rereads only the marks, and only past the throttle", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const projectId = makeProjectId();
+        const clock = { now: 1_000 };
+        const script: Script = { view: [], marks: [], failView: false };
+        const { registry, pullRequestMarksAtom, pullRequestViewAtom, revisitPullRequestMarks } =
+          yield* runtimeWith(fakeClient(script), clock);
+        const marks = pullRequestMarksAtom(projectId);
+        const view = pullRequestViewAtom({ projectId });
+        registry.mount(marks);
+        registry.mount(view);
+        yield* Effect.promise(() =>
+          awaitValue<MarksQuery, Cause.NoSuchElementError>(registry, marks, (q) => q._tag === "ok"),
+        );
+        yield* Effect.promise(() =>
+          awaitValue<ViewQuery, Cause.NoSuchElementError>(registry, view, (q) => q._tag === "ok"),
+        );
+
+        // Back a moment later: the last listing answers again.
+        clock.now += 5_000;
+        revisitPullRequestMarks(registry, projectId);
+        yield* Effect.promise(() =>
+          awaitValue<MarksQuery, Cause.NoSuchElementError>(registry, marks, (q) => q._tag === "ok"),
+        );
+        expect(script.marks).toHaveLength(1);
+
+        // Back after the interval: one new listing, and the view is left alone.
+        clock.now += MARKS_MIN_INTERVAL_MS;
+        revisitPullRequestMarks(registry, projectId);
+        yield* Effect.promise(() =>
+          awaitValue<MarksQuery, Cause.NoSuchElementError>(
+            registry,
+            marks,
+            () => script.marks.length === 2,
+          ),
+        );
+        expect(script.view).toHaveLength(1);
+      }),
+    ),
+  );
+
   it.live("an action sends the pinned head and refreshes the marks whatever it answers", () =>
     Effect.scoped(
       Effect.gen(function* () {
