@@ -21,6 +21,8 @@ import type { ConnectorSummary } from "@poseidon/contracts/connectors";
 import {
   makeCommandId,
   makeConnectorInstanceId,
+  makeProjectId,
+  makeThreadId,
   type ConnectorInstanceId,
 } from "@poseidon/contracts/ids";
 import { ImportableSessionEntry } from "@poseidon/contracts/sessionImport";
@@ -33,12 +35,13 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 
 import { persistenceLayer } from "../../test/layers";
-import { OrchestrationEngine } from "../orchestration/Engine";
+import { EngineEnv, OrchestrationEngine } from "../orchestration/Engine";
 import { ConnectorCatalog } from "../rpc/services";
 import { ConnectorRegistryService } from "../settings/ConnectorManager";
 import { ConnectorModels, OpenConnectors } from "../settings/connectorRouting";
 import { ledgerKey } from "./ledger";
 import { SessionImporter } from "./SessionImporter";
+import { sessionBoundEvent } from "./transcriptEvents";
 
 const FIXTURE = NodePath.join(fixturesRoot("claude"), "session-files");
 const ALPHA_ID = "0b6f3c1e-5a2d-4c8e-9f10-2a3b4c5d6e01";
@@ -334,6 +337,69 @@ describe("SessionImporter", () => {
         ).toBeNull();
         const reimported = yield* importer.importSession(resuming, ALPHA_ID);
         expect(reimported.threadId).not.toBe(first.threadId);
+      }),
+    ),
+  );
+
+  it.effect("names the thread already running a session, and never imports it as a copy", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { importer, engine, resuming, fresh, files, ledgerPath } = yield* fixture();
+        // A thread of Poseidon's own that runs the alpha session.
+        const projectId = makeProjectId();
+        const threadId = makeThreadId();
+        const now = new Date().toISOString();
+        yield* engine.dispatch({
+          type: "project.create",
+          commandId: makeCommandId(),
+          createdAt: now,
+          projectId,
+          name: "alpha",
+          workspaceRoot: files.alpha,
+        });
+        yield* engine.dispatch({
+          type: "thread.create",
+          commandId: makeCommandId(),
+          createdAt: now,
+          threadId,
+          projectId,
+          title: "Running here",
+          settings: { connectorInstanceId: resuming },
+        });
+        const env = yield* EngineEnv;
+        yield* engine.appendThreadEvents(threadId, [
+          sessionBoundEvent(
+            threadId,
+            {
+              connectorInstanceId: resuming,
+              connectorKind: "fake-resuming",
+              sessionRef: { sessionId: ALPHA_ID, cwd: files.alpha },
+            },
+            env,
+          ),
+        ]);
+
+        const listed = yield* importer.importable;
+        const alpha = listed.find(
+          (entry) => entry.sourceId === ALPHA_ID && entry.connectorInstanceId === resuming,
+        );
+        expect(alpha).toMatchObject({ importedThreadId: threadId, projectId });
+        // A session the thread does not run, and one read by another kind, stay importable.
+        expect(
+          listed.find(
+            (entry) => entry.sourceId === NOISY_ID && entry.connectorInstanceId === resuming,
+          )?.importedThreadId,
+        ).toBeNull();
+        expect(
+          listed.find((entry) => entry.sourceId === ALPHA_ID && entry.connectorInstanceId === fresh)
+            ?.importedThreadId,
+        ).toBeNull();
+
+        const result = yield* importer.importSession(resuming, ALPHA_ID);
+        expect(result).toEqual({ threadId, projectId, resumes: true });
+        expect(yield* engine.listThreads(undefined, true)).toHaveLength(1);
+        // Nothing was imported, so nothing was recorded.
+        expect(NodeFS.existsSync(ledgerPath)).toBe(false);
       }),
     ),
   );

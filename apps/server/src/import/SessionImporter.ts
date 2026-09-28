@@ -14,7 +14,8 @@
  *
  * The source files are only ever read. Which thread each session became is
  * kept in a small ledger (`ledger.ts`), so importing it again answers that
- * thread instead of a copy. A failure after the thread exists deletes it, so a
+ * thread instead of a copy; a session one of Poseidon's own threads runs is
+ * answered with that thread the same way. A failure after the thread exists deletes it, so a
  * retry starts clean; a project the import added stays, like any other.
  */
 
@@ -49,6 +50,7 @@ import * as Layer from "effect/Layer";
 import * as Semaphore from "effect/Semaphore";
 
 import { EngineEnv, OrchestrationEngine } from "../orchestration/Engine";
+import type { ThreadDoc } from "../orchestration/state";
 import { ConnectorCatalog } from "../rpc/services";
 import { ConnectorRegistryService } from "../settings/ConnectorManager";
 import { LEDGER_FILE, ledgerKey, readLedger, writeLedger } from "./ledger";
@@ -135,6 +137,28 @@ export class SessionImporter extends Context.Service<
         const sessionsOf = (instance: ConnectorInstance): SessionsExtension | undefined =>
           instance.extensions?.sessions;
 
+        /**
+         * The live threads that run one of the instance's sessions, by the
+         * session's `sourceId`. Poseidon's own threads keep their sessions in
+         * the harness's usual folders, so without this every one of them
+         * would list as a session to import. Matched on the connector kind,
+         * not the instance: two instances of a kind reading one folder list
+         * the same sessions, and a session id names one session either way.
+         */
+        const threadsRunning = (instance: ConnectorInstance, docs: ReadonlyArray<ThreadDoc>) => {
+          const sourceIdOf = sessionsOf(instance)?.sourceIdOf;
+          const running = new Map<string, ThreadDoc>();
+          if (sourceIdOf === undefined) return running;
+          for (const doc of docs) {
+            if (doc.deleted || doc.session?.connectorKind !== instance.kind) continue;
+            const sourceId = sourceIdOf(doc.session.sessionRef);
+            if (sourceId !== undefined && !running.has(sourceId)) running.set(sourceId, doc);
+          }
+          return running;
+        };
+
+        const threadDocs = engine.threadDocs.pipe(Effect.catch(internal("list the threads")));
+
         const importable = Effect.gen(function* () {
           const instances = (yield* registry.instances).filter(
             (instance) => sessionsOf(instance) !== undefined,
@@ -146,6 +170,7 @@ export class SessionImporter extends Context.Service<
             .listProjects()
             .pipe(Effect.catch(internal("list the projects")));
           const ledger = yield* readLedger(options.ledgerPath);
+          const docs = yield* threadDocs;
           const entries: Array<ImportableSessionEntry> = [];
           for (const instance of instances) {
             const sessions = yield* sessionsOf(instance)!
@@ -163,10 +188,12 @@ export class SessionImporter extends Context.Service<
               registry.describe.find((entry) => entry.kind === instance.kind)?.metadata
                 .displayName ??
               instance.kind;
+            const running = threadsRunning(instance, docs);
             for (const session of sessions) {
-              const imported = yield* liveThread(
-                ledger[ledgerKey(instance.instanceId, session.sourceId)],
-              );
+              const imported =
+                (yield* liveThread(ledger[ledgerKey(instance.instanceId, session.sourceId)])) ??
+                running.get(session.sourceId) ??
+                null;
               entries.push({
                 ...session,
                 connectorInstanceId: instance.instanceId,
@@ -263,7 +290,12 @@ export class SessionImporter extends Context.Service<
                 );
               }
               const key = ledgerKey(connectorInstanceId, sourceId);
-              const earlier = yield* liveThread((yield* readLedger(options.ledgerPath))[key]);
+              // An earlier import of it, else a thread of Poseidon's own that
+              // runs it: either is the session already, and no copy is made.
+              const earlier =
+                (yield* liveThread((yield* readLedger(options.ledgerPath))[key])) ??
+                threadsRunning(instance, yield* threadDocs).get(sourceId) ??
+                null;
               if (earlier !== null) {
                 return {
                   threadId: earlier.threadId,

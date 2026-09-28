@@ -862,8 +862,14 @@ Directories, relative to `apps/server/`:
 own in as threads. It never reads a harness file itself: `sessions.importable`
 asks every open instance that carries a `sessions` extension for its newest
 sessions (an instance whose list fails is logged and skipped), marks each with
-the project already open on its `cwd` and the thread an earlier import made of
-it, and sorts them newest first. `sessions.import` reads the transcript
+the project already open on its `cwd` and the thread that already holds it,
+and sorts them newest first. That thread is the one an earlier import made
+of it, else a live thread of Poseidon's own whose session runs it: Poseidon's
+Claude Code and Codex threads keep their sessions in the same folders the
+readers list, so the extension's optional `sourceIdOf` turns a thread's
+persisted `sessionRef` back into a `sourceId`, matched across every instance
+of the connector's kind (two instances reading one folder list the same
+sessions). `sessions.import` reads the transcript
 through the instance, finds the project whose root is the session's `cwd` or
 dispatches `project.create` there (refusing, `not-found`, when that folder no
 longer exists), and dispatches `thread.create` for a local thread on it with
@@ -877,8 +883,9 @@ went away: its next turn goes through the session manager's `resumeSession`
 path, and the supervisor's boot scan resumes it like any other bound thread.
 Which thread each `<instanceId>:<sourceId>` became is kept in
 `session-imports.json` under the Poseidon home, replaced through a temporary
-file and a rename; importing a session whose thread still exists answers that
-thread, and `importable` names it only while it does. Imports run one at a
+file and a rename; importing a session whose thread still exists, or that a
+live thread runs, answers that thread without a copy, and `importable` names
+it only while it does. Imports run one at a
 time. A failure after `thread.create` dispatches `thread.delete`, so a retry
 starts clean; a project the import added stays.
 
@@ -2040,7 +2047,8 @@ harness recorded on its own (`list`, newest first — each an
 whole file) and reads one back (`read` — an `ImportedTranscript`: the session,
 its newest user and assistant messages as text, and a `sessionRef` the
 connector's own `resumeSession` accepts), opening the harness's files
-read-only; it takes no `ExtensionScope`. Command Code carries `skills` and
+read-only, and may name the session a thread's persisted `sessionRef` points
+at (`sourceIdOf`); it takes no `ExtensionScope`. Command Code carries `skills` and
 `mcpServers` but no `plugins`, since it has none, and no `commands`, since
 nothing lists which of its slash commands a headless run executes. Claude Code
 carries `commands`, read from the CLI's initialize handshake, and `plugins`,

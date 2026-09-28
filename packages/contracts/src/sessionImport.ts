@@ -41,8 +41,9 @@ export type ImportableSession = typeof ImportableSession.Type;
  * One session as `sessions.importable` lists it: the session, the connector
  * instance whose files it came from (`connectorName` is that instance's name
  * as the connectors page shows it), the project already open on its `cwd`
- * when there is one, and the thread an earlier import made of it while that
- * thread still exists.
+ * when there is one, and the thread that already holds it while that thread
+ * still exists: the one an earlier import made of it, or a thread of
+ * Poseidon's own whose session runs it.
  */
 export const ImportableSessionEntry = Schema.Struct({
   ...ImportableSession.fields,
