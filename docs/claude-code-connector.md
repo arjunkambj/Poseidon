@@ -66,6 +66,7 @@ routes new threads to Command Code until the user picks this instance.
 | `translate/tools.ts`      | the tool rows                                                             |
 | `translate/subagents.ts`  | tasks, and the rows nested under them                                     |
 | `translate/compaction.ts` | the compaction row                                                        |
+| `translate/notices.ts`    | the CLI's notices: warnings, and the ones left out on purpose             |
 | `translate/result.ts`     | a `result` → usage, context and the turn's completion                     |
 
 The package may import `connector-sdk`, `contracts` and `shared`; its tests
@@ -321,6 +322,11 @@ itself (`control_request`, `control_response`, `control_cancel_request`,
 | any message with `parent_tool_use_id`                                       | read like the main loop's, every row nested under the task (`parentItemId`)           |
 | `command_lifecycle`                                                         | nothing on the stream: the session reads it for steering                              |
 | `conversation_reset` (`/clear`)                                             | nothing on the stream: the ref follows the session id the next `system/init` names    |
+| `system/api_retry`, `model_refusal_fallback`, `model_refusal_no_fallback`   | `session.warning`: the retry and its reason, or the CLI's line on the refusal         |
+| `system/informational` (warning, suggestion, notice), high `notification`   | `session.warning` with the CLI's text; lower levels nothing                           |
+| `rate_limit_event`                                                          | `session.warning` when the status becomes close to or over the limit, once per change |
+| `system/local_command_output`                                               | a completed `assistant_message` row with the command's output                         |
+| progress and bookkeeping notices (`translate/notices.ts` lists each)        | nothing, each with its reason                                                         |
 | `result`                                                                    | `usage.updated`, `context.updated`, `turn.completed`                                  |
 | anything else                                                               | `event.unmapped`, kept whole, raw source `claude.sdk`                                 |
 
@@ -355,6 +361,12 @@ translator makes that a fatal `runtime.error` naming `claude auth login`, as
 Command Code's exit 3 is. A fatal error is a row on the timeline, and nothing
 the thread sends will work until the user signs in. Other failed requests stay
 non-fatal, because the next message may well work.
+
+None of the notices is in a recording yet: each needs a signed-in CLI that
+retries, refuses or nears a limit, so their reading rests on the SDK's
+declarations (`translate/notices.test.ts`). A refused answer that a fallback
+model replaced stays on the timeline, since the contract has no event that
+takes a row back.
 
 `recordedFrames.test.ts` feeds every recorded session through the translator
 and fails on any `event.unmapped`. Its allowlist of frames left unmapped on

@@ -51,8 +51,12 @@
  *   thread already has the message. The second says a request is on its way
  *   to the API, which the deltas that follow say again.
  *
- * Everything else — a user message that is not tool results, status and
- * lifecycle notices, a task nothing here has heard of — is kept whole as
+ * - the CLI's notices — a retried request, a refusal, its banners and
+ *   notifications, the usage limit — → a `session.warning` each, or nothing
+ *   for the ones that are progress or bookkeeping (`notices.ts`).
+ *
+ * Everything else — a user message that is not tool results, a task nothing
+ * here has heard of, a message the SDK does not declare — is kept whole as
  * `event.unmapped` until a mapping exists for it. Nothing is dropped silently;
  * the stream events skipped here are the block boundaries and message-level
  * bookkeeping the snapshot restates.
@@ -72,6 +76,7 @@ import {
   type PendingRuntimeEvent,
 } from "./pending";
 import { makeCompaction } from "./compaction";
+import { makeNotices } from "./notices";
 import { resultEvents, type TurnContext } from "./result";
 import { makeSubagents } from "./subagents";
 import { makeTextRows } from "./textRows";
@@ -150,6 +155,7 @@ export const makeTranslator = (options: {
   const tools = makeToolRows();
   const subagents = makeSubagents();
   const compaction = makeCompaction();
+  const notices = makeNotices();
   /** The message each stream is in the middle of: the main loop's, and each subagent's. */
   const streamMessages = new Map<string, string>();
   /** Every row a subagent opened → the task row it is nested under. */
@@ -312,7 +318,7 @@ export const makeTranslator = (options: {
         return prompt ? [] : user(message);
       }
       default:
-        return [unmapped(message)];
+        return notices.read(message) ?? [unmapped(message)];
     }
   };
 
@@ -427,7 +433,7 @@ export const makeTranslator = (options: {
       if (isModeReport(message)) return [];
       if (status === null) return compaction.statusCleared(message);
     }
-    return [unmapped(message)];
+    return notices.read(message) ?? [unmapped(message)];
   };
 
   const mainLoop = (
@@ -467,7 +473,7 @@ export const makeTranslator = (options: {
         ];
       }
       default:
-        return [unmapped(message)];
+        return notices.read(message) ?? [unmapped(message)];
     }
   };
 
