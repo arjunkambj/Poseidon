@@ -55,7 +55,7 @@ export interface RoutableConnector {
 export interface ConnectorRouting {
   /** The app-wide default model, which outranks any connector's own. */
   readonly sharedModel: string | null;
-  /** What "New thread defaults" holds besides the model, when it is filled in. */
+  /** What the Models page's defaults hold besides the model, when they are filled in. */
   readonly sharedEffort: Effort | null;
   readonly sharedRuntimeMode: RuntimeMode | null;
   /** Enabled connectors, in document order. The first is the one to route to. */
@@ -165,11 +165,11 @@ export const OpenConnectors = Context.Reference<Effect.Effect<
 > | null>("server/settings/OpenConnectors", { defaultValue: () => null });
 
 /**
- * @public The rest of "New thread defaults", for a `thread.create` whose
+ * @public The rest of the new-thread defaults, for a `thread.create` whose
  * command patch left them out.
  *
- * `Settings.defaults` is `{ model, effort, runtimeMode }` and the
- * General page renders all three under that heading, but only the model was
+ * `Settings.defaults` holds `{ model, effort, runtimeMode }` and the Models
+ * page renders all three, but only the model was
  * ever read: a thread created after setting effort to `high` and runtime mode
  * to `full-access` still opened on `medium` / "Ask first". `null` for either
  * one means the stored document says nothing usable, and the decider's own
@@ -212,7 +212,7 @@ export const ConnectorModels = Context.Reference<
  * three: `defaultSettings()` writes `model: null`, the connector seed writes
  * the kind's empty `defaultConfig()`, and nothing ever fills either from a
  * probe — so every `thread.create` was rejected and the app could not be used
- * until the user found Settings → General by themselves. Asking the routed
+ * until the user found Settings → Models by themselves. Asking the routed
  * instance for its first model is what makes the first thread possible, and it
  * names a model that instance certainly has.
  *

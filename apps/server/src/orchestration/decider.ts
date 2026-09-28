@@ -242,11 +242,9 @@ export const decide = (
       const patch = fork?.patch ?? command.settings ?? {};
       const model = patch.model ?? ctx.defaultModel;
       if (model === null) {
-        return rejected(
-          "no model is configured — pick a default in Settings → General → New thread defaults",
-        );
+        return rejected("no model is configured — pick a default in Settings → Models");
       }
-      // The command patch first, then "New thread defaults", then the built-in
+      // The command patch first, then the Models page's defaults, then the built-in
       // fallback. All three of the settings document's defaults are read the
       // same way: a panel that writes a value the decider ignores is worse
       // than no panel at all.

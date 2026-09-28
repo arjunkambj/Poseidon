@@ -31,7 +31,7 @@ export type GitStep = "commit" | "push" | "pr";
 /** The order of the commit dialog's buttons. */
 export const GIT_ACTIONS: ReadonlyArray<GitAction> = ["commit", "commit-push", "commit-push-pr"];
 
-/** The title a thread has until it is renamed or its connector infers one. */
+/** The title a thread has until it is renamed. */
 const DEFAULT_THREAD_TITLE = "New thread";
 
 /**

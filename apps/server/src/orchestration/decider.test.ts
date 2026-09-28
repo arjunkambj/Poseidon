@@ -185,7 +185,7 @@ const rows: ReadonlyArray<Row> = [
     rejects: "does not exist",
   },
   {
-    name: "thread.create rejects when no model resolves",
+    name: "thread.create rejects when no model resolves, pointing at the Models page",
     command: {
       ...baseCommand,
       type: "thread.create",
@@ -194,7 +194,7 @@ const rows: ReadonlyArray<Row> = [
     } as Command,
     thread: null,
     context: ctx({ defaultModel: null }),
-    rejects: "no model",
+    rejects: "no model is configured — pick a default in Settings → Models",
   },
   {
     name: "thread.rename emits thread.renamed",
