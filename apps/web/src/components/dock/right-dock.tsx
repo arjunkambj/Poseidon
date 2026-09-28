@@ -7,7 +7,9 @@
  * project (`DockScope`). A project has no thread yet, so its dock offers
  * only the kinds available there (`dockTabsFor`) — Changes over the project
  * folder's own working tree and branch (`ProjectChangesPane`), and Files
- * searching that folder — and no Browser, which is a thread's browser.
+ * searching that folder — and no Browser, which is a thread's browser. A
+ * thread's dock offers Pull request only once its branch has one
+ * (`offeredDockTabs`).
  *
  * The dock is a shell — the tab strip, the drag-to-resize edge and the panel
  * chrome live here; what each tab renders is its own concern, registered per
@@ -81,7 +83,7 @@ import { DockLauncher } from "./dock-launcher";
 import { dockWidthForKey } from "./dock-resize";
 import { dockScopeKind, type DockScope } from "./dock-scope";
 import { DockTabStrip, dockPanelId, dockTabId } from "./dock-tab-strip";
-import { dockTabsFor } from "./dock-tab-meta";
+import { offeredDockTabs } from "./dock-tab-meta";
 import { DOCK_TAB_PANES } from "./dock-tab-panes";
 import { DOCK_HOME, isDockTab, type DockPane, type DockTab } from "./dock-toggle";
 
@@ -190,9 +192,7 @@ export function RightDock({
   const projectId = "snapshot" in scope ? scope.snapshot.projectId : scope.projectId;
   // Pull request only once the branch has one; an open tab stays in the strip.
   const hasPullRequest = useThreadHasPullRequest(projectId, snapshot?.threadId ?? null);
-  const tabs = dockTabsFor(dockScopeKind(scope)).filter(
-    (tab) => tab !== "pullRequest" || hasPullRequest,
-  );
+  const tabs = offeredDockTabs(dockScopeKind(scope), hasPullRequest);
 
   return (
     <aside

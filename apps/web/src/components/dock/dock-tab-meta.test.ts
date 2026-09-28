@@ -4,7 +4,7 @@ import { DEFAULT_KEYBINDINGS } from "@poseidon/contracts/keybindings";
 
 import { COMMAND_CATALOG } from "@/lib/command-catalog";
 
-import { DOCK_TAB_META, dockTabsFor } from "./dock-tab-meta";
+import { DOCK_TAB_META, dockTabsFor, offeredDockTabs } from "./dock-tab-meta";
 import { DOCK_TAB_PANES } from "./dock-tab-panes";
 import { dockTabs, isProjectDockPane, projectDockTabs } from "./dock-toggle";
 
@@ -36,6 +36,12 @@ describe("the dock tab kind registry", () => {
   it("offers a thread's dock every kind, in strip order", () => {
     expect(dockTabsFor("thread")).toEqual(dockTabs);
     expect(dockTabsFor("thread")).toContain("agents");
+  });
+
+  it("offers Pull request only once the thread's branch has one", () => {
+    expect(offeredDockTabs("thread", false)).toEqual(["changes", "browser", "files", "agents"]);
+    expect(offeredDockTabs("thread", true)).toEqual(dockTabs);
+    expect(offeredDockTabs("project", true)).toEqual(projectDockTabs);
   });
 
   it("opens the Pull request tab from a command with no default chord", () => {

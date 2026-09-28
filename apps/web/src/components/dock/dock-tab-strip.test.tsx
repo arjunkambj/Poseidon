@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { installAppAtoms } from "@/state/app-runtime";
 
 import { DockAddTabMenu } from "./dock-add-tab-menu";
-import { dockTabsFor } from "./dock-tab-meta";
+import { dockTabsFor, offeredDockTabs } from "./dock-tab-meta";
 import { DockTabStrip, dockTabId } from "./dock-tab-strip";
 import { unopenedDockTabs, type DockPane, type DockTab } from "./dock-toggle";
 
@@ -112,9 +112,9 @@ describe("DockAddTabMenu", () => {
     expect(
       menu(dockTabsFor("thread"), ["files", "changes", "browser", "agents", "pullRequest"]),
     ).toBe("");
-    // The dock leaves Pull request out of what it offers until the branch has one.
+    // Before the branch has a pull request (`offeredDockTabs`, tested beside it).
     expect(
-      menu(["changes", "browser", "files", "agents"], ["files", "changes", "browser", "agents"]),
+      menu(offeredDockTabs("thread", false), ["files", "changes", "browser", "agents"]),
     ).toBe("");
     expect(menu(dockTabsFor("project"), ["changes", "files"])).toBe("");
   });

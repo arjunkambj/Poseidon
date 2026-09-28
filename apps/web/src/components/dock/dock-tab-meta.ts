@@ -57,7 +57,7 @@ export const DOCK_TAB_META: Record<DockTab, DockTabMeta> = {
     available: (scope) => scope === "thread",
   },
   // The thread's branch's pull request. The dock offers it only once that
-  // branch has one (`useThreadHasPullRequest`, in `./right-dock`).
+  // branch has one (`offeredDockTabs`, fed `useThreadHasPullRequest`).
   pullRequest: {
     icon: GitPullRequest,
     label: "Pull request",
@@ -69,3 +69,13 @@ export const DOCK_TAB_META: Record<DockTab, DockTabMeta> = {
 /** The tab kinds a dock beside this kind of scope offers, in registry order. */
 export const dockTabsFor = (scope: DockScopeKind): ReadonlyArray<DockTab> =>
   dockTabs.filter((tab) => DOCK_TAB_META[tab].available(scope));
+
+/**
+ * What the dock's launcher and "+" menu offer: `dockTabsFor`, less Pull
+ * request until the thread's branch has one. An open tab stays in the strip.
+ */
+export const offeredDockTabs = (
+  scope: DockScopeKind,
+  hasPullRequest: boolean,
+): ReadonlyArray<DockTab> =>
+  dockTabsFor(scope).filter((tab) => tab !== "pullRequest" || hasPullRequest);
