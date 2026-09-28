@@ -30,6 +30,7 @@ import * as React from "react";
 import {
   AlertTriangle,
   GitPullRequest,
+  Github,
   type HoneyIcon,
   Repeat,
   Spinner,
@@ -164,7 +165,7 @@ export const PullRequestPaneView = React.memo(function PullRequestPaneView({
   if (view.state === "unavailable") {
     return (
       <PaneMessage
-        icon={GitPullRequest}
+        icon={Github}
         text="The GitHub CLI is not ready."
         detail={view.reason}
         action={retry}

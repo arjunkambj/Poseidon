@@ -2,6 +2,7 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { GitPullRequest, Github, type HoneyIcon } from "@honeyicons/react";
 import { makeThreadId } from "@poseidon/contracts/ids";
 import type { PullRequestDetail, PullRequestView } from "@poseidon/contracts/pullRequest";
 
@@ -75,6 +76,11 @@ const render = (view: PullRequestView | null, actions: CommentActions = noAction
       actions={actions}
     />,
   );
+
+// An icon's drawing, and the drawing of the first icon in some markup.
+const drawing = (markup: string): string => (markup.match(/ d="[^"]*"/g) ?? []).join("");
+const iconOf = (Icon: HoneyIcon): string => drawing(renderToStaticMarkup(<Icon variant="bold" />));
+const firstIcon = (markup: string): string => drawing(markup.match(/<svg.*?<\/svg>/)?.[0] ?? "");
 
 const pullRequest: PullRequestDetail = {
   number: 42,
@@ -165,6 +171,7 @@ describe("PullRequestPaneView", () => {
     const html = render({ state: "none", branch: "tabs" });
     expect(html).toContain("No pull request for this branch.");
     expect(html).toContain("tabs");
+    expect(firstIcon(html)).toBe(iconOf(GitPullRequest));
   });
 
   it("says why gh cannot answer, in gh's words", () => {
@@ -174,6 +181,8 @@ describe("PullRequestPaneView", () => {
     });
     expect(html).toContain("The GitHub CLI is not ready.");
     expect(html).toContain("gh auth login");
+    // It is about GitHub, so it draws GitHub's mark rather than the PR glyph.
+    expect(firstIcon(html)).toBe(iconOf(Github));
   });
 
   it("shows a failed read with a retry, and waits while loading", () => {
@@ -194,6 +203,11 @@ describe("PullRequestPaneView", () => {
     const html = render({ state: "found", pullRequest });
     expect(html).toContain("Teach the parser about tabs");
     expect(html).toContain("#42");
+    // The number links to GitHub: its mark leads, the external-link glyph trails.
+    const link = html.match(
+      /<button[^>]*aria-label="Open pull request #42 on GitHub"[^>]*>.*?<\/button>/,
+    );
+    expect(firstIcon(link?.[0] ?? "")).toBe(iconOf(Github));
     expect(html).toContain("main ← tabs");
     expect(html).toContain("@ana");
     expect(html).toContain("1 failing, 1 passing");

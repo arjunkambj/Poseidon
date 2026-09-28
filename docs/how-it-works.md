@@ -1942,10 +1942,10 @@ missing or signed out the server answers no marks, and no row shows a glyph.
 
 The tab, top to bottom:
 
-- **Summary** — the title, a `#number` button that opens the pull request on
-  GitHub, the state (Open, Draft, Merged or Closed, with the sidebar's glyph in
-  its tint), base ← head, the author,
-  when it was last updated, and the refresh button.
+- **Summary** — the title, a `#number` button led by GitHub's mark that opens
+  the pull request on GitHub, the state (Open, Draft, Merged or Closed, with
+  the sidebar's glyph in its tint), base ← head, the author, when it was last
+  updated, and the refresh button.
 - **Checks** — a count line (`2 failing, 1 pending, 12 passing`), then one row
   per check, failing first as the server sorts them: the bucket's icon, name,
   workflow, how long it ran, and a button that opens its log on GitHub.
@@ -2009,8 +2009,9 @@ A refused context read or send is a toast with the server's words.
 
 Loading, not connected, gh missing or signed out (with gh's own reason and
 fix), no pull request for the branch (named), and a failed read with a retry
-are each an `Empty`. The palette's "Show pull request" (`dock.pullRequest`, no
-default chord) opens the tab, or closes the dock when it already shows it.
+are each an `Empty`; the gh one draws GitHub's mark, the no-pull-request one
+the pull request glyph. The palette's "Show pull request" (`dock.pullRequest`,
+no default chord) opens the tab, or closes the dock when it already shows it.
 
 ### The Changes pane
 

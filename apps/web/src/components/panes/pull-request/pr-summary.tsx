@@ -1,8 +1,9 @@
 /**
- * The Pull request tab's head: the title, its number as a link to GitHub,
- * its state (tinted as the sidebar's glyph is), where it merges (base ← head), who opened it and when it last
- * changed. The refresh button sits beside the title, and the lifecycle
- * actions and the Fix menu (`./pr-controls`) under the author line.
+ * The Pull request tab's head: the title, its number as a link to GitHub (led
+ * by GitHub's mark), its state (tinted as the sidebar's glyph is), where it
+ * merges (base ← head), who opened it and when it last changed. The refresh
+ * button sits beside the title, and the lifecycle actions and the Fix menu
+ * (`./pr-controls`) under the author line.
  */
 
 import { Badge } from "@poseidon/ui/components/badge";
@@ -14,7 +15,7 @@ import type * as React from "react";
 import { openExternal } from "@/lib/desktop";
 import { pullRequestTone } from "@/lib/pull-request-tone";
 
-import { ExternalLink, Refresh } from "@honeyicons/react";
+import { ExternalLink, Github, Refresh } from "@honeyicons/react";
 
 import { updatedLabel } from "./pr-format";
 
@@ -72,7 +73,7 @@ export function PrSummary({
           aria-label={`Open pull request #${pullRequest.number} on GitHub`}
           onClick={() => openExternal(pullRequest.url)}
         >
-          #{pullRequest.number}
+          <Github variant="bold" />#{pullRequest.number}
           <ExternalLink variant="bold" />
         </Button>
         <span className="min-w-0 truncate font-mono">
