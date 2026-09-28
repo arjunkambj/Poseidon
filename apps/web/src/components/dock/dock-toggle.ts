@@ -169,6 +169,38 @@ export const closeDockTab = (
 export const dockArrivalTarget = (memory: DockMemory | undefined): DockPane | undefined =>
   memory?.shown;
 
+/** The modifier keys a keyboard event carries. */
+interface DockKeyEvent {
+  readonly key: string;
+  readonly altKey: boolean;
+  readonly ctrlKey: boolean;
+  readonly metaKey: boolean;
+  readonly shiftKey: boolean;
+}
+
+/**
+ * What a key pressed on a dock tab does: Delete or Backspace closes it, Left
+ * and Right step along the strip. Only a bare key counts — with any modifier
+ * held it is a chord (`Mod+Alt+Backspace` deletes the thread), left to the
+ * app's keybindings.
+ */
+export const dockTabKeyAction = (event: DockKeyEvent): "close" | 1 | -1 | null => {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+    return null;
+  }
+  switch (event.key) {
+    case "Delete":
+    case "Backspace":
+      return "close";
+    case "ArrowRight":
+      return 1;
+    case "ArrowLeft":
+      return -1;
+    default:
+      return null;
+  }
+};
+
 /**
  * The tab `step` places from `from` along a strip of `tabs`, wrapping at
  * either end. The launcher selects no tab, but the strip's one Tab stop is

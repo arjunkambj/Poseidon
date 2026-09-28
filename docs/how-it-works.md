@@ -1698,8 +1698,9 @@ The strip across the top holds only the tabs opened in this thread this
 session, in the order they were opened, never every kind the dock offers.
 Each tab is an icon and a short name with its name and chord in a tooltip,
 and has a close button beside it, shown on hover or focus and always on the
-active tab. A middle-click on a tab, or Delete or Backspace while it has the
-focus, closes it too. Closing the active tab opens its right neighbour, else
+active tab. A middle-click on a tab, or a bare Delete or Backspace while it
+has the focus, closes it too; with a modifier held the key is left to the
+app's chords, so `Mod+Alt+Backspace` still deletes the thread. Closing the active tab opens its right neighbour, else
 its left; closing the last one shows the launcher again with the dock still
 open. After the tabs, a "+" button ("Open a tab") lists the kinds this dock
 offers that are not open yet, each with its icon, name and chord; it shows

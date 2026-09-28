@@ -10,7 +10,8 @@
  *
  * Each tab has its own close button beside it — a sibling, never inside the
  * tab — shown on hover or focus and always on the active tab. A middle-click
- * on a tab, or Delete or Backspace while it has the focus, closes it too.
+ * on a tab, or a bare Delete or Backspace while it has the focus, closes it
+ * too; with a modifier held the key is left to the app's chords.
  * Closing the active tab opens its right neighbour, else its left, else the
  * launcher (`closeDockTab`); the dock stays open either way, and the focus
  * goes to the tab that is now active.
@@ -36,7 +37,13 @@ import { cn } from "@/lib/utils";
 import { Close as CloseIcon } from "@honeyicons/react";
 
 import { DOCK_TAB_META } from "./dock-tab-meta";
-import { adjacentDockTab, isDockTab, type DockPane, type DockTab } from "./dock-toggle";
+import {
+  adjacentDockTab,
+  dockTabKeyAction,
+  isDockTab,
+  type DockPane,
+  type DockTab,
+} from "./dock-toggle";
 
 /** The ids that tie each tab to the dock's one panel. */
 export const dockTabId = (baseId: string, tab: DockTab) => `${baseId}-tab-${tab}`;
@@ -178,14 +185,19 @@ export function DockTabStrip({
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     // Step from (or close) the tab that has the focus, which the keys may
     // have moved ahead of the route.
+    // A modified key is a chord, never the strip's: it goes on to the app's
+    // keybindings untouched.
+    const action = dockTabKeyAction(event);
     const focused = (event.target as HTMLElement).getAttribute("data-dock-tab");
-    if ((event.key === "Delete" || event.key === "Backspace") && isDockTab(focused)) {
-      event.preventDefault();
-      close(focused);
+    if (action === "close") {
+      if (isDockTab(focused)) {
+        event.preventDefault();
+        close(focused);
+      }
       return;
     }
-    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
-    if (step === 0 || openTabs.length === 0) {
+    const step = action;
+    if (step === null || openTabs.length === 0) {
       return;
     }
     event.preventDefault();

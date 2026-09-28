@@ -5,6 +5,7 @@ import {
   closeDockTab,
   dockArrivalTarget,
   dockStripTabs,
+  dockTabKeyAction,
   dockTabTarget,
   dockToggleTarget,
   isDockPane,
@@ -275,5 +276,35 @@ describe("a project's dock", () => {
     expect(isProjectDockPane("home")).toBe(true);
     expect(isProjectDockPane("browser")).toBe(false);
     expect(isProjectDockPane(undefined)).toBe(false);
+  });
+});
+
+describe("dockTabKeyAction", () => {
+  const key = (
+    name: string,
+    mods: Partial<Record<"altKey" | "ctrlKey" | "metaKey" | "shiftKey", boolean>> = {},
+  ) => ({
+    key: name,
+    altKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    ...mods,
+  });
+
+  it("closes on a bare Delete or Backspace and steps on a bare arrow", () => {
+    expect(dockTabKeyAction(key("Delete"))).toBe("close");
+    expect(dockTabKeyAction(key("Backspace"))).toBe("close");
+    expect(dockTabKeyAction(key("ArrowRight"))).toBe(1);
+    expect(dockTabKeyAction(key("ArrowLeft"))).toBe(-1);
+    expect(dockTabKeyAction(key("Enter"))).toBeNull();
+  });
+
+  it("leaves a modified key to the app's chords, so Mod+Alt+Backspace still deletes the thread", () => {
+    expect(dockTabKeyAction(key("Backspace", { metaKey: true, altKey: true }))).toBeNull();
+    expect(dockTabKeyAction(key("Backspace", { ctrlKey: true, altKey: true }))).toBeNull();
+    expect(dockTabKeyAction(key("Backspace", { shiftKey: true }))).toBeNull();
+    expect(dockTabKeyAction(key("Delete", { altKey: true }))).toBeNull();
+    expect(dockTabKeyAction(key("ArrowLeft", { altKey: true }))).toBeNull();
   });
 });
