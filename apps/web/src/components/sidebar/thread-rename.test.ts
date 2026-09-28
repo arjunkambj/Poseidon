@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { renameTarget } from "./thread-rename";
+import { endRename, renameTarget } from "./thread-rename";
 
 describe("renameTarget", () => {
   it("sends a changed title, trimmed", () => {
@@ -16,5 +16,16 @@ describe("renameTarget", () => {
   it("sends nothing when the title is unchanged, whitespace aside", () => {
     expect(renameTarget("Old", "Old")).toBeNull();
     expect(renameTarget("Old", "  Old  ")).toBeNull();
+  });
+});
+
+describe("endRename", () => {
+  it("ends the rename of the thread it names", () => {
+    expect(endRename("t1", "t1")).toBeNull();
+  });
+
+  it("leaves another row's rename, or none, alone", () => {
+    expect(endRename("t2", "t1")).toBe("t2");
+    expect(endRename(null, "t1")).toBeNull();
   });
 });

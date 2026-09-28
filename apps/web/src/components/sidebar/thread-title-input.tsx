@@ -14,6 +14,11 @@
  * cancel the rename before anyone typed. So focus is taken again on the next
  * frame, and a blur in the first moments after mount takes it back rather than
  * cancelling.
+ *
+ * A field that goes without either — its row dropped from the list while it
+ * had focus, say by `Mod+2` leaving a folded project — gets no blur, so
+ * unmounting cancels the rename too; the row would otherwise come back in
+ * rename mode and take focus.
  */
 
 import * as React from "react";
@@ -32,8 +37,11 @@ export function ThreadTitleInput({
   onDone,
 }: {
   thread: ThreadSummary;
-  /** Ends the rename; called once, after a commit or a cancel. */
-  onDone: () => void;
+  /**
+   * Ends this thread's rename (and no other row's); called once, after a
+   * commit, a cancel or an unmount. Keep it stable.
+   */
+  onDone: (threadId: string) => void;
 }) {
   const actions = useSidebarActions();
   const ref = React.useRef<HTMLInputElement>(null);
@@ -52,6 +60,17 @@ export function ThreadTitleInput({
     return () => cancelAnimationFrame(frame);
   }, [grab]);
 
+  const { threadId } = thread;
+  React.useEffect(
+    () => () => {
+      if (!done.current) {
+        done.current = true;
+        onDone(threadId);
+      }
+    },
+    [onDone, threadId],
+  );
+
   const finish = (draft: string | null, refocus: boolean) => {
     if (done.current) {
       return;
@@ -66,7 +85,7 @@ export function ThreadTitleInput({
         list.querySelector<HTMLElement>(`[data-thread-id="${thread.threadId}"]`)?.focus(),
       );
     }
-    onDone();
+    onDone(thread.threadId);
     const title = draft === null ? null : renameTarget(thread.title, draft);
     if (title !== null) {
       void actions.rename(thread, title);

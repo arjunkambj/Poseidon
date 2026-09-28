@@ -15,12 +15,26 @@ import * as React from "react";
 // mounted, and a dropped atom would forget the id in between.
 const renamingThreadAtom = Atom.keepAlive(Atom.make<string | null>(null));
 
-/** `[renamingId, start, stop]` — the row being renamed, and begin or end it. */
+/**
+ * The rename in progress once `threadId`'s has ended: none when it was that
+ * thread's, else untouched — a later rename on another row is not this one's
+ * to end.
+ */
+export const endRename = (current: string | null, threadId: string): string | null =>
+  current === threadId ? null : current;
+
+/**
+ * `[renamingId, start, stop]` — the row being renamed, and begin or end it.
+ * `stop(threadId)` ends only that thread's rename.
+ */
 export const useRenamingThread = () => {
   const renamingId = useAtomValue(renamingThreadAtom);
   const set = useAtomSet(renamingThreadAtom);
   const start = React.useCallback((threadId: string) => set(threadId), [set]);
-  const stop = React.useCallback(() => set(null), [set]);
+  const stop = React.useCallback(
+    (threadId: string) => set((current) => endRename(current, threadId)),
+    [set],
+  );
   return [renamingId, start, stop] as const;
 };
 
