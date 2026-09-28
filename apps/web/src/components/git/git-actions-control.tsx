@@ -17,20 +17,20 @@
  *
  * An action is planned from the workspace's status and branches
  * (`@/lib/git-actions`): any action that commits opens the commit dialog
- * first — the message and the files to commit, with the one asked for
- * filled in — and a pull request made in the same run takes its title and
- * body from the commit message. With
- * nothing to commit, a push (from its key) runs straight away and a pull
- * request asks only for its title and body. The steps then run in
- * order with one toast each, and stop at the first refusal with the server's
- * message (`./use-git-actions`).
+ * first — the message and the files to commit, with the one asked for filled
+ * in — and a pull request made in the same run takes its title and body from
+ * the commit message. With nothing to commit, a push (from its key) runs
+ * straight away and a pull request asks only for its title and body. The
+ * steps then run in order with one toast each, and stop at the first refusal
+ * with the server's message (`./use-git-actions`).
  *
- * Every action is disabled while the thread's turn runs — View PR, which
- * runs nothing, stays — and each action that cannot run says why: in the
- * button's tooltip, the menu item, or the dialog. On the New task page there is no thread, so it is disabled, with
- * the same reason, while a local thread of the project runs a turn in its
- * folder (`projectFolderTurnRunning`). The thread list cannot see a turn
- * paused on the user; the server refuses a commit under that one itself.
+ * Every action is disabled while the thread's turn runs — View PR, which runs
+ * nothing, stays — and each action that cannot run says why: in the button's
+ * tooltip, the menu item, or the dialog. On the New task page there is no
+ * thread, so it is disabled, with the same reason, while a local thread of
+ * the project runs a turn in its folder (`projectFolderTurnRunning`). The
+ * thread list cannot see a turn paused on the user; the server refuses a
+ * commit under that one itself.
  *
  * The status is refetched when that turn finishes, because the agent changes
  * files, and when the user comes back to the window, because an
