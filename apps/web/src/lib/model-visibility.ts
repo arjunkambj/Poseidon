@@ -11,6 +11,7 @@
 
 import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 import type { ModelOption } from "@poseidon/contracts/connectors";
+import type { ThreadSettingsPatch } from "@poseidon/contracts/orchestration";
 import type { ModelPickerSettings } from "@poseidon/contracts/settings";
 import { DEFAULT_MODEL_PICKER_SETTINGS } from "@poseidon/contracts/settings";
 
@@ -84,6 +85,25 @@ export const newTaskModelPick = (
     defaultModel == null ||
     visible.some(({ models }) => models.some((model) => model.id === defaultModel));
   return defaultModelPick(offered ? visible : catalog, defaultModel);
+};
+
+/**
+ * The model a thread created without one starts on — the sidebar's "+", the
+ * palette, the new-thread key — as a `thread.create` settings patch: New
+ * task's seed (`newTaskModelPick`), so every way of creating a thread honours
+ * the switches. Nothing while no instance lists that model (the catalog is
+ * still loading, or the saved default is not listed), which leaves the choice
+ * to the server's seed rule as before.
+ */
+export const threadCreateSeed = (
+  catalog: ReadonlyArray<ConnectorModels>,
+  prefs: ModelPickerSettings,
+  defaultModel: string | null | undefined,
+): ThreadSettingsPatch | undefined => {
+  const pick = newTaskModelPick(catalog, prefs, defaultModel);
+  return pick?.connectorInstanceId == null
+    ? undefined
+    : { model: pick.model, connectorInstanceId: pick.connectorInstanceId };
 };
 
 /** The switches with one harness set. */

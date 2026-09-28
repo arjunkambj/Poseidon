@@ -17,6 +17,7 @@ import {
   resetVisibility,
   setHarness,
   setModel,
+  threadCreateSeed,
   visibleCatalog,
 } from "./model-visibility";
 
@@ -257,5 +258,24 @@ describe("newTaskModelPick", () => {
   it("has nothing to seed when every model is off", () => {
     const prefs = setHarness(setHarness(none, "a", false), "b", false);
     expect(newTaskModelPick(catalog, prefs, null)).toBeNull();
+  });
+});
+
+describe("threadCreateSeed", () => {
+  it("starts a thread with the first harness switched off on the first model offered", () => {
+    expect(threadCreateSeed(catalog, setHarness(none, "a", false), null)).toEqual({
+      model: "m1",
+      connectorInstanceId: id("b"),
+    });
+    expect(threadCreateSeed(catalog, none, "m3")).toEqual({
+      model: "m3",
+      connectorInstanceId: id("b"),
+    });
+  });
+
+  it("leaves the seed to the server while no instance lists the model", () => {
+    expect(threadCreateSeed([], none, null)).toBeUndefined();
+    expect(threadCreateSeed([], none, "m1")).toBeUndefined();
+    expect(threadCreateSeed(catalog, none, "gone")).toBeUndefined();
   });
 });

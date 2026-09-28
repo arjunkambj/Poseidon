@@ -19,6 +19,10 @@
  * so an unsent draft follows the user into the thread's own composer. It
  * always creates, because the message it sends is what fills the thread —
  * and passes the `worktree` it cut when the thread starts in one.
+ *
+ * A create that names no model or instance gets New task's seed
+ * (`threadCreateSeed`), so a harness switched off in Settings → Models is not
+ * where a thread from the sidebar, the palette or a key starts.
  */
 
 import { useNavigate } from "@tanstack/react-router";
@@ -36,6 +40,7 @@ import type { ThreadSettingsPatch, ThreadSummary } from "@poseidon/contracts/orc
 
 import { requestComposerFocus } from "@/lib/composer-focus";
 import { isAccepted, rejectionMessage } from "@/lib/dispatch-outcome";
+import { useThreadCreateSeed } from "@/lib/use-model-picker-prefs";
 import { useDispatchCommand, useThreadList } from "@/state/hooks";
 import { useLastProject } from "@/state/ui";
 
@@ -64,12 +69,22 @@ export const blankLatestThread = (
     : undefined;
 };
 
+/** The caller's settings, with `seed` under them when they name no model or instance. */
+export const withCreateSeed = (
+  settings: ThreadSettingsPatch | undefined,
+  seed: ThreadSettingsPatch | undefined,
+): ThreadSettingsPatch | undefined =>
+  seed === undefined || settings?.model !== undefined || settings?.connectorInstanceId !== undefined
+    ? settings
+    : { ...seed, ...settings };
+
 export const useCreateThread = () => {
   const dispatch = useDispatchCommand();
   const threads = useThreadList();
   const navigate = useNavigate();
   const [, rememberProject] = useLastProject();
   const [pending, setPending] = React.useState(false);
+  const seed = useThreadCreateSeed();
 
   const create = React.useCallback(
     async (
@@ -100,7 +115,7 @@ export const useCreateThread = () => {
         type: "thread.create",
         threadId,
         projectId,
-        settings: options.settings,
+        settings: withCreateSeed(options.settings, seed),
         ...(options.worktree === undefined ? {} : { worktree: options.worktree }),
       });
       setPending(false);
@@ -115,7 +130,7 @@ export const useCreateThread = () => {
       toast.error(rejectionMessage(exit, "Thread was rejected"));
       return false;
     },
-    [dispatch, navigate, rememberProject, threads],
+    [dispatch, navigate, rememberProject, seed, threads],
   );
 
   return { create, pending };

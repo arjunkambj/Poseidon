@@ -5,6 +5,7 @@
  */
 
 import { useAtomValue } from "@effect/atom-react";
+import type { ThreadSettingsPatch } from "@poseidon/contracts/orchestration";
 import {
   DEFAULT_MODEL_PICKER_SETTINGS,
   type ModelPickerSettings,
@@ -15,7 +16,7 @@ import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 
 import { useAppAtoms } from "@/lib/app-runtime";
 import type { ModelPick } from "@/lib/model-picks";
-import { newTaskModelPick } from "@/lib/model-visibility";
+import { newTaskModelPick, threadCreateSeed } from "@/lib/model-visibility";
 
 export function useModelPickerPrefs(): ModelPickerSettings {
   const atoms = useAppAtoms();
@@ -32,4 +33,16 @@ export function useNewTaskModelPick(
   defaultModel: string | null | undefined,
 ): ModelPick | null {
   return newTaskModelPick(catalog, useModelPickerPrefs(), defaultModel);
+}
+
+/** What a thread created without a model starts on: `threadCreateSeed`. */
+export function useThreadCreateSeed(): ThreadSettingsPatch | undefined {
+  const atoms = useAppAtoms();
+  const settings = useAtomValue(atoms.settingsAtom);
+  const catalog = useAtomValue(atoms.modelCatalogAtom);
+  return threadCreateSeed(
+    AsyncResult.isSuccess(catalog) ? catalog.value : [],
+    useModelPickerPrefs(),
+    AsyncResult.isSuccess(settings) ? settings.value?.defaults.model : undefined,
+  );
 }

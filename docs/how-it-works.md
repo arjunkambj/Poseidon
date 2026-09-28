@@ -607,7 +607,10 @@ instance too: the start screen sends both on `thread.create`, the header on
 default model under the first instance the pickers offer it from (under a
 switched-off instance only when no other lists it), else the first model the
 pickers offer (`newTaskModelPick`), so a switched-off harness is never the
-implicit seed. Once the thread has run
+implicit seed. A thread created without a model — the sidebar's "+", the
+palette, the new-thread key — is sent that same seed (`threadCreateSeed`, via
+`useCreateThread`); only while no instance lists it is the choice left to the
+server's seed rule. Once the thread has run
 anything (`threadLocksConnector`), the other instances' avatars stay listed but
 disabled, with a tooltip saying to start a new thread, and a pick in the
 thread's own flyout sends the model alone. The instance a thread runs on, or

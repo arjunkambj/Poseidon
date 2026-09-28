@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
+import type { ConnectorInstanceId, ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
-import { blankLatestThread } from "./use-create-thread";
+import { blankLatestThread, withCreateSeed } from "./use-create-thread";
 
 const A = "project-a" as ProjectId;
 const B = "project-b" as ProjectId;
@@ -55,5 +55,21 @@ describe("blankLatestThread", () => {
 
   it("returns nothing for a project with no threads", () => {
     expect(blankLatestThread([], A)).toBeUndefined();
+  });
+});
+
+describe("withCreateSeed", () => {
+  const seed = { model: "m1", connectorInstanceId: "b" as ConnectorInstanceId };
+
+  it("seeds a create that names no model or instance, keeping what it does name", () => {
+    expect(withCreateSeed(undefined, seed)).toEqual(seed);
+    expect(withCreateSeed({ effort: "high" }, seed)).toEqual({ ...seed, effort: "high" });
+  });
+
+  it("leaves a create that names its model or instance as it is", () => {
+    expect(withCreateSeed({ model: "m9" }, seed)).toEqual({ model: "m9" });
+    const own = { connectorInstanceId: "a" as ConnectorInstanceId };
+    expect(withCreateSeed(own, seed)).toEqual(own);
+    expect(withCreateSeed(undefined, undefined)).toBeUndefined();
   });
 });
