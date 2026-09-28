@@ -182,7 +182,8 @@ const definedOf = (patch: ThreadSettingsPatch): ThreadSettingsPatch =>
  * Settings start from the source's — the harness it ran on, its model, effort
  * and runtime mode, but never plan mode — under whatever the command names.
  * The message forked from has to be a user message of the source, and not
- * one of a turn still running: that turn's answer is not written yet.
+ * one of a turn still running: that turn's answer is not written yet. For
+ * the same reason the whole thread cannot be forked while a turn runs.
  */
 export const resolveFork = (
   command: ThreadCreate,
@@ -209,6 +210,9 @@ export const resolveFork = (
     if (item.turnId !== undefined && item.turnId === source.currentTurn?.turnId) {
       return "cannot fork from a turn that is still running";
     }
+  } else if (source.currentTurn !== null) {
+    // The whole thread would take the running turn's half-written answer.
+    return "cannot fork a thread while a turn is running";
   }
   const settings = source.settings;
   const connectorInstanceId = source.session?.connectorInstanceId ?? settings.connectorInstanceId;

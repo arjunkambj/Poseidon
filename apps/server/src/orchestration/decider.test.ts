@@ -1568,6 +1568,15 @@ describe("forking a thread", () => {
     expect(fork({}, running, ask1).accepted).toBe(true);
   });
 
+  it("refuses the whole thread while a turn is running", () => {
+    const running = {
+      ...source,
+      status: "running" as const,
+      currentTurn: { turnId: t2, input: { text: "Test it.", attachments: [], mentions: [] } },
+    };
+    expect(rejection(fork({}, running, null))).toBe("cannot fork a thread while a turn is running");
+  });
+
   it("titles the fork after its source and starts from the source's settings, out of plan mode", () => {
     const result = fork();
     expect(result.accepted).toBe(true);
@@ -1686,7 +1695,7 @@ describe("forking a thread", () => {
           input: { text: "More.", attachments: [], mentions: [] },
         },
       };
-      expect(sessionOf(fork({}, running, null))).toBeUndefined();
+      expect(sessionOf(fork({}, running, ask2))).toBeUndefined();
     });
 
     it("copies onto another connector instance", () => {

@@ -1503,8 +1503,8 @@ them, so that is still where they are imported from.
 
 `thread.create` may name a thread to fork (`fork: { threadId, throughItemId? }`).
 The decider (`forkSeed.ts`) refuses a source that is missing, deleted or in
-another project, an item that is not one of the source's user messages, and a
-message of the source's running turn. Otherwise the title defaults to
+another project, an item that is not one of the source's user messages, a
+message of the source's running turn, and the whole thread while a turn runs. Otherwise the title defaults to
 "<source title> (fork)" and the settings to the source's — its model, effort,
 runtime mode and harness (the bound session's instance first), never plan
 mode — under whatever the command names. `thread.created` then carries a
