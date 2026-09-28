@@ -13,8 +13,8 @@
  * The git actions control (`components/git/git-actions-control.tsx`) sits at
  * the right, before the status: commit, push and open a pull request from
  * the thread's workspace. The "Open in" control
-(`components/open-in/open-in-control.tsx`) comes just before it, opening
-the workspace in an editor. The terminal and dock toggles end the row
+ * (`components/open-in/open-in-control.tsx`) comes just before it, opening
+ * the workspace in an editor. The terminal and dock toggles end the row
  * (`./header-toggles`, shared with the New task page's header).
  *
  * A narrow header (a small window, the dock open) squeezes the project, the
