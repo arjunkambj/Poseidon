@@ -1,0 +1,41 @@
+{
+  "formatVersion": 1,
+  "kind": "claude",
+  "transport": "sdk-stream",
+  "scenario": "generate-text-signed-out",
+  "description": "One generateText call (a thread title) on a CLI that is not signed in: the one-shot options — one turn, no tools, no settings, no session kept, effort low, a system prompt of its own, in a temp directory — and the CLI's own sign-in refusal as an error result, without calling the API.",
+  "cliVersion": "2.1.280",
+  "sdkVersion": "0.3.280",
+  "recordedOn": "2026-09-28",
+  "model": "claude-opus-5-5[1m]",
+  "real": true,
+  "prompts": ["First message: fix the flaky login test"],
+  "invocations": [
+    {
+      "argv": [
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--input-format",
+        "stream-json",
+        "--effort",
+        "low",
+        "--max-turns",
+        "1",
+        "--permission-prompt-tool",
+        "stdio",
+        "--tools",
+        "",
+        "--setting-sources=",
+        "--strict-mcp-config",
+        "--permission-mode",
+        "default",
+        "--no-session-persistence"
+      ],
+      "cwd": "<SCRATCH>/poseidon-generate-fTWTjd",
+      "file": "invocation-1.ndjson",
+      "exitCode": 1,
+      "signal": null
+    }
+  ]
+}

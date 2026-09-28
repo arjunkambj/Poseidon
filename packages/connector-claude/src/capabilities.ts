@@ -71,4 +71,9 @@ export const CLAUDE_CAPABILITIES: ConnectorCapabilities = {
   // (`session.ts`). `subagent-stop` is the recording that will show a
   // subagent stopped mid-turn; none is made yet.
   stopTask: true,
+  // `generateText`: one `query()` with one turn, no tools, no settings and no
+  // session kept, in a temp directory (`generateText.ts`). Only its refusal is
+  // recorded (`generate-text-signed-out`); `generate-text` is the signed-in
+  // recording that will show an answer, and none is made yet.
+  textGeneration: true,
 };

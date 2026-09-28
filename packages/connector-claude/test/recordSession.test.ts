@@ -170,7 +170,80 @@ const switchTo = (recording: Recording, patch: ThreadSettingsPatch) =>
     );
   });
 
+/** The one-shot the generation recordings ask for: a thread title. */
+const GENERATE_REQUEST = {
+  system: "You name chat threads. Reply with a title of 3 to 8 words and nothing else.",
+  prompt: "First message: fix the flaky login test",
+  model: "default",
+  effort: "low",
+} as const;
+
+/** `auth status --json` exits 1 when signed out; asked only when recording. */
+const signedIn = (): boolean => {
+  const real = resolveBinary({}, process.env);
+  if (real === null) return false;
+  try {
+    execFileSync(real.command, ["auth", "status", "--json"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * One `generateText` call through the tee, finalised into
+ * `fixtures/claude/<scenario>/`. Signed out it must be refused; signed in it
+ * must answer.
+ */
+const recordGenerateText = (scenario: string, description: string, answered: boolean) =>
+  Effect.gen(function* () {
+    const real = resolveBinary({}, process.env);
+    if (real === null) throw new Error("no claude binary to record");
+    const cliVersion = parseVersion(
+      execFileSync(real.command, ["--version"], { encoding: "utf8" }),
+    );
+    const rawDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "claude-raw-"));
+    const launcher = makeTeeLauncher({ realBinary: real.command, rawDir });
+    const instance = yield* makeClaudeConnectorDefinition().createInstance({
+      instanceId: makeConnectorInstanceId(),
+      config: { binaryPath: launcher },
+      services: yield* testServices(),
+    });
+    const outcome = yield* Effect.exit(instance.generateText!(GENERATE_REQUEST));
+    expect(outcome._tag).toBe(answered ? "Success" : "Failure");
+    finalizeSdkStreamRecording({
+      kind: CLAUDE_KIND,
+      scenario,
+      rawDir,
+      description,
+      cliVersion: cliVersion ?? "unknown",
+      sdkVersion: sdkVersion(),
+      model: initModelOf(rawDir) ?? "default",
+      prompts: [GENERATE_REQUEST.prompt],
+    });
+  }).pipe(Effect.scoped);
+
 describe("session recordings", () => {
+  it.live.skipIf(!RECORD || signedIn())(
+    "generate-text-signed-out: one generateText call against a CLI that is not signed in",
+    () =>
+      recordGenerateText(
+        "generate-text-signed-out",
+        "One generateText call (a thread title) on a CLI that is not signed in: the one-shot options — one turn, no tools, no settings, no session kept, effort low, a system prompt of its own, in a temp directory — and the CLI's own sign-in refusal as an error result, without calling the API.",
+        false,
+      ),
+  );
+
+  it.live.skipIf(!RECORD || !signedIn())(
+    "generate-text: one generateText call answered by a signed-in CLI",
+    () =>
+      recordGenerateText(
+        "generate-text",
+        "One generateText call (a thread title) on a signed-in CLI: the one-shot options — one turn, no tools, no settings, no session kept, effort low, a system prompt of its own, in a temp directory — and the title as the result's text.",
+        true,
+      ),
+  );
+
   it.live.skipIf(!RECORD)("signed-out: one turn against a CLI that is not signed in", () =>
     recordScenario(
       {

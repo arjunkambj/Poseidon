@@ -25,6 +25,7 @@ import { resolveBinary, terminalCommand, type ResolvedBinary } from "./binary";
 import { CLAUDE_CAPABILITIES } from "./capabilities";
 import { ClaudeConnectorConfig } from "./configSchema";
 import { childEnv } from "./env";
+import { makeClaudeGenerateText } from "./generateText";
 import { CLAUDE_KIND } from "./kind";
 import { LOGIN_ARGS, probe as probeBinary, readInitialization, type Initialization } from "./probe";
 import { makeClaudePlugins } from "./plugins";
@@ -171,6 +172,7 @@ export const makeClaudeConnectorDefinition = (
           );
         },
         listModels,
+        generateText: makeClaudeGenerateText({ instanceId, launch }),
         extensions: {
           commands,
           plugins: makeClaudePlugins({ env: childEnv(process.env, config) }),

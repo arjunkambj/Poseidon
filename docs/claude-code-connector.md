@@ -54,6 +54,7 @@ routes new threads to Command Code until the user picks this instance.
 | `capabilities.ts`         | what a Claude Code session can do, and why                                |
 | `spawn.ts`                | the SDK's `spawnClaudeCodeProcess`: a process group, and proof it is gone |
 | `queryOptions.ts`         | the SDK options a session starts with; runtime mode → permission mode     |
+| `generateText.ts`         | one piece of text outside any session: a one-shot, tool-less `query()`    |
 | `inputQueue.ts`           | the streaming-input prompt the session writes user messages to            |
 | `userMessage.ts`          | one composer turn as the user message the CLI reads                       |
 | `references.ts`           | skill and plugin references as prompt lines                               |
@@ -717,6 +718,45 @@ the recording account the CLI's `system/init` named what it resolved to, and
 that is the id each manifest's `model` records. Poseidon's `minimal` effort has
 no rung in the CLI and is left out, so the CLI's default effort applies.
 
+## Writing one piece of text
+
+`generateText` (`generateText.ts`) writes a commit message, a pull request's
+text or a thread title outside any session. It is one `query()` with a string
+prompt and options that make it a single answer and nothing else:
+
+| option                                    | why                                                                                      |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `maxTurns: 1`, `persistSession: false`    | one answer; no transcript is written (`--no-session-persistence`)                        |
+| `settingSources: []`                      | none of the user's settings, hooks, CLAUDE.md or plugins                                 |
+| `tools: []`, `allowedTools: []`           | no built-in tool at all (`--tools ""`)                                                   |
+| `mcpServers: {}`, `strictMcpConfig: true` | no MCP server, the user's own included                                                   |
+| `canUseTool`                              | denies whatever still asks: the call is read-only                                        |
+| `model`, `effort`                         | the request's; `default` and `minimal` are left out as for a turn                        |
+| `systemPrompt`                            | the request's `system`, as the whole system prompt, when given                           |
+| `cwd`, `env`, `spawnClaudeCodeProcess`    | a fresh `poseidon-generate-*` temp directory, `childEnv`, and a process group of its own |
+
+The directory is removed after the call, once the process group has been
+stopped. The answer is the `result` message's text. An error subtype, a
+`success` with `is_error` — which is how the CLI says "Not logged in · Please
+run /login" — a result with no text, or a query that ends without one fails
+with `GenerationFailed` carrying the CLI's own words (or the tail of its
+stderr). A missing binary is `SpawnFailed`.
+
+`jsonSchema` is not sent. The SDK declares `outputFormat` (`json_schema`), but
+the CLI delivers it as a `StructuredOutput` tool call that ends the turn, which
+is exactly what `tools: []` and the deny-all `canUseTool` refuse, and no
+signed-in recording shows which wins. The caller parses the text either way.
+
+`fixtures/claude/generate-text-signed-out/` is the only recording, made with
+the CLI signed out: the SDK turned these options into `--max-turns 1`,
+`--tools ""`, `--setting-sources=`, `--strict-mcp-config`,
+`--no-session-persistence` and `--effort low`, carried the system prompt in its
+`initialize` request, and the CLI's `system/init` listed no tools and no MCP
+servers before it refused for the login. `generateText.test.ts` replays it
+through the definition and gets that refusal as `GenerationFailed`. A signed-in
+`generate-text` recording, with an answer in it, is still to be made
+([Needs a signed-in run](#needs-a-signed-in-run)).
+
 ## Compaction
 
 A turn whose text is `/compact` goes as a plain string, the form the CLI reads
@@ -831,23 +871,24 @@ message the turn is held for that ends without being `started`.
 
 `CLAUDE_CAPABILITIES` in `capabilities.ts`, and why each value is what it is:
 
-| Capability     | Value        | Why                                                                                                                                             |
-| -------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modelSwitch`  | `in-session` | `setModel` on the running process; `session-controls`                                                                                           |
-| `effortSwitch` | `in-session` | `applyFlagSettings({ effortLevel })`; `session-controls`                                                                                        |
-| `steering`     | `true`       | one more message to the running CLI, the turn held by its receipts; `signed-out-steer`; `false` once the CLI's init lists no `msg_lifecycle_v1` |
-| `planMode`     | `true`       | permission mode `plan`, the plan handed over through ExitPlanMode                                                                               |
-| `subagents`    | `true`       | Task/Agent, the task_* messages, and nested rows                                                                                                |
-| `images`       | `true`       | image content blocks; `session-controls` has the CLI reading one                                                                                |
-| `resume`       | `true`       | `resume: <sessionId>` against the CLI's own transcript                                                                                          |
-| `fork`         | `false`      | nothing recorded forks a session                                                                                                                |
-| `interrupt`    | `session`    | `Query.interrupt()` inside the one long-lived process                                                                                           |
-| `stopTask`     | `true`       | `Query.stopTask(task_id)` with the CLI's id for the row; `subagent-stop` is the recording that will show it                                     |
-| `rollback`     | `false`      | `resumeSessionAt` exists, but nothing recorded shows it; Poseidon's checkpoints are git                                                         |
-| `compaction`   | `true`       | `/compact` runs as the CLI's command; `session-controls`                                                                                        |
-| `questions`    | `true`       | AskUserQuestion, offered to SDK sessions (recorded `system/init`)                                                                               |
-| `runtimeModes` | all three    | the PreToolUse hook puts every call in every mode past the ladder                                                                               |
-| `attachments`  | `files`      | images as blocks, anything else by path under a readable directory                                                                              |
+| Capability       | Value        | Why                                                                                                                                             |
+| ---------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modelSwitch`    | `in-session` | `setModel` on the running process; `session-controls`                                                                                           |
+| `effortSwitch`   | `in-session` | `applyFlagSettings({ effortLevel })`; `session-controls`                                                                                        |
+| `steering`       | `true`       | one more message to the running CLI, the turn held by its receipts; `signed-out-steer`; `false` once the CLI's init lists no `msg_lifecycle_v1` |
+| `planMode`       | `true`       | permission mode `plan`, the plan handed over through ExitPlanMode                                                                               |
+| `subagents`      | `true`       | Task/Agent, the task_* messages, and nested rows                                                                                                |
+| `images`         | `true`       | image content blocks; `session-controls` has the CLI reading one                                                                                |
+| `resume`         | `true`       | `resume: <sessionId>` against the CLI's own transcript                                                                                          |
+| `fork`           | `false`      | nothing recorded forks a session                                                                                                                |
+| `interrupt`      | `session`    | `Query.interrupt()` inside the one long-lived process                                                                                           |
+| `stopTask`       | `true`       | `Query.stopTask(task_id)` with the CLI's id for the row; `subagent-stop` is the recording that will show it                                     |
+| `rollback`       | `false`      | `resumeSessionAt` exists, but nothing recorded shows it; Poseidon's checkpoints are git                                                         |
+| `compaction`     | `true`       | `/compact` runs as the CLI's command; `session-controls`                                                                                        |
+| `questions`      | `true`       | AskUserQuestion, offered to SDK sessions (recorded `system/init`)                                                                               |
+| `runtimeModes`   | all three    | the PreToolUse hook puts every call in every mode past the ladder                                                                               |
+| `attachments`    | `files`      | images as blocks, anything else by path under a readable directory                                                                              |
+| `textGeneration` | `true`       | `generateText`: one tool-less `query()` with no session; only its signed-out refusal is recorded (`generate-text-signed-out`)                   |
 
 `planMode`, `subagents`, `questions` and `stopTask` rest on the SDK's declarations and on
 reading the CLI's bundle until their recordings are made; the capability
@@ -916,6 +957,8 @@ under replay (`packages/testkit/fixtures/claude/README.md` has the table):
   process.
 - `image`: a model answering from an image content block.
 - `steering`: a message folded into a running agent loop.
+- `generate-text`: a `generateText` call answered — the text on the `result`,
+  and whether a plain one-shot keeps to one turn with no tools.
 
 **Conformance and the live suites:**
 
