@@ -23,7 +23,7 @@
  * registry test instead. The strip, launcher and dock need no change.
  */
 
-import { type HoneyIcon, Bot, Folder, GitDiff, Globe } from "@honeyicons/react";
+import { type HoneyIcon, Bot, Folder, GitDiff, GitPullRequest, Globe } from "@honeyicons/react";
 
 import type { DockScopeKind } from "./dock-scope";
 import { dockTabs, type DockTab } from "./dock-toggle";
@@ -54,6 +54,14 @@ export const DOCK_TAB_META: Record<DockTab, DockTabMeta> = {
     icon: Bot,
     label: "Agents",
     command: "dock.agents",
+    available: (scope) => scope === "thread",
+  },
+  // The thread's branch's pull request. The dock offers it only once that
+  // branch has one (`useThreadHasPullRequest`, in `./right-dock`).
+  pullRequest: {
+    icon: GitPullRequest,
+    label: "Pull request",
+    command: "dock.pullRequest",
     available: (scope) => scope === "thread",
   },
 };

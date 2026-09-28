@@ -14,6 +14,7 @@ import { BrowserPane } from "@/components/panes/browser/browser-pane";
 import { ChangesPane } from "@/components/panes/changes/changes-pane";
 import { ProjectChangesPane } from "@/components/panes/changes/project-changes-pane";
 import { FilesPane } from "@/components/panes/files/files-pane";
+import { PullRequestPane } from "@/components/panes/pull-request/pull-request-pane";
 import { workspaceKey } from "@/lib/workspace-key";
 
 import type { DockScope } from "./dock-scope";
@@ -57,4 +58,12 @@ export const DOCK_TAB_PANES: Record<DockTab, (ctx: DockPaneContext) => React.Rea
     />
   ),
   agents: (ctx) => (ctx.snapshot !== null ? <AgentsPane snapshot={ctx.snapshot} /> : null),
+  pullRequest: (ctx) =>
+    ctx.snapshot !== null ? (
+      <PullRequestPane
+        projectId={ctx.snapshot.projectId}
+        threadId={ctx.snapshot.threadId}
+        connected={ctx.connected}
+      />
+    ) : null,
 };

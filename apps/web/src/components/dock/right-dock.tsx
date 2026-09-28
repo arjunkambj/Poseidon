@@ -1,6 +1,6 @@
 /**
  * The right dock: a resizable panel showing the tabs opened in it — kinds
- * from a small registry (Changes, Browser, Files today) — and a launcher for
+ * from a small registry (Changes, Browser, Files, Pull request today) — and a launcher for
  * when it is open with no tab chosen.
  *
  * It docks beside a thread, or beside the New task page for the picked
@@ -65,6 +65,7 @@
 
 import * as React from "react";
 
+import { useThreadHasPullRequest } from "@/components/panes/pull-request/use-thread-pull-request";
 import type { Presence } from "@/lib/use-presence";
 import { cn } from "@/lib/utils";
 import { useConnectionState } from "@/state/hooks";
@@ -187,7 +188,11 @@ export function RightDock({
   const onTabFocused = React.useCallback(() => setFocusTab(null), []);
   const snapshot = "snapshot" in scope ? scope.snapshot : null;
   const projectId = "snapshot" in scope ? scope.snapshot.projectId : scope.projectId;
-  const tabs = dockTabsFor(dockScopeKind(scope));
+  // Pull request only once the branch has one; an open tab stays in the strip.
+  const hasPullRequest = useThreadHasPullRequest(projectId, snapshot?.threadId ?? null);
+  const tabs = dockTabsFor(dockScopeKind(scope)).filter(
+    (tab) => tab !== "pullRequest" || hasPullRequest,
+  );
 
   return (
     <aside

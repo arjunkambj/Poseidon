@@ -104,11 +104,18 @@ describe("DockAddTabMenu", () => {
       "browser",
       "files",
       "agents",
+      "pullRequest",
     ]);
   });
 
   it("is gone once every offered kind is open", () => {
-    expect(menu(dockTabsFor("thread"), ["files", "changes", "browser", "agents"])).toBe("");
+    expect(
+      menu(dockTabsFor("thread"), ["files", "changes", "browser", "agents", "pullRequest"]),
+    ).toBe("");
+    // The dock leaves Pull request out of what it offers until the branch has one.
+    expect(
+      menu(["changes", "browser", "files", "agents"], ["files", "changes", "browser", "agents"]),
+    ).toBe("");
     expect(menu(dockTabsFor("project"), ["changes", "files"])).toBe("");
   });
 

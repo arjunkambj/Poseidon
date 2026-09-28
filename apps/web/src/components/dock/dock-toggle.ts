@@ -3,9 +3,9 @@
  * half of the dock, tested without a DOM.
  *
  * The dock is either closed (`?pane=` absent), open on one of its tab kinds
- * (`DOCK_TABS`: `changes | browser | files | agents` today), or open with no tab
- * chosen yet: the launcher, `?pane=home`, a short list of the kinds and their
- * keys.
+ * (`DOCK_TABS`: `changes | browser | files | agents | pullRequest` today), or
+ * open with no tab chosen yet: the launcher, `?pane=home`, a short list of the
+ * kinds and their keys.
  * `DockPane` is that open state; `DockTab` is only the tabs.
  *
  * A thread's dock offers every kind. The New task page's dock, for a project
@@ -36,7 +36,7 @@
  *   one of the open tabs or nothing, so the toggle never reopens a closed tab.
  */
 
-const DOCK_TABS = ["changes", "browser", "files", "agents"] as const;
+const DOCK_TABS = ["changes", "browser", "files", "agents", "pullRequest"] as const;
 export type DockTab = (typeof DOCK_TABS)[number];
 
 /** The tab kinds, in registry order: the launcher's rows and the "+" menu. */

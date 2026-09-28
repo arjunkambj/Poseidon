@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_KEYBINDINGS } from "@poseidon/contracts/keybindings";
+
+import { COMMAND_CATALOG } from "@/lib/command-catalog";
+
 import { DOCK_TAB_META, dockTabsFor } from "./dock-tab-meta";
 import { DOCK_TAB_PANES } from "./dock-tab-panes";
 import { dockTabs, isProjectDockPane, projectDockTabs } from "./dock-toggle";
@@ -13,6 +17,9 @@ vi.mock("@/components/panes/changes/project-changes-pane", () => ({
 }));
 vi.mock("@/components/panes/files/files-pane", () => ({ FilesPane: () => null }));
 vi.mock("@/components/panes/agents/agents-pane", () => ({ AgentsPane: () => null }));
+vi.mock("@/components/panes/pull-request/pull-request-pane", () => ({
+  PullRequestPane: () => null,
+}));
 
 describe("the dock tab kind registry", () => {
   it("has meta and a pane renderer for every tab", () => {
@@ -31,10 +38,24 @@ describe("the dock tab kind registry", () => {
     expect(dockTabsFor("thread")).toContain("agents");
   });
 
-  it("offers a project's dock the project tabs, without the browser or agents", () => {
+  it("opens the Pull request tab from a command with no default chord", () => {
+    expect(DOCK_TAB_META.pullRequest).toMatchObject({
+      label: "Pull request",
+      command: "dock.pullRequest",
+    });
+    expect(DEFAULT_KEYBINDINGS.filter((row) => row.command === "dock.pullRequest")).toEqual([]);
+    expect(COMMAND_CATALOG.find((entry) => entry.id === "dock.pullRequest")).toMatchObject({
+      area: "View",
+      title: "Show pull request",
+      palette: true,
+    });
+  });
+
+  it("offers a project's dock the project tabs, without the browser, agents or pull request", () => {
     expect(dockTabsFor("project")).toEqual(projectDockTabs);
     expect(dockTabsFor("project")).not.toContain("browser");
     expect(dockTabsFor("project")).not.toContain("agents");
+    expect(dockTabsFor("project")).not.toContain("pullRequest");
     for (const tab of dockTabs) {
       expect(isProjectDockPane(tab)).toBe(dockTabsFor("project").includes(tab));
     }

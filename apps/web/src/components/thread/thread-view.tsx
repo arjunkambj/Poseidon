@@ -6,9 +6,10 @@
  * `AsyncResult` that carries its own loading/failure states, so the view never
  * has to know whether the socket is mid-resnapshot.
  *
- * The dock keys — `dock.toggle`, `dock.changes`, `dock.files` and
- * `browserPane.toggle` — are answered here, through `DockShortcuts` and
- * `BrowserPaneShortcut`, because they need the thread's dock. The dock starts
+ * The dock keys — `dock.toggle`, `dock.changes`, `dock.files`,
+ * `browserPane.toggle` and `dock.pullRequest` — are answered here, through
+ * `DockShortcuts`, `BrowserPaneShortcut` and `PullRequestPaneShortcut`,
+ * because they need the thread's dock. The dock starts
  * closed: `?pane=` says what it shows (a tab, or `home` for its launcher), and
  * the only thing that opens it unasked is coming back, in the same session,
  * to a thread whose dock was left open (`useDockState`, over a memory kept in
@@ -63,6 +64,7 @@ import { ThreadGreeting } from "@/components/thread/thread-greeting";
 import {
   BrowserPaneShortcut,
   DockShortcuts,
+  PullRequestPaneShortcut,
   ThreadShortcuts,
 } from "@/components/thread/thread-shortcuts";
 import { Timeline } from "@/components/timeline/timeline";
@@ -247,6 +249,7 @@ export function ThreadView({
             <DockShortcuts dockTab={dockTab} onToggle={dock.toggleDock} onShow={dock.showDockTab} />
             <BrowserPaneShortcut dockTab={dockTab} onShow={dock.showDockTab} />
             <AgentsTabShortcut dockTab={dockTab} onShow={dock.showDockTab} />
+            <PullRequestPaneShortcut dockTab={dockTab} onShow={dock.showDockTab} />
           </>
         ) : null}
         {snapshot !== null ? (

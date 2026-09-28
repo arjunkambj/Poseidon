@@ -19,7 +19,9 @@
  * Files pane to focus its search. The thread view mounts it, and so does the
  * New task page for its project's dock. `BrowserPaneShortcut` adds
  * `browserPane.toggle`, only where there is a thread's browser to show — the
- * New task page leaves the chord unclaimed.
+ * New task page leaves the chord unclaimed. `PullRequestPaneShortcut` answers
+ * `dock.pullRequest` (no default chord; the palette's "Show pull request")
+ * the same way, for a thread's dock only.
  */
 
 import * as React from "react";
@@ -129,5 +131,17 @@ export function BrowserPaneShortcut({
   readonly onShow: (tab: DockTab | null) => void;
 }) {
   useKeybindingCommand("browserPane.toggle", () => onShow(dockTabTarget(dockTab, "browser")));
+  return null;
+}
+
+/** `dock.pullRequest`, for a dock that has the Pull request tab — a thread's. */
+export function PullRequestPaneShortcut({
+  dockTab,
+  onShow,
+}: {
+  readonly dockTab: DockPane | undefined;
+  readonly onShow: (tab: DockTab | null) => void;
+}) {
+  useKeybindingCommand("dock.pullRequest", () => onShow(dockTabTarget(dockTab, "pullRequest")));
   return null;
 }
