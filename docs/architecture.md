@@ -958,6 +958,11 @@ Everything a client needs that is not React.
   the family, so the old one is disposed with its last reader and its call is
   interrupted; a failure is a value (`{ _tag: "error", message }`), and a
   query under three characters answers no hits without asking the server.
+- `scriptAtoms.ts` — `detectedScriptsAtom(scope)`, the server's
+  `scripts.detect` for a project or one thread's root, asked once per
+  connected epoch while mounted. It is not kept alive and nothing preloads
+  it: only the open Run menu reads it, so detection runs when the menu opens.
+  A failed call is the empty list.
 - `oneShot.ts` — `runOneShot`, how every git write but the start panel's
   setup atom runs (a setup nothing watches, `worktreeSetupRun`, is one too): a
   fresh atom per call, held until it settles. A shared `runtime.fn` atom would

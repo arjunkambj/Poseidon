@@ -32,6 +32,10 @@
       "types": "./src/editors.ts",
       "import": "./src/editors.ts"
     },
+    "./scriptAtoms": {
+      "types": "./src/scriptAtoms.ts",
+      "import": "./src/scriptAtoms.ts"
+    },
     "./connectorAtoms": {
       "types": "./src/connectorAtoms.ts",
       "import": "./src/connectorAtoms.ts"
