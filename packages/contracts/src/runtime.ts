@@ -162,6 +162,10 @@ export type CapabilitySwitch = typeof CapabilitySwitch.Type;
  *   and the decider reads this flag there: `thread.turn.steer` is accepted
  *   only when it is true, and a harness without it takes the queue instead.
  *
+ * - `stopTask` — one running subagent can be stopped while its turn goes on
+ *   (`SessionHandle.stopTask`). Optional: a session bound before it existed
+ *   has none, and absent reads as false.
+ *
  * `fork` is declared, but nothing reads it yet: no harness so far forks
  * anywhere Poseidon can show. It is read once one does.
  */
@@ -180,6 +184,7 @@ export const ConnectorCapabilities = Schema.Struct({
   questions: Schema.Boolean,
   runtimeModes: Schema.Array(RuntimeMode),
   attachments: Schema.Literals(["images", "files"]),
+  stopTask: Schema.optional(Schema.Boolean),
 });
 export type ConnectorCapabilities = typeof ConnectorCapabilities.Type;
 

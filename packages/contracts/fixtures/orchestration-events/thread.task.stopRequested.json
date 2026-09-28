@@ -1,0 +1,14 @@
+{
+  "sequence": 12,
+  "eventId": "0199c0de-0006-7000-8000-000000000133",
+  "streamKind": "thread",
+  "streamId": "0199c0de-0002-7000-8000-000000000001",
+  "streamVersion": 10,
+  "occurredAt": "2026-09-15T12:00:12.000Z",
+  "commandId": "0199c0de-0008-7000-8000-000000000018",
+  "actor": "user",
+  "type": "thread.task.stopRequested",
+  "payload": {
+    "itemId": "0199c0de-0005-7000-8000-000000000001"
+  }
+}

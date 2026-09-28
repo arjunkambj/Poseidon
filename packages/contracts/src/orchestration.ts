@@ -154,6 +154,12 @@ const ThreadTurnSteerCommand = command("thread.turn.steer", {
 
 const ThreadTurnInterruptCommand = command("thread.turn.interrupt", { threadId: ThreadId });
 
+/**
+ * Stop one subagent — the running turn's task row `itemId` — and leave the
+ * turn going. Only for a session whose `capabilities.stopTask` is true.
+ */
+const ThreadTaskStopCommand = command("thread.task.stop", { threadId: ThreadId, itemId: ItemId });
+
 const ThreadSettingsUpdateCommand = Schema.Struct({
   ...commandBase,
   type: Schema.Literal("thread.settings.update"),
@@ -224,6 +230,7 @@ export const Command = Schema.Union([
   ThreadTurnStartCommand,
   ThreadTurnSteerCommand,
   ThreadTurnInterruptCommand,
+  ThreadTaskStopCommand,
   ThreadSettingsUpdateCommand,
   ThreadApprovalRespondCommand,
   ThreadUserInputRespondCommand,
@@ -249,6 +256,7 @@ export const CommandType = Schema.Literals([
   "thread.turn.start",
   "thread.turn.steer",
   "thread.turn.interrupt",
+  "thread.task.stop",
   "thread.settings.update",
   "thread.approval.respond",
   "thread.userInput.respond",
@@ -407,6 +415,12 @@ const ThreadTurnInterruptedEvent = orchestrationEvent(
   Schema.Struct({ turnId: TurnId }),
 );
 
+/** A request to stop task row `itemId`; the harness settles the row itself. */
+const ThreadTaskStopRequestedEvent = orchestrationEvent(
+  "thread.task.stopRequested",
+  Schema.Struct({ itemId: ItemId }),
+);
+
 const ThreadMessageQueuedEvent = orchestrationEvent(
   "thread.message.queued",
   Schema.Struct({ message: QueuedMessage }),
@@ -547,6 +561,7 @@ export const OrchestrationEvent = Schema.Union([
   ThreadTurnCompletedEvent,
   ThreadTurnSteeredEvent,
   ThreadTurnInterruptedEvent,
+  ThreadTaskStopRequestedEvent,
   ThreadMessageQueuedEvent,
   ThreadMessageDequeuedEvent,
   ThreadQueueReorderedEvent,
@@ -587,6 +602,7 @@ export const OrchestrationEventType = Schema.Literals([
   "thread.turn.completed",
   "thread.turn.steered",
   "thread.turn.interrupted",
+  "thread.task.stopRequested",
   "thread.message.queued",
   "thread.message.dequeued",
   "thread.queue.reordered",
