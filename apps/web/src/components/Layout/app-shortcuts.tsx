@@ -37,6 +37,7 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 import type { ChatWidth } from "@poseidon/contracts/settings";
 
 import { neighbourThread, nthThread } from "@/components/sidebar/thread-order";
+import { TriageShortcuts } from "@/components/sidebar/triage-shortcuts";
 import { useThreadTargets } from "@/components/sidebar/use-thread-targets";
 import { nextChatWidth } from "@/lib/chat-width";
 import { stepFontSizes, type FontSizes } from "@/lib/font-size";
@@ -153,6 +154,7 @@ export function AppShortcuts() {
   return (
     <>
       <HistoryShortcuts />
+      <TriageShortcuts />
       {THREAD_JUMP_COMMANDS.map((command, index) => (
         <ThreadJumpShortcut
           key={command}

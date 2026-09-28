@@ -6,14 +6,14 @@
  * selection it was opened for.
  *
  * Both actions are the row menu's own, one thread at a time: archive through
- * `./thread-actions`, delete through `./use-delete-thread`, so each thread
+ * `./use-sidebar-actions`, delete through `./use-delete-thread`, so each thread
  * keeps its own refusal toast and its own worktree flow. Archive skips the
- * threads that already are archived; delete asks first, once for the lot,
- * with the same worktree opt-in the single-thread dialog offers.
+ * threads that already are archived and toasts once, with an Undo for the
+ * lot; delete asks first, once for the lot, with the same worktree opt-in the
+ * single-thread dialog offers.
  */
 
 import * as React from "react";
-import { toast } from "sonner";
 
 import { Button } from "@poseidon/ui/components/button";
 import { Checkbox } from "@poseidon/ui/components/checkbox";
@@ -28,12 +28,9 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
-import {
-  THREAD_DELETE_DESCRIPTION,
-  threadCommandBase,
-  useThreadCommand,
-} from "@/components/sidebar/thread-actions";
+import { THREAD_DELETE_DESCRIPTION } from "@/components/sidebar/thread-actions";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
+import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
 import { Archive, Close, Trash } from "@honeyicons/react";
 
 /** `THREAD_DELETE_DESCRIPTION`, for many. */
@@ -147,7 +144,7 @@ export function ThreadSelectionBar({
   readonly threads: ReadonlyArray<ThreadSummary>;
   readonly onClear: () => void;
 }) {
-  const send = useThreadCommand();
+  const actions = useSidebarActions();
   const remove = useDeleteThread();
   // The dialog keeps the threads it was opened for: the selection can change
   // under it (Escape clears it) and the copy must not.
@@ -157,21 +154,10 @@ export function ThreadSelectionBar({
     shown.current = deleting;
   }
 
-  const archive = async () => {
-    const targets = threads.filter((thread) => thread.status !== "archived");
+  const archive = () => {
+    const targets = threads;
     onClear();
-    const accepted = await Promise.all(
-      targets.map((thread) =>
-        send(
-          { ...threadCommandBase(thread.threadId), type: "thread.archive" },
-          `${thread.title} was not archived`,
-        ),
-      ),
-    );
-    const archived = accepted.filter(Boolean).length;
-    if (archived > 0) {
-      toast.success(`Archived ${threadCount(archived)}`);
-    }
+    void actions.archive(targets);
   };
 
   return (
@@ -183,7 +169,7 @@ export function ThreadSelectionBar({
           className="mt-2 flex items-center gap-1 rounded-xl bg-sidebar-accent py-0.5 pr-1.5 pl-3 text-sm text-sidebar-accent-foreground"
         >
           <span className="min-w-0 flex-1 truncate tabular-nums">{threads.length} selected</span>
-          <BarAction label="Archive" onClick={() => void archive()}>
+          <BarAction label="Archive" onClick={archive}>
             <Archive variant="bold" />
           </BarAction>
           <BarAction label="Delete" onClick={() => setDeleting(threads)}>

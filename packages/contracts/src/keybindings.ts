@@ -77,6 +77,14 @@ const THREAD_FIND = "threadOpen && !terminalFocus && !browserFocus && !filesFocu
 export const CHANGES_PANE_KEYS = "changesOpen && !inputFocus && !dialogOpen";
 
 /**
+ * `sidebar.undo` on `Mod+Z`: only where the chord undoes nothing else — never
+ * in a text field (the composer included), the terminal or the browser pane,
+ * nor under a dialog. The reserved-chord check lets the sidebar take the chord
+ * over under exactly this clause (`TAKEN_OVER_CHORDS`).
+ */
+export const SIDEBAR_UNDO_KEYS = "!inputFocus && !terminalFocus && !browserFocus && !dialogOpen";
+
+/**
  * The server-owned defaults. The keybindings page shows these as the baseline a
  * user's overrides are diffed against, so the list is the contract, not a
  * renderer constant. A row added here reaches every install, because the
@@ -96,6 +104,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<Keybinding> = [
   { command: "settings.open", shortcut: "Mod+," },
   { command: "skills.open", shortcut: "Mod+Shift+S" },
   { command: "project.add", shortcut: "Mod+Shift+O" },
+  { command: "sidebar.undo", shortcut: "Mod+Z", when: SIDEBAR_UNDO_KEYS },
   // Threads
   { command: "thread.new", shortcut: "Mod+N" },
   { command: "thread.newInProject", shortcut: "Mod+Shift+N" },

@@ -32,6 +32,7 @@ import { DeleteThreadDialog } from "@/components/sidebar/delete-thread-dialog";
 import { threadCommandBase, useThreadCommand } from "@/components/sidebar/thread-actions";
 import { RenameThreadDialog } from "@/components/sidebar/thread-menu";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
+import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
 import { useKeybindingCommand } from "@/lib/shortcuts";
 import { useThreadList } from "@/state/hooks";
 
@@ -47,6 +48,7 @@ export function ThreadShortcuts({
   readonly status: ThreadStatus;
 }) {
   const send = useThreadCommand();
+  const actions = useSidebarActions();
   const remove = useDeleteThread();
   // The list row carries the worktree the delete dialog offers to remove.
   const summary = useThreadList().find((thread) => thread.threadId === threadId) ?? null;
@@ -63,9 +65,14 @@ export function ThreadShortcuts({
     if (gone) {
       return;
     }
-    void (status === "archived"
-      ? send({ ...base(), type: "thread.unarchive" }, "Thread was not unarchived", "Unarchived")
-      : send({ ...base(), type: "thread.archive" }, "Thread was not archived", "Archived"));
+    if (status === "archived") {
+      void send({ ...base(), type: "thread.unarchive" }, "Thread was not unarchived", "Unarchived");
+    } else if (summary !== null) {
+      // The sidebar's own archive: it unpins, and its toast offers Undo.
+      void actions.archive([summary]);
+    } else {
+      void send({ ...base(), type: "thread.archive" }, "Thread was not archived", "Archived");
+    }
   });
   useKeybindingCommand("thread.delete", () => {
     if (!gone && summary !== null) {

@@ -2771,6 +2771,7 @@ fields entirely.
 | General  | `skills.open`                                         | `Mod+Shift+S`                 |                                                                                        |
 | General  | `mcp.open`                                            | unbound                       |                                                                                        |
 | General  | `project.add`                                         | `Mod+Shift+O`                 |                                                                                        |
+| General  | `sidebar.undo`                                        | `Mod+Z`                       | `!inputFocus && !terminalFocus && !browserFocus && !dialogOpen`                        |
 | Threads  | `thread.new`                                          | `Mod+N`                       |                                                                                        |
 | Threads  | `thread.newInProject`                                 | `Mod+Shift+N`                 |                                                                                        |
 | Threads  | `thread.jump.1` … `thread.jump.9`                     | `Mod+1` … `Mod+9`             |                                                                                        |
@@ -2855,6 +2856,18 @@ and `git.push` is Commit & push, which pushes straight away when there is
 nothing to commit (`git-actions-control.tsx`); `git.branchPicker` opens the
 branch popover (`branch-picker.tsx`). Each does nothing from its key while its
 control is disabled, and none is answered outside a repository.
+
+`Mod+Z` is reserved for undo and redo, and the sidebar takes it over only
+under the `sidebar.undo` clause, where no text is focused. In the composer,
+any other text field, the terminal and the browser pane, `Mod+Z` still undoes
+typing. Outside them it undoes the latest sidebar action: archive, pin or
+unpin, mark unread, or rename. The listener's `preventDefault` keeps the
+Electron default Edit menu from taking the key first. The undo stack holds
+the newest 20 entries, in memory only (`components/sidebar/sidebar-undo.ts`).
+An archive toast's Undo takes its own entry off the same stack, so the toast
+and the key never undo one action twice. `sidebar.undo` is answered by
+`components/sidebar/triage-shortcuts.tsx`, and is claimed only while the
+stack holds an entry.
 
 `RESERVED_KEYBINDINGS`, in the same module, holds chords for features that are
 still being built, so that nothing ships on them first. Nothing dispatches

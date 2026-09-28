@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { SIDEBAR_UNDO_KEYS } from "@poseidon/contracts/keybindings";
 import type { Keybinding } from "@poseidon/contracts/settings";
 
 import { parseShortcut } from "./keybindings";
@@ -213,6 +214,13 @@ describe("reserved chords", () => {
     expect(reservedChordReason("Alt+ArrowDown", "meta", changes)).toBeNull();
     expect(reservedChordReason("Alt+ArrowUp", "ctrl", changes)).toBeNull();
     expect(reservedChordReason("Alt+ArrowDown", "meta", "changesOpen")).toMatch(/word/i);
+    // Mod+Z undoes the latest sidebar action only outside text fields, the
+    // terminal and the browser pane; anywhere else it still undoes typing.
+    for (const platform of ["meta", "ctrl"] as const) {
+      expect(reservedChordReason("Mod+Z", platform, SIDEBAR_UNDO_KEYS)).toBeNull();
+      expect(reservedChordReason("Mod+Z", platform)).toMatch(/undo/i);
+      expect(reservedChordReason("Mod+Z", platform, "!inputFocus")).toMatch(/undo/i);
+    }
     expect(reservedChordReason("Mod+", "meta")).toBeNull();
   });
 

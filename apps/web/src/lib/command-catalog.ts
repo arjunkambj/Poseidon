@@ -62,6 +62,7 @@ import {
   Target,
   Trash,
   TextSize,
+  Undo,
   UnfoldLess,
   UnfoldMore,
   ZoomIn,
@@ -122,6 +123,9 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   command("General", "skills.open", "Skills", Sparkles, { palette: false }),
   command("General", "mcp.open", "MCP servers", Server, { palette: false }),
   command("General", "project.add", "Add project", FolderAdd),
+  command("General", "sidebar.undo", "Undo sidebar action", Undo, {
+    description: "Archive, pin, rename, mark unread",
+  }),
 
   // Threads
   command("Threads", "thread.new", "New task", SquarePen, { palette: false }),

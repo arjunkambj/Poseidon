@@ -19,6 +19,9 @@
  * is not — the thread stays, and an archived row offers Unarchive in place of
  * Archive, as the Archived threads settings page does.
  *
+ * Pin, Mark unread and Archive go through `./use-sidebar-actions`, so each
+ * can be undone — Archive from its toast, all three with `sidebar.undo`.
+ *
  * The open thread's menu names the keys that do the same from anywhere —
  * `thread.archive` and `thread.delete` are answered by
  * `@/components/thread/thread-shortcuts` while a thread is open.
@@ -64,8 +67,8 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 import { DeleteThreadDialog } from "@/components/sidebar/delete-thread-dialog";
 import { threadCommandBase, useThreadCommand } from "@/components/sidebar/thread-actions";
 import { useThreadPins } from "@/components/sidebar/thread-pins";
-import { useThreadSeen } from "@/components/sidebar/thread-seen";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
+import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
 import { CommandKbd } from "@/lib/shortcuts";
 import {
   Archive as ArchiveIcon,
@@ -197,8 +200,8 @@ function ThreadMenuItems({
   readonly onDelete: () => void;
 }) {
   const send = useThreadCommand();
-  const [pins, setPinned] = useThreadPins();
-  const [, , seen] = useThreadSeen();
+  const actions = useSidebarActions();
+  const [pins] = useThreadPins();
   const pinned = pins.includes(thread.threadId);
   const base = () => threadCommandBase(thread.threadId);
   const keys = (command: string) =>
@@ -210,11 +213,11 @@ function ThreadMenuItems({
 
   return (
     <>
-      <Item onClick={() => setPinned(thread.threadId, !pinned)}>
+      <Item onClick={() => actions.setPinned(thread, !pinned)}>
         {pinned ? <PinOff variant="bold" /> : <Pin variant="bold" />}
         {pinned ? "Unpin" : "Pin"}
       </Item>
-      <Item onClick={() => seen.markUnread(thread.threadId)}>
+      <Item onClick={() => actions.markUnread([thread])}>
         <Email variant="bold" />
         Mark unread
       </Item>
@@ -234,11 +237,7 @@ function ThreadMenuItems({
           {keys("thread.archive")}
         </Item>
       ) : (
-        <Item
-          onClick={() =>
-            void send({ ...base(), type: "thread.archive" }, "Thread was not archived", "Archived")
-          }
-        >
+        <Item onClick={() => void actions.archive([thread])}>
           <ArchiveIcon variant="bold" />
           Archive
           {keys("thread.archive")}

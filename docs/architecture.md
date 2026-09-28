@@ -348,7 +348,13 @@ unread, archive or unarchive, delete). An archived row, listed only while it is
 open, offers the menu alone. "Mark unread" lights the dot and the bold title
 until the thread is opened again. Pinned threads leave their project for a
 "Pinned" group above Projects (`apps/web/src/components/sidebar/pinned-threads.tsx`),
-newest pin first, whether or not their project is folded.
+newest pin first, whether or not their project is folded. Archive, pin and
+unpin, mark unread and rename can be undone
+(`apps/web/src/components/sidebar/use-sidebar-actions.ts`). The archive
+toast offers Undo, and `Mod+Z` outside text fields, the terminal and the
+browser pane undoes the latest of them. Archiving unpins a thread; undoing
+the archive unarchives it, pins it again and, when it was the open thread,
+opens it again.
 
 The sidebar's order is also a keyboard order. Pinned threads come first, then
 projects in their listed order, each with its threads in list order; a folded project contributes only

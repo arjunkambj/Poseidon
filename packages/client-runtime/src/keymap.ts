@@ -8,7 +8,7 @@
  * is `./keybindings`; this module builds on it.
  */
 
-import { CHANGES_PANE_KEYS } from "@poseidon/contracts/keybindings";
+import { CHANGES_PANE_KEYS, SIDEBAR_UNDO_KEYS } from "@poseidon/contracts/keybindings";
 import type { Keybinding } from "@poseidon/contracts/settings";
 
 import {
@@ -402,11 +402,16 @@ export const SYSTEM_RESERVED_CHORDS: Readonly<Record<ModKey, ReadonlyArray<Reser
  * `Alt+ArrowUp`/`Down` move the caret by paragraph, which only means anything
  * in a text field; the Changes pane steps through its files with them under a
  * clause that rules text fields and menus out (`CHANGES_PANE_KEYS`).
+ *
+ * `Mod+Z` undoes typing, which only means anything in a text field; outside
+ * text fields, the terminal and the browser pane it undoes the latest sidebar
+ * action (`SIDEBAR_UNDO_KEYS`).
  */
 const TAKEN_OVER_CHORDS: ReadonlyArray<{ readonly shortcut: string; readonly when: string }> = [
   { shortcut: "Mod+R", when: "browserFocus" },
   { shortcut: "Alt+ArrowDown", when: CHANGES_PANE_KEYS },
   { shortcut: "Alt+ArrowUp", when: CHANGES_PANE_KEYS },
+  { shortcut: "Mod+Z", when: SIDEBAR_UNDO_KEYS },
 ];
 
 /**
