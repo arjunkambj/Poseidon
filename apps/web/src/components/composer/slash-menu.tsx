@@ -6,6 +6,11 @@
  * `/mode` offer what the header pickers offer: the model's rungs in the
  * contract's order, and the modes the connector can honour.
  *
+ * `/compact` is listed only when the thread's bound session declared
+ * `capabilities.compaction` (`canCompact`, passed in rather than read from
+ * `capabilities`, which are the instance's): picking it starts the same
+ * `/compact` turn a typed one would, so the harness runs its own command.
+ *
  * There is deliberately no `/clear`: in the harnesses this menu stands in for
  * that name clears the session context, and no command in the union does that
  * yet. Offering it as a name for "empty the textarea" would silently drop the
@@ -23,7 +28,16 @@ import {
 } from "@/components/composer/trigger-menu";
 import { orderEfforts } from "@/lib/efforts";
 import { RUNTIME_MODE_LABELS, runtimeModeOptions } from "@/lib/runtime-modes";
-import { Brain, Eraser, Lightning, ListChecks, Lock, Play, Sparkles } from "@honeyicons/react";
+import {
+  Brain,
+  Eraser,
+  Lightning,
+  ListChecks,
+  Lock,
+  Minimize,
+  Play,
+  Sparkles,
+} from "@honeyicons/react";
 
 export type SlashLevel = "root" | "model" | "effort" | "mode";
 
@@ -38,6 +52,7 @@ export type SlashAction =
   | { readonly type: "settings"; readonly patch: SlashPatch }
   | { readonly type: "insert"; readonly text: string }
   | { readonly type: "clear-draft" }
+  | { readonly type: "compact" }
   | { readonly type: "level"; readonly level: SlashLevel };
 
 export interface SlashPatch {
@@ -70,8 +85,10 @@ export const slashMenuItems = (input: {
   readonly models: ReadonlyArray<ModelOption>;
   readonly efforts: ReadonlyArray<Effort> | undefined;
   readonly capabilities: ConnectorCapabilities | null;
+  /** The thread's bound session can compact on demand (`canCompact`). */
+  readonly canCompact: boolean;
 }): ReadonlyArray<SlashMenuItem> => {
-  const { level, skills, models, efforts, capabilities } = input;
+  const { level, skills, models, efforts, capabilities, canCompact } = input;
   const query = level === "root" ? input.query : subQuery(input.query);
 
   if (level === "model") {
@@ -145,6 +162,17 @@ export const slashMenuItems = (input: {
       icon: Play,
       action: { type: "settings", patch: { interactionMode: "default" } },
     },
+    ...(canCompact
+      ? [
+          {
+            id: "builtin:compact",
+            label: "/compact",
+            description: "Summarise the conversation to free context",
+            icon: Minimize,
+            action: { type: "compact" },
+          } satisfies SlashMenuItem,
+        ]
+      : []),
     {
       id: "builtin:clear-draft",
       label: "/clear-draft",

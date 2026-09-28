@@ -35,10 +35,12 @@ import { ComposerChips } from "@/components/composer/composer-chips";
 import { composerEnter, keymapChord, menuMove } from "@/components/composer/composer-keys";
 import { ComposerToolbar } from "@/components/composer/composer-toolbar";
 import { canSteer, sendMode } from "@/components/composer/send-mode";
+import { canCompact, compactRefusal } from "@/components/composer/compact-now";
 import { PendingCard } from "@/components/composer/pending-card";
 import { QueueStrip } from "@/components/composer/queue-strip";
 import { SlashMenu, slashMenuItems, type SlashMenuItem } from "@/components/composer/slash-menu";
 import { useAttachments } from "@/components/composer/use-attachments";
+import { useCompactNow } from "@/components/composer/use-compact-now";
 import { useComposerCommands } from "@/components/composer/use-composer-commands";
 import { useComposerTrigger } from "@/components/composer/use-composer-trigger";
 import { useMentionMenus } from "@/components/composer/use-mention-menus";
@@ -121,6 +123,14 @@ export function Composer({
     setReferences([]);
   };
   const { sending, send: sendDraft } = useSendDraft(threadId, attachments, setError, clearTokens);
+  // The bound session's, like `steerable`: `capabilities` are the instance's.
+  const compactable = canCompact(doc?.session?.capabilities);
+  const compactNow = useCompactNow(threadId);
+  React.useEffect(() => {
+    if (compactNow.error !== null) {
+      setError(compactNow.error);
+    }
+  }, [compactNow.error]);
 
   const slashItems = React.useMemo<ReadonlyArray<SlashMenuItem>>(() => {
     if (trigger?.kind !== "slash") {
@@ -134,8 +144,9 @@ export function Composer({
       models,
       efforts: currentModel?.efforts,
       capabilities,
+      canCompact: compactable,
     });
-  }, [trigger, slashLevel, skills, models, doc?.settings.model, capabilities]);
+  }, [trigger, slashLevel, skills, models, doc?.settings.model, capabilities, compactable]);
 
   const setTextAndCaret = (nextText: string, caret: number) => {
     setText(nextText);
@@ -177,6 +188,19 @@ export function Composer({
       case "clear-draft":
         clearDraft();
         return;
+      case "compact": {
+        closeMenu();
+        setText((current) =>
+          trigger === null ? current : replaceComposerTrigger(current, trigger, "").text.trim(),
+        );
+        const refusal = compactRefusal({ running, pending: compactNow.compacting });
+        if (refusal === null) {
+          compactNow.compact();
+        } else {
+          setError(refusal);
+        }
+        return;
+      }
       case "settings":
         closeMenu();
         setText((current) =>

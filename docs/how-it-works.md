@@ -475,7 +475,8 @@ popover also offers "Compact now" (`compact-now.ts`). It dispatches
 exactly what a typed `/compact` sends, so the harness runs its own command and
 the timeline shows the compaction row. `use-compact-now.ts` dispatches it
 directly rather than through `use-send-draft.ts`, leaving the draft alone.
-While a turn runs the button is disabled, with the reason beneath it.
+While a turn runs the button is disabled, with the reason beneath it. The `/`
+menu's `/compact` is the same dispatch (below).
 
 Four characters open a menu, each only at the start of the text or after
 whitespace (`detectComposerTrigger` in
@@ -496,8 +497,15 @@ references. `/` is plain text there: its commands change a thread's settings,
 and that thread does not exist yet.
 
 The `/` popover offers `/model`, `/effort`, `/mode`, `/plan`, `/default`,
-`/clear-draft` and the skills the thread's connector instance loads for the
-project. A skill picked here is plain text, with no chip and no reference.
+`/compact`, `/clear-draft` and the skills the thread's connector instance loads
+for the project. A skill picked here is plain text, with no chip and no
+reference. `/compact` is listed only when the thread's bound session declared
+`capabilities.compaction` — the same test as "Compact now", so never on
+Command Code or on a thread no session has bound yet. Picking it removes the
+`/compact` query from the textarea, keeps the rest of the draft and its
+attachments, and starts a turn whose text is `/compact` through
+`use-compact-now.ts`, exactly as a typed `/compact` would reach the harness.
+While a turn runs it starts nothing and the notice under the input says why.
 `/clear` is deliberately not offered:
 in Command Code it drops the session's context, no command in the union does
 that, and binding it to emptying the textarea would throw away the sentence the
