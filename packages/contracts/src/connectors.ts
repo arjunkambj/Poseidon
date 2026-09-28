@@ -32,6 +32,14 @@ export const ModelOption = Schema.Struct({
    * Optional, so a payload recorded before it existed still decodes.
    */
   hidden: Schema.optional(Schema.Boolean),
+  /**
+   * The connector's one-line tagline for the model, e.g. "Pro-level coding
+   * proficiency, parallel agentic execution". Secondary text only: the name is
+   * always `label`. Optional, so a payload recorded before it existed still
+   * decodes. A connector leaves it out rather than send "", which would fail
+   * decoding of the whole model list.
+   */
+  description: Schema.optional(NonEmptyString),
 });
 export type ModelOption = typeof ModelOption.Type;
 

@@ -957,6 +957,14 @@ later still applies. It is defaulted on decode, so older rows read as nothing
 switched. The rules that read it — every harness on, every model on unless
 hidden, the current pick always kept — are `apps/web/src/lib/model-visibility.ts`.
 
+`ModelOption.description` is optional too: the connector's one-line tagline for
+the model, shown only as secondary text. The model's name is always `label`,
+never the tagline. A connector leaves the field out rather than send an empty
+string, since `description` is a `NonEmptyString` and an empty one fails the
+whole model list. Nothing persists a `ModelOption` — the server caches the list
+in memory and `connectors.list`/`connectors.models` pass it through — so the
+field needs no migration.
+
 The settings document also holds the generated-text options. `git` gains
 `writingStyle` (`repository`, `conventional`, `custom`), `customInstructions`
 (capped at `CUSTOM_INSTRUCTIONS_MAX`), `followPrTemplate`,
