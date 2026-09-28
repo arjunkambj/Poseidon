@@ -216,7 +216,7 @@ export const emptyComposerDraft: ComposerDraft = {
   files: [],
 };
 
-const isEmptyDraft = (draft: ComposerDraft): boolean =>
+export const isEmptyDraft = (draft: ComposerDraft): boolean =>
   draft.text === "" &&
   draft.mentions.length === 0 &&
   draft.references.length === 0 &&
@@ -296,6 +296,26 @@ export const useComposerDraft = (threadId: string): ComposerDraftHandle => {
       [patch],
     ),
   };
+};
+
+/**
+ * Writes any thread's draft by id, from outside its composer: a start in the
+ * background parks its message in the new thread's composer, and hands one
+ * that never became a thread back to the start screen.
+ */
+export const useComposerDraftWriter = () => {
+  const setDrafts = useAtomSet(composerDraftAtom);
+  return React.useCallback(
+    (threadId: string, update: React.SetStateAction<ComposerDraft>) =>
+      setDrafts((drafts) =>
+        withComposerDraft(
+          drafts,
+          threadId,
+          applyUpdate(update, drafts[threadId] ?? emptyComposerDraft),
+        ),
+      ),
+    [setDrafts],
+  );
 };
 
 /**
