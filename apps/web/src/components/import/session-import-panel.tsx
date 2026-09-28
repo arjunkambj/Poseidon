@@ -6,7 +6,8 @@
  * the page is what reads the harnesses' session files. A run keeps going
  * past a failed row, which keeps its message and a Retry; Stop lets the row
  * in flight finish and puts the queued ones back. Closing the page stops the
- * run the same way. Rows a thread already holds link to it.
+ * run the same way. Rows a thread already holds link to it; `onOpenThread`
+ * runs as one is followed, for a dialog to close so the thread shows.
  */
 
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
@@ -36,7 +37,11 @@ import { SessionImportList } from "./session-import-list";
 
 const MINUTE = 60_000;
 
-export function SessionImportPanel() {
+export function SessionImportPanel({
+  onOpenThread,
+}: {
+  readonly onOpenThread?: (() => void) | undefined;
+} = {}) {
   const atoms = useAppAtoms();
   const listResult = useAtomValue(atoms.importableSessionsAtom);
   const reload = useAtomRefresh(atoms.importableSessionsAtom);
@@ -186,6 +191,7 @@ export function SessionImportPanel() {
         now={now}
         onSelect={toggle}
         onRetry={retry}
+        onOpen={onOpenThread}
       />
     </div>
   );

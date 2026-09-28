@@ -1,7 +1,8 @@
 /**
  * The sessions Settings → Import can bring in, grouped by the folder they ran
  * in. A row the user can import has a checkbox; one a thread already holds
- * links to that thread instead; a failed one says why and offers Retry. The
+ * links to that thread instead (`onOpen` runs as it is followed, so a dialog
+ * holding the list can close); a failed one says why and offers Retry. The
  * list only draws: the selection, the row states and the runner live in
  * `SessionImportPanel`, the grouping and the states in `@/lib/session-import`.
  */
@@ -26,14 +27,16 @@ import { Refresh, Spinner } from "@honeyicons/react";
 
 import { SettingsSection } from "@/components/Settings/settings-section";
 
-function RowStatus({
+export function RowStatus({
   state,
   title,
   onRetry,
+  onOpen,
 }: {
   readonly state: RowState;
   readonly title: string;
   readonly onRetry: () => void;
+  readonly onOpen?: (() => void) | undefined;
 }) {
   switch (state.status) {
     case "idle":
@@ -54,6 +57,7 @@ function RowStatus({
           size="sm"
           render={<Link to="/t/$threadId" params={{ threadId: state.threadId }} />}
           aria-label={`Open ${title}`}
+          onClick={onOpen}
         >
           Open
         </Button>
@@ -77,6 +81,7 @@ function SessionRow({
   now,
   onSelect,
   onRetry,
+  onOpen,
 }: {
   readonly entry: ImportableSessionEntry;
   readonly state: RowState;
@@ -86,6 +91,7 @@ function SessionRow({
   readonly now: number;
   readonly onSelect: (next: boolean) => void;
   readonly onRetry: () => void;
+  readonly onOpen: (() => void) | undefined;
 }) {
   const details = [
     entry.connectorName,
@@ -116,7 +122,7 @@ function SessionRow({
           <span className="text-xs text-destructive">{state.message}</span>
         ) : null}
       </div>
-      <RowStatus state={state} title={entry.title} onRetry={onRetry} />
+      <RowStatus state={state} title={entry.title} onRetry={onRetry} onOpen={onOpen} />
     </div>
   );
 }
@@ -130,6 +136,7 @@ export function SessionImportList({
   now,
   onSelect,
   onRetry,
+  onOpen,
 }: {
   readonly groups: ReadonlyArray<SessionGroup>;
   readonly states: ReadonlyMap<string, RowState>;
@@ -141,6 +148,8 @@ export function SessionImportList({
   readonly now: number;
   readonly onSelect: (key: string, next: boolean) => void;
   readonly onRetry: (key: string) => void;
+  /** Runs as an imported row's Open is followed. */
+  readonly onOpen?: (() => void) | undefined;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -172,6 +181,7 @@ export function SessionImportList({
                 now={now}
                 onSelect={(next) => onSelect(key, next)}
                 onRetry={() => onRetry(key)}
+                onOpen={onOpen}
               />
             );
           })}

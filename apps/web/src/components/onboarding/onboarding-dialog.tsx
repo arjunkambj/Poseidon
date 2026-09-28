@@ -96,7 +96,7 @@ export function OnboardingDialog({ onDone }: { readonly onDone: () => void }) {
           {step === "harnesses" ? <HarnessStep /> : null}
           {step === "theme" ? <ThemeCards /> : null}
           {step === "project" ? <ProjectStep form={form} added={added} /> : null}
-          {step === "import" ? <ImportStep /> : null}
+          {step === "import" ? <ImportStep onDone={onDone} /> : null}
           <DialogActions>
             <Button
               type="button"

@@ -418,7 +418,8 @@ its probe found, re-probes on Re-check, and runs the connector's own install
 or sign-in command as a script in home's terminal (`HomeTerminal`), whose
 drawer opens inside the dialog. The project step and the sidebar's Add project
 dialog share one form (`apps/web/src/components/sidebar/add-project-form.tsx`),
-and the import step is the import page's panel. The keybindings settings page
+and the import step is the import page's panel, whose Open ends setup. The
+keybindings settings page
 (`apps/web/src/components/keybindings/keybindings-editor.tsx`) lists every
 catalog command by area, each with its chords and `when` clauses, and warns
 when a chord collides with another binding in a context that can overlap, when

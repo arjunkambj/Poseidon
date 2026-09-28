@@ -464,10 +464,12 @@ atom (`importSessionAtom` in `apps/web/src/lib/app-runtime.ts`) reloads
 `projectsAtom` after every import, because projects have no subscription and
 an import into a new folder adds a project; the new threads arrive through the
 thread list subscription. The list itself reloads once a run or a Retry ends,
-so a group's project note catches up. A row whose session a thread already holds — an
-earlier import, or a thread of Poseidon's own running it — shows Open instead
-of a checkbox. What the server does with an import is under `SessionImporter`
-in [architecture.md](architecture.md).
+so a group's project note catches up. A row whose session a thread already
+holds — an earlier import, or a thread of Poseidon's own running it — shows
+Open instead of a checkbox; in first-run setup's import step, Open also ends
+setup, so the thread does not open behind the dialog. What the server does
+with an import is under `SessionImporter` in
+[architecture.md](architecture.md).
 
 ---
 
