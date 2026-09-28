@@ -15,7 +15,7 @@ const id = (n: number) => `0199c0de-0012-7000-8000-00000000000${n}` as TerminalI
 
 const summary = (
   n: number,
-  over: Partial<Pick<TerminalSummary, "status" | "exitCode">> = {},
+  over: Partial<Pick<TerminalSummary, "status" | "exitCode" | "script">> = {},
 ): TerminalSummary => ({
   ...(fixture as TerminalSummary),
   terminalId: id(n),
@@ -28,6 +28,7 @@ const tab = (n: number, over: Partial<DrawerState["tabs"][number]> = {}) => ({
   title: `Terminal ${n}`,
   status: "running" as const,
   exitCode: null,
+  script: null,
   ...over,
 });
 
@@ -75,6 +76,15 @@ describe("reduceDrawer synced", () => {
       terminals: [summary(1, { status: "exited", exitCode: 2 })],
     });
     expect(state.tabs[0]).toEqual(tab(1, { status: "exited", exitCode: 2 }));
+  });
+
+  it("carries the script a terminal runs, and null for a shell", () => {
+    const script = { id: "dev", name: "Dev server" };
+    const state = reduceDrawer(emptyDrawerState, {
+      type: "synced",
+      terminals: [summary(1, { script }), summary(2)],
+    });
+    expect(state.tabs.map((entry) => entry.script)).toEqual([script, null]);
   });
 
   it("does not undo an exit seen after the listing was taken", () => {

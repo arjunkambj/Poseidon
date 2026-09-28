@@ -23,7 +23,7 @@
  * eases only while it opens or closes, so a drag still tracks the pointer.
  */
 
-import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
 import { makeTerminalId, type TerminalId, type ThreadId } from "@poseidon/contracts/ids";
 import {
   TERMINALS_PER_OWNER,
@@ -121,6 +121,7 @@ export function TerminalDrawer({
   const refreshList = useAtomRefresh(atoms.terminalListAtom(ownerKey));
   const refreshRunning = useAtomRefresh(atoms.runningTerminalsAtom);
   const openTerminal = useOpenTerminal();
+  const writeTerminal = useAtomSet(atoms.writeTerminal);
   const [state, dispatch] = useDrawerState(ownerKey);
   const drawerRef = React.useRef<HTMLDivElement>(null);
   const { shown, onPointerDown } = useDrawerResize(drawerRef);
@@ -219,7 +220,8 @@ export function TerminalDrawer({
   };
 
   const full = state.tabs.length >= TERMINALS_PER_OWNER;
-  const ownerNoun = isThreadOwner(decodeTerminalOwnerKey(ownerKey)) ? "thread" : "project";
+  const owner = decodeTerminalOwnerKey(ownerKey);
+  const ownerNoun = isThreadOwner(owner) ? "thread" : "project";
   const listError = listed?._tag === "error" ? listed.message : null;
 
   let body: React.ReactNode;
@@ -308,6 +310,7 @@ export function TerminalDrawer({
                 bumpTabFocus();
               }}
               onClose={() => close(tab.terminalId)}
+              onStop={() => writeTerminal({ ...owner, terminalId: tab.terminalId, data: "\u0003" })}
             />
           ))}
           {opening ? (

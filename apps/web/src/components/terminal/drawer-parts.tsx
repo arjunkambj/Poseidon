@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components
 import * as React from "react";
 
 import type { TerminalTab } from "@/components/terminal/drawer-state";
-import { Close, Terminal } from "@honeyicons/react";
+import { Close, Stop, Terminal } from "@honeyicons/react";
 
 export function IconButton({
   label,
@@ -108,11 +108,14 @@ export function TerminalTabButton({
   active,
   onSelect,
   onClose,
+  onStop,
 }: {
   tab: TerminalTab;
   active: boolean;
   onSelect: () => void;
   onClose: () => void;
+  /** Interrupts a running script (Ctrl-C); the close button stays the hard kill. */
+  onStop: () => void;
 }) {
   // The strip scrolls sideways once the tabs outgrow it; the tab in front —
   // one just opened, say — is scrolled into sight so the strip always shows
@@ -141,6 +144,11 @@ export function TerminalTabButton({
           <span className="shrink-0 text-muted-foreground">exited</span>
         ) : null}
       </Button>
+      {tab.script !== null && tab.status === "running" ? (
+        <IconButton label={`Stop ${tab.script.name}`} onClick={onStop}>
+          <Stop variant="bold" />
+        </IconButton>
+      ) : null}
       <IconButton label="Close terminal" ariaLabel={`Close ${tab.title}`} onClick={onClose}>
         <Close variant="bold" />
       </IconButton>

@@ -21,7 +21,7 @@
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import type { TerminalId } from "@poseidon/contracts/ids";
-import type { TerminalSummary } from "@poseidon/contracts/terminal";
+import type { TerminalScript, TerminalSummary } from "@poseidon/contracts/terminal";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import * as React from "react";
 
@@ -30,6 +30,8 @@ export interface TerminalTab {
   readonly title: string;
   readonly status: "running" | "exited";
   readonly exitCode: number | null;
+  /** The script the terminal runs as its own process, or null for a shell. */
+  readonly script: TerminalScript | null;
 }
 
 export interface DrawerState {
@@ -51,6 +53,7 @@ const tabOf = (terminal: TerminalSummary): TerminalTab => ({
   title: terminal.title,
   status: terminal.status,
   exitCode: terminal.exitCode,
+  script: terminal.script ?? null,
 });
 
 /**
