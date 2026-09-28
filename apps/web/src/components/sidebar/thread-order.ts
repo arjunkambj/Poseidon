@@ -13,24 +13,16 @@
  * threads"). A pinned thread is listed in the pinned group only, so no row
  * appears twice, and folding its project does not hide it. Archived threads
  * are left out except the open one, by `sidebarThreads`, pinned or not.
- *
- * A title filter (`./thread-filter`) narrows every group to the matching
- * threads and ignores folding, so a folded project still shows its matches;
- * the open thread is not exempt, and an archived one is still listed only
- * while it is open.
  */
 
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
-import { isFiltering, matchesTitle } from "@/components/sidebar/thread-filter";
 import { sidebarThreads } from "@/components/sidebar/visible-threads";
 
 interface OrderedThread {
   readonly threadId: string;
   readonly projectId: string;
   readonly status: ThreadSummary["status"];
-  /** Read only by the title filter. */
-  readonly title?: string;
 }
 
 export interface SidebarThreadGroups<T> {
@@ -45,8 +37,6 @@ export interface SidebarThreadGroups<T> {
 export interface SidebarOrderOptions {
   /** Pinned thread ids, newest pin first — see `./thread-pins`. */
   readonly pinned?: ReadonlyArray<string>;
-  /** The title filter; blank lists everything — see `./thread-filter`. */
-  readonly query?: string;
 }
 
 /** The sidebar's rows, grouped the way the tree draws them. */
@@ -62,12 +52,7 @@ export const sidebarThreadGroups = <T extends OrderedThread>(
   const pinned: Array<T> = [];
   const byProject = new Map<string, Array<T>>();
   const orphans: Array<T> = [];
-  const query = options.query ?? "";
-  const filtering = isFiltering(query);
   for (const thread of sidebarThreads(threads, openThreadId)) {
-    if (filtering && !matchesTitle(thread.title ?? "", query)) {
-      continue;
-    }
     if (pinRank.has(thread.threadId)) {
       pinned.push(thread);
       continue;
@@ -76,7 +61,7 @@ export const sidebarThreadGroups = <T extends OrderedThread>(
       orphans.push(thread);
       continue;
     }
-    if (!filtering && collapsed.has(thread.projectId) && thread.threadId !== openThreadId) {
+    if (collapsed.has(thread.projectId) && thread.threadId !== openThreadId) {
       continue;
     }
     const list = byProject.get(thread.projectId) ?? [];

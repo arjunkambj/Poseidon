@@ -4,7 +4,7 @@
  *
  * - `thread.pin` pins the open thread, or unpins it when it is pinned.
  * - The open thread is stamped seen (`./thread-seen`) as every event lands —
- *   here rather than in its row, which the title filter can hide.
+ *   here rather than in its row, which a folded project can hide.
  * - `sidebar.undo` undoes the latest sidebar action (`./sidebar-undo`). Its
  *   default chord is `Mod+Z`, bound only outside text fields, the terminal and
  *   the browser pane, so typing keeps its own undo.

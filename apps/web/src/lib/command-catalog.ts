@@ -37,7 +37,6 @@ import {
   Edit,
   Eraser,
   FileCode,
-  Filter,
   FolderAdd,
   GitBranch,
   GitCommit,
@@ -155,7 +154,6 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
     description: "Asks before deleting",
   }),
   command("Threads", "thread.pin", "Pin thread", Pin, { description: "Unpins a pinned thread" }),
-  command("Threads", "threads.filter", "Filter threads", Filter, { description: "By title" }),
   command("Threads", "nav.back", "Go back", ArrowLeft),
   command("Threads", "nav.forward", "Go forward", ArrowRight),
 

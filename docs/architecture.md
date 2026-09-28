@@ -419,14 +419,11 @@ double-click on any row's title, or Rename in its menu, swaps it for a title fie
 selected (`apps/web/src/components/sidebar/thread-title-input.tsx`, with
 `thread-rename.ts` naming the one row being renamed): Enter sends
 `thread.rename` when the trimmed title is new and not empty, and Escape or a
-click away keeps the old one. The field in the Projects header filters every row by title
-(`apps/web/src/components/sidebar/thread-filter.ts`): while it holds a query,
-projects with no match are left out and folding is ignored.
+click away keeps the old one.
 
 The sidebar's order is also a keyboard order. Pinned threads come first, then
 projects in their listed order, each with its threads in list order; a folded project contributes only
-the open thread, and threads whose project is gone come last; a title filter
-narrows it to the rows on screen
+the open thread, and threads whose project is gone come last
 (`apps/web/src/components/sidebar/thread-order.ts`, which the tree draws from
 too, so the two cannot drift). A folded project's header shows the most
 urgent status among the threads it hides — Needs you, then Plan ready, then
