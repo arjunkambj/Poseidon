@@ -10,6 +10,16 @@
 
 import { describe, expect, it } from "vitest";
 
+import {
+  ATTENTION_BADGE_CHANNEL,
+  ATTENTION_BEEP_CHANNEL,
+  ATTENTION_BUSY_CHANNEL,
+  ATTENTION_KEEP_AWAKE_CHANNEL,
+  ATTENTION_NOTIFY_CHANNEL,
+  OPEN_THREAD_CHANNEL,
+  QUIT_ANSWER_CHANNEL,
+  QUIT_REQUEST_CHANNEL,
+} from "../main/attentionChannels";
 import { POINTER_CHANNEL } from "../main/browser/agentPointer";
 import { CHORDS_CHANNEL, COMMAND_CHANNEL } from "../main/browser/guestChords";
 import {
@@ -282,5 +292,45 @@ describe("makePoseidonBridge", () => {
     const pane = makePoseidonBridge(fake.ipc).browserPane;
     await expect(pane.clearAll()).resolves.toBe(3);
     expect(fake.invokes).toEqual([{ channel: CLEAR_ALL_CHANNEL, args: [] }]);
+  });
+
+  it("routes each attention call to its own channel", async () => {
+    const fake = fakeIpc();
+    fake.answer(ATTENTION_KEEP_AWAKE_CHANNEL, true);
+    const attention = makePoseidonBridge(fake.ipc).attention;
+    const notice = { threadId: "thread-1", title: "Finished", body: "Fix the build" };
+    await attention.notify(notice);
+    await attention.setBadge(2);
+    await attention.beep();
+    await expect(attention.setKeepAwake(true)).resolves.toBe(true);
+    await attention.setBusy(3);
+    await attention.answerQuit(false);
+    expect(fake.invokes).toEqual([
+      { channel: ATTENTION_NOTIFY_CHANNEL, args: [notice] },
+      { channel: ATTENTION_BADGE_CHANNEL, args: [2] },
+      { channel: ATTENTION_BEEP_CHANNEL, args: [] },
+      { channel: ATTENTION_KEEP_AWAKE_CHANNEL, args: [true] },
+      { channel: ATTENTION_BUSY_CHANNEL, args: [3] },
+      { channel: QUIT_ANSWER_CHANNEL, args: [false] },
+    ]);
+  });
+
+  it("delivers notification clicks and quit requests until unsubscribed", () => {
+    const fake = fakeIpc();
+    const attention = makePoseidonBridge(fake.ipc).attention;
+    const opened: Array<string> = [];
+    let asked = 0;
+    const stopOpen = attention.onOpenThread((threadId) => opened.push(threadId));
+    const stopQuit = attention.onQuitRequest(() => (asked += 1));
+    fake.push(OPEN_THREAD_CHANNEL, "thread-1");
+    fake.push(QUIT_REQUEST_CHANNEL, undefined);
+    stopOpen();
+    stopQuit();
+    fake.push(OPEN_THREAD_CHANNEL, "thread-2");
+    fake.push(QUIT_REQUEST_CHANNEL, undefined);
+    expect(opened).toEqual(["thread-1"]);
+    expect(asked).toBe(1);
+    expect(fake.listenerCount(OPEN_THREAD_CHANNEL)).toBe(0);
+    expect(fake.listenerCount(QUIT_REQUEST_CHANNEL)).toBe(0);
   });
 });

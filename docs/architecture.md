@@ -71,7 +71,10 @@ fd 3.
 `poseidon://app/` scheme with SPA fallback (`apps/desktop/src/main/protocol.ts`,
 `rendererRequest.ts`). The preload bridge
 (`apps/desktop/src/preload/bridge.ts`) exposes `getConnection`,
-`getServerState`, `onServerState` and the browser-pane guest channel; it is
+`getServerState`, `onServerState`, the browser-pane guest channel and the
+attention seam (`attention`: notify, badge, beep, keep-awake, busy count,
+notification clicks and the quit request, wrapped for the renderer with
+plain-browser fallbacks in `apps/web/src/lib/desktop-attention.ts`); it is
 built against a three-member `PreloadIpc` interface so it can be tested without
 Electron.
 
@@ -218,7 +221,26 @@ Owns the operating system. Nothing about orchestration lives here.
 
 - `apps/desktop/src/main/index.ts` — single-instance lock, privileged scheme registration,
   supervisor start, window creation, quit handling (`quit.ts`, with a 15s
-  deadline for the server child).
+  deadline for the server child). Its one `before-quit` listener asks the
+  quit guard first (`quitGuard.ts`, Electron-free): while the renderer
+  reports threads running or waiting on the user, the first quit is held and
+  the window gets `poseidon:quit-request`; its `poseidon:quit-answer` either
+  quits (through `quit.ts` as before) or clears the hold, and a second quit
+  while it is asking goes straight through. With no window to ask (Windows
+  and Linux quit once the last window closes) the quit is not held.
+- `apps/desktop/src/main/attention.ts`, `attentionChannels.ts`,
+  `attentionIpc.ts` — the attention seam. The renderer decides when a thread
+  needs the user; main carries it out for a `window` sender only, after the
+  Electron-free parsers in `attention.ts` (a notice's thread id must match the
+  bridge's thread-id pattern, its text is capped, counts are clamped):
+  `poseidon:attention-notify` posts a silent system notification, held until
+  it is clicked or closed, whose click shows and focuses the window and sends
+  `poseidon:open-thread`; `-badge` sets `app.setBadgeCount` (0 clears);
+  `-beep` is `shell.beep()`; `-keep-awake` holds at most one
+  `prevent-app-suspension` power-save blocker (released on `will-quit`) and
+  answers whether it is held; `-busy` stores the count the quit guard reads.
+  The channel names sit alone in `attentionChannels.ts` because the sandboxed
+  preload bundles them and `attention.ts` pulls in `node:crypto`.
 - `apps/desktop/src/main/protocol.ts` — the `poseidon://app/` scheme.
 - `apps/desktop/src/main/webview.ts` — the `will-attach-webview` policy for the browser
   pane. Only `persist:thread-*` partitions may attach, with an http(s) or

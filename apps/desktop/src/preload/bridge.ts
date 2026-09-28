@@ -9,6 +9,17 @@
  * rather than left to a hand-check against the running app.
  */
 
+import {
+  ATTENTION_BADGE_CHANNEL,
+  ATTENTION_BEEP_CHANNEL,
+  ATTENTION_BUSY_CHANNEL,
+  ATTENTION_KEEP_AWAKE_CHANNEL,
+  ATTENTION_NOTIFY_CHANNEL,
+  OPEN_THREAD_CHANNEL,
+  QUIT_ANSWER_CHANNEL,
+  QUIT_REQUEST_CHANNEL,
+  type AttentionNotice,
+} from "../main/attentionChannels";
 import { POINTER_CHANNEL, type AgentPointer } from "../main/browser/agentPointer";
 import {
   CHORDS_CHANNEL,
@@ -67,6 +78,9 @@ export type BrowserTabRequest = Readonly<{ id: number } & TabRequest>;
 
 /** The tab host's work: resolves the new tab's `webContents` id for `create`. */
 export type BrowserTabHandler = (request: TabRequest) => Promise<{ readonly wcId?: number }>;
+
+/** A system notification for a thread (`main/attention.ts`); main validates it. */
+export type AttentionNotifyPayload = AttentionNotice;
 
 /** A main→renderer push listener: the event object, then the payload. */
 export type PreloadIpcListener = (event: unknown, ...args: Array<unknown>) => void;
@@ -174,6 +188,38 @@ export const makePoseidonBridge = (ipc: PreloadIpc) => {
         subscribe<BrowserPaneCommand>(ipc, COMMAND_CHANNEL, callback),
       onAgentPointer: (callback: (payload: BrowserPaneAgentPointer) => void): (() => void) =>
         subscribe<BrowserPaneAgentPointer>(ipc, POINTER_CHANNEL, callback),
+    },
+    /**
+     * The attention seam (`main/attention.ts`): the renderer decides when a
+     * thread needs the user and main carries it out. `notify` posts a silent
+     * system notification whose click brings the window forward and arrives
+     * on `onOpenThread`; `setBadge` sets the dock count (0 clears);
+     * `setKeepAwake` holds or releases the power-save blocker and resolves
+     * whether it is held; `setBusy` reports running or waiting threads, which
+     * makes the next quit arrive on `onQuitRequest` for `answerQuit`.
+     */
+    attention: {
+      notify: async (payload: AttentionNotifyPayload): Promise<void> => {
+        await ipc.invoke(ATTENTION_NOTIFY_CHANNEL, payload);
+      },
+      setBadge: async (count: number): Promise<void> => {
+        await ipc.invoke(ATTENTION_BADGE_CHANNEL, count);
+      },
+      beep: async (): Promise<void> => {
+        await ipc.invoke(ATTENTION_BEEP_CHANNEL);
+      },
+      setKeepAwake: (hold: boolean): Promise<boolean> =>
+        ipc.invoke(ATTENTION_KEEP_AWAKE_CHANNEL, hold) as Promise<boolean>,
+      setBusy: async (count: number): Promise<void> => {
+        await ipc.invoke(ATTENTION_BUSY_CHANNEL, count);
+      },
+      onOpenThread: (callback: (threadId: string) => void): (() => void) =>
+        subscribe<string>(ipc, OPEN_THREAD_CHANNEL, callback),
+      onQuitRequest: (callback: () => void): (() => void) =>
+        subscribe<unknown>(ipc, QUIT_REQUEST_CHANNEL, () => callback()),
+      answerQuit: async (quit: boolean): Promise<void> => {
+        await ipc.invoke(QUIT_ANSWER_CHANNEL, quit);
+      },
     },
   };
 };

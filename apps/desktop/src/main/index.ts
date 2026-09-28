@@ -1,14 +1,16 @@
 /**
  * App lifecycle glue: single instance, protocol privileges, the browser
  * bridge, the server supervisor, and window creation. Everything else lives in
- * the modules alongside (`protocol`, `window`, `ipc`, `updater`, `browser/`,
- * and `../platform`).
+ * the modules alongside (`protocol`, `window`, `ipc`, `attentionIpc`,
+ * `quitGuard`, `updater`, `browser/`, and `../platform`).
  */
 import { BrowserWindow, app, protocol, session } from "electron";
 
 import { ServerSupervisor } from "../backend/ServerSupervisor";
 import { serverSpawnSpec, showServerCrashDialog } from "../backend/serverDeps";
 import type { BridgeForServer } from "../backend/serverEnv";
+import { registerAttentionIpc, showWindow } from "./attentionIpc";
+import { QUIT_REQUEST_CHANNEL } from "./attention";
 import { makePointerRelay, POINTER_CHANNEL } from "./browser/agentPointer";
 import { createGuestRegistry } from "./browser/guests";
 import { startPaneBridge } from "./browser/start";
@@ -19,6 +21,7 @@ import { resolveBrowserBridge } from "../platform/browserBridge";
 import { quitsWhenAllWindowsClosed } from "../platform/lifecycle";
 import { APP_SCHEME, registerAppProtocol } from "./protocol";
 import { makeQuitHandler } from "./quit";
+import { makeQuitGuard } from "./quitGuard";
 import { checkForUpdates } from "./updater";
 import { createWindow } from "./window";
 
@@ -74,6 +77,21 @@ if (!app.requestSingleInstanceLock()) {
     log: (entry) => console.info(`[browser-guests] ${JSON.stringify(entry)}`),
   });
 
+  // Filled in once the attention handlers are registered; until then nothing
+  // is running, so a quit is never held.
+  let busyCount: () => number = () => 0;
+  const quitGuard = makeQuitGuard({
+    busyCount: () => busyCount(),
+    ask: () => {
+      const contents = windowContents();
+      if (contents === null) return false;
+      contents.send(QUIT_REQUEST_CHANNEL);
+      showWindow();
+      return true;
+    },
+    quit: () => app.quit(),
+  });
+
   const supervisor = new ServerSupervisor({
     spec: () => serverSpawnSpec(bridge),
     onRepeatedFailure: showServerCrashDialog,
@@ -83,6 +101,10 @@ if (!app.requestSingleInstanceLock()) {
     applyDevDockIcon();
     registerAppProtocol();
     registerIpc(supervisor, { guests, tabs });
+    busyCount = registerAttentionIpc({
+      windowContents,
+      onQuitAnswer: quitGuard.answer,
+    }).busyCount;
     if (bridgeSetting.kind === "enabled") {
       const started = await startPaneBridge(guests.port, pointer);
       bridge = started.forServer;
@@ -100,19 +122,22 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.on("will-quit", () => void closeBridge());
 
-  app.on(
-    "before-quit",
-    makeQuitHandler({
-      stopServer: () => supervisor.stop(),
-      onWaiting: () => {
-        for (const win of BrowserWindow.getAllWindows()) win.hide();
-      },
-      exit: () => app.exit(),
-      // The server closes sessions one by one under their own timeouts; the
-      // supervisor's own SIGKILL lands well inside this.
-      deadlineMs: QUIT_DEADLINE_MS,
-    }),
-  );
+  const serverQuit = makeQuitHandler({
+    stopServer: () => supervisor.stop(),
+    onWaiting: () => {
+      for (const win of BrowserWindow.getAllWindows()) win.hide();
+    },
+    exit: () => app.exit(),
+    // The server closes sessions one by one under their own timeouts; the
+    // supervisor's own SIGKILL lands well inside this.
+    deadlineMs: QUIT_DEADLINE_MS,
+  });
+  // One listener: the guard may hold the quit to ask first; otherwise the
+  // graceful server shutdown runs exactly as it always has.
+  app.on("before-quit", (event) => {
+    if (quitGuard.onBeforeQuit(event)) return;
+    serverQuit(event);
+  });
   app.on("window-all-closed", () => {
     if (quitsWhenAllWindowsClosed(process.platform)) app.quit();
   });

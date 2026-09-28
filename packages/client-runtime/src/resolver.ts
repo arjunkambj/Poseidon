@@ -149,6 +149,31 @@ declare global {
           callback: (payload: BrowserPaneAgentPointer) => void,
         ) => () => void;
       };
+      /**
+       * Desktop-only attention seam: the renderer decides when a thread
+       * needs the user, the shell carries it out. `notify` posts a silent
+       * system notification whose click focuses the window and arrives on
+       * `onOpenThread`; `setBadge` sets the dock count (0 clears); `beep`
+       * plays the system sound; `setKeepAwake` holds or releases the
+       * power-save blocker and resolves whether it is held; `setBusy`
+       * reports running or waiting threads, which makes the next quit
+       * arrive on `onQuitRequest` for `answerQuit`. Absent under a plain
+       * browser.
+       */
+      readonly attention?: {
+        readonly notify?: (payload: {
+          readonly threadId: string;
+          readonly title: string;
+          readonly body: string;
+        }) => Promise<void>;
+        readonly setBadge?: (count: number) => Promise<void>;
+        readonly beep?: () => Promise<void>;
+        readonly setKeepAwake?: (hold: boolean) => Promise<boolean>;
+        readonly setBusy?: (count: number) => Promise<void>;
+        readonly onOpenThread?: (callback: (threadId: string) => void) => () => void;
+        readonly onQuitRequest?: (callback: () => void) => () => void;
+        readonly answerQuit?: (quit: boolean) => Promise<void>;
+      };
     };
   }
 }

@@ -1,6 +1,7 @@
 /**
  * The only surface the renderer sees: connection info, server-state events,
- * validated external opens, directory picking, and the browser-pane bridge.
+ * validated external opens, directory picking, the browser-pane bridge, and
+ * the attention seam (notifications, dock badge, beep, keep-awake, quit guard).
  * `data-desktop` attributes keep `packages/ui` styles keyed to the shell.
  *
  * The bridge itself lives in `./bridge`, which knows nothing about `electron`
