@@ -53,7 +53,7 @@ export function PluginCard({
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>
+        <CardTitle className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             <Puzzle variant="bold" className="size-4 shrink-0 text-foreground/85" />
             <span className="min-w-0 truncate">{plugin.name}</span>
@@ -61,7 +61,7 @@ export function PluginCard({
             {invalid ? <Badge variant="destructive">Invalid</Badge> : null}
           </div>
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="min-w-0">
           <p className="truncate">
             {plugin.description === undefined || plugin.description === ""
               ? "No description"
