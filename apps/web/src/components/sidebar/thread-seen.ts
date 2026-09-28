@@ -127,7 +127,10 @@ const readSeen = (): SeenMap => {
   }
 };
 
-const seenAtom = Atom.make<SeenMap>(readSeen());
+// `keepAlive`: nothing reads the map on routes without the sidebar (Settings),
+// and a dropped atom would come back from its load-time value — losing every
+// stamp and "mark unread" since, and writing that stale map over storage.
+const seenAtom = Atom.keepAlive(Atom.make<SeenMap>(readSeen()));
 
 /**
  * `[seen, remember, controls]` — read the map, stamp a thread the user is
