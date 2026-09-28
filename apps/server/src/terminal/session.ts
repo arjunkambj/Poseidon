@@ -42,7 +42,7 @@ const KILL_GRACE = Duration.seconds(1);
 const KILL_SETTLE = Duration.seconds(2);
 
 export interface SessionOptions {
-  /** The thread or project the terminal belongs to; its summary names it. */
+  /** The thread, project or home the terminal belongs to; its summary names it. */
   readonly owner: TerminalOwner;
   readonly terminalId: TerminalId;
   readonly title: string;
@@ -173,7 +173,13 @@ export const makeSession = (
       view: () => ({ summary, ...scrollback.snapshot(), exit }),
       hub,
       reassign: (owner) => {
-        const { threadId: _thread, projectId: _project, terminalId, ...rest } = summary;
+        const {
+          threadId: _thread,
+          projectId: _project,
+          home: _home,
+          terminalId,
+          ...rest
+        } = summary;
         summary = { terminalId, ...owner, ...rest } as TerminalSummary;
       },
       write: (data) => {

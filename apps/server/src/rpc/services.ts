@@ -437,12 +437,13 @@ export class MessageSearch extends Context.Service<
 // ── Terminal ───────────────────────────────────────────────────
 
 /**
- * The integrated terminal's shells, each owned by a thread or — before any
- * thread exists — a project (`TerminalOwner`). Every call names the owner as
- * well as the terminal, and an implementation answers `not-found` for a
- * terminal that belongs to a different owner. `subscribe` is the wire's output
- * stream (a snapshot with the scrollback, then live output); `teardownThread`
- * is the thread-close hook that kills every shell the thread still holds.
+ * The integrated terminal's shells, each owned by a thread, a project —
+ * before any thread exists — or home — before any project exists
+ * (`TerminalOwner`). Every call names the owner as well as the terminal, and
+ * an implementation answers `not-found` for a terminal that belongs to a
+ * different owner. `subscribe` is the wire's output stream (a snapshot with
+ * the scrollback, then live output); `teardownThread` is the thread-close hook
+ * that kills every shell the thread still holds.
  */
 export class TerminalService extends Context.Service<
   TerminalService,

@@ -162,7 +162,7 @@ const buildStack: Effect.Effect<Stack, never, Scope.Scope> = Effect.gen(function
     home,
     service: (scope: Scope.Scope, spawn: typeof spawnPty = spawnPty) =>
       makeTerminalService({
-        workspaceFor: workspaceOf(engine),
+        workspaceFor: workspaceOf(engine, home),
         adoptionCheck: adoptionCheckOf(engine),
         events: engine.subscribeEvents,
         spawn,
@@ -575,6 +575,61 @@ describe.skipIf(process.platform === "win32")("TerminalService, owned by a proje
         const running = yield* terminals.listRunning();
         expect(running.map((summary) => summary.terminalId)).toEqual([terminalId]);
         expect(running[0]).toMatchObject({ threadId, status: "running" });
+      }),
+    ),
+  );
+
+  it.live("starts a home terminal in the home folder, apart from every other owner", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { terminals, threadId, projectId, home } = yield* withTerminal;
+        const owner = { home: true as const };
+        const terminalId = makeTerminalId();
+        const opened = yield* terminals.open({ ...owner, terminalId, ...SIZE });
+        expect(opened).toMatchObject({ terminalId, home: true, status: "running" });
+        expect(opened).not.toHaveProperty("threadId");
+        expect(opened).not.toHaveProperty("projectId");
+
+        const output = yield* watch(terminals.subscribe(owner, terminalId));
+        yield* terminals.write(owner, terminalId, "pwd -P\n");
+        yield* awaitText(output, line(realpathSync(home)));
+        expect((yield* terminals.list(owner)).map((summary) => summary.terminalId)).toEqual([
+          terminalId,
+        ]);
+        // No other owner reaches it, it is not a thread's running terminal,
+        // and closing it forgets it.
+        expect(yield* failureCode(terminals.write({ threadId }, terminalId, "x"))).toBe(
+          "not-found",
+        );
+        expect(yield* failureCode(terminals.write({ projectId }, terminalId, "x"))).toBe(
+          "not-found",
+        );
+        expect(
+          (yield* terminals.listRunning()).some((summary) => summary.terminalId === terminalId),
+        ).toBe(false);
+        yield* terminals.close(owner, terminalId);
+        yield* awaitKind(output, "exited");
+        expect(yield* terminals.list(owner)).toEqual([]);
+      }),
+    ),
+  );
+
+  it.live("runs a script in the home folder and shows its exit", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const stack = yield* buildStack;
+        const terminals = yield* stack.service(yield* Effect.scope);
+        const owner = { home: true as const };
+        const terminalId = makeTerminalId();
+        const script = { id: "setup", name: "Setup", command: "pwd -P; exit 3" };
+        const opened = yield* terminals.open({ ...owner, terminalId, ...SIZE, script });
+        expect(opened).toMatchObject({ home: true, script: { id: "setup", name: "Setup" } });
+        const output = yield* watch(terminals.subscribe(owner, terminalId));
+        yield* awaitText(output, line(realpathSync(stack.home)));
+        yield* awaitKind(output, "exited");
+        expect(yield* terminals.list(owner)).toEqual([
+          expect.objectContaining({ status: "exited", exitCode: 3 }),
+        ]);
       }),
     ),
   );

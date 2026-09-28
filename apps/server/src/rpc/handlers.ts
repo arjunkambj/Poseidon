@@ -202,7 +202,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
           Effect.mapError(toRpcError),
         ),
 
-      // Each payload names a thread or a project (`TerminalOwner`); the
+      // Each payload names a thread, a project or home (`TerminalOwner`); the
       // service is handed that owner and nothing else of the payload.
       "terminal.open": (payload) =>
         terminals.open({

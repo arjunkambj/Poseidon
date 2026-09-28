@@ -3,10 +3,11 @@
  * registry of every owner's terminals, the output stream a client attaches
  * to, and the teardown that ends shells nobody can reach any more.
  *
- * An owner is a thread, or a project that has no thread yet — the New task
- * page's terminal, started in the project's folder (`TerminalOwner`). The
- * registry keys owners by `terminalOwnerKey`, so a thread's terminals and a
- * project's are never the same set, and a terminal id is only ever one
+ * An owner is a thread, a project that has no thread yet — the New task
+ * page's terminal, started in the project's folder — or home, with no project
+ * at all — first-run setup's terminal, started in the user's home folder
+ * (`TerminalOwner`). The registry keys owners by `terminalOwnerKey`, so no
+ * two owners' terminals are the same set, and a terminal id is only ever one
  * owner's.
  *
  * A terminal outlives its subscribers. Switching threads drops the client's
@@ -32,9 +33,11 @@
  * `thread.archived` (the same rule the browser pane's teardown follows), a
  * project's own on `project.removed` (which deletes its threads, and so ends
  * theirs too); and every one when the service's scope closes, which is the
- * server shutting down.
+ * server shutting down. Home's terminals end only on `terminal.close` and at
+ * shutdown: nothing closes home.
  */
 import { stat } from "node:fs/promises";
+import { homedir } from "node:os";
 
 import type { ProjectId, TerminalId, ThreadId } from "@poseidon/contracts/ids";
 import type { OrchestrationEvent } from "@poseidon/contracts/orchestration";
@@ -43,6 +46,7 @@ import {
   TERMINAL_STREAM_BUDGET_BYTES,
   TERMINAL_STREAM_BUDGET_ITEMS,
   TERMINALS_PER_OWNER,
+  isProjectOwner,
   isThreadOwner,
   terminalOwnerKey,
   terminalOwnerOf,
@@ -72,8 +76,8 @@ const DEFAULT_TITLE = "Terminal";
 export interface TerminalServiceOptions {
   /**
    * The directory an owner's terminals start in: a thread's workspace root,
-   * so a worktree thread's terminals start in its worktree, or a project's
-   * folder.
+   * so a worktree thread's terminals start in its worktree, a project's
+   * folder, or, for home, the user's home folder.
    */
   readonly workspaceFor: (owner: TerminalOwner) => Effect.Effect<string, PoseidonRpcError>;
   /**
@@ -95,9 +99,13 @@ export interface TerminalServiceOptions {
   readonly platform?: NodeJS.Platform;
 }
 
+/** What an owner's kind is called: `thread`, `project` or `home`. */
+const ownerKind = (owner: TerminalOwner): string =>
+  isThreadOwner(owner) ? "thread" : isProjectOwner(owner) ? "project" : "home";
+
 /** What an owner is called in a refusal. */
 const ownerNoun = (owner: TerminalOwner): string =>
-  isThreadOwner(owner) ? "this thread" : "this project";
+  isThreadOwner(owner) ? "this thread" : isProjectOwner(owner) ? "this project" : "home";
 
 /** Whether `root` is a directory that still exists: a shell started in a deleted one would only print errors. */
 const isDirectory = (root: string) =>
@@ -161,13 +169,25 @@ const projectWorkspace = (engine: OrchestrationEngine["Service"], projectId: Pro
     return project.workspaceRoot;
   });
 
-/** Where an owner's terminals start: its thread's workspace, or its project's folder. */
+/**
+ * The user's home folder, for a terminal with no project. It is not checked
+ * the way a project's folder is: a home that is not there is not something
+ * the user can fix from here, and the shell reports it.
+ */
+const homeWorkspace = (home: string) => Effect.succeed(home);
+
+/**
+ * Where an owner's terminals start: its thread's workspace, its project's
+ * folder, or `home` (the user's home folder unless a test passes its own).
+ */
 export const workspaceOf =
-  (engine: OrchestrationEngine["Service"]) =>
+  (engine: OrchestrationEngine["Service"], home: string = homedir()) =>
   (owner: TerminalOwner): Effect.Effect<string, PoseidonRpcError> =>
     (isThreadOwner(owner)
       ? threadWorkspace(engine, owner.threadId)
-      : projectWorkspace(engine, owner.projectId)
+      : isProjectOwner(owner)
+        ? projectWorkspace(engine, owner.projectId)
+        : homeWorkspace(home)
     ).pipe(
       // The SQL detail stays in the server log; the client learns the lookup failed.
       Effect.catchTag("SqlError", (error) =>
@@ -176,7 +196,7 @@ export const workspaceOf =
             Effect.fail(
               new PoseidonRpcError({
                 code: "internal",
-                message: `${isThreadOwner(owner) ? "thread" : "project"} lookup failed`,
+                message: `${ownerKind(owner)} lookup failed`,
               }),
             ),
           ),
@@ -302,7 +322,7 @@ export const makeTerminalService = (
             if (otherKey !== key && others.has(input.terminalId)) {
               return yield* new PoseidonRpcError({
                 code: "conflict",
-                message: `terminal ${input.terminalId} belongs to another thread or project`,
+                message: `terminal ${input.terminalId} belongs to another owner`,
               });
             }
           }
