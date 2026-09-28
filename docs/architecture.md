@@ -982,8 +982,19 @@ naming the thread's model and effort; `modes.ts` keeps the approval policy
 path. `translate/` turns notifications into runtime events: `tools.ts` (item
 rows), `usage.ts` (turn usage from the thread's running total, and the
 context) and `translator.ts` (turns, errors, warnings, MCP status, and the
-`IGNORED` list). `serverRequests.ts` declines every approval request until the
-approval cards are wired.
+`IGNORED` list). The command and file-change approvals go through the shared
+approval gate (`toolGate.ts`, `approvals.ts`): each request becomes a `Shell`
+command (the script inside the CLI's login-shell wrapper) or one `Edit` per
+path the file change's item named, the ladder decides, and a prompt opens a
+card on a fiber of its own. Allow and allow always answer `accept`, allow for
+the session `acceptForSession`, deny `decline`; Stop answers an open card
+`cancel`, closing answers nothing, and a request the CLI withdraws
+(`serverRequest/resolved`, or its turn ending) resolves its card `deny`. A
+turn in which a file change, or a command outside the CLI's known-safe reads,
+ran with no request ends with a `session.warning`. On the recording machine
+0.156.1 asked about every command, `cat .env` under full access included.
+`serverRequests.ts` refuses what has no card: extra sandbox permissions,
+MCP elicitations and the older protocol's approvals, each with a warning.
 
 May import `connector-sdk`, `contracts` and `shared`; its tests also import
 `testkit`.
