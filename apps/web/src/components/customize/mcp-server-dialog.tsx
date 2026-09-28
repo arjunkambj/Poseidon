@@ -151,7 +151,7 @@ export function McpServerDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{editing === null ? "Add MCP server" : `Edit ${editing.name}`}</DialogTitle>
           <DialogDescription>
