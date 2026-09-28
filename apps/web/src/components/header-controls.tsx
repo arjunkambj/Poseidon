@@ -174,6 +174,7 @@ export function ThreadSettingsControls({
   runtimeModes = RuntimeMode.literals,
   context = null,
   compact,
+  modelPicker,
   onChange,
 }: {
   readonly settings: ThreadSettingsPatch;
@@ -192,6 +193,8 @@ export function ThreadSettingsControls({
   readonly context?: ContextWindowUsage | null;
   /** "Compact now" in the context meter; only when the bound session can. */
   readonly compact?: ContextCompact;
+  /** Drawn in place of the model picker (New task's "Compare models"). */
+  readonly modelPicker?: React.ReactNode;
   readonly onChange: (patch: ThreadSettingsPatch) => void;
 }) {
   const currentModel =
@@ -280,23 +283,24 @@ export function ThreadSettingsControls({
         ) : null}
         <div className="order-1 flex min-w-0 @max-xl/toolbar:order-3 @max-xl/toolbar:basis-full">
           <div className="flex max-w-full min-w-0 items-center gap-1">
-            {settings.model ? (
-              <ModelPicker
-                catalog={catalog}
-                instanceId={connectorInstanceId}
-                model={settings.model}
-                locked={locked}
-                title={
-                  modelSwitch === "per-turn" || modelSwitch === "next-turn"
-                    ? NEXT_TURN_HINT
-                    : "Model"
-                }
-                disabledReason={modelSwitch === "restart" ? RESTART_TOOLTIP : undefined}
-                open={modelOpen}
-                onOpenChange={setModelOpen}
-                onPick={(pick) => onChange(modelPickPatch(pick, locked))}
-              />
-            ) : null}
+            {modelPicker ??
+              (settings.model ? (
+                <ModelPicker
+                  catalog={catalog}
+                  instanceId={connectorInstanceId}
+                  model={settings.model}
+                  locked={locked}
+                  title={
+                    modelSwitch === "per-turn" || modelSwitch === "next-turn"
+                      ? NEXT_TURN_HINT
+                      : "Model"
+                  }
+                  disabledReason={modelSwitch === "restart" ? RESTART_TOOLTIP : undefined}
+                  open={modelOpen}
+                  onOpenChange={setModelOpen}
+                  onPick={(pick) => onChange(modelPickPatch(pick, locked))}
+                />
+              ) : null)}
             <HeaderSelect
               className="shrink-0"
               icon={Lightning}
