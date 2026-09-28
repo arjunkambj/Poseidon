@@ -28,6 +28,7 @@ import {
   positionLabel,
 } from "@/components/timeline/path-links";
 import { useTimelineThreadId } from "@/components/timeline/thread-context";
+import { FindText } from "@/components/timeline/thread-find-context";
 import { copyPath } from "@/lib/copy-path";
 import { cn } from "@/lib/utils";
 import { useRequestFileReveal } from "@/state/file-reveal";
@@ -81,7 +82,7 @@ export function FileChip({
           <span className="flex min-w-0">
             <span className="min-w-0 truncate">
               {display === "path" ? (
-                file.relativePath
+                <FindText text={file.relativePath} />
               ) : (
                 <>
                   {file.suffix === undefined ? null : (

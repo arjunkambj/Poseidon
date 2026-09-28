@@ -8,6 +8,7 @@
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 
 import { DisclosureRow } from "@/components/timeline/row-shell";
+import { FindText } from "@/components/timeline/thread-find-context";
 import { TimelineItemView } from "@/components/timeline/timeline-item";
 import { Bot } from "@honeyicons/react";
 
@@ -24,7 +25,7 @@ export function TaskRow({
     <DisclosureRow
       rowId={item.itemId}
       icon={Bot}
-      label={item.text ?? "Subagent task"}
+      label={item.text === undefined ? "Subagent task" : <FindText text={item.text} />}
       status={item.status}
       meta={
         children.length > 0 ? (

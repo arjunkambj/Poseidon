@@ -6,6 +6,7 @@
 
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 
+import { FindText } from "@/components/timeline/thread-find-context";
 import { AlertTriangle, InfoSquare, Minimize, Sparkles } from "@honeyicons/react";
 
 export function SkillRow({ item }: { item: ItemSnapshot }) {
@@ -13,13 +14,14 @@ export function SkillRow({ item }: { item: ItemSnapshot }) {
     <div className="flex min-h-6 items-center py-0.5">
       <span className="inline-flex items-center gap-1.5 rounded-full bg-file-bg px-2.5 py-0.5 type-body text-file">
         <Sparkles variant="bold" className="size-3.5" />
-        {item.text ?? "skill"}
+        {item.text === undefined ? "skill" : <FindText text={item.text} />}
       </span>
     </div>
   );
 }
 
 export function ErrorRow({ item }: { item: ItemSnapshot }) {
+  const message = item.error?.message ?? item.text;
   return (
     <div
       role="alert"
@@ -27,7 +29,7 @@ export function ErrorRow({ item }: { item: ItemSnapshot }) {
     >
       <AlertTriangle variant="bold" className="mt-0.5 size-3.5 shrink-0" />
       <span className="min-w-0 whitespace-pre-wrap">
-        {item.error?.message ?? item.text ?? "Something went wrong."}
+        {message === undefined ? "Something went wrong." : <FindText text={message} />}
       </span>
     </div>
   );

@@ -57,10 +57,32 @@ describe("findDocuments", () => {
       { itemId: command.itemId, field: "command", text: "pnpm test parser" },
       { itemId: bare.itemId, field: "command", text: "ls" },
       { itemId: tool.itemId, field: "name", text: "Read" },
-      { itemId: tool.itemId, field: "path", text: "src/parser.ts" },
+      { itemId: tool.itemId, field: "target", text: "src/parser.ts" },
       { itemId: change.itemId, field: "path", text: "src/parser.ts" },
       { itemId: plan.itemId, field: "body", text: "1. rewrite parser" },
       { itemId: reply.itemId, field: "text", text: "Fixed the parser." },
+    ]);
+  });
+
+  it("takes a tool's target as its row shows it, and a browser call's sentence", () => {
+    const grep = item("tool_call", { tool: { name: "Grep", input: { pattern: "parseArgs" } } });
+    const fetch = item("mcp_tool_call", {
+      tool: { name: "fetch", server: "web", input: { url: "https://example.com/parser" } },
+    });
+    const click = item("mcp_tool_call", {
+      tool: { name: "mcp__poseidon__browser_click", input: { selector: "#parse" } },
+    });
+    const skill = item("skill", { text: "parser-skill" });
+    const error = item("error", { error: { message: "parser crashed" } });
+    const { open } = projections([grep, fetch, click, skill, error], true);
+    expect(findDocuments(open).map(({ field, text }) => [field, text])).toEqual([
+      ["name", "Grep"],
+      ["target", "parseArgs"],
+      ["name", "fetch"],
+      ["target", "https://example.com/parser"],
+      ["name", "Clicked #parse"],
+      ["text", "parser-skill"],
+      ["text", "parser crashed"],
     ]);
   });
 

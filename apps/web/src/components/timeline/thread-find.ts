@@ -11,12 +11,13 @@
  * depth-first, so a child's matches come after its task and before the next
  * row.
  *
- * Each item gives one document per text the reader sees on its row: a
- * message's text, a reasoning or plan body, a command line, a tool's name and
- * the file it names, a changed file's path, a search query, a task's title,
- * an error. Command output and tool payloads are left out: they are long, sit
- * behind the row's disclosure as raw output, and would drown the matches the
- * reader is after.
+ * Each item gives one document per text the reader sees on its row, as the
+ * row shows it: a message's text, a reasoning or plan body, a command line, a
+ * tool's name and the target after it (`toolTarget`), a browser call's
+ * sentence (`browserToolLabel`), a changed file's path, a search query, a
+ * skill, a task's title, an error. Command output and tool payloads are left
+ * out: they are long, sit behind the row's disclosure as raw output, and would
+ * drown the matches the reader is after.
  *
  * Matching is case-insensitive over that source text, non-overlapping, in
  * document order. Offsets index the source text, so the same matcher splits a
@@ -26,14 +27,15 @@
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 
 import type { TimelineProjection } from "@/components/timeline/fold";
-import { toolPathTarget } from "@/components/timeline/tool-target";
+import { browserToolLabel } from "@/components/timeline/browser-tool";
+import { toolTarget } from "@/components/timeline/tool-target";
 import { userMessageOverflows } from "@/components/timeline/user-message-collapse";
 
 /**
  * Which text of an item a document holds. `body` is text inside the row's own
  * disclosure (a reasoning or plan body), so showing it means opening the row.
  */
-export type FindField = "text" | "body" | "command" | "name" | "path";
+export type FindField = "text" | "body" | "command" | "name" | "target" | "path";
 
 export interface FindDocument {
   readonly itemId: string;
@@ -83,11 +85,20 @@ const itemDocuments = (item: ItemSnapshot): ReadonlyArray<[FindField, string | u
     case "command_execution":
       return [["command", item.command?.cmd ?? item.text]];
     case "tool_call":
-    case "mcp_tool_call":
       return [
         ["name", item.tool?.name ?? item.text],
-        ["path", toolPathTarget(item.tool?.input)],
+        ["target", toolTarget(item.tool?.input)],
       ];
+    case "mcp_tool_call": {
+      const name = item.tool?.name ?? item.text;
+      const browser = name === undefined ? null : browserToolLabel(name, item.tool?.input);
+      return browser !== null
+        ? [["name", browser]]
+        : [
+            ["name", name],
+            ["target", toolTarget(item.tool?.input)],
+          ];
+    }
     case "file_change":
       return [["path", item.fileChange?.path]];
     case "web_search":

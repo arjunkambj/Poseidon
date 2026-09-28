@@ -2,15 +2,20 @@ import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 import { makeItemId } from "@poseidon/contracts/ids";
 import type * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { AssistantMessageRow, UserMessageRow } from "@/components/timeline/message-rows";
+import { ErrorRow, SkillRow } from "@/components/timeline/status-rows";
+import { TaskRow } from "@/components/timeline/task-row";
 import {
   type FindHighlight,
   FindRowMark,
   FindText,
   ThreadFindHighlightProvider,
 } from "@/components/timeline/thread-find-context";
+
+// A task's children render through the whole row tree; only its title matters here.
+vi.mock("@/components/timeline/timeline-item", () => ({ TimelineItemView: () => null }));
 
 const item = (fields: Partial<ItemSnapshot>): ItemSnapshot => ({
   itemId: makeItemId(),
@@ -60,6 +65,20 @@ describe("find marks", () => {
     const markup = render(<UserMessageRow item={item({})} />, highlight("service"));
     expect(markup).toContain(`the ${MARK}service</mark>.`);
     expect(render(<UserMessageRow item={item({})} />, null)).not.toContain("<mark");
+  });
+
+  it("marks a task's title, a skill and an error", () => {
+    const task = item({ kind: "task", text: "Explore the service" });
+    const taskRow = <TaskRow item={task} children={[]} childrenByParent={new Map()} />;
+    expect(render(taskRow, highlight("service"))).toContain(`${MARK}service</mark>`);
+    const skill = item({ kind: "skill", text: "service-skill" });
+    expect(render(<SkillRow item={skill} />, highlight("service"))).toContain(
+      `${MARK}service</mark>-skill`,
+    );
+    const error = item({ kind: "error", error: { message: "The service crashed" } });
+    expect(render(<ErrorRow item={error} />, highlight("service"))).toContain(
+      `The ${MARK}service</mark> crashed`,
+    );
   });
 
   it("rings the current row only, keeping the same wrapper on every row", () => {

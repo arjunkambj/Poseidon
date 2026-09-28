@@ -1067,15 +1067,16 @@ state in `use-thread-find.ts`). The list is virtualized and a settled turn's
 work is not in it until its fold opens, so the bar searches the thread
 snapshot, not the page: it walks the projection built with every fold open,
 in display order, and matches the query, ignoring case, against each row's
-own text — a message, a reasoning or plan body, a command line, a tool's name
-and the file it names, a changed file's path, a search query, a task's title,
-an error (`timeline/thread-find.ts`). Command output and tool payloads are
+own text as the row shows it — a message, a reasoning or plan body, a command
+line, a tool's name and the target after it, a browser call's sentence, a
+changed file's path, a search query, a skill, a task's title, an error
+(`timeline/thread-find.ts`). Command output and tool payloads are
 left out. Typing is debounced and a new query goes to its first match; the
 bar shows "3/12", and Enter, Shift+Enter or its arrows step through the
 matches, wrapping at either end. A step opens whatever hides the match — its
 turn fold, its work group, the tasks above it, its own reasoning or plan body,
-the clamp on a long user message — hands the scroll to the reader as the rail does, and scrolls the row to
-30% down the viewport once the list holds it. The match the reader is on
+the clamp on a long user message — hands the scroll to the reader as the rail
+does, and scrolls the row to 30% down the viewport once the list holds it. The match the reader is on
 keeps its place while a reply streams in more matches. Escape closes the bar
 and puts the focus back in the composer. Pressing Mod+F again with the bar
 open selects its query. While the bar is closed nothing is searched, and
@@ -1085,12 +1086,13 @@ delta is never held up by it.
 While the bar searches, the rows on screen mark the query in a `<mark>` on the
 theme's primary tint, and the row holding the current match carries a ring
 (`timeline/thread-find-context.tsx`). Plain-text rows — a reasoning body, a
-command line, a tool's name and target, a changed file's path, a search query
-— mark it as they render; a markdown body marks it with a rehype plugin that
+command line, a tool's name and target, a browser call, a file chip's path, a
+search query, a skill, a task's title, an error — mark it as they render; a markdown body marks it with a rehype plugin that
 runs only on the blocks holding the query (`timeline/rehype-find-marks.ts`).
 Fenced code is counted but not marked, since it renders through the code
 block's highlighter, and a match the source splits with markup (`**de**ploy`)
-is not marked either. The marks come from a context that is `null` while the
+is not marked either; nor is the part of a path the file chip leaves off when
+it shows the path relative to the workspace. The marks come from a context that is `null` while the
 bar is closed, so a closed bar adds no parse to any row. Every row keeps the
 same wrapper element whether it holds the current match or not, so moving the
 ring changes a class and never remounts a row.

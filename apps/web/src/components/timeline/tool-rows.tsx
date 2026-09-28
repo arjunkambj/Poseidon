@@ -188,7 +188,12 @@ export function McpToolCallRow({ item }: { item: ItemSnapshot }) {
   const browser = browserToolLabel(name, tool?.input);
   if (browser !== null) {
     return (
-      <DisclosureRow rowId={item.itemId} icon={Globe} label={browser} status={item.status}>
+      <DisclosureRow
+        rowId={item.itemId}
+        icon={Globe}
+        label={<FindText text={browser} />}
+        status={item.status}
+      >
         {tool !== undefined ? <ToolPayload input={tool.input} output={tool.output} /> : undefined}
       </DisclosureRow>
     );
