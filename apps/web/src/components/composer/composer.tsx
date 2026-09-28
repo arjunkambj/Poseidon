@@ -327,7 +327,9 @@ export function Composer({
       )}
     >
       <PendingCard threadId={threadId} doc={doc} />
-      {doc === null ? null : <QueueStrip threadId={threadId} queue={doc.queue} />}
+      {doc === null ? null : (
+        <QueueStrip threadId={threadId} queue={doc.queue} steerable={steerable} />
+      )}
       <ComposerSurface
         dragging={attachments.dragging}
         context={

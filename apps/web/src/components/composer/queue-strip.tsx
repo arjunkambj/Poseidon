@@ -10,20 +10,22 @@
  * the position it should end up in, and the strip redraws when
  * `thread.queue.reordered` lands. Buttons rather than a drag handle — the list
  * is short, and up/down works with a keyboard and a screen reader.
+ *
+ * Each row's "…" menu (`./queue-row-menu`) steers it into the running turn,
+ * takes it back into the composer, or removes it; the commands behind those
+ * live in `./use-queue-actions`.
  */
 
-import { useAtomSet } from "@effect/atom-react";
 import { Button } from "@poseidon/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
-import { makeCommandId } from "@poseidon/contracts/ids";
-import type { ItemId, ThreadId } from "@poseidon/contracts/ids";
-import type { Command, QueuedMessage } from "@poseidon/contracts/orchestration";
-import * as React from "react";
+import type { ThreadId } from "@poseidon/contracts/ids";
+import type { QueuedMessage } from "@poseidon/contracts/orchestration";
 
-import { useClientRuntime } from "@/lib/client-runtime";
-import { DISPATCH_UNREACHABLE, receiptError } from "@/lib/dispatch-outcome";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { QueueRowMenu } from "@/components/composer/queue-row-menu";
 import { queueSummary } from "@/components/composer/queue-summary";
-import { ChevronDown, ChevronUp, Close, ListOrdered } from "@honeyicons/react";
+import { useQueueActions } from "@/components/composer/use-queue-actions";
+import { ChevronDown, ChevronUp, ListOrdered } from "@honeyicons/react";
 
 /** What a queued message carries besides its text, or nothing. */
 function QueuedMessageSummary({ message }: { readonly message: QueuedMessage }) {
@@ -36,57 +38,15 @@ function QueuedMessageSummary({ message }: { readonly message: QueuedMessage }) 
 export function QueueStrip({
   threadId,
   queue,
+  steerable,
 }: {
   readonly threadId: ThreadId;
   readonly queue: ReadonlyArray<QueuedMessage>;
+  /** A turn is running on a session that steers: rows offer "Steer now". */
+  readonly steerable: boolean;
 }) {
-  const { dispatchAtom } = useClientRuntime();
-  const dispatch = useAtomSet(dispatchAtom, { mode: "promise" });
-  const [busy, setBusy] = React.useState<ItemId | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-
-  /** One dispatch, with the row locked until the receipt or the failure. */
-  const send = (queuedMessageId: ItemId, command: Command, rejection: string) => {
-    setBusy(queuedMessageId);
-    setError(null);
-    void dispatch(command).then(
-      (receipt) => {
-        setBusy(null);
-        setError(receiptError(receipt, rejection));
-      },
-      () => {
-        setBusy(null);
-        setError(DISPATCH_UNREACHABLE);
-      },
-    );
-  };
-
-  const remove = (queuedMessageId: ItemId) =>
-    send(
-      queuedMessageId,
-      {
-        commandId: makeCommandId(),
-        createdAt: new Date().toISOString(),
-        type: "thread.queue.remove",
-        threadId,
-        queuedMessageId,
-      },
-      "the server rejected the removal",
-    );
-
-  const move = (queuedMessageId: ItemId, toIndex: number) =>
-    send(
-      queuedMessageId,
-      {
-        commandId: makeCommandId(),
-        createdAt: new Date().toISOString(),
-        type: "thread.queue.reorder",
-        threadId,
-        queuedMessageId,
-        toIndex,
-      },
-      "the server rejected the move",
-    );
+  const actions = useQueueActions(threadId);
+  const { busy, error } = actions;
 
   if (queue.length === 0) {
     return null;
@@ -122,7 +82,7 @@ export function QueueStrip({
                     className="shrink-0"
                     aria-label={`Move queued message ${index + 1} up`}
                     disabled={busy !== null || index === 0}
-                    onClick={() => move(message.queuedMessageId, index - 1)}
+                    onClick={() => actions.move(message, index - 1)}
                   />
                 }
               >
@@ -141,7 +101,7 @@ export function QueueStrip({
                     className="shrink-0"
                     aria-label={`Move queued message ${index + 1} down`}
                     disabled={busy !== null || index === queue.length - 1}
-                    onClick={() => move(message.queuedMessageId, index + 1)}
+                    onClick={() => actions.move(message, index + 1)}
                   />
                 }
               >
@@ -149,25 +109,13 @@ export function QueueStrip({
               </TooltipTrigger>
               <TooltipContent>Send this one later</TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    tone="muted"
-                    size="icon-sm"
-                    className="shrink-0"
-                    aria-label={`Remove queued message ${index + 1}`}
-                    disabled={busy !== null}
-                    onClick={() => remove(message.queuedMessageId)}
-                  />
-                }
-              >
-                <Close variant="bold" />
-              </TooltipTrigger>
-              <TooltipContent>Remove from the queue</TooltipContent>
-            </Tooltip>
+            <QueueRowMenu
+              position={index + 1}
+              message={message}
+              steerable={steerable}
+              disabled={busy !== null}
+              onAction={(action) => actions[action](message)}
+            />
           </li>
         ))}
       </ol>
@@ -176,6 +124,20 @@ export function QueueStrip({
           {error}
         </p>
       )}
+      <ConfirmDialog
+        open={queue.some(
+          (message) => message.queuedMessageId === actions.pendingEdit?.queuedMessageId,
+        )}
+        onOpenChange={(open) => {
+          if (!open) {
+            actions.cancelEdit();
+          }
+        }}
+        title="Replace your draft?"
+        description="The queued message takes the draft's place in the composer. What you have typed there is discarded."
+        confirmLabel="Replace draft"
+        onConfirm={actions.confirmEdit}
+      />
     </div>
   );
 }

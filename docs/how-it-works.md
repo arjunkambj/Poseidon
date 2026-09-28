@@ -1474,6 +1474,21 @@ attachment. `thread.queue.remove` and `thread.queue.reorder` are commands, and
 the reorder event carries the whole new order rather than the move, so a
 projector never replays arithmetic.
 
+Each row also has a "…" menu (`queue-row-menu.tsx`, commands in
+`use-queue-actions.ts`). **Remove** is `thread.queue.remove`. **Steer now**,
+offered only while a turn runs on a session that steers, is two commands: the
+remove first, so the drain on `thread.turn.completed` cannot send the message
+a second time, then `thread.turn.steer` with the same text, attachments,
+mentions and references. A refused remove means the drain already took it and
+nothing is steered; a refused steer puts the message back with
+`thread.turn.start { queued: true }`, at the end of the queue rather than where
+it was, since no single command steers a queued message. **Edit** removes the
+message and, once the removal is accepted, puts its text, mentions and
+references in the composer, asking first when the draft already holds
+something. A message with attachments cannot be edited — they are
+server-staged paths and the composer holds browser files — so its Edit item is
+disabled rather than dropping the images.
+
 Draining happens on `thread.turn.completed`. The dequeue is chosen **inside**
 the append transaction, on the document as it is at append time, so a
 `thread.queue.remove` decided in between cannot let a message leave the strip
