@@ -584,10 +584,21 @@ its text; a row without any renders as text alone.
 Neither the renderer nor the server writes a reference into the prompt: the
 connector does, in the words its harness understands ([The spawn](#the-spawn)).
 
-The model picker, on the start screen and in the thread header, has one
-section per enabled connector instance (`modelCatalogAtom`), headed by the
-instance's name and its connector's generic icon, in the connectors page's
-order. It lists only the harnesses and models switched on in Settings → Models
+The model picker, on the start screen and in the thread header, opens on a
+search input over a column of round harness avatars, one per enabled connector
+instance (`modelCatalogAtom`) in the connectors page's order, each a monogram
+(`harnessMonograms`) with the instance's name as its tooltip; the current
+pick's harness is ringed. Hovering an avatar, or arrowing onto it, opens its
+flyout beside the column: that instance's models, each with its effort ladder
+in a few characters ("low–high") and a check on the current one. Typing swaps
+the column for one list of matches across every harness, each led by its
+harness's monogram. Focus stays in the search input, which names the
+highlighted option with `aria-activedescendant`: Up and Down move along the
+column or the flyout, Right or Enter goes into a flyout, Enter picks, Left goes
+back to the column, and Escape clears the query, then leaves the flyout, then
+closes the picker. Choose model (`Mod+Shift+M`) opens it. The keyboard and
+search model is `apps/web/src/lib/harness-picker.ts`, the popup
+`apps/web/src/components/model-picker/`. It lists only the harnesses and models switched on in Settings → Models
 (`visibleCatalog` in `apps/web/src/lib/model-visibility.ts`), and always the
 thread's current pick: a thread on a harness or model switched off keeps
 showing it, keeps it as current and keeps working. Picking a model picks its
@@ -596,9 +607,9 @@ instance too: the start screen sends both on `thread.create`, the header on
 default model under the first instance that lists it, else the first model the
 pickers offer (`newTaskModelPick`), so a switched-off harness is never the
 implicit seed. Once the thread has run
-anything (`threadLocksConnector`), the other instances' sections stay listed but
+anything (`threadLocksConnector`), the other instances' avatars stay listed but
 disabled, with a tooltip saying to start a new thread, and a pick in the
-thread's own section sends the model alone. The instance a thread runs on, or
+thread's own flyout sends the model alone. The instance a thread runs on, or
 would, is `threadConnectorInstanceId` (`apps/web/src/lib/connector-routing.ts`):
 the bound session's, else the thread's chosen one while it is enabled, else the
 first enabled one.
@@ -3689,8 +3700,9 @@ resulting form (with the connector's name, icon key and docs link) over
 no change to the contracts package.
 
 Settings → Models (`apps/web/src/components/Settings/models-panel.tsx`) has
-the `defaults` form — its default-model options filtered like the pickers,
-keeping the saved default — and under it one card per enabled connector
+the `defaults` form — its default model chosen with the same harness picker
+(`default-model-row.tsx`), filtered like the others and keeping the saved
+default, which it stores as a bare model id — and under it one card per enabled connector
 instance (`harness-models-section.tsx`, `harness-card.tsx`), in
 `modelCatalogAtom`'s order. A card's header is the instance's monogram avatar
 (`harnessMonograms` in `apps/web/src/lib/harness-monogram.ts`: the initials of
