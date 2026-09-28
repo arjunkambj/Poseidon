@@ -51,6 +51,11 @@ export const editCopy = (point: RestorePoint | null, steered: boolean): EditCopy
  * adds an entry to the snapshot's `restores`, `restore.failed` clears
  * `restoring` without one (and leaves `restoreFailure`, while the
  * subscription that saw it lasts).
+ *
+ * `restoring` can come and go unseen — the thread was left, or the stream
+ * reconnected, while git ran — and the fresh snapshot knows nothing of the
+ * failure. `acceptedAt` covers that: a view at or past the work order's
+ * sequence that is not restoring and has no new restore has settled failed.
  */
 export interface EditInFlight {
   /** The edited text that rides on the restore: what comes back if it fails. */
@@ -59,9 +64,13 @@ export interface EditInFlight {
   /** The failure on screen at dispatch time, so a stale one is not read as this one's. */
   readonly failureBefore: unknown;
   readonly seenRestoring: boolean;
+  /** The receipt's `lastSequence`: where the work order sits in the event log. */
+  readonly acceptedAt: number;
 }
 
 export interface RestoreView {
+  /** The view's `snapshotSequence`: the newest event it has folded. */
+  readonly sequence: number;
   readonly restoring: boolean;
   readonly restores: number;
   readonly failure: { readonly message: string } | null;
@@ -82,5 +91,7 @@ export const editSettle = (sent: EditInFlight, now: RestoreView): EditSettle => 
   if (now.failure !== null && now.failure !== sent.failureBefore) {
     return { kind: "failed", message: now.failure.message };
   }
-  return sent.seenRestoring ? { kind: "failed", message: null } : { kind: "pending" };
+  return sent.seenRestoring || now.sequence >= sent.acceptedAt
+    ? { kind: "failed", message: null }
+    : { kind: "pending" };
 };

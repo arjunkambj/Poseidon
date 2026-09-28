@@ -129,7 +129,12 @@ export function useEditResend({
             }
             const seenRestoring = (docRef.current?.restoring ?? null) !== null;
             setEdit((current) =>
-              current === null ? null : { ...current, sent: { ...before, seenRestoring } },
+              current === null
+                ? null
+                : {
+                    ...current,
+                    sent: { ...before, seenRestoring, acceptedAt: receipt.lastSequence },
+                  },
             );
             clearTokens();
             attachments.clearStaged(staged.files);
@@ -157,6 +162,7 @@ export function useEditResend({
   const restoringNow = (doc?.restoring ?? null) !== null;
   const restoreCount = doc?.restores?.length ?? 0;
   const failure = doc?.restoreFailure ?? null;
+  const sequence = doc?.snapshotSequence ?? 0;
   React.useEffect(() => {
     if (sent === undefined || edit === null || docRef.current === null) {
       return;
@@ -169,7 +175,12 @@ export function useEditResend({
       );
       return;
     }
-    const settle = editSettle(sent, { restoring: restoringNow, restores: restoreCount, failure });
+    const settle = editSettle(sent, {
+      sequence,
+      restoring: restoringNow,
+      restores: restoreCount,
+      failure,
+    });
     if (settle.kind === "landed") {
       // The server sends the edited text right after the restore lands.
       noteLocalSend(threadId);
@@ -182,7 +193,18 @@ export function useEditResend({
         `the restore failed${settle.message === null ? "" : ` (${settle.message})`}, so nothing was sent; your edited message is back in the composer`,
       );
     }
-  }, [sent, edit, restoringNow, restoreCount, failure, threadId, setEdit, setText, setError]);
+  }, [
+    sent,
+    edit,
+    sequence,
+    restoringNow,
+    restoreCount,
+    failure,
+    threadId,
+    setEdit,
+    setText,
+    setError,
+  ]);
 
   return {
     edit,

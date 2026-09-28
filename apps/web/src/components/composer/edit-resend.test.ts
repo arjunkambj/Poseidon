@@ -56,33 +56,51 @@ describe("editSettle", () => {
     restoresBefore: 2,
     failureBefore: stale,
     seenRestoring: false,
+    acceptedAt: 40,
   };
 
   it("is landed once the snapshot's restores grew", () => {
-    expect(editSettle(sent, { restoring: false, restores: 3, failure: null })).toEqual({
+    expect(
+      editSettle(sent, { sequence: 39, restoring: false, restores: 3, failure: null }),
+    ).toEqual({
       kind: "landed",
     });
   });
 
   it("waits while the restore runs, and before it has been seen at all", () => {
-    expect(editSettle(sent, { restoring: true, restores: 2, failure: null }).kind).toBe("pending");
+    expect(
+      editSettle(sent, { sequence: 39, restoring: true, restores: 2, failure: null }).kind,
+    ).toBe("pending");
     // The receipt can beat the work order onto the subscription.
-    expect(editSettle(sent, { restoring: false, restores: 2, failure: stale }).kind).toBe(
-      "pending",
-    );
+    expect(
+      editSettle(sent, { sequence: 39, restoring: false, restores: 2, failure: stale }).kind,
+    ).toBe("pending");
   });
 
   it("is failed when restoring cleared without a new restore", () => {
     const seen = { ...sent, seenRestoring: true };
-    expect(editSettle(seen, { restoring: false, restores: 2, failure: null })).toEqual({
+    expect(
+      editSettle(seen, { sequence: 39, restoring: false, restores: 2, failure: null }),
+    ).toEqual({
       kind: "failed",
       message: null,
     });
   });
 
+  it("is failed once a view past the work order is not restoring and has no new restore", () => {
+    // The restore ran and failed while this view was gone; the snapshot that
+    // replaced it knows nothing of the failure.
+    expect(
+      editSettle(sent, { sequence: 40, restoring: false, restores: 2, failure: null }),
+    ).toEqual({ kind: "failed", message: null });
+    expect(
+      editSettle(sent, { sequence: 41, restoring: true, restores: 2, failure: null }).kind,
+    ).toBe("pending");
+  });
+
   it("is failed, with git's reason, on a failure newer than the one before", () => {
     const failure = { message: "a dirty submodule" };
-    expect(editSettle(sent, { restoring: false, restores: 2, failure })).toEqual({
+    expect(editSettle(sent, { sequence: 39, restoring: false, restores: 2, failure })).toEqual({
       kind: "failed",
       message: "a dirty submodule",
     });
