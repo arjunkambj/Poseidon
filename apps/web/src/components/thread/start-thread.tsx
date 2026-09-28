@@ -14,8 +14,8 @@
  * The model picker lists every enabled connector instance's models, and the
  * instance a model is picked under is the one the new thread runs on — it
  * rides `thread.create` with the model. Until the user picks, that is the
- * saved default model's instance, else the first enabled one's first model
- * (`defaultModelPick`). The runtime modes offered and whether attaching is
+ * saved default model's instance, else the first model the pickers offer
+ * (`newTaskModelPick`). The runtime modes offered and whether attaching is
  * allowed come from that instance's capabilities, and when that instance
  * cannot run a turn the harness banner sits above the composer.
  *
@@ -90,7 +90,7 @@ import { StartThreadWorkspace } from "@/components/thread/start-thread-workspace
 import { ThreadGreeting } from "@/components/thread/thread-greeting";
 import { attachmentRefusal } from "@/lib/attachment-support";
 import { instanceCapabilities, threadConnectorInstanceId } from "@/lib/connector-routing";
-import { defaultModelPick } from "@/lib/model-picks";
+import { useNewTaskModelPick } from "@/lib/use-model-picker-prefs";
 import { runtimeModeOptions } from "@/lib/runtime-modes";
 import { useKeymapAnswers } from "@/lib/shortcuts";
 import { useCreateThread } from "@/lib/use-create-thread";
@@ -126,7 +126,7 @@ function StartComposer({
   const catalog = AsyncResult.isSuccess(catalogResult) ? catalogResult.value : [];
   const defaults = AsyncResult.isSuccess(defaultsResult) ? defaultsResult.value?.defaults : null;
   const [settings, setSettings] = React.useState<ThreadSettingsPatch>({});
-  const initial = defaultModelPick(catalog, defaults?.model);
+  const initial = useNewTaskModelPick(catalog, defaults?.model);
   const shownSettings: ThreadSettingsPatch = {
     ...(initial === null ? {} : { model: initial.model }),
     ...(initial?.connectorInstanceId == null

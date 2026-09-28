@@ -6,7 +6,8 @@
  * `use-compare-models.ts`; the fan-out it sends is `fan-out-plan.ts`.
  *
  * The menu lists every enabled instance's models under the instance's name
- * and its connector's icon, as the model picker does. Up to `COMPARE_MAX` can
+ * and its connector's icon, as the model picker does, filtered the same way
+ * by Settings → Models (a ticked pick always stays listed). Up to `COMPARE_MAX` can
  * be ticked: past that the unticked ones are disabled, and ticking leaves the
  * menu open. Why a send is refused (fewer than two picks) sits beside the
  * toggle, in the row under the composer, where there is room for it.
@@ -43,6 +44,8 @@ import {
 import { useClientRuntime } from "@/lib/client-runtime";
 import { connectorIconFor } from "@/lib/connector-icon";
 import { encodeModelPick, type ModelPick } from "@/lib/model-picks";
+import { visibleCatalog } from "@/lib/model-visibility";
+import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
 import { ChevronDown, Columns } from "@honeyicons/react";
 
 const COMPARE_WORKSPACE = "Compare models starts each model in its own worktree";
@@ -136,6 +139,8 @@ export function CompareModelsPicker({
   const descriptorsResult = useAtomValue(connectorDescriptorsAtom);
   const descriptors = AsyncResult.isSuccess(descriptorsResult) ? descriptorsResult.value : [];
   const count = compare.picks.length;
+  // Only what Settings → Models leaves on, and every pick already ticked.
+  const visible = visibleCatalog(catalog, useModelPickerPrefs(), compare.picks);
 
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
@@ -148,7 +153,7 @@ export function CompareModelsPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-auto max-w-80 min-w-56">
         <CompareModelsGroups
-          catalog={catalog}
+          catalog={visible}
           descriptors={descriptors}
           picks={compare.picks}
           onToggle={compare.toggle}

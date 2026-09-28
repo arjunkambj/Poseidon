@@ -1,7 +1,8 @@
 /**
  * The model picker: one section per enabled connector instance, headed by the
  * instance's name and its connector's generic icon, with that instance's
- * models under it. A pick hands back the instance with the model
+ * models under it — only the harnesses and models Settings → Models leaves on
+ * (`visibleCatalog`), and always the thread's current pick. A pick hands back the instance with the model
  * (`@/lib/model-picks`), because a thread's harness is chosen here too.
  *
  * On a thread that can no longer switch harness (`locked`) the other sections
@@ -38,6 +39,8 @@ import {
   type ModelPick,
   type ModelPickerItem,
 } from "@/lib/model-picks";
+import { visibleCatalog } from "@/lib/model-visibility";
+import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
 import { Brain } from "@honeyicons/react";
 
 const SWITCH_CONNECTOR_TOOLTIP = "Start a new thread to switch connector";
@@ -82,7 +85,12 @@ export function ModelPicker({
   const descriptorsResult = useAtomValue(connectorDescriptorsAtom);
   const descriptors = AsyncResult.isSuccess(descriptorsResult) ? descriptorsResult.value : [];
 
-  const groups = modelPickerGroups(catalog, { instanceId, locked });
+  // Only the harnesses and models Settings leaves on, and always the current pick.
+  const visible = visibleCatalog(catalog, useModelPickerPrefs(), {
+    connectorInstanceId: instanceId,
+    model,
+  });
+  const groups = modelPickerGroups(visible, { instanceId, locked });
   const value = encodeModelPick({ connectorInstanceId: instanceId, model });
   const listed = groups.flatMap((group) => group.items);
   // The current model may be absent from every list (a stale id, a catalog

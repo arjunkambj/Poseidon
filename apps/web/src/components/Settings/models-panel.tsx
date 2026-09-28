@@ -6,8 +6,12 @@
  * is listed under; effort and runtime mode from their contract enums.
  *
  * With no default model saved, the picker shows the first listed model: that
- * is the one the server seeds a new thread with (`seedModel`), so the page
- * says what will actually happen instead of "Choose…".
+ * is the one New task seeds a new thread with, so the page says what will
+ * actually happen instead of "Choose…".
+ *
+ * The model options are only what the harness and model switches leave on
+ * (`visibleCatalog`), plus the saved default, which stays listed even when
+ * switched off. The switches themselves are `HarnessModelsSection`, below.
  */
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
@@ -18,7 +22,10 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import { toast } from "sonner";
 
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
+import { defaultModelPick } from "@/lib/model-picks";
+import { visibleCatalog } from "@/lib/model-visibility";
 import { RUNTIME_MODE_LABELS } from "@/lib/runtime-modes";
+import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
 
 import { HarnessModelsSection } from "./harness-models-section";
 import { StructForm, type SelectOption } from "./schema-form";
@@ -32,9 +39,18 @@ export function ModelsPanel() {
   const settingsResult = useAtomValue(atoms.settingsAtom);
   const catalogResult = useAtomValue(atoms.modelCatalogAtom);
   const updateSettings = useAtomSet(atoms.settingsUpdateAtom, { mode: "promiseExit" });
+  const prefs = useModelPickerPrefs();
 
   const settings = AsyncResult.isSuccess(settingsResult) ? settingsResult.value : null;
-  const catalog = AsyncResult.isSuccess(catalogResult) ? catalogResult.value : [];
+  const fullCatalog = AsyncResult.isSuccess(catalogResult) ? catalogResult.value : [];
+  // Only what the harness and model switches leave on, plus the saved default.
+  const catalog = visibleCatalog(
+    fullCatalog,
+    prefs,
+    settings?.defaults.model == null
+      ? null
+      : defaultModelPick(fullCatalog, settings.defaults.model),
+  );
   // The default is a bare model id, so an id two instances both list is one
   // option — under the first instance that lists it.
   const modelOptions: ReadonlyArray<SelectOption> = catalog

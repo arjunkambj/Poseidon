@@ -13,6 +13,7 @@ import {
   isLastVisible,
   isLastVisibleHarness,
   modelOn,
+  newTaskModelPick,
   resetVisibility,
   setHarness,
   setModel,
@@ -142,6 +143,16 @@ describe("visibleCatalog", () => {
     expect(visible[1]?.models).toEqual([]);
   });
 
+  it("keeps every pick of a list, each under its own instance", () => {
+    const prefs = setModel(setHarness(none, "b", false), "a", "m2", false);
+    const keep = [
+      { connectorInstanceId: id("a"), model: "m2" },
+      { connectorInstanceId: id("b"), model: "m3" },
+    ];
+    expect(flat(visibleCatalog(catalog, prefs, keep))).toEqual(["a:m1", "a:m2", "b:m1", "b:m3"]);
+    expect(flat(visibleCatalog(catalog, prefs, []))).toEqual(["a:m1"]);
+  });
+
   it("keeps nothing extra for a pick with no instance", () => {
     const keep = { connectorInstanceId: null, model: "secret" };
     expect(flat(visibleCatalog(catalog, none, keep))).not.toContain("a:secret");
@@ -202,5 +213,32 @@ describe("isLastVisible / isLastVisibleHarness", () => {
     expect(isLastVisibleHarness(catalog, setHarness(none, "b", false), "a")).toBe(true);
     expect(isLastVisibleHarness(catalog, none, "a")).toBe(false);
     expect(isLastVisibleHarness([], none, "a")).toBe(false);
+  });
+});
+
+describe("newTaskModelPick", () => {
+  it("seeds from the first model the pickers offer, never a hidden harness", () => {
+    const prefs = setHarness(none, "a", false);
+    expect(newTaskModelPick(catalog, prefs, null)).toEqual({
+      connectorInstanceId: id("b"),
+      model: "m1",
+    });
+    expect(newTaskModelPick(catalog, setModel(prefs, "b", "m1", false), undefined)).toEqual({
+      connectorInstanceId: id("b"),
+      model: "m3",
+    });
+  });
+
+  it("keeps a saved default under the instance that lists it, switched off or not", () => {
+    const prefs = setHarness(none, "a", false);
+    expect(newTaskModelPick(catalog, prefs, "m2")).toEqual({
+      connectorInstanceId: id("a"),
+      model: "m2",
+    });
+  });
+
+  it("has nothing to seed when every model is off", () => {
+    const prefs = setHarness(setHarness(none, "a", false), "b", false);
+    expect(newTaskModelPick(catalog, prefs, null)).toBeNull();
   });
 });

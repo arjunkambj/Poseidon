@@ -14,7 +14,7 @@ import type { ModelOption } from "@poseidon/contracts/connectors";
 import type { ModelPickerSettings } from "@poseidon/contracts/settings";
 import { DEFAULT_MODEL_PICKER_SETTINGS } from "@poseidon/contracts/settings";
 
-import type { ModelPick } from "@/lib/model-picks";
+import { defaultModelPick, type ModelPick } from "@/lib/model-picks";
 
 /** A stored switch, read as an own key so an id like `constructor` is not a hit. */
 const stored = (
@@ -37,31 +37,50 @@ export const modelOn = (
 
 /**
  * The catalog a picker lists: the harnesses and models that are on, in the
- * catalog's order. `keep` — the thread's current pick, or a new task's — is
- * never dropped: its instance stays listed even with its harness off (with
- * its models that are on, so a thread bound to it can still switch among
- * them), and its model stays listed even when switched off. An instance with
- * no model left is dropped, unless it is `keep`'s.
+ * catalog's order. `keep` — the thread's current pick, a new task's, or the
+ * picks a compare menu has ticked — is never dropped: its instance stays
+ * listed even with its harness off (with its models that are on, so a thread
+ * bound to it can still switch among them), and its model stays listed even
+ * when switched off. An instance with no model left is dropped, unless one of
+ * `keep` is under it.
  */
 export const visibleCatalog = (
   catalog: ReadonlyArray<ConnectorModels>,
   prefs: ModelPickerSettings,
-  keep: ModelPick | null,
-): ReadonlyArray<ConnectorModels> =>
-  catalog.flatMap((group) => {
+  keep: ModelPick | ReadonlyArray<ModelPick> | null,
+): ReadonlyArray<ConnectorModels> => {
+  const keeps: ReadonlyArray<ModelPick> = keep === null ? [] : "model" in keep ? [keep] : keep;
+  return catalog.flatMap((group) => {
     const instanceId = group.connector.connectorInstanceId;
-    const kept = keep !== null && keep.connectorInstanceId === instanceId;
-    if (!kept && !harnessOn(prefs, instanceId)) {
+    const kept = keeps.filter((pick) => pick.connectorInstanceId === instanceId);
+    if (kept.length === 0 && !harnessOn(prefs, instanceId)) {
       return [];
     }
     const models = group.models.filter(
-      (model) => (kept && model.id === keep.model) || modelOn(prefs, instanceId, model),
+      (model) => kept.some((pick) => pick.model === model.id) || modelOn(prefs, instanceId, model),
     );
-    if (models.length === 0 && !kept) {
+    if (models.length === 0 && kept.length === 0) {
       return [];
     }
     return [models.length === group.models.length ? group : { ...group, models }];
   });
+};
+
+/**
+ * What a new task shows before the user picks (`defaultModelPick`): a saved
+ * default wherever the full catalog lists it, since the user chose it; with
+ * none saved, the first model the pickers offer, so a harness or model
+ * switched off is never the implicit seed.
+ */
+export const newTaskModelPick = (
+  catalog: ReadonlyArray<ConnectorModels>,
+  prefs: ModelPickerSettings,
+  defaultModel: string | null | undefined,
+): ModelPick | null =>
+  defaultModelPick(
+    defaultModel == null ? visibleCatalog(catalog, prefs, null) : catalog,
+    defaultModel,
+  );
 
 /** The switches with one harness set. */
 export const setHarness = (
