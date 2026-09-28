@@ -19,6 +19,11 @@
  *   caller asks anew rather than reading an answer that no longer holds.
  * - `statFiles(registry, batch)` — the same question as a one-shot call that
  *   resolves with its own `Exit`, for a caller that caches its own answers.
+ * - `createFile(registry, input)` — `files.create`, the one write: a new
+ *   `.md` file in the workspace (a plan saved from its card). A one-shot call
+ *   (`./oneShot`) that resolves with its own `Exit`, failing with the
+ *   server's refusal — "already exists", a path outside the root — for the
+ *   caller to show.
  *
  * The shapes mirror `gitAtoms` on purpose, for the same two reasons:
  *
@@ -37,7 +42,7 @@
 
 import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import { FILES_STAT_MAX_PATHS } from "@poseidon/contracts/rpc";
-import type { FileContent, FileSearchResult, FileStat } from "@poseidon/contracts/rpc";
+import type { FileContent, FileCreated, FileSearchResult, FileStat } from "@poseidon/contracts/rpc";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
@@ -92,6 +97,14 @@ export interface FileStatKey {
    * same one would read the cached answer.
    */
   readonly revision?: string | undefined;
+}
+
+/** One `files.create` call: `path` relative to the scope's root, and the file's text. */
+export interface FileCreate {
+  readonly projectId: ProjectId;
+  readonly threadId?: ThreadId | undefined;
+  readonly path: string;
+  readonly content: string;
 }
 
 /**
@@ -283,7 +296,22 @@ export const makeFileAtoms = (runtime: Atom.AtomRuntime<Connection | ConnectionS
   const statFiles = (registry: AtomRegistry.AtomRegistry, key: Omit<FileStatKey, "revision">) =>
     runOneShot(runtime, registry, () => statAll(key));
 
-  return { fileSearchAtom, fileContentAtom, fileStatAtom, statFiles };
+  /** Fails with the server's refusal, e.g. `conflict` when the file exists. */
+  const createFile = (registry: AtomRegistry.AtomRegistry, input: FileCreate) =>
+    runOneShot(runtime, registry, () =>
+      Effect.gen(function* () {
+        const client = yield* (yield* Connection).client;
+        const created: FileCreated = yield* client["files.create"]({
+          projectId: input.projectId,
+          ...(input.threadId === undefined ? {} : { threadId: input.threadId }),
+          path: input.path,
+          content: input.content,
+        });
+        return created;
+      }),
+    );
+
+  return { fileSearchAtom, fileContentAtom, fileStatAtom, statFiles, createFile };
 };
 
 export type FileAtoms = ReturnType<typeof makeFileAtoms>;

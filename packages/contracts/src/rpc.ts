@@ -30,7 +30,13 @@ import {
   SkillSummary,
 } from "./connectors";
 import { EDITOR_RPC_METHODS, EditorsListRpc, EditorsOpenRpc } from "./editors";
-import { FILES_STAT_MAX_PATHS, FileContent, FileSearchResult, FileStat } from "./files";
+import {
+  FILES_STAT_MAX_PATHS,
+  FileContent,
+  FileCreated,
+  FileSearchResult,
+  FileStat,
+} from "./files";
 import { FsBrowseError, FsListing } from "./fs";
 import { HarnessCommand } from "./harnessCommands";
 import {
@@ -126,7 +132,14 @@ export const STREAM_BUDGET_BYTES = 8 * 1024 * 1024;
  */
 export const STREAM_COALESCE_MS = 50;
 
-export { FILES_STAT_MAX_PATHS, FileContent, FileSearchResult, FileStat } from "./files";
+export {
+  FILES_CREATE_EXTENSION,
+  FILES_STAT_MAX_PATHS,
+  FileContent,
+  FileCreated,
+  FileSearchResult,
+  FileStat,
+} from "./files";
 
 export { FS_BROWSE_ENTRY_LIMIT, FsBrowseError, FsBrowseFailure, FsEntry, FsListing } from "./fs";
 
@@ -239,6 +252,7 @@ export const RPC_METHODS = {
   filesSearch: "files.search",
   filesRead: "files.read",
   filesStat: "files.stat",
+  filesCreate: "files.create",
   fsBrowse: "fs.browse",
   attachmentsStage: "attachments.stage",
   attachmentsRead: "attachments.read",
@@ -399,6 +413,24 @@ const FilesStatRpc = Rpc.make(RPC_METHODS.filesStat, {
     paths: Schema.Array(NonEmptyString).check(Schema.isMaxLength(FILES_STAT_MAX_PATHS)),
   }),
   success: Schema.Array(FileStat),
+  error: PoseidonRpcError,
+});
+
+/**
+ * Writes a new Markdown file into the workspace — a plan saved from its card.
+ * It only ever creates: `path` is relative to the root, stays inside it
+ * (symlinks followed), ends in `FILES_CREATE_EXTENSION`, and must not exist
+ * yet — an existing file fails `conflict` and is left as it was, anything
+ * else refused fails `invalid`. Missing folders on the way are made.
+ */
+const FilesCreateRpc = Rpc.make(RPC_METHODS.filesCreate, {
+  payload: Schema.Struct({
+    projectId: ProjectId,
+    threadId: Schema.optional(ThreadId),
+    path: NonEmptyString,
+    content: Schema.String,
+  }),
+  success: FileCreated,
   error: PoseidonRpcError,
 });
 
@@ -736,6 +768,7 @@ export const PoseidonRpcGroup = RpcGroup.make(
   FilesSearchRpc,
   FilesReadRpc,
   FilesStatRpc,
+  FilesCreateRpc,
   FsBrowseRpc,
   AttachmentsStageRpc,
   AttachmentsReadRpc,

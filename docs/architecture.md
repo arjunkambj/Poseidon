@@ -1067,7 +1067,8 @@ Everything a client needs that is not React.
   and restores), so an answer from before files were created or removed is
   asked again; a set larger than one `files.stat` carries goes out as several
   calls. `statFiles` asks the same as a one-shot call, for the terminal's file
-  links, which keep their own answers.
+  links, which keep their own answers. Its `createFile` is the `files.create`
+  one-shot call (`oneShot.ts`), resolving with its own `Exit`.
   `gitAtoms.ts` holds `checkpointsAtom`, keyed by the thread and a revision the
   caller names (the timeline passes its fold's checkpoint count), so a list
   read before a checkpoint was created is never mistaken for one after it; a
@@ -1298,8 +1299,9 @@ project's `workspaceRoot` otherwise (`orchestration/workspaceRoot.ts`). The
 session starts there, the permission gate judges sensitive paths against it,
 checkpoints are captured and restored there, and `git.status`, `git.diff`,
 `files.search`, `files.read`, `files.stat` and `checkpoints.list` read it when
-the call names the thread (`threadId` is optional on their payloads; without it they
-read the project's root, and a thread of another project is ignored).
+the call names the thread, and `files.create` writes there (`threadId` is
+optional on their payloads; without it they use the project's root, and a
+thread of another project is ignored).
 Checkpoint prune is the one exception and stays on the project's root: the
 hidden refs are shared by every worktree of a repository, and a deleted
 thread's worktree may already be gone.
@@ -1314,6 +1316,15 @@ never reported, and neither is the root itself. A path that fails is left out
 of the answer rather than failing the call. Each answer carries the path as it
 was asked, the root-relative path (a link's own name when it went through an
 in-root symlink) and that path joined onto the root.
+
+`files.create` (`apps/server/src/git/create.ts`) is the one file write, used by
+a plan card's Save as .md. It only creates: the path must be relative, end in
+`.md` (`FILES_CREATE_EXTENSION`) and stay under the root, and the deepest
+folder of it that already exists must resolve, symlinks followed, inside the
+canonical root before any missing folder is made. The file is opened with the
+exclusive-create flag, so an existing file, or a link at the name, fails
+`conflict` and is left alone; every other refusal is `invalid`. The answer is
+the root-relative path it wrote.
 
 A worktree comes from `git.worktree.create` (`apps/server/src/git/Worktrees.ts`)
 before the thread is created: a branch named from the settings document's
@@ -2245,6 +2256,7 @@ the client in the terminal `incompatible` state.
 | `files.search`                | call   | The composer's `#` file search; `threadId` searches the thread's root                                                                   |
 | `files.read`                  | call   | A window of one file, with a `truncated` flag                                                                                           |
 | `files.stat`                  | call   | Which of up to 100 paths exist inside the root; the others are left out, not errors                                                     |
+| `files.create` | call | Writes a new `.md` file inside the root; never overwrites (`conflict`) |
 | `fs.browse`                   | call   | Subfolders of one directory on the server's machine, for the folder picker                                                              |
 | `attachments.stage`           | call   | Uploads one composer image; returns a reference, never echoes bytes                                                                     |
 | `attachments.read`            | call   | Reads a staged image back for a thumbnail                                                                                               |

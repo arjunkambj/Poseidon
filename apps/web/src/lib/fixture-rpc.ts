@@ -198,6 +198,8 @@ export interface FixtureRpcContext {
 export const makeFixtureRpc = (context: FixtureRpcContext): PoseidonRpcClient => {
   /** What the page staged this session, keyed by the path it was given. */
   const fixtureAttachments = new Map<string, string>();
+  /** The `.md` files the page saved this session: a second save of one is refused. */
+  const savedFiles = new Set<string>();
   // The user's overrides, as the server stores them: none, so every default.
   let keybindings: ReadonlyArray<Keybinding> = [];
 
@@ -239,6 +241,16 @@ export const makeFixtureRpc = (context: FixtureRpcContext): PoseidonRpcClient =>
         case "files.stat":
           return ({ paths }: { paths: ReadonlyArray<string> }) =>
             Effect.succeed(fixtureStat(paths));
+        case "files.create":
+          return ({ path }: { path: string }) => {
+            if (savedFiles.has(path) || fixtureStat([path]).length > 0) {
+              return Effect.fail(
+                new PoseidonRpcError({ code: "conflict", message: `${path} already exists` }),
+              );
+            }
+            savedFiles.add(path);
+            return Effect.succeed({ path });
+          };
         // Attachments in the fixture never leave the browser: staging echoes a
         // plausible reference, and reading one back answers what was staged,
         // the timeline fixture's own images, or the placeholder pixel, so the

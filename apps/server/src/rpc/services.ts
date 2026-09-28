@@ -22,6 +22,7 @@ import type {
   BrowserToolStatus,
   DevServer,
   FileContent,
+  FileCreated,
   FileSearchResult,
   FileStat,
   FsListing,
@@ -132,6 +133,12 @@ export class FileService extends Context.Service<
       scope: WorkspaceScope,
       paths: ReadonlyArray<string>,
     ) => Effect.Effect<ReadonlyArray<FileStat>, PoseidonRpcError>;
+    /** A new `.md` file inside the root; never overwrites (`../git/create.ts`). */
+    readonly create: (
+      scope: WorkspaceScope,
+      path: string,
+      content: string,
+    ) => Effect.Effect<FileCreated, PoseidonRpcError>;
   }
 >()("server/rpc/FileService") {
   static readonly empty = Layer.succeed(
@@ -140,6 +147,10 @@ export class FileService extends Context.Service<
       search: (_scope, _query, _limit) => Effect.succeed([]),
       read: (_scope, path) => Effect.succeed({ path, text: "", totalLines: 0, truncated: false }),
       stat: (_scope, _paths) => Effect.succeed([]),
+      create: (_scope, path) =>
+        Effect.fail(
+          new PoseidonRpcError({ code: "unavailable", message: `cannot create ${path}` }),
+        ),
     }),
   );
 }

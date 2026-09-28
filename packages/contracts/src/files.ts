@@ -1,6 +1,6 @@
 /**
- * The workspace file reads' payloads on the wire: a `files.search` hit and a
- * `files.read` window. `rpc.ts` re-exports every one, so importers keep reading
+ * The workspace file reads' payloads on the wire: a `files.search` hit, a
+ * `files.read` window, a `files.stat` answer and a `files.create` result. `rpc.ts` re-exports every one, so importers keep reading
  * them from `@poseidon/contracts/rpc`.
  */
 
@@ -46,3 +46,15 @@ export const FileStat = Schema.Struct({
   isDirectory: Schema.Boolean,
 });
 export type FileStat = typeof FileStat.Type;
+
+/** The one extension `files.create` writes: it saves notes such as a plan, never code. */
+export const FILES_CREATE_EXTENSION = ".md";
+
+/**
+ * A file `files.create` wrote: `path` is where it now sits under the
+ * workspace root, `/`-separated, as `files.read` takes it back.
+ */
+export const FileCreated = Schema.Struct({
+  path: NonEmptyString,
+});
+export type FileCreated = typeof FileCreated.Type;

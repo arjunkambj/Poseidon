@@ -3,9 +3,10 @@
  * walks tracked plus untracked-but-not-ignored paths via `git ls-files`, so
  * .gitignore is honored for free; a per-root cache keyed off `.git/index` mtime
  * keeps repeat queries warm (the composer hits this on every `#` keystroke).
- * Stat checks a batch of paths for existence under the root (`stat.ts`).
+ * Stat checks a batch of paths for existence under the root (`stat.ts`), and
+ * `files.create` writes a new Markdown file there (`create.ts`).
  *
- * All three run in the thread's own root when the call names a thread (its
+ * All four run in the thread's own root when the call names a thread (its
  * worktree, when it has one), and in the project's root otherwise.
  *
  * A project need not be a git repository, so a
@@ -25,6 +26,7 @@ import { PoseidonRpcError } from "@poseidon/contracts/rpc";
 import { resolveWorkspaceRoot } from "../orchestration/workspaceRoot";
 import { ReadModelStore } from "../persistence/ReadModels";
 import { FileService, type WorkspaceScope } from "../rpc/services";
+import { createWorkspaceFile } from "./create";
 import { isRepository, run } from "./process";
 import { readFileWindow } from "./read";
 import { statWorkspacePaths } from "./stat";
@@ -222,6 +224,25 @@ export const layer = Layer.effect(
           // `statWorkspacePaths` settles every path on its own and never rejects.
           return yield* Effect.promise(() => statWorkspacePaths(root, paths));
         }).pipe(Effect.mapError(toRpcError)),
+
+      create: (scope, path, content) =>
+        Effect.gen(function* () {
+          const root = yield* workspaceRoot(scope).pipe(Effect.mapError(toRpcError));
+          if (root === null) {
+            return yield* new PoseidonRpcError({
+              code: "not-found",
+              message: "the workspace is not known",
+            });
+          }
+          // `createWorkspaceFile` rejects only with the error the client is to see.
+          return yield* Effect.tryPromise({
+            try: () => createWorkspaceFile(root, path, content),
+            catch: (error) =>
+              error instanceof PoseidonRpcError
+                ? error
+                : new PoseidonRpcError({ code: "internal", message: `cannot write ${path}` }),
+          });
+        }),
     });
 
     return service;

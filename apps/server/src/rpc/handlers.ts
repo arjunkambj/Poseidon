@@ -105,6 +105,8 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
       "files.read": ({ projectId, threadId, path, offset, limit }) =>
         files.read({ projectId, threadId }, path, offset, limit),
       "files.stat": ({ projectId, threadId, paths }) => files.stat({ projectId, threadId }, paths),
+      "files.create": ({ projectId, threadId, path, content }) =>
+        files.create({ projectId, threadId }, path, content),
 
       "fs.browse": ({ path, showHidden }) => directories.browse({ path, showHidden }),
 
