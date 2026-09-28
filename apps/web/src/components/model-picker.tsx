@@ -1,62 +1,40 @@
 /**
- * The model picker: one section per enabled connector instance, headed by the
- * instance's name and its connector's generic icon, with that instance's
- * models under it — only the harnesses and models Settings → Models leaves on
- * (`visibleCatalog`), and always the thread's current pick. A pick hands back the instance with the model
- * (`@/lib/model-picks`), because a thread's harness is chosen here too.
+ * The model picker: a trigger showing the current model, opening the harness
+ * picker (`./model-picker/harness-picker`) — a column of round harness
+ * avatars, one per enabled connector instance, with the highlighted one's
+ * models in a flyout beside it, and a search across all of them. Only the
+ * harnesses and models Settings → Models leaves on are listed
+ * (`visibleCatalog`), and always the thread's current pick. A pick hands back
+ * the instance with the model (`@/lib/model-picks`), because a thread's
+ * harness is chosen here too.
  *
- * On a thread that can no longer switch harness (`locked`) the other sections
- * stay listed but disabled, and hovering one says to start a new thread. A
- * `disabledReason` — the connector's `restart` switch — disables the whole
- * picker behind a tooltip, the way the other header pickers do, and then it
- * does not open for its key either. `open`/`onOpenChange` make it
- * controllable, so `composer.modelPicker.open` can open it.
+ * On a thread that can no longer switch harness (`locked`) the other
+ * harnesses stay on the rail but disabled, and their tooltip says to start a
+ * new thread. A `disabledReason` — the connector's `restart` switch —
+ * disables the whole picker behind a tooltip, the way the other header
+ * pickers do, and then it does not open for its key either. `open` and
+ * `onOpenChange` make it controllable, so `composer.modelPicker.open` can
+ * open it.
+ *
+ * `variant="settings"` is the same picker behind an outline trigger that
+ * names the harness too, for Settings → Models' default model.
  */
 
-import { useAtomValue } from "@effect/atom-react";
 import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@poseidon/ui/components/select";
+import { Button } from "@poseidon/ui/components/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@poseidon/ui/components/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
-import { AsyncResult } from "effect/unstable/reactivity";
+import { cn } from "@poseidon/ui/lib/utils";
 import * as React from "react";
 
-import { useClientRuntime } from "@/lib/client-runtime";
-import { connectorIconFor } from "@/lib/connector-icon";
-import {
-  decodeModelPick,
-  encodeModelPick,
-  modelPickerGroups,
-  type ModelPick,
-  type ModelPickerItem,
-} from "@/lib/model-picks";
+import { harnessRail } from "@/lib/harness-picker";
+import { encodeModelPick, modelPickerGroups, type ModelPick } from "@/lib/model-picks";
 import { visibleCatalog } from "@/lib/model-visibility";
 import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
-import { Brain } from "@honeyicons/react";
+import { Brain, ChevronDown } from "@honeyicons/react";
 
-const SWITCH_CONNECTOR_TOOLTIP = "Start a new thread to switch connector";
-
-function ModelItem({ item }: { readonly item: ModelPickerItem }) {
-  return (
-    <SelectItem value={item.value} disabled={item.disabled}>
-      <span className="flex min-w-0 flex-col">
-        <span className="truncate">{item.label}</span>
-        {item.description === undefined ? null : (
-          <span className="truncate text-xs text-muted-foreground">{item.description}</span>
-        )}
-      </span>
-    </SelectItem>
-  );
-}
+import { HarnessPicker } from "./model-picker/harness-picker";
 
 export function ModelPicker({
   catalog,
@@ -68,6 +46,7 @@ export function ModelPicker({
   open,
   onOpenChange,
   onPick,
+  variant = "composer",
 }: {
   readonly catalog: ReadonlyArray<ConnectorModels>;
   /** The instance the thread runs on, or would; `null` when none is enabled. */
@@ -80,92 +59,83 @@ export function ModelPicker({
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly onPick: (pick: ModelPick) => void;
+  readonly variant?: "composer" | "settings";
 }) {
-  const { connectorDescriptorsAtom } = useClientRuntime();
-  const descriptorsResult = useAtomValue(connectorDescriptorsAtom);
-  const descriptors = AsyncResult.isSuccess(descriptorsResult) ? descriptorsResult.value : [];
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const current: ModelPick = { connectorInstanceId: instanceId, model };
 
   // Only the harnesses and models Settings leaves on, and always the current pick.
-  const visible = visibleCatalog(catalog, useModelPickerPrefs(), {
-    connectorInstanceId: instanceId,
-    model,
-  });
-  const groups = modelPickerGroups(visible, { instanceId, locked });
-  const value = encodeModelPick({ connectorInstanceId: instanceId, model });
-  const listed = groups.flatMap((group) => group.items);
+  const visible = visibleCatalog(catalog, useModelPickerPrefs(), current);
+  const rail = harnessRail(modelPickerGroups(visible, { instanceId, locked }), current);
+  const own = rail.find((entry) => entry.current);
+  const listed = own?.items.find((item) => item.current);
   // The current model may be absent from every list (a stale id, a catalog
-  // still loading) — offer it verbatim so the picker never lies about it.
-  const current = listed.some((item) => item.value === value)
-    ? null
-    : { value, label: model, disabled: false };
-  const items = current === null ? listed : [current, ...listed];
+  // still loading): it is shown verbatim so the picker never lies about it.
+  const label = listed?.label ?? (model === "" ? "Choose…" : model);
+  const disabled = disabledReason !== undefined;
 
-  const select = (
-    <Select
-      value={value}
-      disabled={disabledReason !== undefined}
-      open={open && disabledReason === undefined}
-      onOpenChange={(next) => onOpenChange(next)}
-      onValueChange={(next) => {
-        const pick = typeof next === "string" && next !== value ? decodeModelPick(next) : null;
-        if (pick !== null) {
-          onPick(pick);
-        }
-      }}
-      items={items.map((item) => ({ value: item.value, label: item.label }))}
-    >
-      <SelectTrigger aria-label="Model" title={title} variant="composer">
-        <span className="flex min-w-0 items-center gap-1">
-          <Brain variant="bold" className="size-3.5 shrink-0 text-foreground/85" />
-          <SelectValue className="max-w-52" />
+  const trigger =
+    variant === "settings" ? (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full min-w-0 justify-start"
+        aria-label="Default model"
+        title={title}
+        disabled={disabled}
+      />
+    ) : (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="max-w-full min-w-0"
+        aria-label="Model"
+        title={title}
+        disabled={disabled}
+      />
+    );
+
+  const picker = (
+    <Popover open={open && !disabled} onOpenChange={(next) => onOpenChange(next)}>
+      <PopoverTrigger render={trigger}>
+        <Brain variant="bold" data-icon="inline-start" />
+        <span
+          className={cn(
+            "min-w-0 truncate",
+            variant === "settings" ? "flex-1 text-left" : "max-w-52",
+          )}
+        >
+          {variant === "settings" && own !== undefined && listed !== undefined
+            ? `${own.label} · ${label}`
+            : label}
         </span>
-      </SelectTrigger>
-      <SelectContent align="start" alignItemWithTrigger={false} className="min-w-56">
-        {current === null ? null : (
-          <SelectGroup>
-            <ModelItem item={current} />
-          </SelectGroup>
-        )}
-        {groups.map((group, index) => {
-          const Icon = connectorIconFor(
-            descriptors.find((entry) => entry.kind === group.connector.kind)?.metadata.iconKey,
-          );
-          const section = (
-            <>
-              <SelectLabel>
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <Icon variant="bold" className="size-3.5 shrink-0" />
-                  <span className="truncate">{group.connector.displayName}</span>
-                </span>
-              </SelectLabel>
-              {group.items.map((item) => (
-                <ModelItem key={item.value} item={item} />
-              ))}
-            </>
-          );
-          return (
-            <React.Fragment key={group.connector.connectorInstanceId}>
-              {index > 0 || current !== null ? <SelectSeparator /> : null}
-              {group.locked ? (
-                <Tooltip>
-                  <TooltipTrigger render={<SelectGroup />}>{section}</TooltipTrigger>
-                  <TooltipContent side="right">{SWITCH_CONNECTOR_TOOLTIP}</TooltipContent>
-                </Tooltip>
-              ) : (
-                <SelectGroup>{section}</SelectGroup>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </SelectContent>
-    </Select>
+        <ChevronDown variant="bold" data-icon="inline-end" className="text-muted-foreground" />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto" initialFocus={inputRef}>
+        <HarnessPicker
+          rail={rail}
+          current={current}
+          {...(listed === undefined && model !== "" ? { unlisted: model } : {})}
+          inputRef={inputRef}
+          onClose={() => onOpenChange(false)}
+          onPick={(pick) => {
+            onOpenChange(false);
+            if (encodeModelPick(pick) !== encodeModelPick(current)) {
+              onPick(pick);
+            }
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 
   return disabledReason === undefined ? (
-    select
+    picker
   ) : (
     <Tooltip>
-      <TooltipTrigger render={<span className="inline-flex min-w-0" />}>{select}</TooltipTrigger>
+      <TooltipTrigger render={<span className="inline-flex min-w-0" />}>{picker}</TooltipTrigger>
       <TooltipContent>{disabledReason}</TooltipContent>
     </Tooltip>
   );
