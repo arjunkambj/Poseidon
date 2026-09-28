@@ -13,6 +13,9 @@
  *   untranslated. The port fans every guest event out to every client; a
  *   client only relays events on sessions it opened, and root-session events
  *   of a guest's debugger (which can see the app window) never reach anyone.
+ * - `Network` / `Fetch` events and results lose their cookies on the way
+ *   out (`./cdpCookies`): the policy refuses the cookie jar, and the raw
+ *   `Cookie` / `Set-Cookie` headers would hand it over anyway.
  * - Child sessions a page auto-attaches (out-of-process frames, workers) are
  *   learned from `Target.attachedToTarget` on a session this client owns.
  * - `targetCreated` / `targetInfoChanged` / `targetDestroyed` are emitted for
@@ -25,6 +28,7 @@
  * against a fake in tests.
  */
 
+import { withoutCookies } from "./cdpCookies";
 import { classify } from "./cdpPolicy";
 
 /** One pane webview as the bridge reports it. */
@@ -225,7 +229,11 @@ export const openBridgeSession = (options: BridgeSessionOptions): BridgeSession 
       if (event.method === "Target.detachedFromTarget" && typeof child === "string") {
         sessions.delete(child);
       }
-      emit({ method: event.method, params: event.params, sessionId: event.sessionId });
+      emit({
+        method: event.method,
+        params: withoutCookies(event.method, event.params),
+        sessionId: event.sessionId,
+      });
       return;
     }
     if (event.threadId !== threadId) {
@@ -341,7 +349,7 @@ export const openBridgeSession = (options: BridgeSessionOptions): BridgeSession 
         port.withFocus(owned.wcId, () => port.send(owned.wcId, method, sent, sessionId)),
       );
     }
-    return port.send(owned.wcId, method, sent, sessionId);
+    return withoutCookies(method, await port.send(owned.wcId, method, sent, sessionId));
   };
 
   const receive = async (message: unknown): Promise<void> => {

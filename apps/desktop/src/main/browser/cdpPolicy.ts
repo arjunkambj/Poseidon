@@ -35,6 +35,8 @@
  * Pure: `classify` reads the method and params and nothing else.
  */
 
+import { setsCookie } from "./cdpCookies";
+
 export type SessionScope = "root" | "page";
 
 export type PolicyDecision =
@@ -103,8 +105,11 @@ const PAGE_DOMAINS = new Set([
 /**
  * Methods inside those domains that reach past the page, each with why.
  * Cookie-jar calls read or write the partition's whole jar, httpOnly cookies
- * included, which page script never sees. Certificate overrides live in the
- * `Security` domain, which is not listed at all.
+ * included, which page script never sees; the same cookies riding on
+ * `Network` / `Fetch` events and results are scrubbed by the bridge, and a
+ * `Fetch` response rewrite that sets one is refused (`./cdpCookies`).
+ * Certificate overrides live in the `Security` domain, which is not listed
+ * at all.
  */
 const PAGE_DENIED = new Map<string, string>([
   ["Page.close", "closing a pane tab goes through Target.closeTarget"],
@@ -222,6 +227,9 @@ const classifyPage = (method: string, params: Params): PolicyDecision => {
   // `File`s on drop: an upload by another name.
   if (method === "Input.dispatchDragEvent" && carriesFiles(params)) {
     return deny(`${method}: file uploads are not granted`);
+  }
+  if (setsCookie(method, params)) {
+    return deny(`${method}: the cookie jar is not granted`);
   }
   const urlParam = URL_PARAM.get(method);
   if (urlParam !== undefined) {

@@ -2385,7 +2385,11 @@ rest — cookie-jar calls, file uploads (`DOM.setFileInputFiles`, and an
 `IO.*`, `Security.*`, the calls that would lay the page out at a size of its
 own (`Emulation.setDeviceMetricsOverride`, `setVisibleSize`,
 `setPageScaleFactor`), and navigation to anything but http(s) or
-`about:blank`.
+`about:blank`. The same cookies never ride out another way (`cdpCookies.ts`):
+every `Network.*` / `Fetch.*` event and result a client receives loses its
+`Cookie` / `Set-Cookie` headers, its cookie lists (`associatedCookies`,
+`blockedCookies`, `exemptedCookies`) and its raw header text, and a
+`Fetch.fulfillRequest` / `continueResponse` that would set a cookie is refused.
 `Page.reload` becomes a guest `reload()` (CDP's reload of a guest view
 reloads the whole app window), `Page.bringToFront` selects the pane tab,
 `createTarget` opens a pane tab, and native input runs one command at a time

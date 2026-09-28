@@ -313,6 +313,60 @@ describe("page sessions", () => {
     expect(sent.some((message) => message["sessionId"] === "OTHER")).toBe(false);
   });
 
+  it("relays network events and results without the partition's cookies", async () => {
+    const { port, session, sent } = await attached();
+    port.emit({
+      type: "cdp",
+      wcId: 1,
+      method: "Network.requestWillBeSentExtraInfo",
+      sessionId: "SESSION-1",
+      params: {
+        requestId: "R1",
+        headers: { Cookie: "sid=secret", Accept: "*/*" },
+        associatedCookies: [{ cookie: { name: "sid", value: "secret", httpOnly: true } }],
+      },
+    });
+    port.emit({
+      type: "cdp",
+      wcId: 1,
+      method: "Network.responseReceivedExtraInfo",
+      sessionId: "SESSION-1",
+      params: { requestId: "R1", headers: { "Set-Cookie": "sid=secret; HttpOnly" } },
+    });
+    port.answer = { resource: { success: true, headers: { "set-cookie": "sid=secret" } } };
+    await session.receive({
+      id: 2,
+      method: "Network.loadNetworkResource",
+      sessionId: "SESSION-1",
+      params: { url: "https://example.com/", frameId: "F", options: {} },
+    });
+    expect(JSON.stringify(sent)).not.toContain("secret");
+    expect(
+      sent.find((message) => message["method"] === "Network.requestWillBeSentExtraInfo"),
+    ).toEqual({
+      method: "Network.requestWillBeSentExtraInfo",
+      params: { requestId: "R1", headers: { Accept: "*/*" } },
+      sessionId: "SESSION-1",
+    });
+    expect(replyTo(sent, 2)?.["result"]).toEqual({ resource: { success: true, headers: {} } });
+  });
+
+  it("refuses a Fetch response that would plant a cookie", async () => {
+    const { port, session, sent } = await attached();
+    await session.receive({
+      id: 2,
+      method: "Fetch.fulfillRequest",
+      sessionId: "SESSION-1",
+      params: {
+        requestId: "R1",
+        responseCode: 200,
+        responseHeaders: [{ name: "Set-Cookie", value: "sid=planted" }],
+      },
+    });
+    expect(errorOf(replyTo(sent, 2))).toBe("Fetch.fulfillRequest: the cookie jar is not granted");
+    expect(port.calls.filter((call) => call.op === "send")).toEqual([]);
+  });
+
   it("refuses navigation off the web and the denied methods", async () => {
     const { port, session, sent } = await attached();
     const cases: ReadonlyArray<readonly [string, Record<string, unknown>]> = [

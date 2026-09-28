@@ -265,6 +265,23 @@ describe("classify on a page session", () => {
       "deny",
     );
   });
+
+  it("refuses a Fetch response rewrite that would set a cookie", () => {
+    for (const method of ["Fetch.fulfillRequest", "Fetch.continueResponse"]) {
+      expect(
+        classify("page", method, {
+          requestId: "r",
+          responseHeaders: [{ name: "Set-Cookie", value: "sid=planted" }],
+        }),
+      ).toEqual({ kind: "deny", reason: `${method}: the cookie jar is not granted` });
+      expect(
+        kind("page", method, {
+          requestId: "r",
+          responseHeaders: [{ name: "Content-Type", value: "text/plain" }],
+        }),
+      ).toBe("forward");
+    }
+  });
 });
 
 describe("isWebUrl", () => {
