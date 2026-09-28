@@ -67,4 +67,4 @@ ignoredOptionalDependencies:
   - "@anthropic-ai/claude-agent-sdk-win32-x64"
 
 minimumReleaseAgeExclude:
-  - "@honeyicons/react@0.0.8"
+  - "@honeyicons/react@0.0.12"

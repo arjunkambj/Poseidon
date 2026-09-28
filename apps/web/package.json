@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@effect/atom-react": "catalog:",
-    "@honeyicons/react": "^0.0.8",
+    "@honeyicons/react": "^0.0.12",
     "@legendapp/list": "catalog:",
     "@pierre/diffs": "catalog:",
     "@poseidon/client-runtime": "workspace:*",
