@@ -2947,6 +2947,8 @@ into one lane per model, in tick order:
   instances collides, and the server appends `-2`.
 - The shown effort and runtime mode, each kept only where that model or
   instance accepts it, so the server's default applies instead of a refusal.
+- Ultracode, when the toggle is on, only for the lanes whose instance and
+  model can run it (`ultracodeOfferedIn`); the other lanes start with it off.
 
 `background-start.ts` runs the lanes. Worktree creates go one at a time in lane
 order, because concurrent `git worktree add` on one repository races on git's

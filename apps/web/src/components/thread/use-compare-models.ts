@@ -27,6 +27,7 @@ import { useAppAtoms } from "@/lib/app-runtime";
 import { instanceCapabilities } from "@/lib/connector-routing";
 import { findModel, type ModelPick } from "@/lib/model-picks";
 import { runtimeModeOptions } from "@/lib/runtime-modes";
+import { ultracodeOfferedIn } from "@/lib/ultracode";
 
 export interface CompareModels {
   /** The mode is on (and the project can have worktrees). */
@@ -44,8 +45,8 @@ export interface CompareModels {
 
 /**
  * The start composer's compare mode. `settings` are what its controls show
- * (the model to start from, and the effort and runtime mode every lane gets
- * where it accepts them); `choice` gives the base branch.
+ * (the model to start from, and the effort, runtime mode and ultracode every
+ * lane gets where it accepts them); `choice` gives the base branch.
  */
 export const useCompareModels = (
   settings: ThreadSettingsPatch,
@@ -99,9 +100,12 @@ export const useCompareModels = (
         base: {
           ...(settings.effort === undefined ? {} : { effort: settings.effort }),
           ...(settings.runtimeMode === undefined ? {} : { runtimeMode: settings.runtimeMode }),
+          ...(settings.ultracode === true ? { ultracode: true } : {}),
         },
         runtimeModesFor: (instanceId) =>
           runtimeModeOptions(instanceCapabilities(instanceId, connectors)),
+        ultracodeOffered: (pick) =>
+          ultracodeOfferedIn(catalog, pick.connectorInstanceId, pick.model),
         baseBranch: choice.baseBranch,
         mintThreadId: makeThreadId,
       }),

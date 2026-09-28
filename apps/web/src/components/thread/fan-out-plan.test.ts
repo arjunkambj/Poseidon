@@ -164,6 +164,7 @@ describe("planFanOut", () => {
     ],
     base: {},
     runtimeModesFor: (instance) => (instance === null ? [] : (modes[instance] ?? [])),
+    ultracodeOffered: (chosen) => chosen.model === "gpt-5",
     baseBranch: "main",
     mintThreadId: ids(),
     ...over,
@@ -203,6 +204,14 @@ describe("planFanOut", () => {
       "approval-required",
       "approval-required",
     ]);
+  });
+
+  it("keeps ultracode only for a lane that can run it", () => {
+    const lanes = planFanOut(input({ base: { ultracode: true } }));
+    expect(lanes.map((lane) => lane.settings.ultracode)).toEqual([true, undefined]);
+    expect("ultracode" in lanes[1]!.settings).toBe(false);
+    const off = planFanOut(input());
+    expect(off.every((lane) => !("ultracode" in lane.settings))).toBe(true);
   });
 
   it("names a model the catalog does not list by its id, and leaves the instance to routing", () => {

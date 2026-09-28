@@ -111,9 +111,15 @@ export interface FanOutInput {
   readonly text: string;
   readonly picks: ReadonlyArray<ComparePick>;
   /** What the New task controls are set to; kept per lane only where the lane accepts it. */
-  readonly base: { readonly effort?: Effort; readonly runtimeMode?: RuntimeMode };
+  readonly base: {
+    readonly effort?: Effort;
+    readonly runtimeMode?: RuntimeMode;
+    readonly ultracode?: boolean;
+  };
   /** The modes an instance's sessions can honour (its capabilities' `runtimeModes`). */
   readonly runtimeModesFor: (instanceId: ConnectorInstanceId | null) => ReadonlyArray<RuntimeMode>;
+  /** Whether the pick's instance and model can run ultracode (`ultracodeOfferedIn`). */
+  readonly ultracodeOffered: (pick: ModelPick) => boolean;
   /** The branch every lane's worktree is cut from; absent means the default branch. */
   readonly baseBranch: string | undefined;
   readonly mintThreadId: () => ThreadId;
@@ -130,12 +136,13 @@ export interface FanOutLane extends BackgroundLane {
 /**
  * One lane per pick, in pick order. An effort the model does not list, or a
  * mode the instance cannot run, is left out, so the server's default for
- * that lane applies instead of a refusal.
+ * that lane applies instead of a refusal. Ultracode, when it is on, goes only
+ * to the lanes that can run it; the others start with it off.
  */
 export const planFanOut = (input: FanOutInput): ReadonlyArray<FanOutLane> =>
   input.picks.map(({ pick, option }) => {
     const label = option?.label ?? pick.model;
-    const { effort, runtimeMode } = input.base;
+    const { effort, runtimeMode, ultracode } = input.base;
     return {
       threadId: input.mintThreadId(),
       title: fanOutTitle(input.text, label),
@@ -154,6 +161,7 @@ export const planFanOut = (input: FanOutInput): ReadonlyArray<FanOutLane> =>
           ? { runtimeMode }
           : {}),
         ...(effort !== undefined && option?.efforts.includes(effort) === true ? { effort } : {}),
+        ...(ultracode === true && input.ultracodeOffered(pick) ? { ultracode: true } : {}),
       },
     };
   });
