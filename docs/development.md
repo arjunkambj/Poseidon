@@ -836,10 +836,16 @@ The Codex recorders are vitest files too, skipped unless
 ```sh
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
   pnpm -F @poseidon/connector-codex vitest run test/recordProbe.test.ts
+POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
+  pnpm -F @poseidon/connector-codex vitest run test/recordSession.test.ts -t plain-reply
 ```
 
 The probe opens an app-server connection, reads the account and the model
-list, and starts no thread, so it spends nothing. The finaliser is told the
+list, and starts no thread, so it spends nothing. The session recorder
+(`test/recordSession.test.ts`, one test per scenario, so `-t` picks one) runs
+each scenario in a throwaway git repo under `/tmp/poseidon-codex/scratch`, on
+the CLI's default model. The app-server has no turn or budget cap, so its
+prompts are trivial and ask for one-word answers. The finaliser is told the
 names of the operator's MCP servers (`codex mcp list --json`) and skills
 (`$CODEX_HOME/skills`), so each becomes a `user-skill-<n>` stand-in.
 

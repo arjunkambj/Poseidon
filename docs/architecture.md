@@ -959,19 +959,34 @@ line in `boot.ts` that registers it.
 ### packages/connector-codex
 
 The Codex connector, over `codex app-server`'s JSON-RPC on stdio; no SDK
-package is involved. So far it probes and lists models, and is not registered
-in `boot.ts` yet: `definition.ts` wires `binary.ts` (find `codex`), `env.ts`
-(the default-deny child environment, `CODEX_HOME` from the instance only),
-`spawn.ts` (a process group per child, stdin closed first, and the proof it is
-gone), `rpc.ts` (the line-delimited JSON-RPC client), `protocol.ts` (narrow
-schemas for the messages read, pinned to the CLI release they were read
-against), `handshake.ts` (`initialize`, `account/read`, `model/list`),
-`probe.ts` (`--version`, `login status`, and the zero-turn handshake),
-`models.ts`, `capabilities.ts` and `configSchema.ts` (`binaryPath`,
-`codexHome`, `defaultModel`). Its sessions fail to start until the app-server
-session lands.
+package is involved. It probes, lists models and runs sessions, and is not
+registered in `boot.ts` yet: `definition.ts` wires `binary.ts` (find
+`codex`), `env.ts` (the default-deny child environment, `CODEX_HOME` from the
+instance only), `spawn.ts` (a process group per child, stdin closed first, and
+the proof it is gone), `rpc.ts` (the line-delimited JSON-RPC client),
+`protocol.ts` (narrow schemas for the messages read, pinned to the CLI release
+they were read against), `handshake.ts` (`initialize`, `account/read`,
+`model/list`), `probe.ts` (`--version`, `login status`, and the zero-turn
+handshake), `models.ts`, `capabilities.ts` and `configSchema.ts`
+(`binaryPath`, `codexHome`, `defaultModel`).
 
-May import `connector-sdk` and `contracts`; its tests also import `testkit`.
+A session (`session.ts`) is one app-server process per thread. `launch.ts`
+hands it Poseidon's per-thread MCP server as `-c mcp_servers.poseidon.*`
+overrides, the bearer in a child-only environment variable, never in argv.
+`threadOpen.ts` opens the thread with `thread/start`, or `thread/resume` from
+the ref (`sessionRef.ts`: the CLI's thread id and the cwd), falling back to a
+new thread when the CLI has no rollout for it. Each turn is a `turn/start`
+naming the thread's model and effort; `modes.ts` keeps the approval policy
+`untrusted` in every mode and varies only the sandbox. `userInput.ts` and
+`attachments.ts` send images as `localImage` inputs and name other files by
+path. `translate/` turns notifications into runtime events: `tools.ts` (item
+rows), `usage.ts` (turn usage from the thread's running total, and the
+context) and `translator.ts` (turns, errors, warnings, MCP status, and the
+`IGNORED` list). `serverRequests.ts` declines every approval request until the
+approval cards are wired.
+
+May import `connector-sdk`, `contracts` and `shared`; its tests also import
+`testkit`.
 
 ### packages/client-runtime
 
