@@ -48,4 +48,49 @@ describe("toHarnessCommands", () => {
       { name: "review", description: "first" },
     ]);
   });
+
+  it("drops the cli's internal and retired rows, keeping the ones a user runs", () => {
+    // The shape CLI 2.1.280 returns from a handshake with no settings loaded:
+    // every row built in, plumbing listed beside the user's commands.
+    expect(
+      toHarnessCommands([
+        {
+          name: "context",
+          description: "Show current context usage",
+          argumentHint: "",
+          builtin: true,
+        },
+        {
+          name: "__remote-workflow",
+          description: "Run the workflow script delivered in this session environment",
+          argumentHint: "",
+          builtin: true,
+        },
+        {
+          name: "workflow-launch-exec",
+          description: "Execute a server-launched workflow handoff",
+          argumentHint: "",
+          builtin: true,
+        },
+        {
+          name: "heapdump",
+          description: "Dump the JS heap to the Desktop",
+          argumentHint: "",
+          builtin: true,
+        },
+        {
+          name: "agents",
+          description: "(removed) Ask Claude to create/manage subagents",
+          argumentHint: "",
+          builtin: true,
+        },
+        {
+          name: "rename",
+          description: "Rename the current conversation",
+          argumentHint: "[name]",
+          builtin: true,
+        },
+      ]).map((command) => command.name),
+    ).toEqual(["context", "rename"]);
+  });
 });

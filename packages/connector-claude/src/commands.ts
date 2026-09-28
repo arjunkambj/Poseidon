@@ -23,6 +23,17 @@ export interface ClaudeSlashCommand {
   readonly builtin?: boolean;
 }
 
+/**
+ * The CLI's own plumbing, which it lists beside the commands a user runs:
+ * workflow hand-offs a server launches, and a heap dump for debugging the
+ * CLI itself. A name led by `_` is internal by the CLI's own convention.
+ */
+const INTERNAL = new Set(["workflow-launch-exec", "heapdump"]);
+
+/** A row a user does not pick: internal, or a command the CLI has retired. */
+const isInternal = (name: string, description: string | undefined): boolean =>
+  name.startsWith("_") || INTERNAL.has(name) || /^\(removed\)/i.test(description?.trim() ?? "");
+
 const present = (text: string | undefined): string | undefined => {
   const trimmed = text?.trim();
   return trimmed === undefined || trimmed === "" ? undefined : trimmed;
@@ -30,7 +41,7 @@ const present = (text: string | undefined): string | undefined => {
 
 /**
  * The SDK's rows as harness commands: the leading `/` stripped, an empty
- * description or argument hint left out, a nameless row dropped. Rows can
+ * description or argument hint left out, a nameless or internal row dropped. Rows can
  * share a name; the CLI runs the built-in one when one is marked, so that row
  * is the one kept, and otherwise the first.
  */
@@ -40,7 +51,7 @@ export const toHarnessCommands = (
   const byName = new Map<string, { readonly row: HarnessCommand; readonly builtin: boolean }>();
   for (const command of commands) {
     const name = command.name.trim().replace(/^\/+/, "");
-    if (name === "") continue;
+    if (name === "" || isInternal(name, command.description)) continue;
     const builtin = command.builtin === true;
     const kept = byName.get(name);
     if (kept !== undefined && (kept.builtin || !builtin)) continue;

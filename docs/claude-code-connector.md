@@ -176,8 +176,12 @@ from the same cached handshake as the models: one CLI start per instance for
 both, and asks that arrive together wait for the one in flight. A failed
 handshake is not cached and answers `ConnectorExtensionFailed` with code
 `internal`. `toHarnessCommands` (`commands.ts`) strips a leading `/`, leaves out
-an empty description or argument hint, and keeps one row per name: the built-in
-one when a row is marked, otherwise the first. Because the handshake runs with
+an empty description or argument hint, drops the CLI's internal rows, and keeps
+one row per name: the built-in one when a row is marked, otherwise the first.
+2.1.280 lists its plumbing beside the commands a user runs, all marked
+built-in: a name led by `_` (`__remote-workflow`), `workflow-launch-exec`,
+`heapdump`, and retired commands whose description starts `(removed)`; these
+are dropped. Because the handshake runs with
 `settingSources: []`, the list holds only the CLI's built-in and bundled
 commands. The user's and the project's own commands (`.claude/commands`,
 plugins, MCP prompts) are not listed, though the CLI still runs them when a
@@ -185,7 +189,8 @@ message names one. For the same reason the list does not depend on the
 project, so the extension ignores its scope. The recorder scrubs the command
 list down to one `scrubbed-entry` row, so the replayed tests
 (`definition.test.ts`, `models.test.ts`) assert on that row, and the mapping is
-unit-tested on the SDK's declared fields (`commands.test.ts`).
+unit-tested on the SDK's declared fields and on rows shaped like 2.1.280's
+signed-out handshake list (`commands.test.ts`).
 
 The account comes from `auth status` first and from the initialize response's
 `account.email` otherwise. The recorded, signed-out response says only
@@ -687,7 +692,8 @@ snapshot, which the translator reads as any answer (`local-command`).
 - **What is listed:** only the CLI's built-in and bundled commands, since the
   listing handshake runs with `settingSources: []`. The user's and the
   project's own commands, plugin commands and MCP prompts are missing from the
-  menu, though the CLI still runs them when typed.
+  menu, though the CLI still runs them when typed. The CLI's internal and
+  retired rows are dropped by the connector (see [The probe](#the-probe)).
 - **What is left out** (`slash-menu.tsx`): every name Poseidon's own entries
   take (`model`, `effort`, `mode`, `plan`, `default`, `clear-draft`, and
   `compact` even while it is hidden), every enabled skill's name, and `clear`,
