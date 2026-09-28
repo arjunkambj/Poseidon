@@ -9,6 +9,7 @@ import {
   enqueueForceRemoval,
   worktreeRemovalOf,
   worktreeRemovedMessage,
+  worktreeRemovers,
   type DeleteThreadSteps,
   type WorktreeRemoval,
 } from "./delete-thread";
@@ -192,5 +193,36 @@ describe("the forced removal queue", () => {
     queue = dequeueForceRemoval(queue, second);
     expect(queue).toEqual([]);
     expect(answers).toEqual(["first true", "second false"]);
+  });
+});
+
+describe("worktreeRemovers", () => {
+  const thread = (threadId: string, path?: string, status = "idle") => ({
+    threadId,
+    status,
+    worktree: path === undefined ? undefined : { path },
+  });
+
+  it("removes a worktree no other thread works in", () => {
+    const a = thread("a", "/wt/one");
+    expect(worktreeRemovers([a], [a, thread("b")])).toEqual(new Set(["a"]));
+  });
+
+  it("keeps a worktree another thread still works in, archived or not", () => {
+    const a = thread("a", "/wt/one");
+    expect(worktreeRemovers([a], [a, thread("b", "/wt/one")])).toEqual(new Set());
+    expect(worktreeRemovers([a], [a, thread("b", "/wt/one", "archived")])).toEqual(new Set());
+  });
+
+  it("ignores deleted threads", () => {
+    const a = thread("a", "/wt/one");
+    expect(worktreeRemovers([a], [a, thread("b", "/wt/one", "deleted")])).toEqual(new Set(["a"]));
+  });
+
+  it("lets the last of several deleted together remove the worktree they share", () => {
+    const a = thread("a", "/wt/one");
+    const b = thread("b", "/wt/one");
+    const c = thread("c", "/wt/two");
+    expect(worktreeRemovers([a, b, c], [a, b, c])).toEqual(new Set(["b", "c"]));
   });
 });

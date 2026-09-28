@@ -180,14 +180,20 @@ export function ProjectTree() {
   }, [threads, openThreadId]);
   // Removing a project deletes its archived threads too, so the removal copy
   // counts every thread, not only the listed ones — and the worktrees among
-  // them, which it leaves on disk.
+  // them, which it leaves on disk: each once, though two threads can share one.
   const threadCounts = React.useMemo(() => {
     const counts = new Map<ProjectId, ThreadCounts>();
+    const worktreePaths = new Set<string>();
     for (const thread of threads) {
       const current = counts.get(thread.projectId) ?? NO_THREADS;
+      const path = thread.worktree?.path;
+      const newWorktree = path !== undefined && !worktreePaths.has(path);
+      if (path !== undefined) {
+        worktreePaths.add(path);
+      }
       counts.set(thread.projectId, {
         threads: current.threads + 1,
-        worktrees: current.worktrees + (thread.worktree === undefined ? 0 : 1),
+        worktrees: current.worktrees + (newWorktree ? 1 : 0),
       });
     }
     return counts;

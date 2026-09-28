@@ -80,6 +80,41 @@ export const dequeueForceRemoval = (
   request: ForceRemovalRequest,
 ): ReadonlyArray<ForceRemovalRequest> => queue.filter((entry) => entry !== request);
 
+/** What `worktreeRemovers` reads of a thread. */
+interface WorktreeUser {
+  readonly threadId: string;
+  readonly status: string;
+  readonly worktree?: { readonly path: string } | undefined;
+}
+
+/**
+ * Which of `deleting`, in the order they are deleted, should remove their
+ * worktree when the user asks for that. Two threads can work in one worktree
+ * ("New thread in this project" on a worktree thread), and the server refuses
+ * to remove one a thread that is not deleted still works in — an archived one
+ * included, since it can come back. So a worktree another thread in `threads`
+ * still uses is left alone, and one shared only among `deleting` is removed by
+ * the last of them, once the others are gone.
+ */
+export const worktreeRemovers = (
+  deleting: ReadonlyArray<WorktreeUser>,
+  threads: ReadonlyArray<WorktreeUser>,
+): ReadonlySet<string> => {
+  const leaving = new Set(deleting.map((thread) => thread.threadId));
+  const kept = new Set(
+    threads
+      .filter((thread) => !leaving.has(thread.threadId) && thread.status !== "deleted")
+      .flatMap((thread) => (thread.worktree === undefined ? [] : [thread.worktree.path])),
+  );
+  const lastByPath = new Map<string, string>();
+  for (const thread of deleting) {
+    if (thread.worktree !== undefined && !kept.has(thread.worktree.path)) {
+      lastByPath.set(thread.worktree.path, thread.threadId);
+    }
+  }
+  return new Set(lastByPath.values());
+};
+
 export const worktreeRemovedMessage = (worktree: ThreadWorktree): string =>
   `Worktree removed — branch ${worktree.branch} kept`;
 

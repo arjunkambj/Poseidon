@@ -10,7 +10,8 @@
  * keeps its own refusal toast and its own worktree flow. Archive skips the
  * threads that already are archived and toasts once, with an Undo for the
  * lot; mark unread is one undo entry for the lot; delete asks first, once for
- * the lot, with the same worktree opt-in the single-thread dialog offers.
+ * the lot, with the same worktree opt-in the single-thread dialog offers —
+ * for the worktrees no thread left behind still works in (`worktreeRemovers`).
  */
 
 import * as React from "react";
@@ -28,9 +29,11 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
+import { worktreeRemovers } from "@/components/sidebar/delete-thread";
 import { THREAD_DELETE_DESCRIPTION } from "@/components/sidebar/thread-actions";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
+import { useThreadList } from "@/state/hooks";
 import { Archive, Close, Email, Trash } from "@honeyicons/react";
 
 /** `THREAD_DELETE_DESCRIPTION`, for many. */
@@ -48,7 +51,8 @@ function DeleteThreadsDialog({
   readonly threads: ReadonlyArray<ThreadSummary>;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
-  readonly onConfirm: (removeWorktrees: boolean) => void;
+  /** The threads that remove their worktree: empty when the box was unchecked. */
+  readonly onConfirm: (removers: ReadonlySet<string>) => void;
 }) {
   const [removeWorktrees, setRemoveWorktrees] = React.useState(true);
   // Checked again on every opening: the choice is per deletion, not sticky.
@@ -58,7 +62,14 @@ function DeleteThreadsDialog({
     }
   }, [open]);
 
-  const worktrees = threads.filter((thread) => thread.worktree !== undefined).length;
+  const all = useThreadList();
+  const removers = React.useMemo(() => worktreeRemovers(threads, all), [threads, all]);
+  const worktrees = removers.size;
+  // Worktrees a thread that is not being deleted still works in stay.
+  const kept =
+    new Set(
+      threads.flatMap((thread) => (thread.worktree === undefined ? [] : [thread.worktree.path])),
+    ).size - worktrees;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -69,6 +80,13 @@ function DeleteThreadsDialog({
             {threads.length === 1 ? THREAD_DELETE_DESCRIPTION : THREADS_DELETE_DESCRIPTION}
           </DialogDescription>
         </DialogHeader>
+        {kept === 0 ? null : (
+          <p className="text-xs text-muted-foreground">
+            {kept === 1
+              ? "Another thread still works in one of their worktrees, so it is kept."
+              : `Other threads still work in ${kept} of their worktrees, so they are kept.`}
+          </p>
+        )}
         {worktrees === 0 ? null : (
           <label className="flex items-start gap-2 text-sm">
             <Checkbox
@@ -96,7 +114,7 @@ function DeleteThreadsDialog({
             type="button"
             onClick={() => {
               onOpenChange(false);
-              onConfirm(worktrees > 0 && removeWorktrees);
+              onConfirm(removeWorktrees ? removers : new Set());
             }}
           >
             Delete {threadCount(threads.length)}
@@ -196,11 +214,11 @@ export function ThreadSelectionBar({
             setDeleting(null);
           }
         }}
-        onConfirm={(removeWorktrees) => {
+        onConfirm={(removers) => {
           const targets = shown.current;
           onClear();
           for (const thread of targets) {
-            void remove(thread, removeWorktrees && thread.worktree !== undefined);
+            void remove(thread, removers.has(thread.threadId));
           }
         }}
       />

@@ -2068,8 +2068,14 @@ The sidebar row menu and Settings → Archived threads confirm a delete with the
 same dialog (`apps/web/src/components/sidebar/delete-thread-dialog.tsx`). For a
 local thread it is only the delete: the project's folder is left alone. A
 thread with a worktree adds a checkbox, checked by default, **Also remove the
-worktree at `<path>`**, saying the branch is kept with its commits.
-`delete-thread.ts` runs the steps:
+worktree at `<path>`**, saying the branch is kept with its commits. Two
+threads can share a worktree ("New thread in this project" on a worktree
+thread), and the server refuses to remove one that a thread not deleted,
+archived included, still works in. So when another thread still uses it the
+dialog offers no checkbox and says the worktree is kept; the selection bar's
+bulk delete leaves such worktrees out too, and a worktree shared only among
+the threads it deletes is removed once, by the last of them
+(`worktreeRemovers`). `delete-thread.ts` runs the steps:
 
 1. `thread.delete`. A refusal is the usual toast, and nothing else happens.
 2. Only after an accepted delete, and only with the box checked,

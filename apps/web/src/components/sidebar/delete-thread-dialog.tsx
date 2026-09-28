@@ -9,6 +9,9 @@
  * guards (the removal only follows an accepted delete, and a tree holding
  * uncommitted work is never forced without asking again) are
  * `./delete-thread`; `./use-delete-thread` binds them.
+ *
+ * A worktree another thread still works in is not offered: the dialog says it
+ * is kept instead (`worktreeRemovers`).
  */
 
 import { useAtom } from "@effect/atom-react";
@@ -28,8 +31,9 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { THREAD_DELETE_DESCRIPTION } from "@/components/sidebar/thread-actions";
-import { dequeueForceRemoval } from "@/components/sidebar/delete-thread";
+import { dequeueForceRemoval, worktreeRemovers } from "@/components/sidebar/delete-thread";
 import { forceRemovalRequestsAtom } from "@/components/sidebar/use-delete-thread";
+import { useThreadList } from "@/state/hooks";
 
 export function DeleteThreadDialog({
   thread,
@@ -51,7 +55,13 @@ export function DeleteThreadDialog({
     }
   }, [open]);
 
+  const threads = useThreadList();
   const worktree = thread?.worktree;
+  // A worktree a sibling thread still works in stays, whatever the box says.
+  const shared =
+    thread !== null &&
+    worktree !== undefined &&
+    !worktreeRemovers([thread], threads).has(thread.threadId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,7 +72,11 @@ export function DeleteThreadDialog({
           </DialogTitle>
           <DialogDescription>{THREAD_DELETE_DESCRIPTION}</DialogDescription>
         </DialogHeader>
-        {worktree === undefined ? null : (
+        {worktree === undefined ? null : shared ? (
+          <p className="text-xs break-all text-muted-foreground">
+            Another thread still works in the worktree at {worktree.path}, so it is kept.
+          </p>
+        ) : (
           <label className="flex items-start gap-2 text-sm">
             <Checkbox
               checked={removeWorktree}
@@ -87,7 +101,7 @@ export function DeleteThreadDialog({
             onClick={() => {
               onOpenChange(false);
               if (thread !== null) {
-                onConfirm(thread, worktree !== undefined && removeWorktree);
+                onConfirm(thread, worktree !== undefined && !shared && removeWorktree);
               }
             }}
           >
