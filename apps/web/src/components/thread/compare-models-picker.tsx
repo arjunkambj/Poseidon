@@ -29,6 +29,7 @@ import type { ModelPickerOpen } from "@/components/header-controls";
 import { HarnessPicker } from "@/components/model-picker/harness-picker";
 import { COMPARE_MAX } from "@/components/thread/fan-out-plan";
 import type { CompareModels } from "@/components/thread/use-compare-models";
+import { useConnectorIconKeys } from "@/components/ui/icons/use-connector-icon-keys";
 import {
   WorkspaceModePicker,
   type WorkspaceChoice,
@@ -77,12 +78,13 @@ export const compareMenuGroups = (
  * on it: a model past the cap is disabled, and `checked` holds the ticked
  * picks (`encodeModelPick`). No harness is locked and none is current.
  * `catalog` is what the picker lists; `full`, the unfiltered catalog the
- * monograms are settled over (`harnessRail`).
+ * monograms are settled over (`harnessRail`); `iconKeys`, each kind's logo key.
  */
 export const compareRail = (
   catalog: ReadonlyArray<ConnectorModels>,
   picks: ReadonlyArray<ModelPick>,
   full: ReadonlyArray<ConnectorModels> = catalog,
+  iconKeys?: ReadonlyMap<string, string>,
 ): {
   readonly rail: ReadonlyArray<HarnessRailEntry>;
   readonly checked: ReadonlySet<string>;
@@ -96,6 +98,7 @@ export const compareRail = (
     modelPickerGroups(catalog, { instanceId: null, locked: false }),
     null,
     full,
+    iconKeys,
   ).map((entry) => ({
     ...entry,
     items: entry.items.map((item) => ({
@@ -113,6 +116,7 @@ export function CompareModelsBody({
   full,
   empty,
   picks,
+  iconKeys,
   inputRef,
   onToggle,
   onClose,
@@ -124,11 +128,13 @@ export function CompareModelsBody({
   /** What an empty rail says (`emptyPickerText`). */
   readonly empty: EmptyText;
   readonly picks: ReadonlyArray<ModelPick>;
+  /** Each connector kind's `metadata.iconKey` (`useConnectorIconKeys`). */
+  readonly iconKeys?: ReadonlyMap<string, string>;
   readonly inputRef?: React.Ref<HTMLInputElement>;
   readonly onToggle: (pick: ModelPick) => void;
   readonly onClose: () => void;
 }) {
-  const { rail, checked } = compareRail(catalog, picks, full);
+  const { rail, checked } = compareRail(catalog, picks, full, iconKeys);
   return (
     <>
       <HarnessPicker
@@ -161,6 +167,7 @@ export function CompareModelsPicker({
   // Only what Settings → Models leaves on, and every pick already ticked.
   const visible = visibleCatalog(catalog, useModelPickerPrefs(), compare.picks);
   const catalogState = useModelCatalogState();
+  const iconKeys = useConnectorIconKeys();
 
   return (
     <Popover open={open} onOpenChange={(next) => onOpenChange(next)}>
@@ -177,6 +184,7 @@ export function CompareModelsPicker({
           full={catalog}
           empty={emptyPickerText(catalogState, catalog)}
           picks={compare.picks}
+          iconKeys={iconKeys}
           inputRef={inputRef}
           onToggle={compare.toggle}
           onClose={() => onOpenChange(false)}

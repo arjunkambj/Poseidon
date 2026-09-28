@@ -46,6 +46,8 @@ export interface HarnessRailEntry {
   readonly instanceId: ConnectorInstanceId;
   readonly label: string;
   readonly monogram: string;
+  /** The connector's `metadata.iconKey`, which picks its logo; absent until the descriptors load. */
+  readonly iconKey?: string;
   /** Another instance than the thread's, on a thread that can no longer switch. */
   readonly locked: boolean;
   /** The harness the current pick is under. */
@@ -84,24 +86,29 @@ export const effortSummary = (efforts: ReadonlyArray<Effort> | undefined): strin
  * One rail entry per picker section, in order, each with its models. The
  * sections are what the picker lists; `catalog` is the whole, unfiltered
  * catalog, so a harness's monogram is the same on every surface whatever is
- * switched off (`catalogMonograms`).
+ * switched off (`catalogMonograms`). `iconKeys` maps a connector kind to its
+ * `metadata.iconKey` (`useConnectorIconKeys`), so the avatar can draw the
+ * harness's logo; a kind missing from it keeps the monogram.
  */
 export const harnessRail = (
   groups: ReadonlyArray<ModelPickerGroup>,
   current: ModelPick | null,
   catalog: ReadonlyArray<ConnectorModels>,
+  iconKeys: ReadonlyMap<string, string> = new Map(),
 ): ReadonlyArray<HarnessRailEntry> => {
   const monograms = catalogMonograms(catalog);
   return groups.map((group) => {
     const instanceId = group.connector.connectorInstanceId;
     const isCurrent = current !== null && current.connectorInstanceId === instanceId;
     const listed = catalog.find((entry) => entry.connector.connectorInstanceId === instanceId);
+    const iconKey = iconKeys.get(group.connector.kind);
     return {
       connector: group.connector,
       instanceId,
       label: group.connector.displayName,
       monogram:
         monograms.get(instanceId) ?? harnessMonograms([group.connector.displayName])[0] ?? "",
+      ...(iconKey === undefined ? {} : { iconKey }),
       locked: group.locked,
       current: isCurrent,
       listsModels: (listed?.models.length ?? group.items.length) > 0,

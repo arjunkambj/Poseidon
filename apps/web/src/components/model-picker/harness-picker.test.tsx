@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { HarnessPickerView } from "@/components/model-picker/harness-picker";
 import { activeOptionId, keyStep } from "@/components/model-picker/picker-keys";
+import { LOGO_ICON, LOGO_ICON_KEY } from "@/components/ui/icons/test-logo";
 import { harnessRail, initialPickerState, type PickerState } from "@/lib/harness-picker";
 import { encodeModelPick, modelPickerGroups, type ModelPick } from "@/lib/model-picks";
 
@@ -45,8 +46,16 @@ const catalog = [
 
 const current: ModelPick = { connectorInstanceId: id("a"), model: "deep-2" };
 
-const railFor = (locked = false) =>
-  harnessRail(modelPickerGroups(catalog, { instanceId: id("a"), locked }), current, catalog);
+const railFor = (locked = false, iconKeys?: ReadonlyMap<string, string>) =>
+  harnessRail(
+    modelPickerGroups(catalog, { instanceId: id("a"), locked }),
+    current,
+    catalog,
+    iconKeys,
+  );
+
+/** The first path the logo draws, which its gradient ids do not touch. */
+const logoPath = / d="([^"]*)"/.exec(renderToStaticMarkup(<LOGO_ICON />))?.[1] ?? "";
 
 const render = (
   rail: ReturnType<typeof railFor>,
@@ -92,6 +101,27 @@ describe("HarnessPickerView", () => {
     expect(html).toContain(">Ce<");
   });
 
+  it("draws a harness's logo in place of its monogram when its iconKey names one", () => {
+    const rail = railFor(false, new Map([["harness", LOGO_ICON_KEY]]));
+    expect(rail.map((entry) => entry.iconKey)).toEqual([LOGO_ICON_KEY, LOGO_ICON_KEY]);
+    const html = render(rail, initialPickerState(rail, current));
+    expect(logoPath).not.toBe("");
+    expect(html.split(` d="${logoPath}"`)).toHaveLength(3);
+    expect(html).not.toContain(">Co<");
+    // The tooltip and label still name the harness.
+    expect(tagsWith(html, 'id="p-harness-0"')[0]).toContain('aria-label="Comet Cloud"');
+  });
+
+  it("keeps the monogram for a key with no logo, or none at all", () => {
+    for (const iconKeys of [new Map([["harness", "terminal"]]), new Map(), undefined]) {
+      const rail = railFor(false, iconKeys);
+      const html = render(rail, initialPickerState(rail, current));
+      expect(html).not.toContain(logoPath);
+      expect(html).toContain(">Co<");
+      expect(html).toContain(">Ce<");
+    }
+  });
+
   it("marks the current harness and model and highlights the current row", () => {
     const html = render(railFor(), initialPickerState(railFor(), current));
     const [own, other] = tagsWith(html, 'id="p-harness-');
@@ -126,6 +156,13 @@ describe("HarnessPickerView", () => {
     expect(results[0]).toContain('aria-label="Swift One, Comet Cloud"');
     expect(results[1]).toContain('aria-label="Swift Mini, Cedar Cove"');
     expect(tagsWith(html, 'role="combobox"')[0]).toContain('aria-activedescendant="p-result-0"');
+  });
+
+  it("leads each search result with its harness's logo when it has one", () => {
+    const rail = railFor(false, new Map([["harness", LOGO_ICON_KEY]]));
+    const html = render(rail, { ...initialPickerState(rail, current), query: "swift" });
+    // Two rail avatars and two result rows.
+    expect(html.split(` d="${logoPath}"`)).toHaveLength(5);
   });
 
   it("draws a checkbox on every row in compare mode, flyouts and search results alike", () => {

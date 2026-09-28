@@ -78,7 +78,7 @@ export function HarnessRailColumn({
                 entry.locked && "opacity-50",
               )}
             >
-              <HarnessAvatar monogram={entry.monogram} />
+              <HarnessAvatar monogram={entry.monogram} iconKey={entry.iconKey} />
             </span>
           </TooltipTrigger>
           <TooltipContent side="left">
@@ -97,9 +97,9 @@ export function HarnessRailColumn({
  * One model: its label, its effort ladder in muted text, and a check when it
  * is the current pick. Its tagline (or, without one, its family) is the native
  * hover tooltip: a second line would break the 28px row. In search results
- * the harness's monogram leads it. In compare mode (`checked` given) a
- * checkbox leads it instead of the check: the row is what a click lands on,
- * so the checkbox only shows the state.
+ * the harness's avatar (logo, else monogram) leads it. In compare mode
+ * (`checked` given) a checkbox leads it instead of the check: the row is what
+ * a click lands on, so the checkbox only shows the state.
  */
 export function PickerRow({
   id,
@@ -142,7 +142,9 @@ export function PickerRow({
       {checked === undefined ? null : (
         <Checkbox checked={checked} disabled={item.disabled} tabIndex={-1} aria-hidden />
       )}
-      {harness === undefined ? null : <HarnessAvatar monogram={harness.monogram} />}
+      {harness === undefined ? null : (
+        <HarnessAvatar monogram={harness.monogram} iconKey={harness.iconKey} />
+      )}
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {item.efforts === undefined ? null : (
         <span className="shrink-0 text-xs text-muted-foreground">{item.efforts}</span>

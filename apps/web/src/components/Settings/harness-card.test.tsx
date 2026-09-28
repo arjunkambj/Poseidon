@@ -11,6 +11,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { effortsText, HarnessCard, modelDetail } from "@/components/Settings/harness-card";
+import { LOGO_ICON, LOGO_ICON_KEY } from "@/components/ui/icons/test-logo";
 import { setHarness, setModel } from "@/lib/model-visibility";
 
 const id = (value: string) => value as ConnectorInstanceId;
@@ -49,10 +50,18 @@ const render = (
   card: ConnectorModels,
   prefs: ModelPickerSettings,
   cards: ReadonlyArray<ConnectorModels> = catalog,
+  iconKey?: string,
 ) =>
   renderToStaticMarkup(
     <TooltipProvider>
-      <HarnessCard group={card} catalog={cards} monogram="Ia" prefs={prefs} onChange={() => {}} />
+      <HarnessCard
+        group={card}
+        catalog={cards}
+        monogram="Ia"
+        iconKey={iconKey}
+        prefs={prefs}
+        onChange={() => {}}
+      />
     </TooltipProvider>,
   );
 
@@ -105,6 +114,17 @@ describe("HarnessCard", () => {
     expect(html).toContain(`title="${detail}">${detail}</span>`);
     expect(html).toContain('title="Gemini 3.5 Flash">Gemini 3.5 Flash</span>');
     expect(modelDetail(model("m1"))).toBe("m1 · family");
+  });
+
+  it("draws the harness's logo for an iconKey that names one, else its monogram", () => {
+    const logoPath = / d="([^"]*)"/.exec(renderToStaticMarkup(<LOGO_ICON />))?.[1] ?? "";
+    expect(logoPath).not.toBe("");
+    const logo = render(a, none, catalog, LOGO_ICON_KEY);
+    expect(logo).toContain(` d="${logoPath}"`);
+    expect(logo).not.toContain(">Ia<");
+    const plain = render(a, none, catalog, "terminal");
+    expect(plain).not.toContain(logoPath);
+    expect(plain).toContain(">Ia<");
   });
 
   it("follows the stored switches", () => {

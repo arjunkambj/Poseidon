@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components
 import { cn } from "@poseidon/ui/lib/utils";
 import * as React from "react";
 
+import { useConnectorIconKeys } from "@/components/ui/icons/use-connector-icon-keys";
 import { harnessRail } from "@/lib/harness-picker";
 import { emptyPickerText, useModelCatalogState } from "@/lib/model-catalog-state";
 import { encodeModelPick, modelPickerGroups, type ModelPick } from "@/lib/model-picks";
@@ -67,7 +68,12 @@ export function ModelPicker({
 
   // Only the harnesses and models Settings leaves on, and always the current pick.
   const visible = visibleCatalog(catalog, useModelPickerPrefs(), current);
-  const rail = harnessRail(modelPickerGroups(visible, { instanceId, locked }), current, catalog);
+  const rail = harnessRail(
+    modelPickerGroups(visible, { instanceId, locked }),
+    current,
+    catalog,
+    useConnectorIconKeys(),
+  );
   const own = rail.find((entry) => entry.current);
   const listed = own?.items.find((item) => item.current);
   // The current model may be absent from every list (a stale id, a catalog

@@ -27,6 +27,7 @@ import * as Exit from "effect/Exit";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { toast } from "sonner";
 
+import { useConnectorIconKeys } from "@/components/ui/icons/use-connector-icon-keys";
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
 import { catalogMonograms } from "@/lib/harness-monogram";
 import { modelCatalogState } from "@/lib/model-catalog-state";
@@ -51,6 +52,7 @@ export function HarnessModelsSection() {
     : [];
   const switchedOff = connectors.filter((connector) => !connector.enabled);
   const monograms = catalogMonograms(catalog);
+  const iconKeys = useConnectorIconKeys();
 
   const save = async (modelPicker: ModelPickerSettings) => {
     const exit = await updateSettings({ modelPicker });
@@ -115,6 +117,7 @@ export function HarnessModelsSection() {
               group={group}
               catalog={catalog}
               monogram={monograms.get(group.connector.connectorInstanceId) ?? "?"}
+              iconKey={iconKeys.get(group.connector.kind)}
               prefs={prefs}
               onChange={(next) => void save(next)}
             />

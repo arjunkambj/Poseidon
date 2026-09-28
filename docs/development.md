@@ -247,7 +247,9 @@ colour logo for an avatar, or nothing so the monogram stays), `editorIconFor`
 and `providerKey`/`providerMarkFor`. Its map keys are unquoted, because the
 connector-leak rule still refuses a quoted kind there. Callers pass data (an
 `iconKey` from `useConnectorIconKeys`, an editor, a model's id and family) and
-draw what comes back.
+draw what comes back. A test outside the directory that needs a key with a
+logo borrows `LOGO_ICON_KEY` and `LOGO_ICON` from its `test-logo.ts` rather
+than spelling a harness's name.
 
 **Reference names.** The products Poseidon was compared against while it was
 built are never named — not in `apps/`, `packages/`, `scripts/` or the

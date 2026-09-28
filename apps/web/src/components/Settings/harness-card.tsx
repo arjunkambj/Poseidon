@@ -1,8 +1,9 @@
 /**
- * One harness on Settings → Models: its avatar, name and connector kind, a
- * switch that says whether the model pickers offer it, and a dense row per
- * model: its name, a muted line with its tagline (when the connector gives
- * one), id and family, its effort ladder and its own switch.
+ * One harness on Settings → Models: its avatar (logo, else monogram), name
+ * and connector kind, a switch that says whether the model pickers offer it,
+ * and a dense row per model: its name, a muted line with its tagline (when
+ * the connector gives one), id and family, its effort ladder and its own
+ * switch.
  *
  * The switches filter the pickers only (`@/lib/model-visibility`): a thread
  * already on a harness or model that is switched off keeps it and keeps
@@ -122,6 +123,7 @@ export function HarnessCard({
   group,
   catalog,
   monogram,
+  iconKey,
   prefs,
   onChange,
 }: {
@@ -129,6 +131,8 @@ export function HarnessCard({
   /** The whole catalog, to tell which switch is the last one on. */
   readonly catalog: ReadonlyArray<ConnectorModels>;
   readonly monogram: string;
+  /** The connector's `metadata.iconKey`, for its logo in place of the monogram. */
+  readonly iconKey?: string | undefined;
   readonly prefs: ModelPickerSettings;
   readonly onChange: (next: ModelPickerSettings) => void;
 }) {
@@ -142,7 +146,7 @@ export function HarnessCard({
       <CardHeader>
         <CardTitle>
           <span className="flex min-w-0 items-center gap-2">
-            <HarnessAvatar monogram={monogram} />
+            <HarnessAvatar monogram={monogram} iconKey={iconKey} />
             <span className="truncate">{connector.displayName}</span>
             <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs font-normal text-muted-foreground">
               {connector.kind}

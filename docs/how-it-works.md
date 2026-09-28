@@ -591,20 +591,24 @@ connector does, in the words its harness understands ([The spawn](#the-spawn)).
 
 The model picker, on the start screen and in the thread header, opens on a
 search input over a column of round harness avatars, one per enabled connector
-instance (`modelCatalogAtom`) in the connectors page's order, each a monogram
-(`harnessMonograms`) with the instance's name as its tooltip; the current
+instance (`modelCatalogAtom`) in the connectors page's order, each the
+harness's colour logo when its connector's `metadata.iconKey` names one
+(`harnessLogoFor` in `apps/web/src/components/ui/icons/brand-icons.ts`, the
+kind → key map from `useConnectorIconKeys`), else a monogram
+(`harnessMonograms`), with the instance's name as its tooltip; the current
 pick's harness is ringed. Hovering an avatar, or arrowing onto it, opens its
 flyout beside the column: that instance's models, each a single 28px row with
 its name, its effort ladder in a few characters ("low–high") and a check on the
 current one, and its tagline (`ModelOption.description`, or the family when the
 connector gives none) as the row's native hover tooltip. The trigger shows the
 name alone. Typing swaps the column for one list of matches across every
-harness, each led by its harness's monogram: a match on the name or id ranks
-first, then a word of the family, tagline or harness name. Focus stays in the
-search input, which names the highlighted option with `aria-activedescendant`:
-Up and Down move along the column or the flyout, Right or Enter goes into a
-flyout, Enter picks, Left goes back to the column, and Escape clears the query,
-then leaves the flyout, then closes the picker. Choose model (`Mod+Shift+M`) opens it. The keyboard and
+harness, each led by its harness's avatar (logo, else monogram): a match on the
+name or id ranks first, then a word of the family, tagline or harness name.
+Focus stays in the search input, which names the highlighted option with
+`aria-activedescendant`: Up and Down move along the column or the flyout, Right
+or Enter goes into a flyout, Enter picks, Left goes back to the column, and
+Escape clears the query, then leaves the flyout, then closes the picker. Choose
+model (`Mod+Shift+M`) opens it. The keyboard and
 search model is `apps/web/src/lib/harness-picker.ts`, the popup
 `apps/web/src/components/model-picker/`. It lists only the harnesses and models switched on in Settings → Models
 (`visibleCatalog` in `apps/web/src/lib/model-visibility.ts`), and always the
@@ -3870,8 +3874,9 @@ declares `textGeneration`, stored as `{connectorInstanceId, model}`
 off); the Writing effort (Low, Medium, High); and "Name new threads
 automatically". Then one card per enabled connector
 instance (`harness-models-section.tsx`, `harness-card.tsx`), in
-`modelCatalogAtom`'s order. A card's header is the instance's monogram avatar
-(`harnessMonograms` in `apps/web/src/lib/harness-monogram.ts`: the initials of
+`modelCatalogAtom`'s order. A card's header is the instance's avatar, the
+same as the picker's: its colour logo when the connector's `iconKey` names
+one, else its monogram (`harnessMonograms` in `apps/web/src/lib/harness-monogram.ts`: the initials of
 the first two words, stepping down to other letters of the first word when two
 names collide, settled over the whole catalog by `catalogMonograms` so a
 harness keeps its letters in Settings and every picker whatever is switched

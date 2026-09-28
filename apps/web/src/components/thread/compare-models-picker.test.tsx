@@ -127,6 +127,12 @@ describe("compareRail", () => {
     expect(rail.flatMap((entry) => entry.items).every((item) => !item.disabled)).toBe(true);
   });
 
+  it("carries each harness's iconKey for its avatar", () => {
+    const keyed = compareRail(catalog, [], catalog, new Map([["harness", "logo-key"]])).rail;
+    expect(keyed.map((entry) => entry.iconKey)).toEqual(["logo-key", "logo-key"]);
+    expect(compareRail(catalog, []).rail.some((entry) => "iconKey" in entry)).toBe(false);
+  });
+
   it("disables only the unticked models once four are picked", () => {
     const { rail, checked } = compareRail(catalog, fourPicks);
     expect(checked.size).toBe(4);
