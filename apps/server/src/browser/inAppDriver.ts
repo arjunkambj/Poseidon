@@ -51,12 +51,20 @@ const isTabGone = (error: ExecError): boolean =>
 const isStreamOff = (error: ExecError): boolean =>
   error._tag === "AgentBrowserError" && /not enabled/i.test(error.message);
 
+/**
+ * How long a gap between commands means the daemon may have reaped itself.
+ * Shorter than the idle timeout the session's env gives the daemon: the gap
+ * is measured from when the CLI child exited, which is after the daemon's own
+ * last activity, so at exactly the timeout the daemon can already be gone.
+ */
+export const REPIN_AFTER_IDLE_MS = IDLE_TIMEOUT_MS - 30_000;
+
 export interface InAppDriverOptions {
   /**
    * How long a gap between commands means the daemon may have reaped itself,
    * so the driver attaches again before the next one: the pin and the
    * disabled stream are daemon state, and a resurrected daemon has neither.
-   * Defaults to the idle timeout the session's env gives the daemon.
+   * Defaults to `REPIN_AFTER_IDLE_MS`.
    */
   readonly reattachAfterIdleMs?: number;
 }
@@ -69,7 +77,7 @@ export const openInAppDriver = (
     /** The pinned tab, or `null` when the next call has to attach first. */
     const bound = { current: null as string | null };
     const lastExecAt = { current: null as number | null };
-    const idleMs = options.reattachAfterIdleMs ?? IDLE_TIMEOUT_MS;
+    const idleMs = options.reattachAfterIdleMs ?? REPIN_AFTER_IDLE_MS;
     const now = Effect.clockWith((clock) => clock.currentTimeMillis);
 
     const pin = (targetId: string) =>

@@ -23,7 +23,7 @@ import * as Effect from "effect/Effect";
 import * as TestClock from "effect/testing/TestClock";
 
 import { makeAgentBrowser, IDLE_TIMEOUT_MS } from "./agentBrowser";
-import { openInAppDriver, TAB_GONE_MESSAGE } from "./inAppDriver";
+import { openInAppDriver, REPIN_AFTER_IDLE_MS, TAB_GONE_MESSAGE } from "./inAppDriver";
 import { replayCli } from "./test/replayCli";
 
 const commandsOf = (replay: ReturnType<typeof replayCli>) =>
@@ -53,9 +53,11 @@ describe("openInAppDriver (replayed)", () => {
 
       // The daemon goes away (its idle reap, here a `close`) — and with it
       // the pin. After a gap that long the driver pins again before the next
-      // command, and turns the stream off again.
+      // command, and turns the stream off again — already a little before the
+      // daemon's own timeout, since the driver's clock starts late.
       yield* replay.session.exec(["close"]);
-      yield* TestClock.adjust(Duration.millis(IDLE_TIMEOUT_MS));
+      expect(REPIN_AFTER_IDLE_MS).toBeLessThan(IDLE_TIMEOUT_MS);
+      yield* TestClock.adjust(Duration.millis(REPIN_AFTER_IDLE_MS));
       const again = yield* driver.exec(["get", "title"]);
       expect(again.title).toBe("Recording home");
 

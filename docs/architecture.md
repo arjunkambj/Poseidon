@@ -2288,9 +2288,11 @@ browser tab you were driving was closed in the pane; the next call uses the
 pane's current tab", drops the binding, and attaches again on the next call —
 the failed call is not retried behind the agent's back. The agent's own
 `tab new` / `tab <id>` move the pin (and the driver follows), and closing its
-own bound tab makes the next call attach again. After an idle gap as long as
-the daemon's own reap timeout the driver pins again before the next command,
-because the pin is daemon state. `close` is agent-browser's `close`, which in
+own bound tab makes the next call attach again. After an idle gap of 270 s,
+30 s short of the daemon's own reap timeout, the driver pins again before the
+next command, because the pin is daemon state; the margin is there because
+the driver's clock starts when the CLI child exits, after the daemon's last
+activity. `close` is agent-browser's `close`, which in
 CDP mode sends no CDP, so the pane's tabs survive it. The human's toolbar never
 goes through the server in this mode: the pane moves its webview itself, and
 `humanInput` only bumps the epoch and mirrors a navigation's url — a CDP
