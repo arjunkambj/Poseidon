@@ -47,7 +47,7 @@ import {
   GitWorktreeRemoveRpc,
   GitWorktreeSetupRpc,
 } from "./git";
-import { GIT_REVIEW_RPC_METHODS, GitDiscardRpc } from "./git-review";
+import { GIT_REVIEW_RPC_METHODS, GitBlameRpc, GitDiscardRpc } from "./git-review";
 import { ConnectorInstanceId, ProjectId, TerminalId, ThreadId, UuidV7 } from "./ids";
 import {
   CheckpointSummary,
@@ -745,6 +745,7 @@ export const PoseidonRpcGroup = RpcGroup.make(
   GitWorktreeRemoveRpc,
   GitWorktreeSetupRpc,
   GitDiscardRpc,
+  GitBlameRpc,
   EditorsListRpc,
   EditorsOpenRpc,
   ScriptsDetectRpc,

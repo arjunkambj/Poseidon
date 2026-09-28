@@ -1,5 +1,5 @@
 /**
- * Discard: the Changes pane's git write beyond the diff.
+ * Discard and blame: the Changes pane's two git calls beyond the diff.
  *
  * Like `Commits.ts`, this is the git half only. `Git.ts` resolves the
  * workspace root, refuses a discard while a turn or a restore runs in it and
@@ -12,10 +12,12 @@
  * file is deleted from disk only when git itself lists it as untracked and
  * not ignored. Nothing here ever runs `git clean`.
  */
-import { lstatSync, rmdirSync, unlinkSync } from "node:fs";
+import { lstatSync, readFileSync, rmdirSync, unlinkSync } from "node:fs";
 import * as nodePath from "node:path";
+import type { GitBlame, GitBlameEntry } from "@poseidon/contracts/git-review";
 import * as Effect from "effect/Effect";
 
+import { GIT_BLAME_MAX_LINES } from "@poseidon/contracts/git-review";
 import { PoseidonRpcError } from "@poseidon/contracts/rpc";
 
 import { mergeBaseOf, validRef } from "./Branches";
@@ -235,4 +237,113 @@ export const discard = (top: string, base: DiscardBase, paths: ReadonlyArray<str
     for (const path of new Set(checked)) {
       yield* discardPath(top, base, path);
     }
+  });
+
+// ── Blame ──────────────────────────────────────────────────────
+
+const ZERO_SHA = /^0+$/;
+const HEADER = /^([0-9a-f]{40}|[0-9a-f]{64}) \d+ (\d+)(?: \d+)?$/;
+
+interface CommitInfo {
+  author: string;
+  time: string;
+  summary: string;
+}
+
+/**
+ * `git blame --porcelain`: per line a `<sha> <orig> <final> [<count>]`
+ * header, the commit's fields the first time that commit appears, then the
+ * line itself after a tab. Consecutive lines of one commit fold into one
+ * entry.
+ */
+export const parsePorcelainBlame = (stdout: string): Array<GitBlameEntry> => {
+  const commits = new Map<string, CommitInfo>();
+  const entries: Array<GitBlameEntry> = [];
+  let sha: string | null = null;
+  let line = 0;
+  for (const row of stdout.split("\n")) {
+    if (sha === null) {
+      const header = HEADER.exec(row);
+      if (header === null) continue;
+      sha = header[1]!;
+      line = Number.parseInt(header[2]!, 10);
+      if (!commits.has(sha)) commits.set(sha, { author: "", time: "", summary: "" });
+      continue;
+    }
+    const info = commits.get(sha)!;
+    if (row.startsWith("\t")) {
+      const uncommitted = ZERO_SHA.test(sha);
+      const last = entries[entries.length - 1];
+      if (last !== undefined && last.sha === sha && last.startLine + last.lineCount === line) {
+        entries[entries.length - 1] = { ...last, lineCount: last.lineCount + 1 };
+      } else {
+        entries.push({
+          sha,
+          author: uncommitted ? "Not committed yet" : info.author,
+          time: info.time,
+          summary: uncommitted ? "" : info.summary,
+          uncommitted,
+          startLine: line,
+          lineCount: 1,
+        });
+      }
+      sha = null;
+    } else if (row.startsWith("author ")) {
+      info.author = row.slice("author ".length);
+    } else if (row.startsWith("author-time ")) {
+      const seconds = Number.parseInt(row.slice("author-time ".length), 10);
+      info.time = new Date(seconds * 1000).toISOString();
+    } else if (row.startsWith("summary ")) {
+      info.summary = row.slice("summary ".length);
+    }
+  }
+  return entries;
+};
+
+/** Lines in a file's text: a last line without a newline still counts. */
+const lineCountOf = (text: string) => {
+  if (text.length === 0) return 0;
+  const newlines = text.split("\n").length - 1;
+  return text.endsWith("\n") ? newlines : newlines + 1;
+};
+
+/**
+ * The blame of the working file at `path`, lines `startLine`..`endLine`
+ * (default: from the first line), never more than `GIT_BLAME_MAX_LINES` of
+ * them. An untracked file has no history and answers `untracked: true`.
+ */
+export const blame = (
+  top: string,
+  path: string,
+  range: { readonly startLine?: number | undefined; readonly endLine?: number | undefined },
+): Effect.Effect<GitBlame, GitError | PoseidonRpcError> =>
+  Effect.gen(function* () {
+    const checked = yield* validPath(top, path);
+    const start = range.startLine ?? 1;
+    if (range.endLine !== undefined && range.endLine < start) {
+      return yield* Effect.fail(invalid("endLine comes before startLine"));
+    }
+    if (!(yield* isTracked(top, checked))) {
+      return { path: checked, untracked: true, entries: [] };
+    }
+    const text = yield* Effect.try({
+      try: () => readFileSync(nodePath.join(top, checked), "utf8"),
+      catch: () =>
+        new PoseidonRpcError({ code: "not-found", message: `${checked} is not on disk` }),
+    });
+    const end = Math.min(
+      range.endLine ?? Number.POSITIVE_INFINITY,
+      start + GIT_BLAME_MAX_LINES - 1,
+      lineCountOf(text),
+    );
+    if (end < start) return { path: checked, untracked: false, entries: [] };
+    const result = yield* run(top, [
+      "blame",
+      "--porcelain",
+      "-L",
+      `${start},${end}`,
+      "--",
+      checked,
+    ]);
+    return { path: checked, untracked: false, entries: parsePorcelainBlame(result.stdout) };
   });

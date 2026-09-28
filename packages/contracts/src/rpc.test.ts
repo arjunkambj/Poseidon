@@ -239,7 +239,7 @@ describe("git.diff", () => {
   });
 });
 
-describe("git.discard", () => {
+describe("git.discard and git.blame", () => {
   const projectId = "0190aaaa-0000-7000-8000-000000000001";
 
   it("discards named paths, or everything when none are named, never an empty list", () => {
@@ -251,5 +251,16 @@ describe("git.discard", () => {
     expect(decode({ projectId, paths: ["a.txt"], mergeBase: "main" })._tag).toBe("Success");
     expect(decode({ projectId, paths: [] })._tag).toBe("Failure");
     expect(decode({ projectId, paths: [""] })._tag).toBe("Failure");
+  });
+
+  it("blames one path, over positive whole line numbers", () => {
+    const rpc = PoseidonRpcGroup.requests.get(RPC_METHODS.gitBlame);
+    expect(rpc).toBeDefined();
+    const decode = Schema.decodeUnknownExit(rpc!.payloadSchema);
+    expect(decode({ projectId, path: "a.txt" })._tag).toBe("Success");
+    expect(decode({ projectId, path: "a.txt", startLine: 1, endLine: 9 })._tag).toBe("Success");
+    expect(decode({ projectId, path: "" })._tag).toBe("Failure");
+    expect(decode({ projectId, path: "a.txt", startLine: 0 })._tag).toBe("Failure");
+    expect(decode({ projectId, path: "a.txt", endLine: 1.5 })._tag).toBe("Failure");
   });
 });

@@ -40,6 +40,7 @@ import type {
   ThreadWorktree,
   WorktreeSetupFrame,
 } from "@poseidon/contracts/git";
+import type { GitBlame } from "@poseidon/contracts/git-review";
 import type { DetectedEditor, EditorId } from "@poseidon/contracts/editors";
 import type { CheckpointSummary } from "@poseidon/contracts/orchestration";
 import type { MessageSearchHit } from "@poseidon/contracts/search";
@@ -198,6 +199,15 @@ export class GitService extends Context.Service<
         readonly mergeBase?: string | undefined;
       },
     ) => Effect.Effect<void, PoseidonRpcError>;
+    /** `git blame` of the working file at a top-relative `path`, optionally a line range. */
+    readonly blame: (
+      scope: WorkspaceScope,
+      options: {
+        readonly path: string;
+        readonly startLine?: number | undefined;
+        readonly endLine?: number | undefined;
+      },
+    ) => Effect.Effect<GitBlame, PoseidonRpcError>;
     readonly branches: (scope: WorkspaceScope) => Effect.Effect<GitBranchList, PoseidonRpcError>;
     /** Cuts an untracked branch, and switches to it when `checkout` is set. */
     readonly createBranch: (
@@ -269,6 +279,7 @@ export class GitService extends Context.Service<
         Effect.succeed({ from: options.from ?? null, to: options.to ?? null, files: [] }),
       checkpoints: () => Effect.succeed([]),
       discard: () => Effect.fail(gitUnavailable),
+      blame: () => Effect.fail(gitUnavailable),
       branches: () => Effect.fail(gitUnavailable),
       createBranch: () => Effect.fail(gitUnavailable),
       checkout: () => Effect.fail(gitUnavailable),

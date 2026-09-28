@@ -1,10 +1,10 @@
 /**
  * The real `GitService` behind the `git.status`/`git.diff`/`checkpoints.list`,
- * discard, branch, commit, push, pull-request and worktree RPCs:
+ * discard, blame, branch, commit, push, pull-request and worktree RPCs:
  * argv-form git over `process.ts`, porcelain-v2 parsing for status, and
  * unified patches split per file for the changes pane. Branch listing,
  * creation and switching live in `Branches.ts`, commit and push in
- * `Commits.ts`, discard in `Review.ts`, pull requests in
+ * `Commits.ts`, discard and blame in `Review.ts`, pull requests in
  * `GitHubCli.ts`, worktrees in `Worktrees.ts` and the setup script in
  * `SetupScript.ts`; this layer resolves the root, reads the settings those
  * need, and adds the guards that need the read models — no switch or commit
@@ -47,7 +47,7 @@ import { make as checkpointStore } from "./CheckpointStore";
 import { commit, push } from "./Commits";
 import { createPullRequest, GhRunner, pullRequestBlocker } from "./GitHubCli";
 import { GitError, isRepository, run } from "./process";
-import { discard, discardBase, repositoryTop } from "./Review";
+import { blame, discard, discardBase, repositoryTop } from "./Review";
 import { runSetupScript, setupsStopped } from "./SetupScript";
 import {
   createWorktree,
@@ -482,6 +482,12 @@ export const layer = Layer.effect(
           }
           const top = yield* repositoryTop(root);
           yield* discard(top, yield* discardBase(top, options), options.paths);
+        }).pipe(Effect.mapError(asRpcError)),
+
+      blame: (scope, options) =>
+        Effect.gen(function* () {
+          const root = yield* repositoryRoot(scope);
+          return yield* blame(yield* repositoryTop(root), options.path, options);
         }).pipe(Effect.mapError(asRpcError)),
 
       branches: (scope) =>

@@ -39,6 +39,7 @@ import { GitService, SettingsStore } from "../rpc/services";
 import { make as checkpointStore } from "./CheckpointStore";
 import { layer as gitLayer } from "./Git";
 import { GhRunner } from "./GitHubCli";
+import { parsePorcelainBlame } from "./Review";
 import { WorktreesRoot } from "./Worktrees";
 
 const git = (cwd: string, ...args: Array<string>) =>
@@ -371,4 +372,152 @@ describe("git.discard", () => {
       }),
     ),
   );
+});
+
+// ── Blame ──────────────────────────────────────────────────────
+
+describe("git.blame", () => {
+  it.live("names the commit of committed lines and marks edited ones uncommitted", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        write(root, "a.txt", "one\nTWO\nthree\n");
+        const { projectId, git: service } = yield* stack(root);
+        const sha = git(root, "rev-parse", "HEAD").trim();
+
+        const answer = yield* service.blame({ projectId }, { path: "a.txt" });
+        expect(answer.untracked).toBe(false);
+        expect(
+          answer.entries.map(({ sha, author, summary, uncommitted, startLine, lineCount }) => ({
+            sha,
+            author,
+            summary,
+            uncommitted,
+            startLine,
+            lineCount,
+          })),
+        ).toEqual([
+          {
+            sha,
+            author: "Poseidon Test",
+            summary: "init",
+            uncommitted: false,
+            startLine: 1,
+            lineCount: 1,
+          },
+          {
+            sha: "0".repeat(40),
+            author: "Not committed yet",
+            summary: "",
+            uncommitted: true,
+            startLine: 2,
+            lineCount: 1,
+          },
+          {
+            sha,
+            author: "Poseidon Test",
+            summary: "init",
+            uncommitted: false,
+            startLine: 3,
+            lineCount: 1,
+          },
+        ]);
+        expect(Number.isNaN(Date.parse(answer.entries[0]!.time))).toBe(false);
+      }),
+    ),
+  );
+
+  it.live("blames only the asked range, cut to the end of the file", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        const { projectId, git: service } = yield* stack(root);
+
+        const answer = yield* service.blame(
+          { projectId },
+          { path: "a.txt", startLine: 2, endLine: 99 },
+        );
+        expect(answer.entries.map((entry) => [entry.startLine, entry.lineCount])).toEqual([[2, 2]]);
+        const past = yield* service.blame({ projectId }, { path: "a.txt", startLine: 10 });
+        expect(past.entries).toEqual([]);
+        const backwards = yield* service
+          .blame({ projectId }, { path: "a.txt", startLine: 3, endLine: 2 })
+          .pipe(Effect.flip);
+        expect(backwards.code).toBe("invalid");
+      }),
+    ),
+  );
+
+  it.live("answers untracked for a file with no history, and refuses an escaping path", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        write(root, "new.txt", "fresh\n");
+        const { projectId, git: service } = yield* stack(root);
+
+        expect(yield* service.blame({ projectId }, { path: "new.txt" })).toEqual({
+          path: "new.txt",
+          untracked: true,
+          entries: [],
+        });
+        const escape = yield* service.blame({ projectId }, { path: "../a.txt" }).pipe(Effect.flip);
+        expect(escape.code).toBe("invalid");
+      }),
+    ),
+  );
+});
+
+describe("parsePorcelainBlame", () => {
+  it("folds consecutive lines of one commit and splits interleaved ones", () => {
+    const a = "a".repeat(40);
+    const b = "b".repeat(40);
+    const porcelain = [
+      `${a} 1 1 2`,
+      "author Ada",
+      "author-time 1700000000",
+      "summary First",
+      "filename x",
+      "\tline one",
+      `${a} 2 2`,
+      "\tline two",
+      `${b} 1 3 1`,
+      "author Bea",
+      "author-time 1700000100",
+      "summary Second",
+      "filename x",
+      "\tline three",
+      `${a} 3 4 1`,
+      "\tline four",
+      "",
+    ].join("\n");
+    expect(parsePorcelainBlame(porcelain)).toEqual([
+      {
+        sha: a,
+        author: "Ada",
+        time: "2023-11-14T22:13:20.000Z",
+        summary: "First",
+        uncommitted: false,
+        startLine: 1,
+        lineCount: 2,
+      },
+      {
+        sha: b,
+        author: "Bea",
+        time: "2023-11-14T22:15:00.000Z",
+        summary: "Second",
+        uncommitted: false,
+        startLine: 3,
+        lineCount: 1,
+      },
+      {
+        sha: a,
+        author: "Ada",
+        time: "2023-11-14T22:13:20.000Z",
+        summary: "First",
+        uncommitted: false,
+        startLine: 4,
+        lineCount: 1,
+      },
+    ]);
+  });
 });
