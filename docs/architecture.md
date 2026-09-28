@@ -867,7 +867,7 @@ enabled one.
 ### packages/contracts
 
 Every wire shape, as `effect/Schema` codecs. Modules: `base`, `ids`, `enums`,
-`runtime`, `orchestration`, `decisions`, `git`, `editors`, `search`, `scripts`, `settings`,
+`runtime`, `orchestration`, `decisions`, `git`, `editors`, `search`, `generation`, `scripts`, `settings`,
 `keybindings`, `connectors`, `terminal`, `rpc`. `keybindings` holds the shipped keymap, the
 chords reserved for features still being built, and how the user's stored
 overrides layer on the keymap, since both server and renderer need it.
@@ -881,6 +881,14 @@ group. `editors` does the same for `editors.list` and `editors.open`, with
 with `MessageSearchHit` and its `MESSAGE_SEARCH_LIMIT` of 50, and `scripts`
 for `scripts.detect`, with `DetectedScript`, `PackageManager` and
 `ProjectScript`, the saved script `settings` holds per project.
+`generation` holds the generated-text settings `settings` embeds
+(`GenerationSettings`: `writingModel`, a `{ connectorInstanceId, model }` pair
+or null for Same as the thread, `writingEffort` `low`/`medium`/`high` and
+`autoTitle`, each defaulted on decode; `WritingStyle`, `CommitDraftMode` and
+the `CUSTOM_INSTRUCTIONS_MAX` of 20 000 characters the git settings use) and
+the shapes of `git.generateCommitMessage`, `git.generatePullRequest` and
+`thread.regenerateTitle` with their `GENERATION_RPC_METHODS`. Those three are
+not in `RPC_METHODS` or the group yet: the server has no handlers for them.
 `PoseidonRpcError` lives in `rpcError.ts` so `git`, `editors`, `search` and
 `scripts` can name it without an import cycle, and `rpc` re-exports it.
 `browser.ts` holds the browser pane's
@@ -921,6 +929,17 @@ a flipped switch is stored, like `plugins`, so a default a connector changes
 later still applies. It is defaulted on decode, so older rows read as nothing
 switched. The rules that read it — every harness on, every model on unless
 hidden, the current pick always kept — are `apps/web/src/lib/model-visibility.ts`.
+
+The settings document also holds the generated-text options. `git` gains
+`writingStyle` (`repository`, `conventional`, `custom`), `customInstructions`
+(capped at `CUSTOM_INSTRUCTIONS_MAX`), `followPrTemplate`,
+`draftCommitMessages` (`template` or `generate`) and `worktreeFromOrigin`;
+stored `git` rows hold only `branchPrefix`, so each is defaulted on decode, and
+because a patch's `git` replaces the whole struct a client always spreads the
+current one. `defaults.workspace` (`local` or `worktree`) is optional and
+absent means Local. `generation` (`GenerationSettings`) and
+`confirmThreadDelete` (default true) are defaulted on decode. Nothing reads
+these yet beyond the settings RPCs.
 
 Public seam: its `exports` map. May import `shared` only.
 

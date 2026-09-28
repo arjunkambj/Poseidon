@@ -56,6 +56,10 @@
       "types": "./src/git.ts",
       "import": "./src/git.ts"
     },
+    "./generation": {
+      "types": "./src/generation.ts",
+      "import": "./src/generation.ts"
+    },
     "./search": {
       "types": "./src/search.ts",
       "import": "./src/search.ts"

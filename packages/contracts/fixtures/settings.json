@@ -14,7 +14,8 @@
   "defaults": {
     "model": "stealth/ox-alpha",
     "effort": "medium",
-    "runtimeMode": "approval-required"
+    "runtimeMode": "approval-required",
+    "workspace": "worktree"
   },
   "theme": "system",
   "mainFontSize": 14,
@@ -52,7 +53,12 @@
     }
   ],
   "git": {
-    "branchPrefix": "poseidon/"
+    "branchPrefix": "poseidon/",
+    "writingStyle": "custom",
+    "customInstructions": "Keep subjects short.",
+    "followPrTemplate": false,
+    "draftCommitMessages": "generate",
+    "worktreeFromOrigin": true
   },
   "projectSettings": {
     "0199c0de-0001-7000-8000-000000000001": {
@@ -73,5 +79,14 @@
   "modelPicker": {
     "harnesses": { "0199c0de-0002-7000-8000-000000000002": false },
     "models": { "0199c0de-0003-7000-8000-000000000001": { "model-hidden-by-default": true } }
-  }
+  },
+  "generation": {
+    "writingModel": {
+      "connectorInstanceId": "0199c0de-0003-7000-8000-000000000001",
+      "model": "stealth/ox-alpha"
+    },
+    "writingEffort": "low",
+    "autoTitle": true
+  },
+  "confirmThreadDelete": false
 }

@@ -16,6 +16,7 @@ import {
 import { LEGACY_DEFAULT_KEYBINDINGS } from "@poseidon/contracts/keybindings";
 import {
   DEFAULT_BRANCH_PREFIX,
+  DEFAULT_GIT_SETTINGS,
   defaultSettings,
   type Keybinding,
 } from "@poseidon/contracts/settings";
@@ -139,7 +140,8 @@ describe("SettingsStore", () => {
         const { store, sql } = yield* fixture(JSON.stringify({ ...older, theme: "dark" }));
         const settings = yield* store.get;
         expect(settings.theme).toBe("dark");
-        expect(settings.git).toEqual({ branchPrefix: DEFAULT_BRANCH_PREFIX });
+        expect(settings.git).toEqual(DEFAULT_GIT_SETTINGS);
+        expect(settings.git.branchPrefix).toBe(DEFAULT_BRANCH_PREFIX);
         expect(settings.projectSettings).toEqual({});
         expect(yield* rowJson(sql, "settings.unreadable")).toBeNull();
       }),

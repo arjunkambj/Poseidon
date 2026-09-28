@@ -14,6 +14,13 @@ import * as SchemaAST from "effect/SchemaAST";
 
 import { IsoDateTime, NonEmptyString } from "./base";
 import { DEFAULT_RUNTIME_MODE, Effort, RuntimeMode } from "./enums";
+import {
+  CommitDraftMode,
+  CUSTOM_INSTRUCTIONS_MAX,
+  DEFAULT_GENERATION_SETTINGS,
+  GenerationSettings,
+  WritingStyle,
+} from "./generation";
 import { ConnectorInstanceId, ConnectorKind, ProjectId, ThreadId } from "./ids";
 import { ProjectScript } from "./scripts";
 
@@ -197,9 +204,18 @@ const KeybindingsFormat = Schema.Literal("overrides");
 export const DEFAULT_BRANCH_PREFIX = "poseidon/";
 
 /**
- * How Poseidon names the branches it cuts. A new worktree's branch is
- * `branchPrefix` followed by a slug of the thread's first message; the prefix
- * may hold `/` (`poseidon/`, `me/`) or be empty.
+ * How Poseidon names the branches it cuts and writes commit and PR text. A new
+ * worktree's branch is `branchPrefix` followed by a slug of the thread's first
+ * message; the prefix may hold `/` (`poseidon/`, `me/`) or be empty.
+ *
+ * The writing fields are the Git & worktrees page's "Commit and PR text":
+ * `writingStyle` picks where the style comes from, and `customInstructions`
+ * is read only when it is `custom` (empty behaves like `repository`).
+ * `draftCommitMessages` says whether the commit dialog opens on the template
+ * or generates at once. `worktreeFromOrigin` cuts a new worktree from the
+ * remote base branch, falling back to the local one. Stored rows written
+ * before these fields existed hold only `branchPrefix`, so each is defaulted
+ * on decode.
  */
 export const GitSettings = Schema.Struct({
   branchPrefix: Schema.String.pipe(
@@ -210,8 +226,53 @@ export const GitSettings = Schema.Struct({
       placeholder: DEFAULT_BRANCH_PREFIX,
     }),
   ),
+  writingStyle: WritingStyle.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed<WritingStyle>("repository")),
+    settingsForm({
+      label: "Writing style",
+      description: "Where generated commit and PR text takes its style from.",
+      control: "select",
+    }),
+  ),
+  customInstructions: Schema.String.check(Schema.isMaxLength(CUSTOM_INSTRUCTIONS_MAX)).pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed("")),
+    settingsForm({ label: "Custom instructions", control: "hidden" }),
+  ),
+  followPrTemplate: Schema.Boolean.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed(true)),
+    settingsForm({
+      label: "Follow the repository's PR template",
+      description: "Write pull-request text in the shape of the repository's template.",
+      control: "toggle",
+    }),
+  ),
+  draftCommitMessages: CommitDraftMode.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed<CommitDraftMode>("template")),
+    settingsForm({
+      label: "Draft commit messages",
+      description: "What the commit dialog's message starts as.",
+      control: "select",
+    }),
+  ),
+  worktreeFromOrigin: Schema.Boolean.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed(true)),
+    settingsForm({
+      label: "Start new worktrees from origin",
+      description: "Cut new worktrees from the remote base branch when it can be fetched.",
+      control: "toggle",
+    }),
+  ),
 });
 export type GitSettings = typeof GitSettings.Type;
+
+export const DEFAULT_GIT_SETTINGS: GitSettings = {
+  branchPrefix: DEFAULT_BRANCH_PREFIX,
+  writingStyle: "repository",
+  customInstructions: "",
+  followPrTemplate: true,
+  draftCommitMessages: "template",
+  worktreeFromOrigin: true,
+};
 
 /**
  * One project's own settings. `setupScript` runs with `/bin/sh` in every new
@@ -263,7 +324,8 @@ export const DEFAULT_CHAT_WIDTH: ChatWidth = "comfortable";
 /**
  * What a new thread starts with. `model` is null until a connector has been
  * probed and reported its models — writing a guessed model id here would make
- * the first turn fail in a way the user cannot read.
+ * the first turn fail in a way the user cannot read. `workspace` is where a
+ * new task starts, Local when absent; the per-thread picker still overrides it.
  */
 export const SettingsDefaults = Schema.Struct({
   model: Schema.NullOr(NonEmptyString).pipe(
@@ -284,6 +346,13 @@ export const SettingsDefaults = Schema.Struct({
     settingsForm({
       label: "Default runtime mode",
       description: "How much a new thread may do before asking.",
+      control: "select",
+    }),
+  ),
+  workspace: Schema.optional(Schema.Literals(["local", "worktree"])).pipe(
+    settingsForm({
+      label: "Default workspace",
+      description: "Where a new task starts: the project folder, or a new worktree.",
       control: "select",
     }),
   ),
@@ -430,7 +499,7 @@ export const Settings = Schema.Struct({
   // Defaulted on decode like the font sizes: rows written before these fields
   // existed must still decode, not fall back to the whole default document.
   git: GitSettings.pipe(
-    Schema.withDecodingDefaultKey(Effect.succeed({ branchPrefix: DEFAULT_BRANCH_PREFIX })),
+    Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_GIT_SETTINGS)),
     settingsForm({ label: "Git", control: "hidden" }),
   ),
   /** Keyed by project id. A project with nothing configured has no entry. */
@@ -482,6 +551,18 @@ export const Settings = Schema.Struct({
     Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_MODEL_PICKER_SETTINGS)),
     settingsForm({ label: "Model picker", control: "hidden" }),
   ),
+  // The Models page's "Generated text" section. Defaulted on decode like
+  // `browser`, and each of its fields is too.
+  generation: GenerationSettings.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_GENERATION_SETTINGS)),
+    settingsForm({ label: "Generated text", control: "hidden" }),
+  ),
+  // Whether deleting a thread asks first. Defaulted on decode like `browser`:
+  // older rows keep the confirmation.
+  confirmThreadDelete: Schema.Boolean.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed(true)),
+    settingsForm({ label: "Confirm before deleting a thread", control: "hidden" }),
+  ),
 });
 export type Settings = typeof Settings.Type;
 
@@ -504,6 +585,8 @@ export const SettingsPatch = Schema.Struct({
   plugins: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
   autoDoneAfterDays: Schema.optional(Schema.NullOr(AutoDoneAfterDays)),
   modelPicker: Schema.optional(ModelPickerSettings),
+  generation: Schema.optional(GenerationSettings),
+  confirmThreadDelete: Schema.optional(Schema.Boolean),
 });
 export type SettingsPatch = typeof SettingsPatch.Type;
 
@@ -522,11 +605,13 @@ export const defaultSettings = (): Settings => ({
   keybindings: [],
   keybindingsFormat: "overrides",
   permissions: [],
-  git: { branchPrefix: DEFAULT_BRANCH_PREFIX },
+  git: DEFAULT_GIT_SETTINGS,
   projectSettings: {},
   browser: DEFAULT_BROWSER_SETTINGS,
   diffView: DEFAULT_DIFF_VIEW_SETTINGS,
   notifications: DEFAULT_NOTIFICATION_SETTINGS,
   plugins: {},
   modelPicker: DEFAULT_MODEL_PICKER_SETTINGS,
+  generation: DEFAULT_GENERATION_SETTINGS,
+  confirmThreadDelete: true,
 });

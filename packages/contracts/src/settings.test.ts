@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import { DEFAULT_RUNTIME_MODE } from "./enums";
+import { CUSTOM_INSTRUCTIONS_MAX, DEFAULT_GENERATION_SETTINGS } from "./generation";
 import {
   BrowserSettings,
   ConnectorInstanceConfig,
@@ -10,6 +11,7 @@ import {
   DEFAULT_CHAT_WIDTH,
   DEFAULT_DIFF_VIEW_SETTINGS,
   DEFAULT_FONT_SIZE,
+  DEFAULT_GIT_SETTINGS,
   DEFAULT_MODEL_PICKER_SETTINGS,
   DEFAULT_NOTIFICATION_SETTINGS,
   MAX_FONT_SIZE,
@@ -122,9 +124,11 @@ describe("settingsForm annotations", () => {
       expect(Object.keys(encoded as object).sort()).toEqual([
         "browser",
         "chatWidth",
+        "confirmThreadDelete",
         "connectors",
         "defaults",
         "diffView",
+        "generation",
         "git",
         "keybindings",
         "keybindingsFormat",
@@ -225,7 +229,8 @@ describe("git settings", () => {
           ...older
         } = Schema.encodeUnknownSync(Settings)(defaultSettings()) as Record<string, unknown>;
         const decoded = yield* Schema.decodeUnknownEffect(Settings)(older);
-        expect(decoded.git).toEqual({ branchPrefix: DEFAULT_BRANCH_PREFIX });
+        expect(decoded.git).toEqual(DEFAULT_GIT_SETTINGS);
+        expect(decoded.git.branchPrefix).toBe(DEFAULT_BRANCH_PREFIX);
         expect(DEFAULT_BRANCH_PREFIX).toBe("poseidon/");
         expect(decoded.projectSettings).toEqual({});
       }),
@@ -235,7 +240,7 @@ describe("git settings", () => {
     Effect.gen(function* () {
       const settings = {
         ...defaultSettings(),
-        git: { branchPrefix: "" },
+        git: { ...DEFAULT_GIT_SETTINGS, branchPrefix: "" },
         projectSettings: { "0199c0de-0001-7000-8000-000000000001": { setupScript: "pnpm i" } },
       };
       const encoded = Schema.encodeUnknownSync(Settings)(settings);
@@ -597,6 +602,141 @@ describe("auto-done", () => {
         );
         expect(exit._tag, String(days)).toBe("Failure");
       }
+    }),
+  );
+});
+
+describe("generated text settings", () => {
+  it.effect("default every new key when a stored row holds only a branch prefix", () =>
+    Effect.gen(function* () {
+      const {
+        generation: _generation,
+        confirmThreadDelete: _confirm,
+        git: _git,
+        ...older
+      } = Schema.encodeUnknownSync(Settings)(defaultSettings()) as Record<string, unknown>;
+      const decoded = yield* Schema.decodeUnknownEffect(Settings)({
+        ...older,
+        git: { branchPrefix: "x/" },
+      });
+      expect(decoded.git).toEqual({
+        branchPrefix: "x/",
+        writingStyle: "repository",
+        customInstructions: "",
+        followPrTemplate: true,
+        draftCommitMessages: "template",
+        worktreeFromOrigin: true,
+      });
+      expect(decoded.generation).toEqual({
+        writingModel: null,
+        writingEffort: "low",
+        autoTitle: true,
+      });
+      expect(decoded.generation).toEqual(DEFAULT_GENERATION_SETTINGS);
+      expect(decoded.confirmThreadDelete).toBe(true);
+      expect(decoded.defaults.workspace).toBeUndefined();
+    }),
+  );
+
+  it.effect("default each generation field on its own", () =>
+    Effect.gen(function* () {
+      const base = Schema.encodeUnknownSync(Settings)(defaultSettings()) as object;
+      const decoded = yield* Schema.decodeUnknownEffect(Settings)({
+        ...base,
+        generation: { autoTitle: false },
+      });
+      expect(decoded.generation).toEqual({ ...DEFAULT_GENERATION_SETTINGS, autoTitle: false });
+    }),
+  );
+
+  it.effect("are on a fresh install, and round-trip", () =>
+    Effect.gen(function* () {
+      const settings = {
+        ...defaultSettings(),
+        defaults: { ...defaultSettings().defaults, workspace: "worktree" as const },
+        git: {
+          ...DEFAULT_GIT_SETTINGS,
+          writingStyle: "custom" as const,
+          customInstructions: "Be terse.",
+        },
+        generation: {
+          writingModel: {
+            connectorInstanceId: "0199c0de-0001-7000-8000-000000000001",
+            model: "acme/fast",
+          },
+          writingEffort: "high" as const,
+          autoTitle: false,
+        },
+        confirmThreadDelete: false,
+      };
+      const decoded = yield* Schema.decodeUnknownEffect(Settings)(
+        JSON.parse(JSON.stringify(Schema.encodeUnknownSync(Settings)(settings))),
+      );
+      expect(decoded).toEqual(settings);
+      expect(defaultSettings().generation).toEqual(DEFAULT_GENERATION_SETTINGS);
+      expect(defaultSettings().confirmThreadDelete).toBe(true);
+    }),
+  );
+
+  it.effect("apply through a patch", () =>
+    Effect.gen(function* () {
+      const base = Schema.encodeUnknownSync(Settings)(defaultSettings()) as object;
+      const patch = yield* Schema.decodeUnknownEffect(SettingsPatch)({
+        generation: { writingModel: null, writingEffort: "medium", autoTitle: true },
+        confirmThreadDelete: false,
+        defaults: { model: null, effort: "medium", runtimeMode: "full-access", workspace: "local" },
+      });
+      const applied = yield* Schema.decodeUnknownEffect(Settings)({ ...base, ...patch });
+      expect(applied.generation.writingEffort).toBe("medium");
+      expect(applied.confirmThreadDelete).toBe(false);
+      expect(applied.defaults.workspace).toBe("local");
+    }),
+  );
+
+  it.effect("refuse custom instructions over the cap, a bare model id and an unknown style", () =>
+    Effect.gen(function* () {
+      const tooLong = yield* Effect.exit(
+        Schema.decodeUnknownEffect(SettingsPatch)({
+          git: {
+            ...DEFAULT_GIT_SETTINGS,
+            customInstructions: "x".repeat(CUSTOM_INSTRUCTIONS_MAX + 1),
+          },
+        }),
+      );
+      expect(tooLong._tag).toBe("Failure");
+      const atCap = yield* Effect.exit(
+        Schema.decodeUnknownEffect(SettingsPatch)({
+          git: { ...DEFAULT_GIT_SETTINGS, customInstructions: "x".repeat(CUSTOM_INSTRUCTIONS_MAX) },
+        }),
+      );
+      expect(atCap._tag).toBe("Success");
+      const bareModel = yield* Effect.exit(
+        Schema.decodeUnknownEffect(SettingsPatch)({
+          generation: { ...DEFAULT_GENERATION_SETTINGS, writingModel: "acme/fast" },
+        }),
+      );
+      expect(bareModel._tag).toBe("Failure");
+      const style = yield* Effect.exit(
+        Schema.decodeUnknownEffect(SettingsPatch)({
+          git: { ...DEFAULT_GIT_SETTINGS, writingStyle: "haiku" },
+        }),
+      );
+      expect(style._tag).toBe("Failure");
+      const workspace = yield* Effect.exit(
+        Schema.decodeUnknownEffect(SettingsPatch)({
+          defaults: { ...defaultSettings().defaults, workspace: "cloud" },
+        }),
+      );
+      expect(workspace._tag).toBe("Failure");
+    }),
+  );
+
+  it.effect("keep the whole generation struct and the delete switch out of the generic form", () =>
+    Effect.gen(function* () {
+      const fields = yield* Effect.sync(() => settingsFormFields(Settings));
+      const hidden = fields.filter((field) => field.control === "hidden").map((field) => field.key);
+      expect(hidden).toContain("generation");
+      expect(hidden).toContain("confirmThreadDelete");
     }),
   );
 });

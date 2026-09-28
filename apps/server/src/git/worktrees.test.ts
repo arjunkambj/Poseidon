@@ -21,6 +21,7 @@ import {
 } from "@poseidon/contracts/ids";
 import type { ThreadWorktree, WorktreeSetupFrame } from "@poseidon/contracts/git";
 import type { OrchestrationEvent } from "@poseidon/contracts/orchestration";
+import { DEFAULT_GIT_SETTINGS } from "@poseidon/contracts/settings";
 import * as Context from "effect/Context";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -230,14 +231,14 @@ describe("git.worktree.create", () => {
         const { git: service, addProject, settings } = yield* stack;
         const projectId = yield* addProject(root);
 
-        yield* settings.update({ git: { branchPrefix: "me/" } });
+        yield* settings.update({ git: { ...DEFAULT_GIT_SETTINGS, branchPrefix: "me/" } });
         const mine = yield* service.createWorktree(projectId, { name: "tidy up" });
         expect(mine.branch).toBe("me/tidy-up");
         // The directory is named for the slug alone, whatever the prefix.
         expect(nodePath.basename(mine.path)).toBe("tidy-up");
 
         for (const branchPrefix of ["bad..prefix/", "-x/", "has space/"]) {
-          yield* settings.update({ git: { branchPrefix } });
+          yield* settings.update({ git: { ...DEFAULT_GIT_SETTINGS, branchPrefix } });
           const error = yield* errorOf(service.createWorktree(projectId, { name: "tidy up" }));
           expect(error.code).toBe("invalid");
           expect(error.message).toContain("branch prefix");
