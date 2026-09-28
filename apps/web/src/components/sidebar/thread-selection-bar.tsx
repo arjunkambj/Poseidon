@@ -22,13 +22,13 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@poseidon/ui/components/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
+import { DialogActions } from "@/components/dialog-actions";
 import { worktreeRemovers } from "@/components/sidebar/delete-thread";
 import { THREAD_DELETE_DESCRIPTION } from "@/components/sidebar/thread-actions";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
@@ -106,7 +106,7 @@ function DeleteThreadsDialog({
             </span>
           </label>
         )}
-        <DialogFooter>
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -119,7 +119,7 @@ function DeleteThreadsDialog({
           >
             Delete {threadCount(threads.length)}
           </Button>
-        </DialogFooter>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   );

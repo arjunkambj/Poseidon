@@ -12,7 +12,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@poseidon/ui/components/dialog";
@@ -30,6 +29,8 @@ import * as Exit from "effect/Exit";
 import * as React from "react";
 
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
+import { DialogActions } from "@/components/dialog-actions";
+import { DialogBody } from "@/components/dialog-body";
 
 import { CommitInput, KeyValueInput, SettingsRow } from "@/components/Settings/schema-form";
 import { MCP_SCOPE_OPTIONS, selectedOptionLabel } from "@/components/Settings/select-label";
@@ -159,7 +160,7 @@ export function McpServerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col">
+        <DialogBody className="flex flex-col divide-y">
           <SettingsRow field={{ label: "Name", control: "text" }}>
             <CommitInput
               value={draft.name}
@@ -265,18 +266,18 @@ export function McpServerDialog({
               />
             </div>
           </SettingsRow>
-        </div>
+        </DialogBody>
 
         {error === null ? null : <p className="text-xs text-removed">{error}</p>}
 
-        <DialogFooter>
+        <DialogActions>
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
           <Button onClick={() => void save()} disabled={saving}>
             {saving ? "Saving…" : "Save"}
           </Button>
-        </DialogFooter>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   );

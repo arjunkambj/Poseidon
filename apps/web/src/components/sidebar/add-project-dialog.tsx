@@ -27,6 +27,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@poseidon/ui/compo
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 import { makeCommandId, makeProjectId } from "@poseidon/contracts/ids";
 
+import { DialogActions } from "@/components/dialog-actions";
 import { FolderPickerDialog } from "@/components/folder-picker/folder-picker-dialog";
 import { hasNativePicker, pickDirectory } from "@/lib/desktop";
 import { isAccepted, rejectionMessage } from "@/lib/dispatch-outcome";
@@ -240,14 +241,14 @@ export function AddProjectDialog({
               )}
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <DialogActions>
               <DialogClose render={<Button type="button" variant="ghost" tone="muted" />}>
                 Cancel
               </DialogClose>
               <Button type="submit" disabled={!canSubmit}>
                 Create project
               </Button>
-            </div>
+            </DialogActions>
           </form>
         </DialogContent>
       </Dialog>

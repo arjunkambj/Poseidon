@@ -15,13 +15,15 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@poseidon/ui/components/dialog";
 import { Input } from "@poseidon/ui/components/input";
 import { Label } from "@poseidon/ui/components/label";
 import { Textarea } from "@poseidon/ui/components/textarea";
+
+import { DialogActions } from "@/components/dialog-actions";
+import { DialogBody } from "@/components/dialog-body";
 
 export function PullRequestDialog({
   open,
@@ -52,7 +54,7 @@ export function PullRequestDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create pull request</DialogTitle>
           <DialogDescription>
@@ -68,33 +70,35 @@ export function PullRequestDialog({
             submit();
           }}
         >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pull-request-title">Title</Label>
-            <Input
-              id="pull-request-title"
-              value={title}
-              autoFocus
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pull-request-body">Description</Label>
-            <Textarea
-              id="pull-request-body"
-              value={body}
-              rows={5}
-              className="max-h-48 overflow-y-auto"
-              onChange={(event) => setBody(event.target.value)}
-            />
-          </div>
-          <DialogFooter>
+          <DialogBody className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="pull-request-title">Title</Label>
+              <Input
+                id="pull-request-title"
+                value={title}
+                autoFocus
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="pull-request-body">Description</Label>
+              <Textarea
+                id="pull-request-body"
+                value={body}
+                rows={5}
+                className="max-h-48 overflow-y-auto"
+                onChange={(event) => setBody(event.target.value)}
+              />
+            </div>
+          </DialogBody>
+          <DialogActions>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={!canSubmit}>
               {actionLabel}
             </Button>
-          </DialogFooter>
+          </DialogActions>
         </form>
       </DialogContent>
     </Dialog>

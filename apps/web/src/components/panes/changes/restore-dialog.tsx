@@ -37,13 +37,13 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@poseidon/ui/components/dialog";
 import * as Exit from "effect/Exit";
 import * as React from "react";
 
+import { DialogActions } from "@/components/dialog-actions";
 import { useClientRuntime } from "@/lib/client-runtime";
 import { Undo } from "@honeyicons/react";
 
@@ -116,7 +116,7 @@ function RestoreBody({
           {problem}
         </p>
       )}
-      <DialogFooter>
+      <DialogActions>
         <Button
           type="button"
           variant="ghost"
@@ -132,7 +132,7 @@ function RestoreBody({
         >
           {pending ? "Restoring…" : "Restore"}
         </Button>
-      </DialogFooter>
+      </DialogActions>
     </>
   );
 }

@@ -16,12 +16,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@poseidon/ui/components/dialog";
 import type { PermissionRule } from "@poseidon/contracts/settings";
 
+import { DialogActions } from "@/components/dialog-actions";
 import { PatternEditor } from "@/components/approvals/pattern-editor";
 
 import { withPattern } from "./permission-rules";
@@ -96,14 +96,14 @@ export function EditRuleDialog({
           {edit !== null && !edit.ok && edit.reason === "duplicate" ? (
             <p className="text-xs text-destructive">Another rule here already uses this pattern.</p>
           ) : null}
-          <DialogFooter>
+          <DialogActions>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={!canSubmit}>
               Save
             </Button>
-          </DialogFooter>
+          </DialogActions>
         </form>
       </DialogContent>
     </Dialog>

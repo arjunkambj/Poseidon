@@ -24,6 +24,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@poseidon/ui/c
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@poseidon/ui/components/input-group";
 import { detectModKey } from "@poseidon/client-runtime/keybindings";
 
+import { DialogBody } from "@/components/dialog-body";
 import { cheatsheetSections, type CheatsheetRow } from "@/lib/cheatsheet";
 import { COMMAND_CATALOG } from "@/lib/command-catalog";
 import { Keycaps, useKeybindingCommand, useKeybindings } from "@/lib/shortcuts";
@@ -76,7 +77,7 @@ function ShortcutsSheet({ onClose }: { readonly onClose: () => void }) {
           aria-label="Search shortcuts"
         />
       </InputGroup>
-      <div className="-mx-4 max-h-96 overflow-y-auto px-4">
+      <DialogBody className="max-h-96">
         {sections.length === 0 ? (
           <Empty>
             <EmptyHeader>
@@ -96,7 +97,7 @@ function ShortcutsSheet({ onClose }: { readonly onClose: () => void }) {
             </section>
           ))
         )}
-      </div>
+      </DialogBody>
     </>
   );
 }

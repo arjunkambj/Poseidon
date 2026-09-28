@@ -41,7 +41,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@poseidon/ui/components/dialog";
@@ -60,6 +59,7 @@ import { Input } from "@poseidon/ui/components/input";
 import { Label } from "@poseidon/ui/components/label";
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
+import { DialogActions } from "@/components/dialog-actions";
 import { DeleteThreadDialog } from "@/components/sidebar/delete-thread-dialog";
 import {
   CONTEXT_PARTS,
@@ -139,14 +139,14 @@ export function RenameThreadDialog({
               }}
             />
           </div>
-          <DialogFooter>
+          <DialogActions>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={!canSubmit}>
               Rename
             </Button>
-          </DialogFooter>
+          </DialogActions>
         </form>
       </DialogContent>
     </Dialog>

@@ -29,7 +29,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@poseidon/ui/components/dialog";
@@ -39,6 +38,8 @@ import * as React from "react";
 import { AsyncResult } from "effect/unstable/reactivity";
 
 import { useConnectionState } from "@/state/hooks";
+import { DialogActions } from "@/components/dialog-actions";
+import { DialogBody } from "@/components/dialog-body";
 
 import { Breadcrumb, FolderList, FolderListMessage } from "./folder-list";
 import { useFsAtoms } from "./fs-atoms";
@@ -167,7 +168,7 @@ export function FolderPickerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3">
+        <DialogBody className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="folder-picker-path">Path</Label>
             <Input
@@ -249,9 +250,9 @@ export function FolderPickerDialog({
               </span>
             ) : null}
           </div>
-        </div>
+        </DialogBody>
 
-        <DialogFooter>
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -274,7 +275,7 @@ export function FolderPickerDialog({
           >
             {confirm.kind === "navigate" ? "Go to this folder" : "Use this folder"}
           </Button>
-        </DialogFooter>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   );

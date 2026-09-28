@@ -23,12 +23,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@poseidon/ui/components/dialog";
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
+import { DialogActions } from "@/components/dialog-actions";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { THREAD_DELETE_DESCRIPTION } from "@/components/sidebar/thread-actions";
 import { dequeueForceRemoval, worktreeRemovers } from "@/components/sidebar/delete-thread";
@@ -92,7 +92,7 @@ export function DeleteThreadDialog({
             </span>
           </label>
         )}
-        <DialogFooter>
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -107,7 +107,7 @@ export function DeleteThreadDialog({
           >
             Delete thread
           </Button>
-        </DialogFooter>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   );

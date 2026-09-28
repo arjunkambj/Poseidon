@@ -34,7 +34,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@poseidon/ui/components/dialog";
@@ -43,6 +42,8 @@ import { Textarea } from "@poseidon/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 import type { GitFileChange } from "@poseidon/contracts/rpc";
 
+import { DialogActions } from "@/components/dialog-actions";
+import { DialogBody } from "@/components/dialog-body";
 import { GIT_ACTIONS, type GitAction } from "@/lib/git-actions";
 
 import { CommitFileList } from "./commit-file-list";
@@ -110,7 +111,7 @@ export function CommitDialogView({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl"
+        className="sm:max-w-xl"
         initialFocus={primary}
         onKeyDown={(event) => {
           if (isSubmitChord(event, detectModKey())) {
@@ -125,24 +126,26 @@ export function CommitDialogView({
             {`Commits on ${branch ?? "a detached HEAD"}, with your own git identity and hooks.`}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <Label htmlFor="commit-message">Message</Label>
-          <Textarea
-            id="commit-message"
-            value={message}
-            rows={5}
-            spellCheck
-            className="max-h-48 overflow-y-auto"
-            onChange={(event) => onPickerChange(editMessage(picker, event.target.value))}
+        <DialogBody className="flex min-w-0 flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <Label htmlFor="commit-message">Message</Label>
+            <Textarea
+              id="commit-message"
+              value={message}
+              rows={5}
+              spellCheck
+              className="max-h-48 overflow-y-auto"
+              onChange={(event) => onPickerChange(editMessage(picker, event.target.value))}
+            />
+          </div>
+          <CommitFileList
+            files={files}
+            excluded={picker.excluded}
+            onToggle={(path, tick) => onPickerChange(togglePath(picker, path, tick))}
+            onToggleAll={(tick) => onPickerChange(toggleAll(picker, files, tick))}
           />
-        </div>
-        <CommitFileList
-          files={files}
-          excluded={picker.excluded}
-          onToggle={(path, tick) => onPickerChange(togglePath(picker, path, tick))}
-          onToggleAll={(tick) => onPickerChange(toggleAll(picker, files, tick))}
-        />
-        <DialogFooter>
+        </DialogBody>
+        <DialogActions>
           {GIT_ACTIONS.map((action) => {
             const reason = reasonFor(action);
             const button = (
@@ -167,7 +170,7 @@ export function CommitDialogView({
               </Tooltip>
             );
           })}
-        </DialogFooter>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   );
