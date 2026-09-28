@@ -1,15 +1,17 @@
 /**
  * The line over a comparison's files (`ReviewList`): how many files, how many
- * lines, how many the user has viewed, and the toggle that opens or closes
- * them all at once.
+ * lines, how many the user has viewed, the file tree's control and the toggle
+ * that opens or closes them all at once.
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
 import { Button } from "@poseidon/ui/components/button";
+import { Toggle } from "@poseidon/ui/components/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 
 import { LineCounts } from "./file-section";
-import { UnfoldLess, UnfoldMore } from "@honeyicons/react";
+import { SidebarLeft, UnfoldLess, UnfoldMore } from "@honeyicons/react";
+import type { ReactNode } from "react";
 
 /**
  * The line over the files: `3 files · +20 −4 · 1 viewed`, and the toggle that
@@ -20,11 +22,14 @@ export function ReviewSummary({
   viewed,
   allOpen,
   onAllOpenChange,
+  tree,
 }: {
   files: ReadonlyArray<GitDiffFile>;
   viewed: number;
   allOpen: boolean;
   onAllOpenChange: (open: boolean) => void;
+  /** The file tree's control: its toggle, or its dropdown in a narrow dock. */
+  tree?: ReactNode;
 }) {
   let additions = 0;
   let deletions = 0;
@@ -47,6 +52,7 @@ export function ReviewSummary({
       <span aria-hidden>·</span>
       <span className="shrink-0">{viewed} viewed</span>
       <div className="flex-1" />
+      {tree}
       <Tooltip>
         <TooltipTrigger
           render={
@@ -65,5 +71,34 @@ export function ReviewSummary({
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>
     </div>
+  );
+}
+
+/** Shows or hides the file tree beside the diffs. */
+export function TreeToggle({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const label = open ? "Hide file tree" : "Show file tree";
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Toggle
+            size="icon-sm"
+            className="size-6"
+            aria-label={label}
+            pressed={open}
+            onPressedChange={onOpenChange}
+          />
+        }
+      >
+        <SidebarLeft variant="bold" />
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
