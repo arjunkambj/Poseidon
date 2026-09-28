@@ -125,6 +125,41 @@ describe("ingestSession", () => {
     }),
   );
 
+  it.effect("keeps a task row's call when its lifecycle events update it", () =>
+    Effect.gen(function* () {
+      const taskId = makeItemId();
+      const tool = {
+        name: "Task",
+        input: { description: "Audit the router", prompt: "List every unmounted handler." },
+      };
+      const lifecycle = (type: "task.started" | "task.completed", status: string) =>
+        ({
+          ...envelope(taskId),
+          type,
+          payload: { taskId, title: "Audit the router", status },
+        }) as RuntimeEvent;
+      const appended = yield* ingest([
+        {
+          ...envelope(taskId),
+          type: "item.started",
+          payload: { item: { itemId: taskId, kind: "task", status: "in_progress", tool } },
+        } as RuntimeEvent,
+        lifecycle("task.started", "in_progress"),
+        lifecycle("task.completed", "completed"),
+      ]);
+      const last = appended.at(-1);
+      expect(last?.type).toBe("thread.item.upserted");
+      const payload = last?.payload as { readonly item?: unknown } | undefined;
+      expect(payload?.item).toEqual({
+        itemId: taskId,
+        kind: "task",
+        status: "completed",
+        text: "Audit the router",
+        tool,
+      });
+    }),
+  );
+
   it.effect("binds the session with the capabilities its harness announced", () =>
     Effect.gen(function* () {
       const capabilities: ConnectorCapabilities = {

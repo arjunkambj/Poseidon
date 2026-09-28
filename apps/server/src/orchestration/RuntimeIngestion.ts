@@ -217,8 +217,13 @@ const translateRuntimeEvent = (
     case "task.started":
     case "task.updated":
     case "task.completed": {
+      // A task's lifecycle events update the row the connector already opened
+      // for the Task/Agent call rather than replace it, so the call (its
+      // `tool` input with the subagent's prompt, and any output) survives.
+      const itemId = event.payload.taskId as ItemId;
       const item: ItemSnapshot = {
-        itemId: event.payload.taskId as ItemId,
+        ...ctx.state.items.get(itemId),
+        itemId,
         kind: "task",
         status: event.payload.status,
         text: event.payload.title,

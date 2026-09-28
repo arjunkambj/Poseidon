@@ -769,6 +769,9 @@ connector-neutral events into the log:
 whole `item.upserted` snapshots rather than a delta stream, and streamed text
 is coalesced on a 50 ms window on the way in. Without that, an answer of N
 delta frames wrote O(N²) bytes and rewrote the thread's whole document N times.
+`task.*` events update the row the Task/Agent call already opened (status,
+title, parent) rather than replace it, so the call's input — the subagent's
+prompt — and output stay on the row.
 
 ### Rows on screen
 
