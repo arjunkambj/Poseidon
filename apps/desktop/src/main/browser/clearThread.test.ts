@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { makeClearAll, makeClearStale, makeClearThread, threadsOnDisk } from "./clearThread";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+import {
+  homeOwnsPartitions,
+  makeClearAll,
+  makeClearStale,
+  makeClearThread,
+  threadsOnDisk,
+} from "./clearThread";
 
 const fakePartitions = (onDisk: ReadonlyArray<string>) => {
   const opened: Array<string> = [];
@@ -111,10 +120,11 @@ describe("makeClearStale", () => {
   const LIVE = "019a1b2c-3d4e-7f00-8a9b-0c1d2e3f4a5d";
   const GONE = "019a1b2c-3d4e-7f00-8a9b-0c1d2e3f4a5e";
 
-  const setup = () => {
+  const setup = (ownsPartitions = true) => {
     const cleared: Array<string> = [];
     const cut: Array<string> = [];
     const clearStale = makeClearStale({
+      ownsPartitions,
       listPartitions: () => [`thread-${LIVE}`, `thread-${GONE}`, "Default"],
       partitionExists: () => true,
       fromPartition: (partition) => ({
@@ -141,5 +151,32 @@ describe("makeClearStale", () => {
       await expect(clearStale(bad)).rejects.toThrow("not a thread list");
     }
     expect(cleared).toEqual([]);
+  });
+});
+
+describe("the stale sweep across homes", () => {
+  it("clears nothing from a home that does not own the shared partitions", async () => {
+    const cleared: Array<string> = [];
+    const clearStale = makeClearStale({
+      ownsPartitions: false,
+      listPartitions: () => ["thread-019a1b2c-3d4e-7f00-8a9b-0c1d2e3f4a5e"],
+      partitionExists: () => true,
+      fromPartition: (partition) => ({
+        clearStorageData: async () => {
+          cleared.push(partition);
+        },
+        clearCache: async () => undefined,
+      }),
+    });
+    await expect(clearStale(["019a1b2c-3d4e-7f00-8a9b-0c1d2e3f4a5d"])).resolves.toBe(0);
+    expect(cleared).toEqual([]);
+    await expect(clearStale([])).rejects.toThrow("not a thread list");
+  });
+
+  it("owns them only from the default home", () => {
+    expect(homeOwnsPartitions({})).toBe(true);
+    expect(homeOwnsPartitions({ POSEIDON_HOME: "  " })).toBe(true);
+    expect(homeOwnsPartitions({ POSEIDON_HOME: join(homedir(), ".poseidon") })).toBe(true);
+    expect(homeOwnsPartitions({ POSEIDON_HOME: "/tmp/poseidon-scratch" })).toBe(false);
   });
 });

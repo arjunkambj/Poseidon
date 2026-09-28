@@ -284,7 +284,8 @@ Owns the operating system. Nothing about orchestration lives here.
   settings page's "Clear browsing data": every `thread-<id>` directory under
   `Partitions`, cleared the same way. `poseidon:browser-clear-stale` takes the
   ids of every thread that still exists and clears each `thread-<id>`
-  directory not among them, refusing an empty list. `poseidon:browser-capture` answers a PNG
+  directory not among them, refusing an empty list and clearing nothing when
+  `POSEIDON_HOME` is not the default home (`homeOwnsPartitions`). `poseidon:browser-capture` answers a PNG
   of a pane tab by its guest's `webContents` id, for "screenshot to chat";
   both answer only a `window` sender, and capture only a registered pane guest.
   A key pressed inside a pane page goes to the guest and never reaches the
@@ -596,7 +597,10 @@ what a resnapshot looks like before its snapshot lands — and asks the shell to
 clear that thread's partition. Threads deleted while it was not watching (the
 app closed, another client, a quit inside the grace) are caught once per
 launch: after the connected list has been non-empty and unchanged for 10 s,
-the host hands its ids to `clearStale` (`use-partition-sweep.ts`). On quit the webviews go with the window. The
+the host hands its ids to `clearStale` (`use-partition-sweep.ts`). The shell
+sweeps only when it runs against the default home: every `POSEIDON_HOME`
+shares its partitions, and a scratch home's list would make every real
+thread look deleted. On quit the webviews go with the window. The
 web renderer has no preload bridge, so the host renders nothing there.
 
 **Closed by default.** Nothing opens the dock or the Browser pane, and

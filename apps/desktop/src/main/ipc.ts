@@ -32,7 +32,12 @@ import type { WebContents } from "electron";
 
 import type { ServerSupervisor } from "../backend/ServerSupervisor";
 
-import { makeClearAll, makeClearStale, makeClearThread } from "./browser/clearThread";
+import {
+  homeOwnsPartitions,
+  makeClearAll,
+  makeClearStale,
+  makeClearThread,
+} from "./browser/clearThread";
 import {
   CHORDS_CHANNEL,
   COMMAND_CHANNEL,
@@ -114,6 +119,7 @@ export function registerIpc(supervisor: ServerSupervisor, pane: PaneGuests) {
     ...partitionOptions,
     disconnect: pane.disconnect,
     listPartitions: () => (existsSync(partitions()) ? readdirSync(partitions()) : []),
+    ownsPartitions: homeOwnsPartitions(process.env),
   });
   ipcMain.handle(CLEAR_STALE_CHANNEL, async (event, live: unknown) => {
     if (event.sender.getType() !== "window") throw new Error("not a window");

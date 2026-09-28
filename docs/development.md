@@ -1002,7 +1002,10 @@ its own session data directory
 which `POSEIDON_HOME` does not move. Deleting a thread in the app clears its
 partition's storage and cache; a live check against a scratch
 `POSEIDON_HOME` still writes there, so remove the `thread-<id>` directories it
-created afterwards.
+created afterwards. The once-per-launch sweep of deleted threads' partitions
+runs only against the default home, because a scratch home's server would
+list none of the real threads; the next default-home launch clears what a
+scratch home left.
 
 A `desktop.json` left there by an older build is ignored: its one key,
 `browserPane`, opened Chromium's remote-debugging port, which the shell no

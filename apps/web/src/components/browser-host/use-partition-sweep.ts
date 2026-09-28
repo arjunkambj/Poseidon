@@ -2,7 +2,9 @@
  * Once per launch, clears the browsing data of threads deleted while this
  * window was not watching: with the app closed, from another client, or in
  * the grace before `useThreadTeardown` counted them gone. The shell compares
- * the partitions on disk with the ids handed over and clears the rest.
+ * the partitions on disk with the ids handed over and clears the rest, but
+ * only from the default home: a scratch `POSEIDON_HOME` shares the partitions
+ * and lists none of the real threads, so there the shell clears nothing.
  *
  * The list is handed over only once it has held still for a while and is not
  * empty, since an empty list is also what a resnapshot looks like before its

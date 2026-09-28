@@ -18,11 +18,15 @@
  * deleted while the app was closed, from another client, or during the grace
  * before the window counted it gone. Once per launch the window hands over
  * the ids of every thread that still exists, and each partition on disk whose
- * thread is not among them is cleared.
+ * thread is not among them is cleared. Partitions live in Electron's session
+ * data, which every `POSEIDON_HOME` shares, so only the default home sweeps:
+ * a scratch home's server lists its own threads, and every real thread would
+ * look deleted to it (`homeOwnsPartitions`).
  *
  * Electron-free: `../ipc.ts` passes in how to find and open the partition.
  */
 import { BRIDGE_THREAD_ID } from "@poseidon/shared/browserBridge";
+import { configDir } from "@poseidon/shared/paths";
 
 /** The parts of an Electron `Session` clearing needs. */
 export interface ClearableSession {
@@ -77,6 +81,14 @@ export const makeClearAll =
     return cleared;
   };
 
+/**
+ * Whether the home in `env` is the default one, whose server lists the
+ * threads the partitions on disk belong to. A scratch home's partitions sit
+ * beside the default home's, and the default home's sweep clears them.
+ */
+export const homeOwnsPartitions = (env: Readonly<Record<string, string | undefined>>): boolean =>
+  configDir(env) === configDir({});
+
 /** The most ids a stale sweep accepts; a real thread list is far shorter. */
 const MAX_LIVE_THREADS = 100_000;
 
@@ -84,10 +96,16 @@ const MAX_LIVE_THREADS = 100_000;
  * Resolves how many partitions of threads outside `live` were cleared. `live`
  * comes from the renderer, so anything but a non-empty list of strings is
  * refused: an empty list is what a list still loading looks like, and must
- * never read as "every thread was deleted".
+ * never read as "every thread was deleted". A home that does not own the
+ * partitions (`homeOwnsPartitions`) clears nothing.
  */
 export const makeClearStale =
-  (options: ClearThreadOptions & { readonly listPartitions: () => ReadonlyArray<string> }) =>
+  (
+    options: ClearThreadOptions & {
+      readonly listPartitions: () => ReadonlyArray<string>;
+      readonly ownsPartitions: boolean;
+    },
+  ) =>
   async (live: unknown): Promise<number> => {
     if (
       !Array.isArray(live) ||
@@ -97,6 +115,7 @@ export const makeClearStale =
     ) {
       throw new Error("not a thread list");
     }
+    if (!options.ownsPartitions) return 0;
     const keep = new Set<string>(live);
     const clear = makeClearThread(options);
     let cleared = 0;
