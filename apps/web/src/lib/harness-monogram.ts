@@ -1,6 +1,8 @@
 /**
- * The two letters a harness avatar shows. The repo ships no harness logos, so
- * every harness is drawn as a monogram of its instance's display name.
+ * The two letters a harness avatar shows when it has no logo to draw: the
+ * connector's `iconKey` names none (`harnessLogoFor`), or the descriptors that
+ * carry it have not loaded yet. The monogram is taken from the instance's
+ * display name.
  *
  * A name's natural monogram is the initials of its first two words ("Comet
  * Cloud" → "CC"), or for a one-word name its first two letters ("Corvid" →
