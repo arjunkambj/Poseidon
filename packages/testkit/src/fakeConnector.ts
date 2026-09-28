@@ -13,6 +13,11 @@
  * is recorded as a call and the running turn simply goes on, which is all the
  * SPI promises. The fake stands in for no harness's way of answering it.
  *
+ * With a scripted `generateText`, an instance also offers the one-shot
+ * `generateText` and declares `textGeneration`. It is the test's own function,
+ * called in process: there is no harness to record, so nothing here pretends
+ * to be one.
+ *
  * Two rules are enforced by the fake rather than by the script, because they
  * are the ones the engine depends on and a hand-written script would forget:
  * a turn always opens with `turn.started` and always closes with exactly one
@@ -28,7 +33,9 @@ import { settingsForm } from "@poseidon/contracts/settings";
 import type {
   ConnectorDefinition,
   ConnectorInstance,
+  ConnectorError,
   ConnectorProbe,
+  GenerateTextInput,
   TurnInput,
 } from "@poseidon/connector-sdk/definition";
 import { NotSteerable, SessionClosed, TurnInProgress } from "@poseidon/connector-sdk/definition";
@@ -485,6 +492,15 @@ export interface FakeConnectorOptions {
   readonly refuseSteering?: boolean;
   /** Handed to every instance as-is; tests supply in-memory ones. */
   readonly extensions?: ConnectorExtensions;
+  /**
+   * What every instance's `generateText` answers, given the instance it was
+   * called on. Present, it also turns `textGeneration` on unless
+   * `capabilities` says otherwise; absent, instances have no `generateText`.
+   */
+  readonly generateText?: (
+    input: GenerateTextInput,
+    instanceId: ConnectorInstanceId,
+  ) => Effect.Effect<string, ConnectorError>;
 }
 
 export interface FakeConnector {
@@ -503,7 +519,12 @@ export const makeFakeConnector = (
 ): Effect.Effect<FakeConnector> =>
   Effect.gen(function* () {
     const kind = options.kind ?? FAKE_CONNECTOR_KIND;
-    const capabilities = { ...DEFAULT_CAPABILITIES, ...options.capabilities };
+    const generateText = options.generateText;
+    const capabilities = {
+      ...DEFAULT_CAPABILITIES,
+      ...(generateText === undefined ? {} : { textGeneration: true }),
+      ...options.capabilities,
+    };
     const model = options.model ?? "fake/model";
     const script = options.script ?? defaultTurnScript;
     const models: ReadonlyArray<ModelOption> = options.models ?? [
@@ -566,6 +587,9 @@ export const makeFakeConnector = (
             startSession(instanceId, sessionInput.threadId, sessionInput.sessionRef),
           listModels: () => Effect.succeed(models),
           ...(options.extensions === undefined ? {} : { extensions: options.extensions }),
+          ...(generateText === undefined
+            ? {}
+            : { generateText: (input: GenerateTextInput) => generateText(input, instanceId) }),
         }),
     };
 

@@ -1233,7 +1233,9 @@ Test infrastructure, never shipped.
 - `packages/testkit/src/fakeConnector.ts` — a real `ConnectorDefinition` whose sessions replay a
   scripted event list, for everything above the connector layer. With `steering` on its sessions
   offer `steer`, recorded as a call like every other method, and `refuseSteering` makes each
-  one fail so a test can take the fallback to the queue.
+  one fail so a test can take the fallback to the queue. A scripted `generateText` gives every
+  instance a `generateText` that calls the test's own function in process, and turns
+  `textGeneration` on; the generated-text service's tests write through it.
 - `packages/testkit/src/receipts.ts` — await a command by its receipt instead of sleeping.
 - `packages/testkit/src/sqlite.ts` — a throwaway database on the same engine the server uses.
 - `packages/testkit/scripts/record-cmd.mjs` and `record-probe.mjs` — the
