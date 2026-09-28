@@ -459,8 +459,10 @@ Import selected runs the ticked rows down the page one at a time
 (`runImports`), each a `sessions.import` call: queued, importing, then
 imported or failed. A failed row keeps the server's message and a Retry, and
 the run goes on to the next row. Stop lets the row in flight finish and puts
-the queued ones back; leaving the page stops the run the same way. The import
-atom (`importSessionAtom` in `apps/web/src/lib/app-runtime.ts`) reloads
+the queued ones back; leaving the page, or ending first-run setup on its import
+step, stops the run the same way, with a toast counting the sessions it left
+out (`stop` answers how many it put back). The import atom
+(`importSessionAtom` in `apps/web/src/lib/app-runtime.ts`) reloads
 `projectsAtom` after every import, because projects have no subscription and
 an import into a new folder adds a project; the new threads arrive through the
 thread list subscription. The list itself reloads once a run or a Retry ends,

@@ -91,8 +91,11 @@ export type ImportOutcome =
   | { readonly ok: false; readonly message: string };
 
 export interface ImportRun {
-  /** Stop after the row being imported; queued rows go back to idle. */
-  readonly stop: () => void;
+  /**
+   * Stop after the row being imported; queued rows go back to idle. Answers
+   * how many that puts back: none once the run has ended or already stopped.
+   */
+  readonly stop: () => number;
   /** Settles once the last row has, or the run has stopped. */
   readonly done: Promise<void>;
 }
@@ -108,6 +111,8 @@ export const runImports = (
   onState: (key: string, state: RowState) => void,
 ): ImportRun => {
   let stopped = false;
+  let started = 0;
+  let ended = false;
   for (const key of keys) {
     onState(key, { status: "queued" });
   }
@@ -119,6 +124,7 @@ export const runImports = (
         }
         return;
       }
+      started = index + 1;
       onState(key, { status: "importing" });
       let outcome: ImportOutcome;
       try {
@@ -136,10 +142,14 @@ export const runImports = (
           : { status: "failed", message: outcome.message },
       );
     }
-  })();
+  })().finally(() => {
+    ended = true;
+  });
   return {
     stop: () => {
+      if (stopped || ended) return 0;
       stopped = true;
+      return keys.length - started;
     },
     done,
   };

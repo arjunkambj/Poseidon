@@ -5,8 +5,9 @@
  * The list loads when this mounts and is not read anywhere else, so opening
  * the page is what reads the harnesses' session files. A run keeps going
  * past a failed row, which keeps its message and a Retry; Stop lets the row
- * in flight finish and puts the queued ones back. Closing the page stops the
- * run the same way. Rows a thread already holds link to it; `onOpenThread`
+ * in flight finish and puts the queued ones back. Closing the page, or the
+ * setup dialog holding it, stops the run the same way, and a toast says how
+ * many sessions that left out, since nothing on screen is left to. Rows a thread already holds link to it; `onOpenThread`
  * runs as one is followed, for a dialog to close so the thread shows.
  */
 
@@ -14,6 +15,7 @@ import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
 import * as Exit from "effect/Exit";
 import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
+import { toast } from "sonner";
 
 import { Button } from "@poseidon/ui/components/button";
 
@@ -55,8 +57,18 @@ export function SessionImportPanel({
   const [running, setRunning] = React.useState(false);
   const runRef = React.useRef<ImportRun | null>(null);
 
-  // Leaving the page stops the run after the row in flight.
-  React.useEffect(() => () => runRef.current?.stop(), []);
+  // Leaving the page stops the run after the row in flight, and says so.
+  React.useEffect(
+    () => () => {
+      const left = runRef.current?.stop() ?? 0;
+      if (left > 0) {
+        toast(`Stopped importing: ${left} session${left === 1 ? " was" : "s were"} not imported`, {
+          description: "Settings → Import lists them.",
+        });
+      }
+    },
+    [],
+  );
 
   const entries = React.useMemo(
     () => (AsyncResult.isSuccess(listResult) ? listResult.value : []),

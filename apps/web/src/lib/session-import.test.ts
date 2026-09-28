@@ -160,9 +160,12 @@ describe("runImports", () => {
       onState,
     );
     await Promise.resolve();
-    run.stop();
+    // Two rows are still queued; stopping again, or after the end, puts back none.
+    expect(run.stop()).toBe(2);
+    expect(run.stop()).toBe(0);
     release();
     await run.done;
+    expect(run.stop()).toBe(0);
     expect(log).toEqual([
       "a:queued",
       "b:queued",
