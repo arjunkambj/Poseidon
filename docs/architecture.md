@@ -2388,6 +2388,15 @@ focus back to that element (or blur the view when nothing else had it). It
 refuses to run when the view is not in the window, so agent typing never
 lands in the composer.
 
+**Permissions** (`permissions.ts`). A session with no permission handler
+approves every request, so each `persist:thread-<id>` session gets
+deny-by-default request, check and device handlers when its first webview is
+admitted: a pane page may go fullscreen and write plain text to the
+clipboard, and nothing else. That denies `openExternal`, the permission a
+top-level navigation to an unknown scheme asks for before the OS launches its
+handler, along with clipboard reads, camera and microphone, location,
+notifications, local-network access and device APIs.
+
 **Tabs and popups** (`tabsChannel.ts`). A pane tab is the renderer's
 `<webview>`, and Electron answers `Target.createTarget` with "Not supported",
 so `createTarget`, `closeTarget`, `bringToFront` and popups become requests

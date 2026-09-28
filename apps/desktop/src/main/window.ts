@@ -5,13 +5,14 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { BrowserWindow, app, screen, shell } from "electron";
+import { BrowserWindow, app, screen, session, shell } from "electron";
 
 import { decideNavigation } from "./navigation";
 import { APP_URL } from "./protocol";
 import { titleBarStyle, trafficLightPosition } from "../platform";
 import { FULLSCREEN_CHANNEL } from "../platform/attributes";
 import { threadIdOfPartition, type GuestRegistry } from "./browser/guests";
+import { securePaneSession } from "./browser/permissions";
 import { applyWebviewAttachPolicy } from "./webview";
 import {
   captureWindowState,
@@ -123,9 +124,10 @@ const guardNavigation = (contents: Electron.WebContents) => {
 /**
  * Only the browser pane's `persist:thread-<id>` partitions may attach, and
  * every guest runs with preferences this side pins — see `./webview`. An
- * admitted attach names its thread to the guest registry before the guest
- * exists, so the registry can recognise the guest by its session, and the
- * attached guest is handed over for its debugger.
+ * admitted attach denies its session's web permissions before the guest
+ * exists (`./browser/permissions`), names its thread to the guest registry so
+ * the registry can recognise the guest by its session, and hands the attached
+ * guest over for its debugger.
  */
 const guardWebviewAttach = (contents: Electron.WebContents, panes: WindowOptions["panes"]) => {
   contents.on("will-attach-webview", (event, preferences, params) => {
@@ -136,7 +138,9 @@ const guardWebviewAttach = (contents: Electron.WebContents, panes: WindowOptions
       return;
     }
     const threadId = threadIdOfPartition(params["partition"]);
-    if (threadId !== null) panes.noteThread(threadId);
+    if (threadId === null) return;
+    securePaneSession(session.fromPartition(`persist:thread-${threadId}`));
+    panes.noteThread(threadId);
   });
   contents.on("did-attach-webview", (_event, guest) => panes.attached(guest));
 };

@@ -7,6 +7,8 @@
  * (`web-contents-created`), never again on a remount:
  * - its `window.open` handler, which always denies the native window and
  *   turns an http(s) popup into a pane tab of the same thread;
+ * - its session's deny-by-default web permissions (`./browser/permissions.ts`),
+ *   already installed at attach;
  * - the human-input relay (`./browser/guestInput.ts`), tagged with the
  *   guest's thread and `webContents` id;
  * - the pane's keys (`./browser/guestChords.ts`): a chord the window sent
@@ -37,6 +39,7 @@ import {
 } from "./browser/guestChords";
 import { makeGuestInputRelay } from "./browser/guestInput";
 import { popupUrl, type GuestRegistry } from "./browser/guests";
+import { securePaneSession } from "./browser/permissions";
 import {
   CAPTURE_CHANNEL,
   CLEAR_ALL_CHANNEL,
@@ -138,6 +141,8 @@ export function registerIpc(supervisor: ServerSupervisor, pane: PaneGuests) {
     });
     const threadId = pane.guests.track(guest);
     if (threadId === null) return;
+    // Already done at attach; a net for a guest that got here another way.
+    securePaneSession(guest.session);
     relay.hook(
       {
         id: wcId,
