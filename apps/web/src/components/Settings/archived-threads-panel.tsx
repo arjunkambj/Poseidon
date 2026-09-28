@@ -16,7 +16,6 @@ import { Link } from "@tanstack/react-router";
 import * as React from "react";
 
 import { Button } from "@poseidon/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@poseidon/ui/components/card";
 import {
   Empty,
   EmptyDescription,
@@ -33,6 +32,7 @@ import { useConnectionState, useLoadedThreadList, useProjects } from "@/state/ho
 import { Archive, ArchiveUp, Spinner, Trash } from "@honeyicons/react";
 
 import { archivedGroups } from "./archived-groups";
+import { SettingsPageHeader, SettingsSection } from "./settings-section";
 
 const UPDATED_AT = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
 
@@ -111,12 +111,10 @@ export function ArchivedThreadsPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-medium">Archived threads</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Archived threads are kept, not deleted. Unarchive one to put it back in the sidebar.
-        </p>
-      </div>
+      <SettingsPageHeader
+        title="Archived threads"
+        description="Archived threads are kept, not deleted. Unarchive one to put it back in the sidebar."
+      />
 
       {groups === null ? (
         // The list has not arrived yet. Saying "No archived threads" here
@@ -146,24 +144,19 @@ export function ArchivedThreadsPanel() {
         </Empty>
       ) : (
         groups.map((group) => (
-          <Card key={group.projectId ?? "other"} size="sm">
-            <CardHeader>
-              <CardTitle>{group.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="flex flex-col divide-y divide-border">
-                {group.threads.map((thread) => (
-                  <ArchivedRow
-                    key={thread.threadId}
-                    thread={thread}
-                    disabled={disabled}
-                    onUnarchive={() => unarchive(thread)}
-                    onDelete={() => setDeleting(thread)}
-                  />
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+          <SettingsSection key={group.projectId ?? "other"} title={group.name}>
+            <ul className="flex flex-col divide-y divide-border">
+              {group.threads.map((thread) => (
+                <ArchivedRow
+                  key={thread.threadId}
+                  thread={thread}
+                  disabled={disabled}
+                  onUnarchive={() => unarchive(thread)}
+                  onDelete={() => setDeleting(thread)}
+                />
+              ))}
+            </ul>
+          </SettingsSection>
         ))
       )}
 

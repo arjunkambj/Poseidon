@@ -36,6 +36,7 @@ import { connectorIconFor } from "@/lib/connector-icon";
 
 import { ConnectorStatusBadge, ConnectorStatusLine } from "./connector-status";
 import { SchemaForm, StructForm, type SelectOption } from "./schema-form";
+import { SettingsPageHeader, SettingsSection } from "./settings-section";
 import { Add as AddIcon, Connect, Repeat, Spinner, Trash } from "@honeyicons/react";
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -198,17 +199,17 @@ export function ConnectorsPanel() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-medium">Connectors</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Harnesses your threads run on.</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => void runProbe()} disabled={probing}>
-          {probing ? <Spinner variant="bold" /> : <Repeat variant="bold" />}
-          {probing ? "Probing…" : "Probe all"}
-        </Button>
-      </div>
+    <div className="flex flex-col gap-6">
+      <SettingsPageHeader
+        title="Connectors"
+        description="Harnesses your threads run on."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => void runProbe()} disabled={probing}>
+            {probing ? <Spinner variant="bold" /> : <Repeat variant="bold" />}
+            {probing ? "Probing…" : "Probe all"}
+          </Button>
+        }
+      />
 
       {settings.connectors.length === 0 ? (
         <Empty>
@@ -261,19 +262,21 @@ export function ConnectorsPanel() {
         }}
       />
 
-      <div className="flex flex-wrap gap-2">
-        {descriptors.map((descriptor) => (
-          <Button
-            key={descriptor.kind}
-            variant="outline"
-            size="sm"
-            onClick={() => void addInstance(descriptor.kind, descriptor.metadata.displayName)}
-          >
-            <AddIcon variant="bold" />
-            Add {descriptor.metadata.displayName}
-          </Button>
-        ))}
-      </div>
+      <SettingsSection title="Add a connector" card={false}>
+        <div className="flex flex-wrap gap-2">
+          {descriptors.map((descriptor) => (
+            <Button
+              key={descriptor.kind}
+              variant="outline"
+              size="sm"
+              onClick={() => void addInstance(descriptor.kind, descriptor.metadata.displayName)}
+            >
+              <AddIcon variant="bold" />
+              Add {descriptor.metadata.displayName}
+            </Button>
+          ))}
+        </div>
+      </SettingsSection>
     </div>
   );
 }

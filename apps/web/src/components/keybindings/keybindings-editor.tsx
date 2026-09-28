@@ -26,6 +26,7 @@ import { AsyncResult } from "effect/unstable/reactivity";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { KeybindingRow, type RowBinding } from "@/components/keybindings/keybinding-row";
+import { SettingsSection } from "@/components/Settings/settings-section";
 import { useClientRuntime } from "@/lib/client-runtime";
 import { COMMAND_AREAS, COMMAND_CATALOG } from "@/lib/command-catalog";
 import {
@@ -120,7 +121,7 @@ export function KeybindingsEditor({ className }: { readonly className?: string }
 
   return (
     <TooltipProvider>
-      <section className={cn("flex min-w-0 flex-col gap-4", className)} aria-label="Keybindings">
+      <section className={cn("flex min-w-0 flex-col gap-6", className)} aria-label="Keybindings">
         {/* No heading of its own: the page above it names the section, and the
             `aria-label` on the section covers the dev fixture that mounts it
             without one. */}
@@ -197,12 +198,8 @@ function EditorSection({
   readonly children: React.ReactNode;
 }) {
   return (
-    <section aria-label={heading} className="flex flex-col gap-1.5">
-      <h2 className="text-sm font-medium">{heading}</h2>
-      {description === undefined ? null : (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-      <ul className="flex flex-col divide-y rounded-xl bg-card">{children}</ul>
-    </section>
+    <SettingsSection title={heading} description={description}>
+      <ul className="flex flex-col divide-y">{children}</ul>
+    </SettingsSection>
   );
 }

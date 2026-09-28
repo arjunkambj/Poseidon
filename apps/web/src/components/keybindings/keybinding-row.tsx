@@ -55,7 +55,7 @@ export function KeybindingRow({
   readonly onReset: () => void;
 }) {
   return (
-    <li className="flex flex-col gap-1.5 px-3 py-2.5" aria-label={title}>
+    <li className="flex flex-col gap-1.5 py-2.5" aria-label={title}>
       <div className="flex min-w-0 items-center gap-2">
         <span className="truncate text-sm">{title}</span>
         {title === command ? null : (
