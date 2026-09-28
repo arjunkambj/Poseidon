@@ -10,7 +10,8 @@
  * `./use-sidebar-actions`, delete through `./use-delete-thread`, so each thread
  * keeps its own refusal toast and its own worktree flow. Archive skips the
  * threads that already are archived and toasts once, with an Undo for the
- * lot; mark unread is one undo entry for the lot; delete asks first, once for
+ * lot; mark unread is one undo entry for the lot; delete asks first (unless
+ * Settings says not to, `./use-confirm-thread-delete`), once for
  * the lot, with the same worktree opt-in the single-thread dialog offers —
  * for the worktrees no thread left behind still works in (`worktreeRemovers`).
  */
@@ -32,6 +33,7 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 import { DialogActions } from "@/components/dialog-actions";
 import { worktreeRemovers } from "@/components/sidebar/delete-thread";
 import { THREAD_DELETE_DESCRIPTION } from "@/components/sidebar/thread-actions";
+import { useRequestThreadDelete } from "@/components/sidebar/use-confirm-thread-delete";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
 import { selectionDoneBlockedReason } from "@/components/sidebar/thread-done";
@@ -178,6 +180,7 @@ export function ThreadSelectionBar({
 }) {
   const actions = useSidebarActions();
   const remove = useDeleteThread();
+  const requestDelete = useRequestThreadDelete();
   const isDone = useThreadIsDone();
   const [pins] = useThreadPins();
   const allDone = threads.length > 0 && threads.every(isDone);
@@ -233,7 +236,14 @@ export function ThreadSelectionBar({
           >
             {allDone ? <Inbox variant="bold" /> : <CheckDouble variant="bold" />}
           </BarAction>
-          <BarAction label="Delete" onClick={() => setDeleting(threads)}>
+          <BarAction
+            label="Delete"
+            onClick={() => {
+              if (requestDelete(threads, () => setDeleting(threads))) {
+                onClear();
+              }
+            }}
+          >
             <Trash variant="bold" />
           </BarAction>
           <BarAction label="Clear selection" onClick={onClear}>

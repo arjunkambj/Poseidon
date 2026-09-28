@@ -158,7 +158,7 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
     description: "Unarchives an archived thread",
   }),
   command("Threads", "thread.delete", "Delete thread", Trash, {
-    description: "Asks before deleting",
+    description: "Asks first unless Settings → General says not to",
   }),
   command("Threads", "thread.pin", "Pin thread", Pin, { description: "Unpins a pinned thread" }),
   command("Threads", "thread.done", "Mark thread done", CheckDouble, {

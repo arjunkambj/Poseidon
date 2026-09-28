@@ -1,6 +1,7 @@
 /**
  * The General page: the theme cards, the main and sidebar font sizes, the chat
- * width, when idle threads move to the sidebar's Done section, and a reset
+ * width, when idle threads move to the sidebar's Done section, whether
+ * deleting a thread asks first, and a reset
  * that puts every appearance choice back to its default. New-thread defaults (model,
  * effort, runtime mode) live on the Models page.
  */
@@ -17,6 +18,7 @@ import { useResetLayoutWidths } from "@/state/ui";
 
 import { AutoDoneSelect } from "./auto-done-select";
 import { ChatWidthToggle } from "./chat-width-toggle";
+import { ConfirmDeleteSwitch } from "./confirm-delete-switch";
 import { FontSizeSteppers } from "./font-size-steppers";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "./settings-section";
 import { ThemeCards } from "./theme-cards";
@@ -63,6 +65,7 @@ export function GeneralPanel() {
       <FontSizeSteppers />
       <ChatWidthToggle />
       <AutoDoneSelect />
+      <ConfirmDeleteSwitch />
       <ResetAppearance />
     </div>
   );

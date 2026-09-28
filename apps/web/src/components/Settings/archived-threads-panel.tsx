@@ -4,7 +4,8 @@
  *
  * Archiving takes a thread out of the sidebar tree, so this is where archived
  * threads live — and the way back. Unarchive puts the thread back in the
- * sidebar; Delete is durable and asks first. Both go through the same
+ * sidebar; Delete is durable and asks first, unless the General page says
+ * not to. Both go through the same
  * dispatch as the sidebar row menu (`thread-actions`), so a refusal reads the
  * same in either place.
  *
@@ -27,6 +28,7 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { DeleteThreadDialog } from "@/components/sidebar/delete-thread-dialog";
 import { threadCommandBase, useThreadCommand } from "@/components/sidebar/thread-actions";
+import { useRequestThreadDelete } from "@/components/sidebar/use-confirm-thread-delete";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
 import { useConnectionState, useLoadedThreadList, useProjects } from "@/state/hooks";
 import { Archive, ArchiveUp, Spinner, Trash } from "@honeyicons/react";
@@ -94,6 +96,7 @@ export function ArchivedThreadsPanel() {
   const connection = useConnectionState();
   const send = useThreadCommand();
   const remove = useDeleteThread();
+  const requestDelete = useRequestThreadDelete();
   const [deleting, setDeleting] = React.useState<ThreadSummary | null>(null);
 
   const groups = React.useMemo(
@@ -152,7 +155,7 @@ export function ArchivedThreadsPanel() {
                   thread={thread}
                   disabled={disabled}
                   onUnarchive={() => unarchive(thread)}
-                  onDelete={() => setDeleting(thread)}
+                  onDelete={() => void requestDelete([thread], () => setDeleting(thread))}
                 />
               ))}
             </ul>

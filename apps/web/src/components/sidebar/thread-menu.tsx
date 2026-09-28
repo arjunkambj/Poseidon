@@ -17,7 +17,9 @@
  * every one of those cleanup behaviours is unreachable from the product.
  *
  * Delete is behind a confirmation, on the precedent `RestoreCheckpointDialog`
- * set: it is durable and there is no undo. For a worktree thread the same
+ * set: it is durable and there is no undo — unless Settings → General's
+ * "Confirm before deleting a thread" is off (`./use-confirm-thread-delete`),
+ * which deletes at once with the dialog's defaults. For a worktree thread the same
  * dialog offers to remove the worktree too (`./delete-thread-dialog`). Archive
  * is not — the thread stays, and an archived row offers Unarchive in place of
  * Archive, as the Archived threads settings page does.
@@ -67,6 +69,7 @@ import {
   DROPDOWN_PARTS,
   ThreadMenuItems,
 } from "@/components/sidebar/thread-menu-items";
+import { useRequestThreadDelete } from "@/components/sidebar/use-confirm-thread-delete";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
 import { MoreVertical } from "@honeyicons/react";
 
@@ -154,9 +157,10 @@ export function RenameThreadDialog({
   );
 }
 
-/** The delete confirmation, for either menu. */
+/** The delete confirmation, for either menu; skipped when Settings says not to ask. */
 function useDeleteDialog(thread: ThreadSummary) {
   const remove = useDeleteThread();
+  const request = useRequestThreadDelete();
   const [open, setOpen] = React.useState(false);
   const dialog = (
     <DeleteThreadDialog
@@ -166,7 +170,7 @@ function useDeleteDialog(thread: ThreadSummary) {
       onConfirm={(target, removeWorktree) => void remove(target, removeWorktree)}
     />
   );
-  return [() => setOpen(true), dialog] as const;
+  return [() => void request([thread], () => setOpen(true)), dialog] as const;
 }
 
 /** The row's overflow button and its menu. */

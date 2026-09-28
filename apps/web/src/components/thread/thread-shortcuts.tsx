@@ -9,7 +9,8 @@
  * a worktree thread's worktree too — and the same dispatch and toasts from
  * `@/components/sidebar/thread-actions` and `use-delete-thread`. Archive
  * unarchives a thread that is already archived, as the menu offers. Delete
- * only ever opens the confirmation — nothing is deleted from a key alone.
+ * opens the confirmation, unless Settings → General says not to ask
+ * (`use-confirm-thread-delete`).
  *
  * `DockShortcuts` holds the right dock's keys: `dock.toggle`, `dock.changes`
  * and `dock.files`, with the targets from `@/components/dock/dock-toggle`: the
@@ -33,6 +34,7 @@ import { dockTabTarget, type DockPane, type DockTab } from "@/components/dock/do
 import { DeleteThreadDialog } from "@/components/sidebar/delete-thread-dialog";
 import { threadCommandBase, useThreadCommand } from "@/components/sidebar/thread-actions";
 import { RenameThreadDialog } from "@/components/sidebar/thread-menu";
+import { useRequestThreadDelete } from "@/components/sidebar/use-confirm-thread-delete";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
 import { useKeybindingCommand } from "@/lib/shortcuts";
@@ -52,6 +54,7 @@ export function ThreadShortcuts({
   const send = useThreadCommand();
   const actions = useSidebarActions();
   const remove = useDeleteThread();
+  const requestDelete = useRequestThreadDelete();
   // The list row carries the worktree the delete dialog offers to remove.
   const summary = useThreadList().find((thread) => thread.threadId === threadId) ?? null;
   const [dialog, setDialog] = React.useState<OpenDialog>(null);
@@ -78,7 +81,7 @@ export function ThreadShortcuts({
   });
   useKeybindingCommand("thread.delete", () => {
     if (!gone && summary !== null) {
-      setDialog("delete");
+      requestDelete([summary], () => setDialog("delete"));
     }
   });
 
