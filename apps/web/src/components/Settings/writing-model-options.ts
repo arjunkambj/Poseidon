@@ -9,6 +9,9 @@
  * never reads a value it cannot show; the server passes over a pick that is
  * switched off and says so when it writes.
  *
+ * The row's description says why the list is short while the catalog is still
+ * loading or failed to load, and only says nothing can write once it answered.
+ *
  * A select item holds one string, so a pick is encoded with `encodeModelPick`
  * and "Same as the thread" (stored as null) with a sentinel.
  */
@@ -17,6 +20,7 @@ import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 import type { WritingModel } from "@poseidon/contracts/generation";
 import type { ModelPickerSettings } from "@poseidon/contracts/settings";
 
+import type { ModelCatalogState } from "@/lib/model-catalog-state";
 import { decodeModelPick, encodeModelPick } from "@/lib/model-picks";
 import { visibleCatalog } from "@/lib/model-visibility";
 
@@ -57,6 +61,22 @@ export const writingModelGroups = (
       label: model.label,
     })),
   }));
+};
+
+/** The Writing model row's description, from the catalog's state and what it offers. */
+export const writingModelDescription = (
+  state: ModelCatalogState,
+  groups: ReadonlyArray<WritingModelGroup>,
+): string => {
+  if (state.status === "loading") {
+    return "Loading models… Same as the thread uses the thread's own harness and model.";
+  }
+  if (state.status === "failed") {
+    return `Could not list the harnesses: ${state.message}`;
+  }
+  return groups.length === 0
+    ? "No harness that is on can write text yet, so the thread's own model is used."
+    : "Same as the thread uses the thread's own harness and model.";
 };
 
 /** The select's value for the stored pick. */

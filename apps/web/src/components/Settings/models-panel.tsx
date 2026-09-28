@@ -21,6 +21,7 @@ import { toast } from "sonner";
 
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
 import { EFFORT_LABELS } from "@/lib/efforts";
+import { modelCatalogState } from "@/lib/model-catalog-state";
 import { RUNTIME_MODE_LABELS } from "@/lib/runtime-modes";
 
 import { DefaultModelRow } from "./default-model-row";
@@ -97,7 +98,11 @@ export function ModelsPanel() {
         />
       </SettingsSection>
 
-      <GeneratedTextSection generation={settings.generation} catalog={catalog} />
+      <GeneratedTextSection
+        generation={settings.generation}
+        catalog={catalog}
+        catalogState={modelCatalogState(catalogResult)}
+      />
 
       <HarnessModelsSection />
     </div>

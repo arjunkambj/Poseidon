@@ -11,6 +11,7 @@ import { setHarness, setModel } from "@/lib/model-visibility";
 
 import {
   SAME_AS_THREAD,
+  writingModelDescription,
   writingModelGroups,
   writingModelLabel,
   writingModelOf,
@@ -133,5 +134,17 @@ describe("writing model values", () => {
     expect(writingModelLabel(groups, writingModelValue(pick("writer", "w2")))).toBe("W2");
     expect(writingModelLabel(groups, writingModelValue(pick("gone", "g1")))).toBe("g1");
     expect(writingModelLabel(groups, SAME_AS_THREAD)).toBe("Same as the thread");
+  });
+});
+
+describe("writingModelDescription", () => {
+  it("says the catalog is loading or failed rather than that nothing can write", () => {
+    expect(writingModelDescription({ status: "loading" }, [])).toMatch(/^Loading models/);
+    expect(writingModelDescription({ status: "failed", message: "The server is gone." }, [])).toBe(
+      "Could not list the harnesses: The server is gone.",
+    );
+    expect(writingModelDescription({ status: "ready" }, [])).toMatch(/^No harness that is on/);
+    const groups = writingModelGroups(catalog, none, null);
+    expect(writingModelDescription({ status: "ready" }, groups)).toMatch(/^Same as the thread/);
   });
 });

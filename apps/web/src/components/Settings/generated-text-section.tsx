@@ -32,6 +32,7 @@ import { toast } from "sonner";
 
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
 import { EFFORT_LABELS } from "@/lib/efforts";
+import type { ModelCatalogState } from "@/lib/model-catalog-state";
 import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
 import { useConnectionState } from "@/state/hooks";
 
@@ -39,6 +40,7 @@ import { SettingsRow, SettingsSection } from "./settings-section";
 import {
   SAME_AS_THREAD,
   SAME_AS_THREAD_LABEL,
+  writingModelDescription,
   writingModelGroups,
   writingModelLabel,
   writingModelOf,
@@ -48,10 +50,13 @@ import {
 export function GeneratedTextSection({
   generation,
   catalog,
+  catalogState,
 }: {
   readonly generation: GenerationSettings;
   /** Every enabled instance's models, unfiltered: the options filter them. */
   readonly catalog: ReadonlyArray<ConnectorModels>;
+  /** Whether the catalog has answered, so an empty one is not read as "nothing can write". */
+  readonly catalogState: ModelCatalogState;
 }) {
   const atoms = useAppAtoms();
   const updateSettings = useAtomSet(atoms.settingsUpdateAtom, { mode: "promiseExit" });
@@ -72,11 +77,7 @@ export function GeneratedTextSection({
     >
       <SettingsRow
         title="Writing model"
-        description={
-          groups.length === 0
-            ? "No harness that is on can write text yet, so the thread's own model is used."
-            : "Same as the thread uses the thread's own harness and model."
-        }
+        description={writingModelDescription(catalogState, groups)}
       >
         <Select
           value={writingModelValue(generation.writingModel)}
