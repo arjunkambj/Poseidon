@@ -1713,7 +1713,10 @@ writes into the page's draft.
 carries the path, the `+`/`-` counts and the per-file patch. `git.status` is
 read alongside for the branch line and to tell "not a git repository"
 (`isRepository: false`) from "nothing changed". Every call names the thread,
-so a worktree thread's pane shows its worktree.
+so a worktree thread's pane shows its worktree. The paths are relative to the
+repository's top level, which is not the workspace root for a project in a
+subfolder of its repository, so the diff also carries `prefix` (`git rev-parse
+--show-prefix`) for the file menus to find each path under the root.
 
 The list reads as an overview first (`changes-list.tsx`, `review-list.tsx`,
 rules in `review.ts`): one compact row per file — its kind, directory and

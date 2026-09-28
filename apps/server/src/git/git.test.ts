@@ -403,6 +403,24 @@ describe("w8 git", () => {
     ),
   );
 
+  it.live("a diff says where a subfolder project sits in its repository", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const repo = makeRepo();
+        const root = nodePath.join(repo, "packages", "app");
+        mkdirSync(root, { recursive: true });
+        writeFileSync(nodePath.join(root, "fresh.txt"), "brand new\n");
+        const { projectId, git: gitService } = yield* stack(root);
+        const diff = yield* gitService.diff({ projectId }, {});
+        expect(diff.prefix).toBe("packages/app/");
+        expect(diff.files.map((f) => f.path)).toContain("packages/app/fresh.txt");
+
+        const top = yield* stack(repo);
+        expect((yield* top.git.diff({ projectId: top.projectId }, {})).prefix).toBe("");
+      }),
+    ),
+  );
+
   it.live("worktree diff removes its temporary index directory", () =>
     Effect.scoped(
       Effect.gen(function* () {

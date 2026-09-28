@@ -242,11 +242,17 @@ export const GitDiffFile = Schema.Struct({
 });
 export type GitDiffFile = typeof GitDiffFile.Type;
 
-/** `isRepository` carries the same meaning it does on `GitStatus`. */
+/**
+ * `isRepository` carries the same meaning it does on `GitStatus`. File paths
+ * are relative to the repository's top level; `prefix` is where the
+ * workspace root sits under it, as `git rev-parse --show-prefix` prints it
+ * (`""` at the top level, else ending in `/`).
+ */
 export const GitDiff = Schema.Struct({
   from: Schema.NullOr(NonEmptyString),
   to: Schema.NullOr(NonEmptyString),
   isRepository: Schema.optional(Schema.Boolean),
+  prefix: Schema.optional(Schema.String),
   files: Schema.Array(GitDiffFile),
 });
 export type GitDiff = typeof GitDiff.Type;

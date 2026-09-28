@@ -420,10 +420,14 @@ export const layer = Layer.effect(
             to === undefined
               ? yield* worktreeDiff(root, base, options.path)
               : yield* refDiff(root, from, to, options.path);
+          // The paths are the top level's; a project in a subfolder of its
+          // repository needs this to find them under its own root.
+          const prefix = yield* run(root, ["rev-parse", "--show-prefix"]);
           return {
             from: options.mergeBase === undefined ? (options.from ?? null) : base,
             to: options.to ?? null,
             isRepository: true,
+            prefix: prefix.stdout.replace(/\n$/, ""),
             files: toDiffFiles(patch, numstat),
           };
         }).pipe(Effect.mapError(asRpcError)),
