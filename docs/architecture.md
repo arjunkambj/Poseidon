@@ -226,8 +226,11 @@ Owns the operating system. Nothing about orchestration lives here.
   reports threads running or waiting on the user, the first quit is held and
   the window gets `poseidon:quit-request`; its `poseidon:quit-answer` either
   quits (through `quit.ts` as before) or clears the hold, and a second quit
-  while it is asking goes straight through. With no window to ask (Windows
-  and Linux quit once the last window closes) the quit is not held.
+  while it is asking goes straight through. On Windows and Linux, where
+  closing the last window quits, that close is held while threads are busy
+  and turned into a quit the guard asks about (`holdsWindowClose`); a close
+  that is part of a quit already past the guard is never held. With no
+  window to ask the quit is not held.
 - `apps/desktop/src/main/attention.ts`, `attentionChannels.ts`,
   `attentionIpc.ts` — the attention seam. The renderer decides when a thread
   needs the user; main carries it out for a `window` sender only, after the

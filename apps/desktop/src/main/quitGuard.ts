@@ -55,3 +55,25 @@ export const makeQuitGuard = (deps: QuitGuardDeps) => {
     },
   };
 };
+
+export interface WindowCloseState {
+  /** Whether closing the last window quits the app (not on macOS). */
+  readonly quitsOnLastClose: boolean;
+  /** Whether a quit is already under way, past the guard. */
+  readonly quitting: boolean;
+  /** Live windows other than the one closing. */
+  readonly otherWindows: number;
+  /** The renderer's last reported count of running or waiting threads. */
+  readonly busy: number;
+}
+
+/**
+ * Whether a window's close should be held and turned into a quit. On Windows
+ * and Linux closing the last window quits, but only once the window is gone,
+ * when there is nobody left to ask; so while threads are busy that close is
+ * held and becomes an ordinary quit, which the guard above can ask about. A
+ * close that is part of a quit already under way is never held, or it would
+ * cancel that quit.
+ */
+export const holdsWindowClose = (state: WindowCloseState): boolean =>
+  state.quitsOnLastClose && !state.quitting && state.otherWindows === 0 && state.busy > 0;

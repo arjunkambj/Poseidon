@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { makeQuitGuard } from "./quitGuard";
+import { holdsWindowClose, makeQuitGuard } from "./quitGuard";
 
 const quitEvent = () => ({ preventDefault: vi.fn() });
 
@@ -77,5 +77,20 @@ describe("makeQuitGuard", () => {
     const { guard, setBusy } = setup({ busy: 0 });
     setBusy(1);
     expect(guard.onBeforeQuit(quitEvent())).toBe(true);
+  });
+});
+
+describe("holdsWindowClose", () => {
+  const closing = { quitsOnLastClose: true, quitting: false, otherWindows: 0, busy: 1 };
+
+  it("holds the last window's close while threads are busy, where that close quits", () => {
+    expect(holdsWindowClose(closing)).toBe(true);
+  });
+
+  it("lets the close through otherwise", () => {
+    expect(holdsWindowClose({ ...closing, quitsOnLastClose: false })).toBe(false);
+    expect(holdsWindowClose({ ...closing, quitting: true })).toBe(false);
+    expect(holdsWindowClose({ ...closing, otherWindows: 1 })).toBe(false);
+    expect(holdsWindowClose({ ...closing, busy: 0 })).toBe(false);
   });
 });

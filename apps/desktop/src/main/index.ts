@@ -21,7 +21,7 @@ import { resolveBrowserBridge } from "../platform/browserBridge";
 import { quitsWhenAllWindowsClosed } from "../platform/lifecycle";
 import { APP_SCHEME, registerAppProtocol } from "./protocol";
 import { makeQuitHandler } from "./quit";
-import { makeQuitGuard } from "./quitGuard";
+import { holdsWindowClose, makeQuitGuard } from "./quitGuard";
 import { checkForUpdates } from "./updater";
 import { createWindow } from "./window";
 
@@ -132,11 +132,32 @@ if (!app.requestSingleInstanceLock()) {
     // supervisor's own SIGKILL lands well inside this.
     deadlineMs: QUIT_DEADLINE_MS,
   });
+  /** Set once a quit is past the guard, so its window closes are not held. */
+  let quitting = false;
   // One listener: the guard may hold the quit to ask first; otherwise the
   // graceful server shutdown runs exactly as it always has.
   app.on("before-quit", (event) => {
     if (quitGuard.onBeforeQuit(event)) return;
+    quitting = true;
     serverQuit(event);
+  });
+  // Where closing the last window quits, the window would be gone before the
+  // guard could ask it; so while threads are busy that close is held and
+  // turned into a quit, which the guard asks about like any other.
+  app.on("browser-window-created", (_event, win) => {
+    win.on("close", (event) => {
+      const hold = holdsWindowClose({
+        quitsOnLastClose: quitsWhenAllWindowsClosed(process.platform),
+        quitting,
+        otherWindows: BrowserWindow.getAllWindows().filter(
+          (other) => other !== win && !other.isDestroyed(),
+        ).length,
+        busy: busyCount(),
+      });
+      if (!hold) return;
+      event.preventDefault();
+      app.quit();
+    });
   });
   app.on("window-all-closed", () => {
     if (quitsWhenAllWindowsClosed(process.platform)) app.quit();

@@ -3407,8 +3407,9 @@ waiting on you: `QuitGuardDialog`
 their status marks, **Quit anyway** carries on into the shutdown above and
 Cancel or dismissing keeps the app open. A second quit while that question is
 open passes straight through. With nothing busy, or no window to ask, quitting
-works as before. On Windows and Linux, closing the last window quits once the
-window is gone, so there only Ctrl+Q and the menu's Quit are guarded.
+works as before. On Windows and Linux, where closing the last window quits,
+that close is held while threads are busy and turned into a quit, so the same
+dialog asks first and closing the window again while it is open quits.
 
 On the server side, closing `boot`'s scope shuts everything down. Three
 finalizers matter — the sockets', the sessions' and the terminals':
