@@ -326,6 +326,8 @@ export const makeGitAtoms = (runtime: Atom.AtomRuntime<Connection | ConnectionSt
     checkout,
     refreshProject,
     gitRead,
+    /** For reads kept elsewhere (`./pullRequestAtoms`) that must follow `refreshProject` too. */
+    projectRevisionAtom,
   };
 };
 

@@ -32,6 +32,10 @@
       "types": "./src/gitReview.ts",
       "import": "./src/gitReview.ts"
     },
+    "./pullRequestAtoms": {
+      "types": "./src/pullRequestAtoms.ts",
+      "import": "./src/pullRequestAtoms.ts"
+    },
     "./editors": {
       "types": "./src/editors.ts",
       "import": "./src/editors.ts"
