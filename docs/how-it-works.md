@@ -2565,6 +2565,51 @@ web links only, nothing on a detached HEAD), under the branch the push
 reported. The header's View PR button reads it back and opens it through
 `openExternal`, as the toast's Open action does.
 
+### Generated text
+
+Commit messages, pull request text and thread titles can be written by a
+model. Each is one `generateText` call on a connector that declares
+`textGeneration` — one-shot, tool-less, read-only, in a temporary directory of
+its own (see each connector's "Writing one piece of text") — made by the
+server's `TextGeneration` service (`apps/server/src/generation/`).
+
+**Who writes.** The Writing model from Settings → Models, while its harness
+and model are switched on and its instance is open and can write. Otherwise
+the thread's own harness and model, and the answer's `notice` says the chosen
+one was passed over. With no thread, or when the thread's harness cannot
+write, the harness a new thread would run on with the model it would start
+on. When nothing can write, the call is `unavailable` and nothing changes. The
+Writing effort (Low by default) is sent only to a model that takes it.
+
+**What the model reads.** `git.generateCommitMessage` reads the working tree
+against `HEAD` for the ticked paths (every change when none are named) with
+`git diff --no-ext-diff --no-color`, plus the untracked files and up to 20 of
+their contents; the index is never touched. `git.generatePullRequest` reads
+the branch's commits beyond the base (`git log base..HEAD`) and its diff from
+where it forked (`git diff base...HEAD`); the base is the payload's, else the
+branch the thread's worktree was cut from, else the default branch. A patch is
+cut at 50 000 characters, a log or conversation at 8 000.
+
+**The style** follows Settings → Git's Writing style. Repository conventions
+passes the last 20 non-merge commit subjects and the root's `AGENTS.md` (or
+`CLAUDE.md`) as text, and a repository with no history gets a plain
+imperative instruction instead. Conventional Commits asks for
+`type(scope): summary`. Custom passes the user's instructions, and empty
+custom reads as Repository conventions. A commit subject is asked for in the
+imperative, at most 72 characters, with an optional bullet body. A pull
+request body follows the repository's template when "Follow the repository's
+PR template" is on and one exists (`pull_request_template.md` in `.github/`,
+the root or `docs/`, in any case, else the first file of
+`.github/PULL_REQUEST_TEMPLATE/`), and is otherwise laid out as `## Summary`
+and `## Testing`.
+
+**The answer** is asked for as JSON (`{subject, body}`, `{title, body}`,
+`{title}`) with a schema the harness enforces where it can. It is read
+leniently: a code fence is stripped and the object found inside any text
+around it, and an answer with no object is read as plain lines, the first
+being the subject or title. Every call stops after 120 seconds, and a client
+that cancels stops the harness's process with it.
+
 ### Opening the workspace in an editor
 
 The thread header's "Open in" control

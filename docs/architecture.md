@@ -849,6 +849,7 @@ Directories, relative to `apps/server/`:
 | `src/scripts/`       | package.json script detection: workspace patterns, package manager, run commands (`scripts.detect`)                             |
 | `src/settings/`      | settings store users, connector manager and host, connector extension routing                                                   |
 | `src/attachments/`   | the staging store and its reactor                                                                                               |
+| `src/generation/`    | generated text: the writer resolver, prompts and answer parsing, the git reads, the `TextGeneration` service and title reactor  |
 | `src/plugins/`       | the plugin registry, manifest and MCP config reading, the built-in plugins and writing them at boot                             |
 
 Public seam: the RPC group in `packages/contracts/src/rpc.ts` and the three
@@ -857,6 +858,26 @@ loopback HTTP routes. May import `contracts`, `connector-sdk` and `shared`;
 tests only;
 `testkit` and `client-runtime` in tests only. Must never import `apps/web` or
 `apps/desktop`.
+
+**Generated text** (`src/generation/`). `TextGeneration` answers the three
+generation RPCs and the title reactor's `autoTitle`, and never names a
+harness: `resolveWriter.ts` picks the writer by capability. The Writing model
+(`generation.writingModel`) is used while its instance is open, its harness
+and model are switched on — the same rule as the web's
+`lib/model-visibility.ts`, re-implemented there — and the instance has
+`generateText`. Otherwise Same as the thread answers: the thread's
+`connectorInstanceId` (or its bound session's) with its model, and with no
+thread, or a thread whose harness cannot write, the routed default (the first
+open enabled connector in the connectors page's order, with the model
+`seedModel` gives a new thread). A chosen model passed over adds the answer's
+`notice`. No writer is `unavailable`. `generation.writingEffort` is sent only
+when the model lists it. `gitContext.ts` reads the change with `git diff`,
+`git log` and `git ls-files` straight through `git/process.ts` (external diff
+drivers and colour off, the index never written), `prompts.ts` builds every
+prompt and JSON schema and finds the pull request template, and `parse.ts`
+reads the answer leniently (a code fence, a sentence before the object, plain
+text). Each call is capped at 120 s, and interrupting it interrupts the
+connector's call.
 
 `boot.ts` registers Command Code first, Claude Code second and Codex third.
 The order is
@@ -887,8 +908,8 @@ or null for Same as the thread, `writingEffort` `low`/`medium`/`high` and
 `autoTitle`, each defaulted on decode; `WritingStyle`, `CommitDraftMode` and
 the `CUSTOM_INSTRUCTIONS_MAX` of 20 000 characters the git settings use) and
 the shapes of `git.generateCommitMessage`, `git.generatePullRequest` and
-`thread.regenerateTitle` with their `GENERATION_RPC_METHODS`. Those three are
-not in `RPC_METHODS` or the group yet: the server has no handlers for them.
+`thread.regenerateTitle` with their `GENERATION_RPC_METHODS`, spread into
+`RPC_METHODS` and listed in the group like the others.
 `PoseidonRpcError` lives in `rpcError.ts` so `git`, `editors`, `search` and
 `scripts` can name it without an import cycle, and `rpc` re-exports it.
 `browser.ts` holds the browser pane's
@@ -938,8 +959,10 @@ stored `git` rows hold only `branchPrefix`, so each is defaulted on decode, and
 because a patch's `git` replaces the whole struct a client always spreads the
 current one. `defaults.workspace` (`local` or `worktree`) is optional and
 absent means Local. `generation` (`GenerationSettings`) and
-`confirmThreadDelete` (default true) are defaulted on decode. Nothing reads
-these yet beyond the settings RPCs.
+`confirmThreadDelete` (default true) are defaulted on decode. The server reads
+`generation`, the writing style, custom instructions, `followPrTemplate` and
+`worktreeFromOrigin`; `draftCommitMessages`, `defaults.workspace` and
+`confirmThreadDelete` are the renderer's alone.
 
 Public seam: its `exports` map. May import `shared` only.
 
@@ -2369,6 +2392,9 @@ the client in the terminal `incompatible` state.
 | `git.pullRequest.marks`       | call   | Each thread's pull request state, from one `gh pr list`; empty without gh                                                               |
 | `git.pullRequest.action`      | call   | Ready, draft, merge, close or reopen via `gh`; answers the view read afterwards                                                         |
 | `git.pullRequest.fixContext`  | call   | Failing checks' log tails, or files conflicting with the base, for a fix thread                                                         |
+| `git.generateCommitMessage`   | call   | A commit subject and body written from the diff of the ticked paths; `unavailable` when no harness can write                            |
+| `git.generatePullRequest`     | call   | A pull request title and body from the branch's commits and diff against the base; `unavailable` as above                               |
+| `thread.regenerateTitle`      | call   | A title written from the end of the thread's conversation, applied with `thread.rename`; `unavailable` as above                         |
 | `git.worktree.create`         | call   | Cuts a new thread's worktree and branch under the Poseidon home                                                                         |
 | `git.worktree.list`           | call   | The repository's worktrees, the project's own checkout first                                                                            |
 | `git.worktree.remove`         | call   | Removes one, keeping its branch; `conflict` on unsaved work unless `force`                                                              |

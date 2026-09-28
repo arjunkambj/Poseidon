@@ -59,6 +59,7 @@ import { layer as messageSearchLayer } from "./persistence/MessageSearch";
 import { layer as directoryBrowserLayer } from "./fs/Directories";
 import { layer as gitCheckpointHookLayer } from "./git/CheckpointHook";
 import { layer as fileServiceLayer } from "./git/Files";
+import { TextGeneration } from "./generation/TextGeneration";
 import { layer as gitServiceLayer } from "./git/Git";
 import { GhRunner } from "./git/GitHubCli";
 import { WorktreesRoot } from "./git/Worktrees";
@@ -277,6 +278,10 @@ export const boot = (options: BootOptions) =>
       // instance the manager watches and the RPC handlers mutate.
       permissions,
       pluginRegistry,
+      // Generated text resolves its writer through the same registry and
+      // settings store as everything else, and dispatches through the engine
+      // every command goes through.
+      TextGeneration.layer.pipe(Layer.provide(Layer.mergeAll(persistence, sharedSettings, engine))),
     );
 
     // ── Shutting down with clients attached ──

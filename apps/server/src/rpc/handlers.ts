@@ -11,6 +11,7 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 
 import { AttachmentStore } from "../attachments/AttachmentStore";
+import { TextGeneration } from "../generation/TextGeneration";
 import { ConcurrencyConflict } from "../persistence/EventStore";
 import { ScriptDetection } from "../scripts/ScriptDetection";
 import { OrchestrationEngine } from "../orchestration/Engine";
@@ -61,6 +62,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
     const messageSearch = yield* MessageSearch;
     const scripts = yield* ScriptDetection;
     const plugins = yield* PluginRegistry;
+    const generation = yield* TextGeneration;
 
     return {
       "server.hello": () =>
@@ -140,6 +142,11 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
         git.pullRequestAction({ projectId, threadId }, { number, headRefOid, action }),
       "git.pullRequest.fixContext": ({ projectId, threadId, number, kind }) =>
         git.pullRequestFixContext({ projectId, threadId }, { number, kind }),
+      "git.generateCommitMessage": ({ projectId, threadId, paths }) =>
+        generation.generateCommitMessage({ projectId, threadId, paths }),
+      "git.generatePullRequest": ({ projectId, threadId, base }) =>
+        generation.generatePullRequest({ projectId, threadId, base }),
+      "thread.regenerateTitle": ({ threadId }) => generation.regenerateTitle(threadId),
       "git.worktree.create": ({ projectId, name, baseBranch }) =>
         git.createWorktree(projectId, { name, baseBranch }),
       "git.worktree.list": ({ projectId }) => git.listWorktrees(projectId),

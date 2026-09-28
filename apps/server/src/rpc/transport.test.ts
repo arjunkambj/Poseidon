@@ -9,9 +9,13 @@
  * - A 200-item thread's snapshot stays inside a per-item wire budget, counted
  *   from the bytes the socket actually delivered (transfer-budget test).
  * - `threads.searchMessages` finds a thread by text the engine wrote.
+ * - The generated-text RPCs write through the connector's `generateText` and
+ *   `thread.regenerateTitle` renames the thread; with no connector that can
+ *   write, they answer `unavailable`.
  */
 
-import { mkdtempSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
@@ -32,8 +36,13 @@ import {
   makeConnection,
   type ConnectionCredentials,
 } from "@poseidon/client-runtime/connection";
-import { makeFakeConnector } from "@poseidon/testkit/fakeConnector";
-import type { ConnectorServices } from "@poseidon/connector-sdk/definition";
+import { makeFakeConnector, type FakeConnectorOptions } from "@poseidon/testkit/fakeConnector";
+import {
+  eraseConnectorDefinition,
+  type ConnectorServices,
+  type GenerateTextInput,
+} from "@poseidon/connector-sdk/definition";
+import { makeRegistry } from "@poseidon/connector-sdk/registry";
 import { describe, expect, it } from "@effect/vitest";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -46,6 +55,7 @@ import * as HttpServer from "effect/unstable/http/HttpServer";
 
 import { AttachmentStore } from "../attachments/AttachmentStore";
 import { layer as directoryBrowserLayer } from "../fs/Directories";
+import { TextGeneration } from "../generation/TextGeneration";
 import { McpGateway } from "../mcp/McpGateway";
 import { CheckpointHook, CheckpointReactor } from "../orchestration/CheckpointReactor";
 import { OrchestrationEngine } from "../orchestration/Engine";
@@ -56,6 +66,7 @@ import { layer as messageSearchLayer } from "../persistence/MessageSearch";
 import { ReadModelStore } from "../persistence/ReadModels";
 import { testLayer as sqliteTestLayer } from "../persistence/Sqlite";
 import { ScriptDetection } from "../scripts/ScriptDetection";
+import { ConnectorRegistryService } from "../settings/ConnectorManager";
 import { PluginRegistry } from "../plugins/PluginRegistry";
 import { serverLayer, ServerToken } from "./server";
 import {
@@ -97,16 +108,26 @@ const services: Effect.Effect<ConnectorServices> = Effect.clockWith((clock) =>
   }),
 );
 
-/** Real sqlite + engine + reactors + WS transport on an ephemeral port. */
-const testStack = (browserLayer: Layer.Layer<BrowserService> = BrowserService.empty) =>
+/**
+ * Real sqlite + engine + reactors + WS transport on an ephemeral port. The
+ * one connector is the testkit's fake, opened through a real registry so the
+ * generated-text service resolves it like the running server does;
+ * `generateText` scripts its answers, and without it nothing can write text.
+ */
+const testStack = (
+  browserLayer: Layer.Layer<BrowserService> = BrowserService.empty,
+  options: Pick<FakeConnectorOptions, "generateText"> = {},
+) =>
   Effect.gen(function* () {
     // One sqlite instance feeds persistence, the engine and the settings
     // service — built once so every consumer shares the same connection.
     const sqliteContext = yield* Layer.build(sqliteTestLayer());
     const sqlite = Layer.succeedContext(sqliteContext);
-    const fake = yield* makeFakeConnector();
-    const instance = yield* fake.definition.createInstance({
+    const fake = yield* makeFakeConnector(options);
+    const registry = yield* makeRegistry([eraseConnectorDefinition(fake.definition)]);
+    const instance = yield* registry.open({
       instanceId: makeConnectorInstanceId(),
+      kind: fake.definition.kind,
       config: {},
       services: yield* services,
     });
@@ -123,6 +144,8 @@ const testStack = (browserLayer: Layer.Layer<BrowserService> = BrowserService.em
       Layer.provide(Layer.mergeAll(engineLayer, managerLayer, CheckpointHook.noop, persistence)),
     );
     const stack = Layer.mergeAll(engineLayer, managerLayer, reactors);
+    // One reference, so the handlers and the generated-text service share one store.
+    const settingsLayer = SettingsStore.layer.pipe(Layer.provide(sqlite));
     const serviceLayer = Layer.mergeAll(
       Layer.succeed(ServerIdentity, { serverInstanceId: INSTANCE_ID }),
       Layer.succeed(ServerToken, { token: TOKEN }),
@@ -140,7 +163,24 @@ const testStack = (browserLayer: Layer.Layer<BrowserService> = BrowserService.em
       ScriptDetection.empty,
       PluginRegistry.empty,
       AttachmentStore.layerAt(mkdtempSync(NodePath.join(NodeOS.tmpdir(), "poseidon-transport-"))),
-      SettingsStore.layer.pipe(Layer.provide(sqlite)),
+      settingsLayer,
+      TextGeneration.layer.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            persistence,
+            settingsLayer,
+            Layer.succeed(ConnectorRegistryService, registry),
+            Layer.succeed(
+              ConnectorCatalog,
+              ConnectorCatalog.of({
+                list: () => Effect.succeed([]),
+                models: () => instance.listModels().pipe(Effect.catch(() => Effect.succeed([]))),
+                describe: Effect.succeed([]),
+              }),
+            ),
+          ),
+        ),
+      ),
     );
     const http = NodeHttpServer.layer(createServer, { port: 0, host: "127.0.0.1" });
     const httpContext = yield* Layer.build(http);
@@ -651,4 +691,100 @@ describe("transport", () => {
       }),
     ),
   );
+
+  it.live("the generated-text rpcs answer unavailable when no connector can write", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { url, engine } = yield* testStack();
+        const client = yield* (yield* connect(url, TOKEN)).client;
+        yield* client["orchestration.dispatch"]({ command: createProject });
+        yield* client["orchestration.dispatch"]({ command: createThread });
+        const error = yield* Effect.flip(client["thread.regenerateTitle"]({ threadId }));
+        expect(error).toBeInstanceOf(PoseidonRpcError);
+        expect((error as PoseidonRpcError).code).toBe("invalid");
+        yield* appendUserMessage(engine, "Explain the notes");
+        const refused = yield* Effect.flip(client["thread.regenerateTitle"]({ threadId }));
+        expect((refused as PoseidonRpcError).code).toBe("unavailable");
+      }),
+    ),
+  );
+
+  it.live("the generated-text rpcs write through the connector and rename the thread", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepoWithBranch();
+        const asked: Array<GenerateTextInput> = [];
+        const { url, engine } = yield* testStack(BrowserService.empty, {
+          generateText: (input) =>
+            Effect.sync(() => {
+              asked.push(input);
+              return answerFor(input);
+            }),
+        });
+        const client = yield* (yield* connect(url, TOKEN)).client;
+        yield* client["orchestration.dispatch"]({
+          command: { ...createProject, workspaceRoot: root },
+        });
+        yield* client["orchestration.dispatch"]({ command: createThread });
+
+        const commit = yield* client["git.generateCommitMessage"]({ projectId, threadId });
+        expect(commit).toEqual({ subject: "Add the notes file", body: "- explain it" });
+        expect(asked[0]?.prompt).toContain("notes.txt");
+        expect(asked[0]?.model).toBe("fake/model");
+
+        const pr = yield* client["git.generatePullRequest"]({ projectId, threadId, base: "main" });
+        expect(pr).toEqual({ title: "Add the parser", body: "## Summary\n- parser" });
+        expect(asked[1]?.prompt).toContain("Add the parser");
+
+        yield* appendUserMessage(engine, "Explain the notes");
+        const renamed = yield* client["thread.regenerateTitle"]({ threadId });
+        expect(renamed).toEqual({ title: "Explain the notes file" });
+        expect((yield* engine.threadDoc(threadId))?.title).toBe("Explain the notes file");
+      }),
+    ),
+  );
 });
+
+/** A user's message on the shared test thread, as a turn would have written it. */
+const appendUserMessage = (engine: OrchestrationEngine["Service"], text: string) =>
+  engine.appendThreadEvents(threadId, [
+    {
+      eventId: makeEventId(),
+      streamKind: "thread",
+      streamId: threadId,
+      occurredAt: "2026-01-01T00:00:02.000Z",
+      type: "thread.item.upserted",
+      actor: "user",
+      payload: { item: { itemId: makeItemId(), kind: "user_message", status: "completed", text } },
+    },
+  ]);
+
+/** A repository on `feature`, one commit past `main`, with an untracked `notes.txt`. */
+const makeRepoWithBranch = () => {
+  const root = mkdtempSync(NodePath.join(NodeOS.tmpdir(), "poseidon-transport-repo-"));
+  const git = (...args: Array<string>) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
+  git("init", "-q", "-b", "main");
+  git("config", "user.email", "test@poseidon.local");
+  git("config", "user.name", "Poseidon Test");
+  writeFileSync(NodePath.join(root, "a.txt"), "one\n");
+  git("add", "-A");
+  git("commit", "-qm", "init");
+  git("checkout", "-qb", "feature");
+  writeFileSync(NodePath.join(root, "parser.ts"), "export const parse = () => 1;\n");
+  git("add", "-A");
+  git("commit", "-qm", "Add the parser");
+  writeFileSync(NodePath.join(root, "notes.txt"), "what the parser does\n");
+  return root;
+};
+
+/** What the scripted connector writes, told apart by the fields the schema asks for. */
+const answerFor = (input: GenerateTextInput): string => {
+  const keys = Object.keys((input.jsonSchema?.["properties"] ?? {}) as object).join(",");
+  if (keys === "subject,body") {
+    return '```json\n{"subject":"Add the notes file","body":"- explain it"}\n```';
+  }
+  if (keys === "title,body") {
+    return '{"title":"Add the parser","body":"## Summary\\n- parser"}';
+  }
+  return 'Sure: {"title":"Explain the notes file"}';
+};

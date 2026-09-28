@@ -9,6 +9,7 @@ import {
   GitGeneratePullRequestRpc,
   ThreadRegenerateTitleRpc,
 } from "./generation";
+import { PoseidonRpcGroup, RPC_METHODS } from "./rpc";
 
 const PROJECT_ID = "018f2b6e-1c2d-7a3b-8c4d-5e6f7a8b9c0e";
 const THREAD_ID = "018f2b6e-1c2d-7a3b-8c4d-5e6f7a8b9c0d";
@@ -24,6 +25,13 @@ describe("generation RPC names", () => {
     expect(GitGenerateCommitMessageRpc._tag).toBe("git.generateCommitMessage");
     expect(GitGeneratePullRequestRpc._tag).toBe("git.generatePullRequest");
     expect(ThreadRegenerateTitleRpc._tag).toBe("thread.regenerateTitle");
+  });
+
+  it("are in the method table and the group, so the server must answer them", () => {
+    for (const method of Object.values(GENERATION_RPC_METHODS)) {
+      expect(Object.values(RPC_METHODS)).toContain(method);
+      expect(PoseidonRpcGroup.requests.has(method)).toBe(true);
+    }
   });
 });
 

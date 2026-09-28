@@ -347,6 +347,17 @@ export const makeFixtureRpc = (context: FixtureRpcContext): PoseidonRpcClient =>
         // No message index here; the palette's Messages group stays empty.
         case "threads.searchMessages":
           return () => Effect.succeed([]);
+        // No harness writes text here; the Generate buttons fall back.
+        case "git.generateCommitMessage":
+        case "git.generatePullRequest":
+        case "thread.regenerateTitle":
+          return () =>
+            Effect.fail(
+              new PoseidonRpcError({
+                code: "unavailable",
+                message: "No harness can write text in the fixture.",
+              }),
+            );
         default:
           return () => Effect.die(new Error(`fixture: unimplemented rpc ${String(key)}`));
       }

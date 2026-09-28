@@ -88,6 +88,12 @@ export interface DecideEnv {
   readonly nextItemId: () => ItemId;
 }
 
+/**
+ * What a thread is called until someone names it. The title reactor names a
+ * thread only while it still has exactly this title.
+ */
+export const DEFAULT_THREAD_TITLE = "New thread";
+
 const rejected = (reason: string): DecideResult => ({ accepted: false, reason });
 const accepted = (
   events: ReadonlyArray<PlannedEvent>,
@@ -253,7 +259,7 @@ export const decide = (
         emit("thread.created", {
           threadId: command.threadId,
           projectId: command.projectId,
-          title: command.title ?? fork?.title ?? "New thread",
+          title: command.title ?? fork?.title ?? DEFAULT_THREAD_TITLE,
           settings: {
             model,
             runtimeMode: patch.runtimeMode ?? ctx.defaultRuntimeMode ?? DEFAULT_RUNTIME_MODE,
