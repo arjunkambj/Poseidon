@@ -17,6 +17,8 @@
  *   away and back does not ask again. The key's `revision` names the state
  *   of the workspace, so once files may have been created or removed the
  *   caller asks anew rather than reading an answer that no longer holds.
+ * - `statFiles(registry, batch)` — the same question as a one-shot call that
+ *   resolves with its own `Exit`, for a caller that caches its own answers.
  *
  * The shapes mirror `gitAtoms` on purpose, for the same two reasons:
  *
@@ -40,8 +42,10 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 import * as Atom from "effect/unstable/reactivity/Atom";
+import type * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry";
 
 import { Connection, ConnectionStateRef } from "./connection";
+import { runOneShot } from "./oneShot";
 
 /**
  * A file RPC's outcome as a value. `error` carries the server's message — "path
@@ -231,24 +235,28 @@ export const makeFileAtoms = (runtime: Atom.AtomRuntime<Connection | ConnectionS
     ),
   );
 
+  /**
+   * Which of `key.paths` exist. More candidates than one call carries is
+   * several calls, in order; an empty set asks nothing.
+   */
+  const statAll = (key: Omit<FileStatKey, "revision">) =>
+    Effect.gen(function* () {
+      const client = yield* (yield* Connection).client;
+      const answers = yield* Effect.forEach(statBatches(key.paths), (paths) =>
+        client["files.stat"]({
+          projectId: key.projectId,
+          ...(key.threadId === undefined ? {} : { threadId: key.threadId }),
+          paths,
+        }),
+      );
+      return answers.flat();
+    });
+
   const fileStatQuery = (encoded: string) =>
     runtime.atom(
       connectedEpochs.pipe(
         Stream.mapEffect(() =>
-          Effect.gen(function* () {
-            const key = decodeFileStat(encoded);
-            const client = yield* (yield* Connection).client;
-            // More candidates than one call carries is several calls, in order;
-            // an empty set asks nothing.
-            const answers = yield* Effect.forEach(statBatches(key.paths), (paths) =>
-              client["files.stat"]({
-                projectId: key.projectId,
-                ...(key.threadId === undefined ? {} : { threadId: key.threadId }),
-                paths,
-              }),
-            );
-            return answers.flat();
-          }).pipe(
+          statAll(decodeFileStat(encoded)).pipe(
             Effect.map(ok<ReadonlyArray<FileStat>>),
             Effect.catch((error) => Effect.succeed(failed<ReadonlyArray<FileStat>>(error.message))),
           ),
@@ -267,7 +275,15 @@ export const makeFileAtoms = (runtime: Atom.AtomRuntime<Connection | ConnectionS
   const fileContentAtom = (key: FileWindowKey) => fileContentByKeyAtom(encodeFileWindow(key));
   const fileStatAtom = (key: FileStatKey) => fileStatByKeyAtom(encodeFileStat(key));
 
-  return { fileSearchAtom, fileContentAtom, fileStatAtom };
+  /**
+   * `files.stat` as a one-shot call (`./oneShot`) on `registry`, for a caller
+   * that asks as it goes and keeps its own answers — the terminal's file
+   * links, which learn their candidates only as the pointer moves.
+   */
+  const statFiles = (registry: AtomRegistry.AtomRegistry, key: Omit<FileStatKey, "revision">) =>
+    runOneShot(runtime, registry, () => statAll(key));
+
+  return { fileSearchAtom, fileContentAtom, fileStatAtom, statFiles };
 };
 
 export type FileAtoms = ReturnType<typeof makeFileAtoms>;

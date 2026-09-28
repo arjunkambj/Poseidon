@@ -927,7 +927,8 @@ Everything a client needs that is not React.
   and by a revision the caller names (the timeline's count of settled turns
   and restores), so an answer from before files were created or removed is
   asked again; a set larger than one `files.stat` carries goes out as several
-  calls.
+  calls. `statFiles` asks the same as a one-shot call, for the terminal's file
+  links, which keep their own answers.
   `gitAtoms.ts` holds `checkpointsAtom`, keyed by the thread and a revision the
   caller names (the timeline passes its fold's checkpoint count), so a list
   read before a checkpoint was created is never mistaken for one after it; a

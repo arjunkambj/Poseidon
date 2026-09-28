@@ -14,6 +14,7 @@ import { FILES_STAT_MAX_PATHS } from "@poseidon/contracts/rpc";
 import type { FileContent, FileSearchResult, FileStat } from "@poseidon/contracts/rpc";
 import type * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Ref from "effect/Ref";
 import * as SubscriptionRef from "effect/SubscriptionRef";
@@ -301,6 +302,42 @@ describe("file atoms", () => {
         expect(calls.stat).toHaveLength(2);
       }),
     ),
+  );
+
+  it.live(
+    "a one-shot stat asks each time, in contract-sized calls, and resolves its own exit",
+    () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const projectId = makeProjectId();
+          const threadId = makeThreadId();
+          const calls: Calls = { search: [], read: [], stat: [] };
+          const failing = yield* Ref.make(false);
+          const { registry, statFiles } = yield* runtimeWith(fakeClient(calls, failing), CONNECTED);
+
+          const paths = ["src/a.ts", "/elsewhere/b.ts"];
+          const first = yield* Effect.promise(() =>
+            statFiles(registry, { projectId, threadId, paths }),
+          );
+          const second = yield* Effect.promise(() => statFiles(registry, { projectId, paths }));
+          expect(Exit.isSuccess(first) && first.value.map((stat) => stat.path)).toEqual([
+            "src/a.ts",
+          ]);
+          expect(Exit.isSuccess(second)).toBe(true);
+          expect(calls.stat).toEqual([
+            { projectId, threadId, paths },
+            { projectId, paths },
+          ]);
+
+          const many = Array.from({ length: FILES_STAT_MAX_PATHS + 1 }, (_, i) => `src/${i}.ts`);
+          const all = yield* Effect.promise(() => statFiles(registry, { projectId, paths: many }));
+          expect(Exit.isSuccess(all) && all.value.length).toBe(many.length);
+          expect(calls.stat.slice(2).map((call) => call.paths.length)).toEqual([
+            FILES_STAT_MAX_PATHS,
+            1,
+          ]);
+        }),
+      ),
   );
 
   it.live("a failed read becomes a value and the atom survives it", () =>
