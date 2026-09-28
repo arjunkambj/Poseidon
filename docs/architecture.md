@@ -345,7 +345,7 @@ this session, in opening order, each with a close button and a "+" menu for
 the kinds not open yet. The kinds come from a small registry in
 `apps/web/src/components/dock/` (`DOCK_TABS` in `dock-toggle.ts`,
 `DOCK_TAB_META` in `dock-tab-meta.ts`, `DOCK_TAB_PANES` in
-`dock-tab-panes.tsx`); there are four today: **changes** (`git.diff` in three scopes
+`dock-tab-panes.tsx`); there are five today: **changes** (`git.diff` in three scopes
 — this turn's checkpoints with the restore controls, the branch against its
 base through `mergeBase`, and the uncommitted working tree — with a
 split/unified toggle, a changed-file tree, next-unviewed and change keys,
@@ -356,12 +356,16 @@ pane), **files** (a search over
 `files.read`, paged by line offset because a window is capped by characters,
 not lines, and syntax highlighted when a small code file fits one page; a file chip in the timeline opens it on a file at a line, through
 a per-thread request in `state/file-reveal.ts` that the thread view answers by
-writing the file into the thread's Files view and opening the dock on Files) and
+writing the file into the thread's Files view and opening the dock on Files),
 **agents** (the thread's subagents from its snapshot's task rows, grouped
 Working / Done / Failed, where a task is working only while its own turn runs
 — one an ended or interrupted turn left open reads as Failed; thread docks only; an entry's target button leaves a
 request in `lib/timeline-reveal-request.ts` that the timeline answers by
-opening what folds the task row and scrolling to it). When less than 640px remains beside the sidebar, the dock overlays
+opening what folds the task row and scrolling to it) and **pull request** (a
+thread's only, offered once `git.pullRequest.marks` says its branch has one:
+`git.pullRequest.view` read through gh, with the summary, the checks and the
+reviews; a comment can be added to the chat or opened in Changes on the
+branch's diff). When less than 640px remains beside the sidebar, the dock overlays
 the thread so its tabs stay reachable. Wider rows fit a thread column of at least 360px beside the dock.
 The dock has keys of its own, answered by the thread view: `dock.toggle`
 (Mod+Alt+B) closes it or reopens it on the tab it was closed on, and

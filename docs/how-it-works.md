@@ -1827,6 +1827,59 @@ Both maps are typed `Record<DockTab, …>`, so the compiler refuses a kind
 missing from either; `projectDockTabs` is a plain list, which the registry
 test keeps in step instead.
 
+The kinds today are Changes, Browser, Files and Pull request. Pull request is
+a thread's only, and the launcher and the "+" menu offer it only once the
+thread's branch has a pull request (below); a tab already open, or one named
+by `?pane=pullRequest`, stays either way.
+
+### The Pull request tab
+
+`apps/web/src/components/panes/pull-request/pull-request-pane.tsx` shows the
+pull request of the thread's branch — its worktree's, when it has one — as
+`git.pullRequest.view` reads it through gh (see "Commit, push and pull
+requests" below). The atoms are in
+`packages/client-runtime/src/pullRequestAtoms.ts`: `pullRequestViewAtom` and
+`pullRequestMarksAtom` are streams driven by the connection's status, like the
+git atoms, with a failed call kept as a value. Both depend on the project's
+git revision, so the thread header's `refreshProject` on window return rereads
+them, and on a revision of their own that `refreshPullRequests` bumps — the
+tab's refresh button. Nothing polls. The view is read only while the tab is
+mounted, which is only while it shows.
+
+Whether a thread's branch has a pull request comes from the project's marks
+(`useThreadHasPullRequest`), one listing shared by every reader, so the dock's
+launcher costs no gh call of its own. Marks are throttled per project: a
+revision bump within 60 seconds of the last successful listing answers that
+listing again, and only `refreshPullRequests` lists at once.
+
+The tab, top to bottom:
+
+- **Summary** — the title, a `#number` button that opens the pull request on
+  GitHub, the state (Open, Draft, Merged or Closed), base ← head, the author,
+  when it was last updated, and the refresh button.
+- **Checks** — a count line (`2 failing, 1 pending, 12 passing`), then one row
+  per check, failing first as the server sorts them: the bucket's icon, name,
+  workflow, how long it ran, and a button that opens its log on GitHub.
+- **Reviews** — the review decision and each reviewer's latest verdict (a
+  later comment-only review does not replace an approval).
+- **Review threads** — the open ones grouped by file, each with its
+  `path:line`, an Outdated badge when the line has moved, and every comment's
+  author, time and markdown body; the resolved ones fold under a count.
+- **Conversation** — the pull request's own comments.
+
+Each comment has **Add to chat**, which appends a quote to the thread's
+message (`` `src/app.ts:12` — @author: `` followed by the body as a
+blockquote) and focuses the composer, the way the Files and Changes menus add
+a path; nothing is sent. Each review thread has **Open in Changes**, which sets
+the Changes tab to Branch vs base and opens it on that file through its deep
+link (`?pane=changes&file=`); the pane opens the file but does not scroll to
+the line.
+
+Loading, not connected, gh missing or signed out (with gh's own reason and
+fix), no pull request for the branch (named), and a failed read with a retry
+are each an `Empty`. The palette's "Show pull request" (`dock.pullRequest`, no
+default chord) opens the tab, or closes the dock when it already shows it.
+
 ### The Changes pane
 
 `apps/web/src/components/panes/changes/changes-pane.tsx` is the dock's first
@@ -3471,6 +3524,7 @@ fields entirely.
 | View     | `dock.changes` / `dock.files`                         | `Mod+Shift+D` / `Mod+P`       | `threadOpen \|\| newTaskOpen`                                                          |
 | View     | `browserPane.toggle`                                  | `Mod+Shift+B`                 |                                                                                        |
 | View     | `dock.agents`                                         | unbound                       |                                                                                        |
+| View     | `dock.pullRequest`                                    | unbound                       |                                                                                        |
 | View     | `terminal.toggle`                                     | `Mod+J`                       |                                                                                        |
 | View     | `font.increase` / `decrease` / `reset`                | `Mod+Alt+=` / `-` / `0`       |                                                                                        |
 | View     | `chatWidth.cycle`                                     | unbound                       |                                                                                        |
