@@ -28,7 +28,7 @@ import { isBrowserTool } from "@/components/timeline/browser-tool";
 import { toolPathTarget } from "@/components/timeline/tool-target";
 import { formatDurationMs } from "@/lib/format";
 
-type ClauseKind =
+export type ClauseKind =
   | "command"
   | "edit"
   | "create"
@@ -116,19 +116,19 @@ const words = (name: string): ReadonlySet<string> =>
 const any = (set: ReadonlySet<string>, ...candidates: ReadonlyArray<string>): boolean =>
   candidates.some((candidate) => set.has(candidate));
 
-interface Action {
+export interface WorkAction {
   readonly kind: ClauseKind;
   /** What makes two actions one: a path for files, the item otherwise. */
   readonly key: string;
 }
 
 /** A tool call by the words in its name, then by the keys of its input. */
-const toolAction = (item: ItemSnapshot): Action => {
+const toolAction = (item: ItemSnapshot): WorkAction => {
   const name = words(item.tool?.name ?? "");
   const input = record(item.tool?.input);
   const path = toolPathTarget(input);
-  const byItem = (kind: ClauseKind): Action => ({ kind, key: item.itemId });
-  const byPath = (kind: ClauseKind): Action => ({ kind, key: path ?? item.itemId });
+  const byItem = (kind: ClauseKind): WorkAction => ({ kind, key: item.itemId });
+  const byPath = (kind: ClauseKind): WorkAction => ({ kind, key: path ?? item.itemId });
 
   if (any(name, "ls", "list", "dir", "directory", "readdir", "tree")) return byItem("list");
   if (any(name, "grep", "glob", "search", "find", "rg")) {
@@ -147,7 +147,7 @@ const toolAction = (item: ItemSnapshot): Action => {
 };
 
 /** The one action an item stands for, or `null` for what is not one (reasoning, messages). */
-const action = (item: ItemSnapshot): Action | null => {
+export const workAction = (item: ItemSnapshot): WorkAction | null => {
   switch (item.kind) {
     case "command_execution":
       return { kind: "command", key: item.itemId };
@@ -178,7 +178,7 @@ export const workClauses = (items: ReadonlyArray<ItemSnapshot>): ReadonlyArray<W
   const files = new Map<string, FileChangeKind>();
   const others = new Map<ClauseKind, Set<string>>();
   for (const item of items) {
-    const found = action(item);
+    const found = workAction(item);
     if (found === null) continue;
     if (FILE_KINDS.has(found.kind)) {
       const kind = found.kind as FileChangeKind;

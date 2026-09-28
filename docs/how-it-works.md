@@ -775,7 +775,18 @@ turns the flat item list into rows:
   stream in (and matches the group the same run becomes in an opened settled
   fold). Narration, todos, plans, errors, compactions, steered messages and
   decision records stay inline and split the runs; the trailing burst, when
-  nothing follows it, is marked `live`. The `working` row comes last;
+  nothing follows it, is marked `live`. The live burst is one line reading its
+  newest step (`timeline/live-step.ts`): "Running pnpm test" while the step
+  runs and "Ran pnpm test" once it is done, "Editing app.tsx", "Searching
+  useMemo", a browser call's sentence, a task's title — the target cut to a
+  command's first line or a file's name. Reasoning joins the line as
+  "Thinking…", then "Thought for 4s", timed up to the step after it. The
+  newest step's spinner or failure mark sits beside it, with "4 steps" once
+  the burst holds more than one; opening it shows its rows. Earlier bursts,
+  which narration has closed, read as a settled work group does. When the
+  turn settles its bursts become the `turn-fold` below, and the same run in
+  an opened fold keeps the burst's id and so its disclosure state. The
+  `working` row comes last;
 - a settled turn shows its user message, then one `turn-fold` row standing
   for its work: "Worked for 2m 3s · Ran 3 commands, edited 2 files, read 4
   files", with "1 failed" beside it in the destructive colour when something
@@ -1080,7 +1091,8 @@ changed file's path, a search query, a skill, a task's title, an error
 left out. Typing is debounced and a new query goes to its first match; the
 bar shows "3/12", and Enter, Shift+Enter or its arrows step through the
 matches, wrapping at either end. A step opens whatever hides the match — its
-turn fold, its work group, the tasks above it, its own reasoning or plan body,
+turn fold, its work group (a running turn's live burst included), the tasks
+above it, its own reasoning or plan body,
 the clamp on a long user message — hands the scroll to the reader as the rail
 does, and scrolls the row to 30% down the viewport once the list holds it. The match the reader is on
 keeps its place while a reply streams in more matches. Escape closes the bar
