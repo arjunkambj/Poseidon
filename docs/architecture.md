@@ -885,12 +885,15 @@ for `scripts.detect`, with `DetectedScript`, `PackageManager` and
 `scripts` can name it without an import cycle, and `rpc` re-exports it.
 `browser.ts` holds the browser pane's
 payloads (`BrowserState`, `BrowserHumanInput`, `DevServer`,
-`BrowserToolStatus`), and `files.ts` the workspace file reads' payloads
-(`FileSearchResult`, `FileContent`, and `FileStat` with the
-`FILES_STAT_MAX_PATHS` cap of 100 that `files.stat` takes in one call); `rpc`
-re-exports them too, so they are read from `@poseidon/contracts/rpc`.
-`thread.ts` holds the value objects of a thread and is reached through
-`orchestration`, which re-exports it, rather than as a module of its own.
+`BrowserToolStatus`), and `files.ts` the workspace file RPCs
+(`FILE_RPC_METHODS`, spread into `RPC_METHODS` like the others) and their
+payloads (`FileSearchResult`, `FileContent`, `FileCreated`, and `FileStat`
+with the `FILES_STAT_MAX_PATHS` cap of 100 that `files.stat` takes in one
+call); `rpc` re-exports the payloads too, so they are read from
+`@poseidon/contracts/rpc`. `thread.ts` holds the value objects of a thread and
+`readModels.ts` the sidebar's `ProjectSummary` and `ThreadSummary` and the
+`ThreadDetailSnapshot`; both are reached through `orchestration`, which
+re-exports them, rather than as modules of their own.
 `decisions` holds the record a thread keeps of each settled approval, question
 and plan, which the thread read models in `orchestration` carry. `connectors`
 holds what the renderer learns about a connector — models, probe, configured
