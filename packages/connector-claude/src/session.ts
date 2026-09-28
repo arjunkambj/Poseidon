@@ -149,6 +149,16 @@ type InterruptWithOptions = (options?: { readonly cancelQueued?: boolean }) => P
 export const ungatedWarning = (ran: number): string =>
   `${ran} tool call(s) ran without reaching Poseidon's approval gate — the PreToolUse hook did not fire, so this turn was not gated`;
 
+/**
+ * The turn Stop found, and the turn as it stands after: marked interrupted,
+ * or still none when no turn runs. Read and written in one `Ref.modify`, so a
+ * turn the consumer ends between a read and a write is never written back —
+ * a stale turn left in the ref would refuse every later `send`.
+ */
+export const markInterrupted = <T extends { readonly interrupted: boolean }>(
+  now: T | null,
+): [T | null, T | null] => (now === null ? [null, null] : [now, { ...now, interrupted: true }]);
+
 const messageOf = (cause: unknown): string =>
   cause instanceof Error ? cause.message : String(cause);
 
@@ -565,9 +575,9 @@ export const makeClaudeSession = (
 
     const interrupt = (): Effect.Effect<void, ConnectorError> =>
       Effect.gen(function* () {
-        const active = yield* Ref.get(turnRef);
+        // Marked in one step: a turn the consumer ended meanwhile stays ended.
+        const active = yield* Ref.modify(turnRef, markInterrupted);
         if (active === null) return;
-        yield* Ref.set(turnRef, { ...active, interrupted: true });
         // A card nobody will answer any more must not hold the stop up.
         yield* gate.releaseAll("deny");
         yield* interactions.releaseAll;

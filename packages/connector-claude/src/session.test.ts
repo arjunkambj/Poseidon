@@ -15,12 +15,14 @@ import { makeConnectorInstanceId, makeProjectId, makeThreadId } from "@poseidon/
 import type { RuntimeEvent } from "@poseidon/contracts/runtime";
 import { loadSdkStreamRecording } from "@poseidon/testkit/sdkStreamRecording";
 import * as Effect from "effect/Effect";
+import * as Ref from "effect/Ref";
 
 import { isPidGone, replay } from "../test/replay";
 import { testServices } from "../test/services";
 import { CLAUDE_CAPABILITIES } from "./capabilities";
 import { makeClaudeConnectorDefinition } from "./definition";
 import { CLAUDE_KIND } from "./kind";
+import { markInterrupted } from "./session";
 
 const recording = loadSdkStreamRecording(CLAUDE_KIND, "signed-out");
 const PROMPT = recording.manifest.prompts[0]!;
@@ -158,5 +160,30 @@ describe("a Claude Code session", () => {
         yield* handle.close();
       }),
     ),
+  );
+});
+
+describe("Stop's mark on the running turn", () => {
+  const running = { turnId: "turn-1", interrupted: false };
+
+  it("marks the running turn, and hands it back", () => {
+    expect(markInterrupted(running)).toEqual([running, { ...running, interrupted: true }]);
+  });
+
+  it("leaves no turn when none runs", () => {
+    expect(markInterrupted(null)).toEqual([null, null]);
+  });
+
+  it.effect("never writes back a turn the consumer ended first", () =>
+    Effect.gen(function* () {
+      const turnRef = yield* Ref.make<typeof running | null>(running);
+      // Stop saw the turn; its result ended it before Stop marked it.
+      const seen = yield* Ref.get(turnRef);
+      yield* Ref.set(turnRef, null);
+      expect(seen).not.toBeNull();
+      expect(yield* Ref.modify(turnRef, markInterrupted)).toBeNull();
+      // Still no turn: the next send is not refused as TurnInProgress.
+      expect(yield* Ref.get(turnRef)).toBeNull();
+    }),
   );
 });
