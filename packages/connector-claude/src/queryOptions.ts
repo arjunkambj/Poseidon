@@ -11,6 +11,9 @@
  *   endpoint with its bearer. The SDK hands the CLI its MCP config on the
  *   command line, so the bearer is visible to `ps` on this machine for the
  *   session's life; it is minted per session and revoked with it.
+ * - Poseidon's enabled plugins load as local plugins, their MCP servers
+ *   beside `poseidon` (`pluginOptions.ts`). With none enabled the options are
+ *   exactly what they were before plugins existed.
  * - Every tool call is gated (`toolGate.ts`).
  * - The thread's attachments directory is readable, so a file the user
  *   attached can be read by path.
@@ -28,8 +31,10 @@ import type { ConnectorEndpoint } from "@poseidon/connector-sdk/definition";
 import type { Effort } from "@poseidon/contracts/enums";
 import type { ThreadId } from "@poseidon/contracts/ids";
 import type { ThreadSettings } from "@poseidon/contracts/orchestration";
+import type { SessionPlugin } from "@poseidon/connector-sdk/plugins";
 
 import { sdkModelFor } from "./models";
+import { pluginMcpServersFor, sdkPluginsFor } from "./pluginOptions";
 import type { ClaudeSpawnOptions, ClaudeSpawnedProcess } from "./spawn";
 import type { ToolGate } from "./toolGate";
 
@@ -93,6 +98,8 @@ export interface QueryOptionsInput {
   readonly spawn: (options: ClaudeSpawnOptions) => ClaudeSpawnedProcess;
   readonly gate: ToolGate;
   readonly limits?: SessionLimits;
+  /** The Poseidon plugins the session loads; absent or empty adds nothing. */
+  readonly plugins?: ReadonlyArray<SessionPlugin>;
 }
 
 export const buildQueryOptions = (input: QueryOptionsInput): Options => {
@@ -101,6 +108,7 @@ export const buildQueryOptions = (input: QueryOptionsInput): Options => {
   const preToolUse: HookCallback = (hookInput) => input.gate.preToolUse(hookInput);
   const canUseTool: CanUseTool = (toolName, toolInput, options) =>
     input.gate.canUseTool(toolName, toolInput, options);
+  const plugins = input.plugins ?? [];
   return {
     pathToClaudeCodeExecutable: input.binaryPath,
     env: input.env,
@@ -122,7 +130,9 @@ export const buildQueryOptions = (input: QueryOptionsInput): Options => {
     allowDangerouslySkipPermissions: true,
     ...(model === undefined ? {} : { model }),
     ...(effort === undefined ? {} : { effort }),
+    ...(plugins.length === 0 ? {} : { plugins: sdkPluginsFor(plugins) }),
     mcpServers: {
+      ...pluginMcpServersFor(plugins),
       [POSEIDON_MCP_SERVER]: {
         type: "http",
         url: input.mcp.url,

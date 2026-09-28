@@ -61,6 +61,7 @@ import {
   SpawnFailed,
   TurnInProgress,
 } from "@poseidon/connector-sdk/definition";
+import { loadSessionPlugins } from "@poseidon/connector-sdk/plugins";
 import { makeBoundedEventQueue, type SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
 import type { ConnectorInstanceId, ItemId, ThreadId, TurnId } from "@poseidon/contracts/ids";
 import { makeEventId, makeTurnId } from "@poseidon/contracts/ids";
@@ -248,6 +249,7 @@ export const makeClaudeSession = (
       plansDir: plansDirFor(options.env, NodeOS.homedir()),
     });
     const mcp = yield* services.mcpEndpoint(threadId);
+    const plugins = yield* loadSessionPlugins(services, threadId);
     const attachmentsDir = attachmentsDirFor(services.attachmentsDir, threadId);
     yield* Effect.sync(() => {
       try {
@@ -281,6 +283,7 @@ export const makeClaudeSession = (
         spawn: group.spawn,
         gate: toolGate,
         ...(options.limits === undefined ? {} : { limits: options.limits }),
+        plugins,
       }),
     });
 

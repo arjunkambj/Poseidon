@@ -10,6 +10,12 @@
  * understands the layout, or loads the skills and MCP servers listed here.
  */
 
+import type { ThreadId } from "@poseidon/contracts/ids";
+import * as Cause from "effect/Cause";
+import * as Effect from "effect/Effect";
+
+import type { ConnectorServices } from "./definition";
+
 /**
  * One MCP server a plugin declares in its `.mcp.json`, with
  * `${CLAUDE_PLUGIN_ROOT}` already expanded to the plugin's directory in every
@@ -48,3 +54,24 @@ export interface SessionPlugin {
   readonly skillsDirs: ReadonlyArray<string>;
   readonly mcpServers: ReadonlyArray<SessionMcpServer>;
 }
+
+/**
+ * The plugins a session starts with: the server's `sessionPlugins`, or none
+ * when the host lends no registry. A registry that dies is logged as a warning
+ * and the session starts without plugins rather than not at all.
+ */
+export const loadSessionPlugins = (
+  services: Pick<ConnectorServices, "sessionPlugins" | "logger">,
+  threadId: ThreadId,
+): Effect.Effect<ReadonlyArray<SessionPlugin>> =>
+  services.sessionPlugins === undefined
+    ? Effect.succeed([])
+    : services.sessionPlugins(threadId).pipe(
+        Effect.catchDefect((defect) =>
+          services.logger
+            .log("warn", "could not load the session's plugins; starting without them", {
+              cause: Cause.pretty(Cause.die(defect)),
+            })
+            .pipe(Effect.as([] as ReadonlyArray<SessionPlugin>)),
+        ),
+      );
