@@ -320,6 +320,7 @@ itself (`control_request`, `control_response`, `control_cancel_request`,
 | `system/task_started`, `task_progress`, `task_updated`, `task_notification` | `task.updated`, then `task.completed`                                                 |
 | any message with `parent_tool_use_id`                                       | read like the main loop's, every row nested under the task (`parentItemId`)           |
 | `command_lifecycle`                                                         | nothing on the stream: the session reads it for steering                              |
+| `conversation_reset` (`/clear`)                                             | nothing on the stream: the ref follows the session id the next `system/init` names    |
 | `result`                                                                    | `usage.updated`, `context.updated`, `turn.completed`                                  |
 | anything else                                                               | `event.unmapped`, kept whole, raw source `claude.sdk`                                 |
 
@@ -584,11 +585,14 @@ totalCostUsd? }`:
 
 - `sessionId` is minted by the connector for a fresh session and passed as the
   SDK's `sessionId` (`--session-id=<uuid>`). On restart it is the SDK's
-  `resume`.
+  `resume`. After that it follows the id each `system/init` names: `/clear`
+  sends `conversation_reset` and moves the CLI to a new session id, so the ref
+  moves with it and a resume carries on the cleared conversation
+  (`fixtures/claude/local-command/`).
 - `cwd` is kept because the CLI files transcripts per project directory; a
   resume from another directory does not find the conversation.
 - `lastAssistantUuid` is the newest main-loop assistant message, the point the
-  SDK's `resumeSessionAt` could rewind to.
+  SDK's `resumeSessionAt` could rewind to. A `conversation_reset` clears it.
 - `totalCostUsd` is the CLI's running cost total at the last `result`, which a
   resumed CLI carries on from its transcript.
 
@@ -741,6 +745,16 @@ comments say which recording will pin each.
 - **Every user message gets receipts** (`command_lifecycle`): `queued`,
   `started`, then an end state. A refused, signed-out message ends
   `cancelled`.
+- **The CLI's own commands answer as the model would** (`local-command`):
+  `/cost` is a `<synthetic>` assistant snapshot carrying the command's output
+  (and a `local_command_source` wrapping it in `<local-command-stdout>`), then
+  a `success` result with no request behind it; the translator reads it as any
+  answer. A command that only opens a terminal panel, such as `/permissions`,
+  answers "/permissions isn't available in this environment." the same way.
+  The SDK declares a `system/local_command_output` message too, but 2.1.280
+  never writes it on stdout.
+- **`/clear` moves the CLI to a new session id:** it sends
+  `conversation_reset`, and the next `system/init` names the new id.
 - **A message written mid-turn is queued, not refused,** and runs as the
   next turn if the loop ends first (`signed-out-steer`).
 - **The initialize response is the only model list,** and the only account

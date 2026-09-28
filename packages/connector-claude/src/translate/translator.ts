@@ -41,6 +41,9 @@
  *   after `compacting` is the CLI going back to work: nothing more when the
  *   boundary settled the compaction, its row failed when the CLI says the
  *   compaction failed;
+ * - `conversation_reset` → nothing: `/clear` started the conversation over, so
+ *   the rewind point before it is gone. The session reads the new session id
+ *   off the CLI's next `system/init` (`sessionRef.ts`);
  * - `command_lifecycle` and `system/status: requesting` → nothing, on purpose.
  *   The first is the CLI's receipt for each user message the session wrote
  *   (queued, started, then how it ended); the session reads it for itself, to
@@ -441,6 +444,9 @@ export const makeTranslator = (options: {
       case "system":
         return system(message);
       case "command_lifecycle":
+        return [];
+      case "conversation_reset":
+        lastAssistantUuid = undefined;
         return [];
       case "result": {
         const { events, totalCost: total } = resultEvents(message, turn, {

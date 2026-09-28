@@ -91,7 +91,7 @@ import {
   sdkEffortFor,
   type SessionLimits,
 } from "./queryOptions";
-import type { ClaudeSessionRef } from "./sessionRef";
+import { reportedSessionId, type ClaudeSessionRef } from "./sessionRef";
 import { makeProcessGroup } from "./spawn";
 import { addUsage, makeSteerLedger, type SteerReceipt } from "./steering";
 import { makeToolGate } from "./toolGate";
@@ -253,7 +253,9 @@ export const makeClaudeSession = (
       }
     });
 
-    const sessionId = options.sessionRef?.sessionId ?? NodeCrypto.randomUUID();
+    // The CLI's session id: minted or resumed here, then followed across a
+    // `/clear`, which starts the conversation over under a new one (`sessionRef.ts`).
+    let sessionId = options.sessionRef?.sessionId ?? NodeCrypto.randomUUID();
     const input = makeInputQueue<SDKUserMessage>();
     const group = makeProcessGroup({
       onStderr: (chunk) => {
@@ -399,6 +401,7 @@ export const makeClaudeSession = (
         if (record.type === "system" && record.subtype === "status" && isModeReport(record)) {
           cliMode = record.permissionMode as PermissionMode;
         }
+        sessionId = reportedSessionId(record) ?? sessionId;
         const receipt = ledger.observe(record);
         if (receipt !== null) yield* settleHeld(receipt);
         const turn = yield* Ref.get(turnRef);

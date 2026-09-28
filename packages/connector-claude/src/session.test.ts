@@ -26,6 +26,13 @@ import { markInterrupted } from "./session";
 
 const recording = loadSdkStreamRecording(CLAUDE_KIND, "signed-out");
 const PROMPT = recording.manifest.prompts[0]!;
+/** The session id the recorded CLI's `system/init` named. */
+const RECORDED_SESSION_ID = recording.invocations
+  .flatMap((invocation) => invocation.frames)
+  .flatMap((frame) => {
+    const data = frame.data as { type?: unknown; subtype?: unknown; session_id?: unknown };
+    return data?.type === "system" && data.subtype === "init" ? [data.session_id] : [];
+  })[0];
 
 const open = (options: { readonly resumeFrom?: unknown } = {}) =>
   Effect.gen(function* () {
@@ -108,18 +115,17 @@ describe("a Claude Code session", () => {
         // message and its "requesting" status say nothing the stream does not.
         expect(ofType(events, "event.unmapped")).toEqual([]);
 
-        // The ref is said again once the turn settled, now with the cost total.
-        expect(ofType(events, "session.started").at(-1)?.payload.sessionRef).toEqual({
-          sessionId,
-          cwd: workspace,
-          totalCostUsd: 0,
-        });
-        expect(yield* handle.sessionRef()).toEqual({ sessionId, cwd: workspace, totalCostUsd: 0 });
+        // The ref is said again once the turn settled, now with the cost total
+        // and the session id the CLI's init named — the minted one, live; the
+        // recorded one, here.
+        const reported = { sessionId: RECORDED_SESSION_ID, cwd: workspace, totalCostUsd: 0 };
+        expect(yield* handle.sessionRef()).toEqual(reported);
 
         yield* handle.close();
         yield* collector.awaitDone;
         const all = yield* collector.collected;
         expect(all.at(-1)).toMatchObject({ type: "session.ended", payload: { reason: "stopped" } });
+        expect(ofType(all, "session.started").at(-1)?.payload.sessionRef).toEqual(reported);
         expect(replayed.pids()).toHaveLength(1);
         expect(replayed.pids().every(isPidGone)).toBe(true);
         replayed.assertPlayedOut();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseSessionRef } from "./sessionRef";
+import { parseSessionRef, reportedSessionId } from "./sessionRef";
 
 const SESSION = "194d63a1-7180-4e20-95d4-396321ca399c";
 
@@ -42,5 +42,23 @@ describe("parseSessionRef", () => {
     ["an empty cwd", { sessionId: SESSION, cwd: "" }],
   ])("is undefined for %s", (_label, raw) => {
     expect(parseSessionRef(raw)).toBeUndefined();
+  });
+});
+
+describe("reportedSessionId", () => {
+  it("reads the id a system/init names", () => {
+    expect(reportedSessionId({ type: "system", subtype: "init", session_id: SESSION })).toBe(
+      SESSION,
+    );
+  });
+
+  it.each([
+    ["another system message", { type: "system", subtype: "status", session_id: SESSION }],
+    ["a result", { type: "result", subtype: "success", session_id: SESSION }],
+    ["an init with no id", { type: "system", subtype: "init" }],
+    ["an init whose id is not a uuid", { type: "system", subtype: "init", session_id: "x" }],
+    ["nothing", undefined],
+  ])("is undefined for %s", (_label, message) => {
+    expect(reportedSessionId(message)).toBeUndefined();
   });
 });

@@ -10,6 +10,12 @@
  * rewind to. `totalCostUsd` is the CLI's running cost total at the last
  * result: a resumed CLI carries the total on from its transcript, so the next
  * turn's price is measured against this (`translate/result.ts`).
+ *
+ * The id is the one the CLI runs on now, which is not always the one the
+ * session started with: `/clear` starts the conversation over under a new id,
+ * and the CLI's next `system/init` names it (`fixtures/claude/local-command/`).
+ * The session follows that id (`reportedSessionId`), so a resume after a
+ * `/clear` carries on the cleared conversation, not the one before it.
  */
 
 export interface ClaudeSessionRef {
@@ -49,4 +55,17 @@ export const parseSessionRef = (raw: unknown): ClaudeSessionRef | undefined => {
       ? { totalCostUsd: record.totalCostUsd }
       : {}),
   };
+};
+
+/**
+ * The session id a `system/init` names — the CLI says it at the start of every
+ * turn — or undefined for any other message, or one that names none.
+ */
+export const reportedSessionId = (message: unknown): string | undefined => {
+  if (typeof message !== "object" || message === null) return undefined;
+  const record = message as { type?: unknown; subtype?: unknown; session_id?: unknown };
+  if (record.type !== "system" || record.subtype !== "init") return undefined;
+  return typeof record.session_id === "string" && UUID.test(record.session_id)
+    ? record.session_id
+    : undefined;
 };

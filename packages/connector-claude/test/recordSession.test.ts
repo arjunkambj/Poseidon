@@ -52,6 +52,12 @@ const SIGNED_OUT_PROMPT = "Reply with the single word: ok";
 const IMAGE_PROMPT = "What colour is the image? Answer with one word.";
 const COMPACT = "/compact";
 const STEER = "Also end your reply with the word banana.";
+/** A command the CLI runs itself, without a request: `/usage` under its alias. */
+const LOCAL_COMMAND = "/cost";
+/** A command that only opens a panel in the CLI's terminal UI. */
+const PANEL_COMMAND = "/permissions";
+/** The CLI's own command that starts its conversation over. */
+const CLEAR = "/clear";
 
 /** A fresh git repo for one scenario. */
 const scratchRepo = (scenario: string): string => {
@@ -236,6 +242,26 @@ describe("session recordings", () => {
             yield* recording.collector.awaitItem(
               (event) => !before.has(event) && event.type === "turn.completed",
             );
+          }),
+      ),
+  );
+
+  it.live.skipIf(!RECORD)(
+    "local-command: two of the CLI's own slash commands on a CLI that is not signed in",
+    () =>
+      recordScenario(
+        {
+          scenario: "local-command",
+          description:
+            "One session on a CLI that is not signed in: a /cost turn, which the CLI answers itself from the session's usage, and a /permissions turn, a command that only opens a panel in the CLI's terminal UI and is refused in an SDK session. Neither makes a request, so nothing reaches the API.",
+          prompts: [LOCAL_COMMAND, PANEL_COMMAND, CLEAR, LOCAL_COMMAND],
+        },
+        (recording) =>
+          Effect.gen(function* () {
+            yield* turn(recording, LOCAL_COMMAND);
+            yield* turn(recording, PANEL_COMMAND);
+            yield* turn(recording, CLEAR);
+            yield* turn(recording, LOCAL_COMMAND);
           }),
       ),
   );

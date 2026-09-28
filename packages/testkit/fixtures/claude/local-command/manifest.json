@@ -1,0 +1,44 @@
+{
+  "formatVersion": 1,
+  "kind": "claude",
+  "transport": "sdk-stream",
+  "scenario": "local-command",
+  "description": "One session on a CLI that is not signed in: a /cost turn, which the CLI answers itself from the session's usage, and a /permissions turn, a command that only opens a panel in the CLI's terminal UI and is refused in an SDK session. Neither makes a request, so nothing reaches the API.",
+  "cliVersion": "2.1.280",
+  "sdkVersion": "0.3.280",
+  "recordedOn": "2026-09-28",
+  "model": "claude-opus-5-5[1m]",
+  "real": true,
+  "prompts": ["/cost", "/permissions", "/clear", "/cost"],
+  "invocations": [
+    {
+      "argv": [
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--input-format",
+        "stream-json",
+        "--max-turns",
+        "1",
+        "--max-budget-usd",
+        "0.05",
+        "--permission-prompt-tool",
+        "stdio",
+        "--mcp-config",
+        "{\"mcpServers\":{\"poseidon\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:9/mcp\",\"headers\":{\"Authorization\":\"<REDACTED>\"}}}}",
+        "--setting-sources=user,project,local",
+        "--permission-mode",
+        "default",
+        "--allow-dangerously-skip-permissions",
+        "--include-partial-messages",
+        "--add-dir",
+        "<TMP>/claude-attachments-vXx3ZB/01a0e607-6298-7000-b708-8ba550e15289",
+        "--session-id=29af685d-820d-44c6-b547-e3b4778a4f8a"
+      ],
+      "cwd": "<SCRATCH>/local-command",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}
