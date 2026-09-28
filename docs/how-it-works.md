@@ -1851,7 +1851,12 @@ Whether a thread's branch has a pull request comes from the project's marks
 launcher and the sidebar's glyphs cost no gh call of their own. Marks are
 throttled per project: a revision bump within 60 seconds of the last
 successful listing answers that listing again, and only `refreshPullRequests`
-lists at once.
+lists at once. Besides the tab's refresh and a write to the pull request, it
+runs after the header opens a pull request (`openPullRequest` in
+`packages/client-runtime/src/gitCommands.ts`, which the app builds with the
+same pull request atoms in `components/panes/changes/git-atoms.ts`) — the push
+just before may have listed the marks while the branch had none — so the new
+tab and glyph show at once.
 
 Every thread row whose branch has a pull request carries a small glyph
 (`apps/web/src/components/sidebar/thread-pr-mark.tsx`) before the fork mark,
@@ -1867,8 +1872,8 @@ from the keyboard. Besides the header's window-return refresh of the open
 project, the rows ask for their project's marks again on every return to the
 window through `revisitPullRequestMarks`, once per project however many rows
 ask and still under the 60-second throttle. So marks are read on connect, on a
-return to the window, on the tab's refresh and after a write to the pull
-request, and never on a timer. With gh missing or signed out the server
+return to the window, on the tab's refresh, and after a pull request is opened
+or written to, and never on a timer. With gh missing or signed out the server
 answers no marks, and no row shows a glyph.
 
 The tab, top to bottom:

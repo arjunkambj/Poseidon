@@ -6,35 +6,23 @@
  *
  * Built once per git atoms — per client runtime — as the git atoms are per
  * runtime, so a fixture page under its own `ClientRuntimeProvider` reads its
- * scripted client instead of the app's socket.
+ * scripted client instead of the app's socket. They live beside the git atoms
+ * (`pullRequestAtomsFor`) so the app's git writes reread the same ones.
  */
 
 import { RegistryContext } from "@effect/atom-react";
-import type { GitAtoms, GitQuery } from "@poseidon/client-runtime/gitAtoms";
-import {
-  makePullRequestAtoms,
-  type PullRequestAtoms,
-} from "@poseidon/client-runtime/pullRequestAtoms";
+import type { GitQuery } from "@poseidon/client-runtime/gitAtoms";
+import type { PullRequestAtoms } from "@poseidon/client-runtime/pullRequestAtoms";
 import type { ProjectId } from "@poseidon/contracts/ids";
 import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
 
 import { useClientRuntime } from "@/lib/client-runtime";
 
-import { useGitAtoms } from "../changes/git-atoms";
+import { pullRequestAtomsFor, useGitAtoms } from "../changes/git-atoms";
 
-const byGitAtoms = new WeakMap<GitAtoms, PullRequestAtoms>();
-
-export const usePullRequestAtoms = (): PullRequestAtoms => {
-  const { runtime } = useClientRuntime();
-  const git = useGitAtoms();
-  let atoms = byGitAtoms.get(git);
-  if (atoms === undefined) {
-    atoms = makePullRequestAtoms(runtime, git);
-    byGitAtoms.set(git, atoms);
-  }
-  return atoms;
-};
+export const usePullRequestAtoms = (): PullRequestAtoms =>
+  pullRequestAtomsFor(useClientRuntime().runtime, useGitAtoms());
 
 /** Reread the project's pull request and marks now: the refresh button, an action's end. */
 export const useRefreshPullRequests = (projectId: ProjectId): (() => void) => {

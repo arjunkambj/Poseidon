@@ -2,11 +2,11 @@
  * Pull request atoms over a stubbed RPC client: the view reads the scope it
  * was asked for, a failure is a value the atom survives, a project refresh
  * rereads a mounted view, and the marks listing is throttled except when a
- * refresh asks for it.
+ * refresh asks for it — or a pull request was just opened.
  */
 
 import { describe, expect, it } from "@effect/vitest";
-import { makeProjectId, makeThreadId } from "@poseidon/contracts/ids";
+import { makeProjectId, makeThreadId, type ThreadId } from "@poseidon/contracts/ids";
 import type {
   PullRequestFixContext,
   PullRequestMarks,
@@ -29,6 +29,7 @@ import {
   type PoseidonRpcClient,
 } from "./connection";
 import { makeGitAtoms, type GitQuery } from "./gitAtoms";
+import { makeGitCommands } from "./gitCommands";
 import { MARKS_MIN_INTERVAL_MS, makePullRequestAtoms } from "./pullRequestAtoms";
 
 const CONNECTED: ConnectionState = { status: "connected", serverInstanceId: null };
@@ -43,6 +44,8 @@ interface Script {
   readonly fixContexts?: Array<unknown>;
   /** The action's next answer is gh's refusal. */
   failAction?: boolean;
+  /** Set once `git.pullRequest.create` ran: the marks then list the thread's. */
+  opened?: { readonly threadId: string };
 }
 
 const noneOn = (branch: string): PullRequestView => ({ state: "none", branch });
@@ -87,7 +90,32 @@ const fakeClient = (script: Script): PoseidonRpcClient =>
         return (payload: { projectId: string }) =>
           Effect.sync((): PullRequestMarks => {
             script.marks.push({ ...payload });
-            return { marks: [] };
+            const opened = script.opened;
+            return {
+              marks:
+                opened === undefined
+                  ? []
+                  : [
+                      {
+                        threadId: opened.threadId as ThreadId,
+                        number: 7,
+                        url: "https://github.com/acme/app/pull/7",
+                        state: "open",
+                        isDraft: false,
+                        failing: false,
+                      },
+                    ],
+            };
+          });
+      }
+      if (key === "git.push") {
+        return () => Effect.succeed({ remote: "origin", branch: "fix-login", setUpstream: true });
+      }
+      if (key === "git.pullRequest.create") {
+        return (payload: { threadId: string }) =>
+          Effect.sync(() => {
+            script.opened = { threadId: payload.threadId };
+            return { url: "https://github.com/acme/app/pull/7", created: true };
           });
       }
       return () => Effect.die(`unimplemented rpc ${String(key)}`);
@@ -103,11 +131,15 @@ const runtimeWith = (client: PoseidonRpcClient, clock: { now: number }) =>
     );
     const base = makeRuntime(layer);
     const git = makeGitAtoms(base.runtime);
+    const pullRequests = makePullRequestAtoms(base.runtime, git, { now: () => clock.now });
+    const { push, openPullRequest } = makeGitCommands(base.runtime, git, { pullRequests });
     return {
       registry: AtomRegistry.make(),
       stateRef,
       refreshProject: git.refreshProject,
-      ...makePullRequestAtoms(base.runtime, git, { now: () => clock.now }),
+      push,
+      openPullRequest,
+      ...pullRequests,
     };
   });
 
@@ -301,6 +333,54 @@ describe("pull request atoms", () => {
           ),
         );
         expect(script.view).toHaveLength(1);
+      }),
+    ),
+  );
+
+  it.live("a pull request opened right after a push is marked at once, inside the throttle", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const projectId = makeProjectId();
+        const threadId = makeThreadId();
+        const clock = { now: 1_000 };
+        const script: Script = { view: [], marks: [], failView: false };
+        const { registry, pullRequestMarksAtom, push, openPullRequest } = yield* runtimeWith(
+          fakeClient(script),
+          clock,
+        );
+        const marks = pullRequestMarksAtom(projectId);
+        registry.mount(marks);
+        yield* Effect.promise(() =>
+          awaitValue<MarksQuery, Cause.NoSuchElementError>(registry, marks, (q) => q._tag === "ok"),
+        );
+        expect(script.marks).toHaveLength(1);
+
+        // The push is a project refresh: inside the throttle, the empty listing stands.
+        clock.now += 1_000;
+        yield* Effect.promise(() => push(registry, { projectId, threadId }));
+        yield* Effect.promise(() =>
+          awaitValue<MarksQuery, Cause.NoSuchElementError>(registry, marks, (q) => q._tag === "ok"),
+        );
+        expect(script.marks).toHaveLength(1);
+
+        // Opening the pull request a moment later lists again, and the thread is marked.
+        clock.now += 1_000;
+        const opened = yield* Effect.promise(() =>
+          openPullRequest(registry, { projectId, threadId, title: "Fix the login", body: "" }),
+        );
+        expect(Exit.isSuccess(opened)).toBe(true);
+        const marked = yield* Effect.promise(() =>
+          awaitValue<MarksQuery, Cause.NoSuchElementError>(
+            registry,
+            marks,
+            (q) => q._tag === "ok" && q.value.marks.length === 1,
+          ),
+        );
+        expect(marked._tag === "ok" && marked.value.marks[0]).toMatchObject({
+          threadId,
+          number: 7,
+        });
+        expect(script.marks).toHaveLength(2);
       }),
     ),
   );

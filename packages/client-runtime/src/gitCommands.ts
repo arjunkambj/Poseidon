@@ -36,7 +36,10 @@
  * push moves the status (files, ahead, upstream) and the diffs of every scope
  * on that repository, so both refetch every git read of the project, the way
  * a branch switch does. Opening a pull request changes nothing git can see,
- * so it refetches nothing.
+ * so it refetches no git read; it rereads the project's pull request reads
+ * instead (`refreshPullRequests`, when given), skipping the marks' throttle —
+ * the push just before it may have listed the marks while the branch had no
+ * pull request yet, and that listing would otherwise stand for a minute.
  */
 
 import type { ThreadWorktree, WorktreeSetupFrame } from "@poseidon/contracts/git";
@@ -49,6 +52,7 @@ import type * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry";
 import { Connection, type ConnectionStateRef } from "./connection";
 import type { GitAtoms, GitScope } from "./gitAtoms";
 import { runOneShot } from "./oneShot";
+import type { PullRequestAtoms } from "./pullRequestAtoms";
 
 /**
  * A setup run so far. `exit` is `null` until the script has finished; `code`
@@ -122,9 +126,15 @@ const scopePayload = (scope: GitScope) => ({
   ...(scope.threadId === undefined ? {} : { threadId: scope.threadId }),
 });
 
+export interface GitCommandsOptions {
+  /** The pull request reads an opened pull request rereads. */
+  readonly pullRequests?: Pick<PullRequestAtoms, "refreshPullRequests">;
+}
+
 export const makeGitCommands = (
   runtime: Atom.AtomRuntime<Connection | ConnectionStateRef>,
   git: GitAtoms,
+  options: GitCommandsOptions = {},
 ) => {
   const client = Effect.flatMap(Connection, (connection) => connection.client);
 
@@ -214,7 +224,11 @@ export const makeGitCommands = (
       }),
     );
 
-  /** Fails with `unavailable` when `gh` is missing or signed out. */
+  /**
+   * Fails with `unavailable` when `gh` is missing or signed out. Whatever the
+   * answer — a refusal may be gh saying the branch already has one — the
+   * project's pull request reads are reread once it settles.
+   */
   const openPullRequest = (registry: AtomRegistry.AtomRegistry, input: GitPullRequest) =>
     runOneShot(runtime, registry, () =>
       Effect.flatMap(client, (c) =>
@@ -223,6 +237,10 @@ export const makeGitCommands = (
           title: input.title,
           body: input.body,
         }),
+      ).pipe(
+        Effect.ensuring(
+          Effect.sync(() => options.pullRequests?.refreshPullRequests(registry, input.projectId)),
+        ),
       ),
     );
 

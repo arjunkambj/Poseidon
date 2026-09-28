@@ -7,7 +7,8 @@
  * - `pullRequestMarksAtom(projectId)` — `git.pullRequest.marks`, one mark per
  *   thread of the project whose branch has a pull request.
  * - `refreshPullRequests(registry, projectId)` — reread both now: the pane's
- *   refresh button, and after a write to the pull request.
+ *   refresh button, after a write to the pull request, and after a pull
+ *   request is opened (`./gitCommands`).
  * - `revisitPullRequestMarks(registry, projectId)` — the sidebar's window
  *   return for a project whose threads carry marks: rereads the marks only,
  *   and only past their throttle.
@@ -27,8 +28,8 @@
  * window return rereads a mounted pull request with everything else — there
  * is no timer here.
  *
- * Every read is a gh call on the server, and the marks list the repository's
- * newest pull requests, so marks are throttled per project: a revision bump
+ * Every read is a gh call on the server, and the marks run one per branch
+ * the project's threads are on, so marks are throttled per project: a revision bump
  * within `MARKS_MIN_INTERVAL_MS` of the last successful listing answers that
  * listing again instead of calling gh. `refreshPullRequests` is an explicit
  * ask and always goes through.

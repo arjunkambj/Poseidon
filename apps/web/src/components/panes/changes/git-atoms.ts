@@ -19,18 +19,27 @@
  * (`../files/file-atoms.ts`): in the app that is the one runtime above, and a
  * fixture page under its own `ClientRuntimeProvider` reads git — the timeline's
  * checkpoint list, say — over its scripted client instead of the app's socket.
+ * The pull request atoms (`../pull-request/pull-request-atoms.ts`) are built
+ * here too, once per git atoms, so the git writes can reread them: opening a
+ * pull request relists the marks the dock's Pull request tab and the sidebar's
+ * glyph wait on.
  */
 
 import { RegistryContext } from "@effect/atom-react";
 import { makeGitAtoms, type GitAtoms } from "@poseidon/client-runtime/gitAtoms";
 import { makeGitCommands, type GitCommands } from "@poseidon/client-runtime/gitCommands";
 import { makeGitReview, type GitDiscard, type GitReview } from "@poseidon/client-runtime/gitReview";
+import {
+  makePullRequestAtoms,
+  type PullRequestAtoms,
+} from "@poseidon/client-runtime/pullRequestAtoms";
 import * as React from "react";
 
 import { type ClientRuntime, useClientRuntime } from "@/lib/client-runtime";
 import { getAppAtoms } from "@/state/app-runtime";
 
 const byRuntime = new WeakMap<ClientRuntime["runtime"], GitAtoms>();
+const pullRequestsByGit = new WeakMap<GitAtoms, PullRequestAtoms>();
 let gitCommands: GitCommands | null = null;
 
 const gitAtomsFor = (runtime: ClientRuntime["runtime"]): GitAtoms => {
@@ -42,10 +51,27 @@ const gitAtomsFor = (runtime: ClientRuntime["runtime"]): GitAtoms => {
   return atoms;
 };
 
+/** The pull request atoms on `git`, built on the runtime `git` was built on. */
+export const pullRequestAtomsFor = (
+  runtime: ClientRuntime["runtime"],
+  git: GitAtoms,
+): PullRequestAtoms => {
+  let atoms = pullRequestsByGit.get(git);
+  if (atoms === undefined) {
+    atoms = makePullRequestAtoms(runtime, git);
+    pullRequestsByGit.set(git, atoms);
+  }
+  return atoms;
+};
+
 const getGitAtoms = (): GitAtoms => gitAtomsFor(getAppAtoms().runtime);
 
 const getGitCommands = (): GitCommands => {
-  gitCommands ??= makeGitCommands(getAppAtoms().runtime, getGitAtoms());
+  const { runtime } = getAppAtoms();
+  const git = getGitAtoms();
+  gitCommands ??= makeGitCommands(runtime, git, {
+    pullRequests: pullRequestAtomsFor(runtime, git),
+  });
   return gitCommands;
 };
 
