@@ -25,6 +25,7 @@
 
 import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
 import { uuidV7Millis } from "@poseidon/shared/ids";
+import { cn } from "@poseidon/ui/lib/utils";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import * as React from "react";
 
@@ -38,12 +39,14 @@ import { TurnRail, useTurnNavigation } from "@/components/timeline/turn-rail-vie
 import { useSendAnchor } from "@/components/timeline/use-send-anchor";
 import { useTimelineThreadValue } from "@/components/timeline/use-timeline-thread";
 import { useKeybindingCommand } from "@/lib/shortcuts";
+import { useChatWidth } from "@/lib/use-chat-width";
 import { turnInFlight } from "@/lib/turn";
 import { useOpenTurnFolds } from "@/state/turn-folds";
 import { useSetRowDisclosures } from "@/state/ui";
 
 export function Timeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
   const listRef = React.useRef<LegendListRef>(null);
+  const chatWidth = useChatWidth();
   const openFolds = useOpenTurnFolds();
   const turnEndedAt = React.useMemo(
     () => turnEndTimes(snapshot.checkpoints),
@@ -118,7 +121,10 @@ export function Timeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
           // The vertical padding is a value for the same reason: scroll-to-end
           // aims at the end it computes, and a `py-*` it cannot see left the
           // last row — the working clock, the turn summary — under the fold.
-          contentContainerClassName="mx-auto flex w-full max-w-[700px] flex-col px-6"
+          contentContainerClassName={cn(
+            "mx-auto flex w-full flex-col px-6",
+            chatWidth.classes.timeline,
+          )}
           contentContainerStyle={{ gap: 16, paddingTop: 24, paddingBottom: 24 }}
         />
         <JumpToLatest

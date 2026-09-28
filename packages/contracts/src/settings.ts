@@ -250,6 +250,11 @@ export const FontSize = Schema.Finite.check(
 );
 export type FontSize = typeof FontSize.Type;
 
+/** How wide the thread column (timeline, composer, start screen) runs. */
+export const ChatWidth = Schema.Literals(["comfortable", "wide", "full"]);
+export type ChatWidth = typeof ChatWidth.Type;
+export const DEFAULT_CHAT_WIDTH: ChatWidth = "comfortable";
+
 /**
  * What a new thread starts with. `model` is null until a connector has been
  * probed and reported its models — writing a guessed model id here would make
@@ -325,6 +330,16 @@ export const Settings = Schema.Struct({
       control: "select",
     }),
   ),
+  // Defaulted on decode like the font sizes: rows written before it existed
+  // still decode, at today's width.
+  chatWidth: ChatWidth.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_CHAT_WIDTH)),
+    settingsForm({
+      label: "Chat width",
+      description: "How wide the thread and composer column runs.",
+      control: "hidden",
+    }),
+  ),
   // The user's overrides, layered on `DEFAULT_KEYBINDINGS` — never a copy of
   // them, or a default added later would not reach this install.
   keybindings: Schema.Array(Keybinding).pipe(
@@ -363,6 +378,7 @@ export const SettingsPatch = Schema.Struct({
   theme: Schema.optional(Theme),
   mainFontSize: Schema.optional(FontSize),
   sidebarFontSize: Schema.optional(FontSize),
+  chatWidth: Schema.optional(ChatWidth),
   keybindings: Schema.optional(Schema.Array(Keybinding)),
   permissions: Schema.optional(Schema.Array(PermissionRule)),
   git: Schema.optional(GitSettings),
@@ -382,6 +398,7 @@ export const defaultSettings = (): Settings => ({
   theme: "system",
   mainFontSize: DEFAULT_FONT_SIZE,
   sidebarFontSize: DEFAULT_FONT_SIZE,
+  chatWidth: DEFAULT_CHAT_WIDTH,
   keybindings: [],
   keybindingsFormat: "overrides",
   permissions: [],

@@ -43,6 +43,7 @@ import {
 import type { ThreadId } from "@poseidon/contracts/ids";
 import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
 import type * as PoseidonRpcError from "@poseidon/contracts/rpc";
+import { cn } from "@poseidon/ui/lib/utils";
 import type * as RpcClientError from "effect/unstable/rpc/RpcClientError";
 
 import { Composer } from "@/components/composer/composer";
@@ -63,6 +64,7 @@ import {
 import { Timeline } from "@/components/timeline/timeline";
 import { useKeybindingFlag } from "@/lib/shortcuts";
 import { useConnectionState, useProjects, useThreadDetail } from "@/state/hooks";
+import { useChatWidth } from "@/lib/use-chat-width";
 import { useBrowserRevealRequests } from "@/state/browser-activity";
 import { type FileRevealTarget, useFileRevealRequests } from "@/state/file-reveal";
 import { AlertTriangle, Spinner, WifiOff } from "@honeyicons/react";
@@ -156,6 +158,7 @@ export function ThreadView({
 }) {
   const result = useThreadDetail(threadId);
   const connection = useConnectionState();
+  const chatWidth = useChatWidth();
   const navigate = useNavigate();
 
   const navigateDock = React.useCallback(
@@ -247,7 +250,10 @@ export function ThreadView({
         <ThreadBody result={result} connected={connection.status !== "disconnected"} />
         {snapshot !== null ? (
           <div className="flex w-full shrink-0 flex-col items-center gap-2 px-6 pb-4">
-            <ThreadHarnessBanner snapshot={snapshot} className="max-w-[684px]" />
+            {/* Hidden while the banner renders nothing, so it adds no gap. */}
+            <div className={cn("w-full empty:hidden", chatWidth.classes.column)}>
+              <ThreadHarnessBanner snapshot={snapshot} />
+            </div>
             <Composer threadId={threadId} projectId={snapshot.projectId} />
           </div>
         ) : null}

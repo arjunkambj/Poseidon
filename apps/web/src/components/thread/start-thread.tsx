@@ -87,6 +87,7 @@ import { defaultModelPick } from "@/lib/model-picks";
 import { runtimeModeOptions } from "@/lib/runtime-modes";
 import { useKeymapAnswers } from "@/lib/shortcuts";
 import { useCreateThread } from "@/lib/use-create-thread";
+import { useChatWidth } from "@/lib/use-chat-width";
 import { useConnectionState, useProjects } from "@/state/hooks";
 import { useComposerDraft, useLastProject } from "@/state/ui";
 
@@ -104,6 +105,7 @@ function StartComposer({
 }) {
   const navigate = useNavigate();
   const { create, pending } = useCreateThread();
+  const chatWidth = useChatWidth();
 
   const { text, mentions, references, files, setText, setMentions, setReferences, setFiles } =
     useComposerDraft(threadId);
@@ -260,7 +262,7 @@ function StartComposer({
   });
 
   return (
-    <div className="flex w-full min-w-0 max-w-[684px] flex-col gap-2">
+    <div className={`flex w-full min-w-0 flex-col gap-2 ${chatWidth.classes.column}`}>
       <HarnessHealthBanner
         summary={connectors.find((connector) => connector.connectorInstanceId === instanceId)}
       />

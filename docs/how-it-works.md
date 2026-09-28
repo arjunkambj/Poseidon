@@ -2616,6 +2616,7 @@ Settings
   connectors         ConnectorInstanceConfig[]  id, kind, displayName, enabled, config
   defaults           { model, effort, runtimeMode }
   theme              system | light | dark
+  chatWidth          comfortable | wide | full  the thread column's max width
   keybindings        Keybinding[]               the user's overrides on DEFAULT_KEYBINDINGS
   keybindingsFormat  "overrides"                absent on a document from before overrides
   permissions        PermissionRule[]           a projection of the permission_rules table
@@ -2626,7 +2627,15 @@ Settings
 
 `git` and `projectSettings`, like the two font sizes, are defaulted on decode
 (`poseidon/` and `{}`), so a row written before they existed still reads. So is
-`browser`, whose `openPaneOnAgentUse` comes back as `false`.
+`browser`, whose `openPaneOnAgentUse` comes back as `false`, and `chatWidth`,
+which comes back as `comfortable`.
+
+`chatWidth` sets how far the thread column runs. One helper,
+`chatWidthClasses` in `apps/web/src/lib/chat-width.ts`, maps it to literal
+Tailwind max-width classes for the timeline (`max-w-[700px]` when comfortable)
+and for the composer, the start screen and the harness banner
+(`max-w-[684px]`), so all of them stay aligned; `wide` is 960px / 944px and
+`full` lifts the cap.
 
 Both are edited on the Git & worktrees page. The branch prefix saves on blur,
 Enter or Save, trimmed, and only when it changed; a prefix git would refuse

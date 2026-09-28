@@ -7,6 +7,7 @@ import {
   BrowserSettings,
   ConnectorInstanceConfig,
   DEFAULT_BRANCH_PREFIX,
+  DEFAULT_CHAT_WIDTH,
   DEFAULT_FONT_SIZE,
   MAX_FONT_SIZE,
   PermissionRule,
@@ -117,6 +118,7 @@ describe("settingsForm annotations", () => {
       );
       expect(Object.keys(encoded as object).sort()).toEqual([
         "browser",
+        "chatWidth",
         "connectors",
         "defaults",
         "git",
@@ -162,6 +164,45 @@ describe("font sizes", () => {
       const finer = { ...defaultSettings(), sidebarFontSize: 14.25 };
       const exit = yield* Effect.exit(Schema.decodeUnknownEffect(Settings)(finer));
       expect(exit._tag).toBe("Failure");
+    }),
+  );
+});
+
+describe("chat width", () => {
+  it.effect("defaults to comfortable when a stored document predates it", () =>
+    Effect.gen(function* () {
+      const { chatWidth: _width, ...older } = Schema.encodeUnknownSync(Settings)(
+        defaultSettings(),
+      ) as Record<string, unknown>;
+      const decoded = yield* Schema.decodeUnknownEffect(Settings)(older);
+      expect(DEFAULT_CHAT_WIDTH).toBe("comfortable");
+      expect(decoded.chatWidth).toBe("comfortable");
+    }),
+  );
+
+  it.effect("round-trips wide and full", () =>
+    Effect.gen(function* () {
+      for (const chatWidth of ["wide", "full"] as const) {
+        const settings = { ...defaultSettings(), chatWidth };
+        const encoded = Schema.encodeUnknownSync(Settings)(settings);
+        const decoded = yield* Schema.decodeUnknownEffect(Settings)(encoded);
+        expect(decoded.chatWidth).toBe(chatWidth);
+      }
+    }),
+  );
+
+  it.effect("rejects a width it does not know", () =>
+    Effect.gen(function* () {
+      const unknown = { ...defaultSettings(), chatWidth: "huge" };
+      const exit = yield* Effect.exit(Schema.decodeUnknownEffect(Settings)(unknown));
+      expect(exit._tag).toBe("Failure");
+    }),
+  );
+
+  it.effect("decodes a patch that only sets it", () =>
+    Effect.gen(function* () {
+      const decoded = yield* Schema.decodeUnknownEffect(SettingsPatch)({ chatWidth: "full" });
+      expect(decoded).toEqual({ chatWidth: "full" });
     }),
   );
 });

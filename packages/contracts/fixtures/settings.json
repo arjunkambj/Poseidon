@@ -19,6 +19,7 @@
   "theme": "system",
   "mainFontSize": 14,
   "sidebarFontSize": 14,
+  "chatWidth": "comfortable",
   "keybindings": [
     {
       "command": "sidebar.toggle",

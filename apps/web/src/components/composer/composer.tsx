@@ -49,6 +49,7 @@ import { attachmentRefusal } from "@/lib/attachment-support";
 import { instanceCapabilities, threadConnectorInstanceId } from "@/lib/connector-routing";
 import { turnInFlight } from "@/lib/turn";
 import { useKeybindingCommand, useKeybindingFlag, useKeymapAnswers } from "@/lib/shortcuts";
+import { useChatWidth } from "@/lib/use-chat-width";
 import { DISPATCH_UNREACHABLE, receiptError } from "@/lib/dispatch-outcome";
 import { useComposerDraft } from "@/state/ui";
 import { Folder } from "@honeyicons/react";
@@ -63,6 +64,7 @@ export function Composer({
   readonly className?: string;
 }) {
   const project = useProjects().find((entry) => entry.projectId === projectId);
+  const chatWidth = useChatWidth();
   const { threadDetailAtom, dispatchAtom, connectorsAtom, connectorModelsAtom, skillsAtom } =
     useClientRuntime();
   const docResult = useAtomValue(threadDetailAtom(threadId));
@@ -281,7 +283,13 @@ export function Composer({
   const notice = error ?? attachments.rejected;
 
   return (
-    <div className={cn("flex w-full min-w-0 max-w-[684px] shrink-0 flex-col gap-2", className)}>
+    <div
+      className={cn(
+        "flex w-full min-w-0 shrink-0 flex-col gap-2",
+        chatWidth.classes.column,
+        className,
+      )}
+    >
       <PendingCard threadId={threadId} doc={doc} />
       {doc === null ? null : <QueueStrip threadId={threadId} queue={doc.queue} />}
       <ComposerSurface
