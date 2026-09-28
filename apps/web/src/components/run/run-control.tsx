@@ -12,7 +12,9 @@
  * document. Whether a script runs comes from the drawer's tabs
  * (`./use-run-script`); only the tab in front has an xterm to see its exit,
  * so the control reads the owner's `terminal.list` too, again each time the
- * menu opens, and folds it into the tabs while the drawer is closed. Below
+ * menu opens, and folds it into the tabs while the drawer is closed. A
+ * running script's dev server opens in the thread's browser pane
+ * (`openInThreadBrowser`), or on the New task page in the system browser. Below
  * `@lg` the header (a container, `header`) has the main half drop its label
  * for its icon and tooltip, like Commit.
  */
@@ -33,7 +35,10 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
 import { toast } from "sonner";
 
+import { openInThreadBrowser } from "@/components/panes/browser/open-in-browser";
+import { useAllDevServerUrls } from "@/components/terminal/dev-servers";
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
+import { openExternal } from "@/lib/desktop";
 import { useConnectionState } from "@/state/hooks";
 import { ChevronDown, Play, Stop } from "@honeyicons/react";
 
@@ -145,6 +150,7 @@ export function RunControl({
   const updateSettings = useAtomSet(atoms.settingsUpdateAtom, { mode: "promiseExit" });
   const connected = useConnectionState().status === "connected";
   const { run, stop, runningOf, relist } = useRunScript(ownerKey);
+  const devServers = useAllDevServerUrls();
   const [editKey, setEditKey] = React.useState<number | null>(null);
   const [editOpen, setEditOpen] = React.useState(false);
 
@@ -183,8 +189,12 @@ export function RunControl({
             scope={{ projectId, ...(threadId === undefined ? {} : { threadId }) }}
             saved={saved}
             runningOf={runningOf}
+            urlsOf={(terminalId) => devServers[terminalId] ?? []}
             onRun={(script) => void run(script)}
             onStop={stop}
+            onOpenUrl={(url) =>
+              threadId === undefined ? openExternal(url) : void openInThreadBrowser(threadId, url)
+            }
             onEdit={() => {
               setEditKey((key) => (key ?? 0) + 1);
               setEditOpen(true);

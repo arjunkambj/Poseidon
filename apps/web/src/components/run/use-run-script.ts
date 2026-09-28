@@ -28,6 +28,7 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
 import { toast } from "sonner";
 
+import { useForgetDevServer } from "@/components/terminal/dev-servers";
 import { useDrawerState } from "@/components/terminal/drawer-state";
 import { useOpenTerminal, useTerminalAtoms } from "@/components/terminal/terminal-atoms";
 import { describeExitError } from "@/lib/app-runtime";
@@ -49,6 +50,7 @@ export function useRunScript(ownerKey: string) {
   const openTerminal = useOpenTerminal();
   const writeTerminal = useAtomSet(atoms.writeTerminal);
   const closeTerminal = useAtomSet(atoms.closeTerminal);
+  const forgetDevServer = useForgetDevServer();
   const refreshList = useAtomRefresh(atoms.terminalListAtom(ownerKey));
   const refreshRunning = useAtomRefresh(atoms.runningTerminalsAtom);
   const tabsRef = React.useRef(state.tabs);
@@ -94,11 +96,12 @@ export function useRunScript(ownerKey: string) {
       if (plan.replace !== null) {
         dispatch({ type: "closed", terminalId: plan.replace });
         closeTerminal({ ...owner, terminalId: plan.replace });
+        forgetDevServer(plan.replace);
       }
       relist();
       setOpen(true);
     },
-    [closeTerminal, dispatch, openTerminal, ownerKey, relist, setOpen],
+    [closeTerminal, dispatch, forgetDevServer, openTerminal, ownerKey, relist, setOpen],
   );
 
   const stop = React.useCallback(

@@ -9,7 +9,9 @@
  * xterm — "Add selection to chat" quotes its selection into the composer draft
  * on screen (`draftId`), and Find (`./terminal-find`) searches the xterm's
  * output. A mod-clicked link goes to `onOpenLink`, a printed file reference
- * to `fileLinks`.
+ * to `fileLinks`. While the tab in front is a running script that printed a
+ * dev server, "Open in browser" (`./dev-server-button`) opens it through
+ * `onOpenLink` too.
  *
  * Which terminals exist is the server's to say: the drawer folds each
  * `terminal.list` into its tab state (`./drawer-state`). Opening a drawer that
@@ -37,6 +39,8 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
 
 import { AddSelectionButton } from "@/components/terminal/add-selection-button";
+import { DevServerButton } from "@/components/terminal/dev-server-button";
+import { useForgetDevServer } from "@/components/terminal/dev-servers";
 import {
   DrawerMessage,
   IconButton,
@@ -127,6 +131,7 @@ export function TerminalDrawer({
   const openTerminal = useOpenTerminal();
   const writeTerminal = useAtomSet(atoms.writeTerminal);
   const [state, dispatch] = useDrawerState(ownerKey);
+  const forgetDevServer = useForgetDevServer();
   const drawerRef = React.useRef<HTMLDivElement>(null);
   const { shown, onPointerDown } = useDrawerResize(drawerRef);
 
@@ -203,13 +208,17 @@ export function TerminalDrawer({
     [dispatch, refreshList, refreshRunning],
   );
   const onGone = React.useCallback(
-    (terminalId: TerminalId) => dispatch({ type: "closed", terminalId }),
-    [dispatch],
+    (terminalId: TerminalId) => {
+      dispatch({ type: "closed", terminalId });
+      forgetDevServer(terminalId);
+    },
+    [dispatch, forgetDevServer],
   );
 
   const close = (terminalId: TerminalId) => {
     const last = state.tabs.length === 1 && state.tabs[0]?.terminalId === terminalId;
     dispatch({ type: "closed", terminalId });
+    forgetDevServer(terminalId);
     onClose(terminalId);
     if (last) {
       onHide();
@@ -325,6 +334,10 @@ export function TerminalDrawer({
         {openError !== null && state.tabs.length > 0 ? (
           <p className="min-w-0 shrink truncate type-micro text-destructive">{openError}</p>
         ) : null}
+        <DevServerButton
+          tab={state.tabs.find((tab) => tab.terminalId === state.activeId)}
+          onOpenLink={onOpenLink}
+        />
         <IconButton
           label="Find"
           disabled={handle === null}

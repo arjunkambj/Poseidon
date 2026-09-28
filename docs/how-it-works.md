@@ -2531,7 +2531,8 @@ agent opened is open, and the pane is not on screen. Settings → Browser →
 (`browser.openPaneOnAgentUse`, off by default) opens the pane instead, once per
 agent activity; closing it while the agent is active keeps it closed for that
 thread until you open it yourself, and an auto-open is not remembered as the
-thread's dock tab. Other surfaces — the terminal's links — call
+thread's dock tab. Other surfaces — the terminal's links, the Run menu's
+dev-server items — call
 `openInThreadBrowser(threadId, url, { reveal })`, which accepts only http(s),
 opens or selects the thread's tab on it and shows the pane.
 
@@ -3091,6 +3092,26 @@ it (`validateScripts`: a name and a command, names unique, one primary at
 most) with each problem under its row, then writes the whole
 `projectSettings` record from the latest settings (`withScripts`), keeping
 the project's setup script and every other project's settings.
+
+A script that prints a dev server's address — Vite's
+`Local: http://localhost:5173/`, a plain `Listening on http://0.0.0.0:3000`
+— offers to open it. While the tab is attached, the script terminal's
+scrollback and output go through a scanner
+(`terminal/dev-server-urls.ts`) that strips colour codes, carries an
+unfinished line into the next piece so a URL cut in two is still found, and
+keeps loopback pages only — `localhost` and `*.localhost`, `127.0.0.1`,
+`[::1]`, and `0.0.0.0`, opened as `localhost` — at most four per terminal,
+first printed first. A plain shell's output is not read. What it finds is
+kept in memory by terminal id (`terminal/dev-servers.ts`) until the tab is
+closed or gone. Only the tab in front has an xterm attached, which is
+enough: a script's tab is in front when it starts, and bringing a tab back
+rescans its scrollback. While the tab in front is a running script with a
+dev server, the drawer's toolbar shows a button labelled with its
+`host:port` ("Open in browser"), and the Run menu has an "Open
+<host:port> in browser" item under each running script for each of its
+dev servers. In a thread it opens in the thread's in-app browser pane; on
+the New task page, which has no browser pane, in the system browser.
+Nothing opens until one is clicked.
 
 ---
 

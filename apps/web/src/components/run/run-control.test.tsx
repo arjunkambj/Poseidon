@@ -110,8 +110,10 @@ const menu = (
       saved={[dev, test]}
       detected={[detectedWeb]}
       runningOf={() => null}
+      urlsOf={() => []}
       onRun={noop}
       onStop={noop}
+      onOpenUrl={noop}
       onEdit={noop}
       {...props}
     />,
@@ -177,6 +179,25 @@ describe("RunMenuItems", () => {
     expect(onStop).toHaveBeenCalledWith(running);
     clicks.get("Dev server running")?.();
     expect(onRun).toHaveBeenCalledWith({ id: "dev", name: "Dev server", command: "pnpm dev" });
+  });
+
+  it("offers each dev server a running script printed", () => {
+    const onOpenUrl = vi.fn();
+    const urls = ["http://localhost:5173/", "http://127.0.0.1:5174/"];
+    const { items } = menu({
+      runningOf: (id) => (id === "dev" ? running : null),
+      urlsOf: (terminalId) => (terminalId === running ? urls : []),
+      onOpenUrl,
+    });
+    expect(items.slice(1, 6)).toEqual([
+      "Dev server running",
+      "Stop Dev server",
+      "Open localhost:5173 in browser",
+      "Open 127.0.0.1:5174 in browser",
+      "Test pnpm test",
+    ]);
+    clicks.get("Open localhost:5173 in browser")?.();
+    expect(onOpenUrl).toHaveBeenCalledWith("http://localhost:5173/");
   });
 
   it("shows a spinner while detecting and hides an empty package.json group", () => {

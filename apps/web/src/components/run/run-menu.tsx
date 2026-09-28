@@ -1,6 +1,8 @@
 /**
  * The Run control's menu: the project's saved scripts, the package.json
- * scripts detected in the workspace, then "Edit scripts…".
+ * scripts detected in the workspace, then "Edit scripts…". Under a running
+ * script, each dev server it printed (`@/components/terminal/dev-servers`)
+ * has an "Open … in browser" item.
  *
  * `RunMenuItems` renders from plain props, so it can be tested without a
  * server. `DetectingRunMenu` is what the control mounts: it lives inside the
@@ -19,23 +21,32 @@ import {
 } from "@poseidon/ui/components/dropdown-menu";
 import type * as React from "react";
 
+import { devServerLabel } from "@/components/terminal/dev-server-urls";
 import { useConnectionState } from "@/state/hooks";
-import { Edit, Play, Spinner, Stop } from "@honeyicons/react";
+import { Edit, Globe, Play, Spinner, Stop } from "@honeyicons/react";
 
 import { runnableFromDetected, runnableFromSaved, type RunnableScript } from "./project-scripts";
 import { useDetectedScripts } from "./script-atoms";
 
-/** One script: run it (or bring its running tab to the front), and Stop while it runs. */
+/**
+ * One script: run it (or bring its running tab to the front), and while it
+ * runs, Stop and open each dev server it printed.
+ */
 function ScriptItems({
   script,
   running,
+  urls,
   onRun,
   onStop,
+  onOpenUrl,
 }: {
   script: RunnableScript;
   running: TerminalId | null;
+  /** The dev servers the running script printed. */
+  urls: ReadonlyArray<string>;
   onRun: (script: RunnableScript) => void;
   onStop: (terminalId: TerminalId) => void;
+  onOpenUrl: (url: string) => void;
 }) {
   return (
     <>
@@ -56,6 +67,14 @@ function ScriptItems({
           Stop {script.name}
         </DropdownMenuItem>
       )}
+      {running === null
+        ? null
+        : urls.map((url) => (
+            <DropdownMenuItem key={url} onClick={() => onOpenUrl(url)}>
+              <Globe variant="bold" />
+              Open {devServerLabel(url)} in browser
+            </DropdownMenuItem>
+          ))}
     </>
   );
 }
@@ -64,27 +83,37 @@ export function RunMenuItems({
   saved,
   detected,
   runningOf,
+  urlsOf,
   onRun,
   onStop,
+  onOpenUrl,
   onEdit,
 }: {
   saved: ReadonlyArray<ProjectScript>;
   /** The package.json scripts; `"loading"` while the server looks for them. */
   detected: ReadonlyArray<DetectedScript> | "loading";
   runningOf: (scriptId: string) => TerminalId | null;
+  /** The dev servers a running script's terminal printed. */
+  urlsOf: (terminalId: TerminalId) => ReadonlyArray<string>;
   onRun: (script: RunnableScript) => void;
   onStop: (terminalId: TerminalId) => void;
+  onOpenUrl: (url: string) => void;
   onEdit: () => void;
 }) {
-  const scriptItems = (script: RunnableScript) => (
-    <ScriptItems
-      key={script.id}
-      script={script}
-      running={runningOf(script.id)}
-      onRun={onRun}
-      onStop={onStop}
-    />
-  );
+  const scriptItems = (script: RunnableScript) => {
+    const running = runningOf(script.id);
+    return (
+      <ScriptItems
+        key={script.id}
+        script={script}
+        running={running}
+        urls={running === null ? [] : urlsOf(running)}
+        onRun={onRun}
+        onStop={onStop}
+        onOpenUrl={onOpenUrl}
+      />
+    );
+  };
   return (
     <>
       {saved.length === 0 ? null : (

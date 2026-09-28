@@ -18,6 +18,8 @@
  * printed http(s) link goes to `onOpenLink` (`./terminal-links`). A printed
  * `path:line[:col]` that `files.stat` confirms is a link on a plain click too
  * (`fileLinks`, `./file-link-provider`); any other plain click only selects.
+ * A script terminal's output is also read for the dev server it prints
+ * (`./dev-servers`), which the drawer then offers to open.
  *
  * Keys: the chord bound to `terminal.toggle` is refused to xterm through
  * `attachCustomKeyEventHandler`, so it bubbles to the app's one keybinding
@@ -41,6 +43,8 @@ import * as React from "react";
 
 import { useTheme } from "@/components/theme-provider";
 import { useTerminalAtoms } from "@/components/terminal/terminal-atoms";
+import { scanningDevServers } from "@/components/terminal/dev-server-urls";
+import { useNoteDevServerUrls } from "@/components/terminal/dev-servers";
 import { type FileLinkHandlers, registerFileLinks } from "@/components/terminal/file-link-provider";
 import { makeTerminalFeed } from "@/components/terminal/terminal-feed";
 import type { TerminalHandle } from "@/components/terminal/terminal-handle";
@@ -106,6 +110,7 @@ function TerminalAttachment({
   );
   const write = useAtomSet(atoms.writeTerminal);
   const resize = useAtomSet(atoms.resizeTerminal);
+  const noteDevServers = useNoteDevServerUrls(terminalId);
   const handlersRef = React.useRef({ onExited, onGone });
   handlersRef.current = { onExited, onGone };
 
@@ -133,8 +138,9 @@ function TerminalAttachment({
     });
 
     // A fn atom's value is its argument, and a function would be taken for an
-    // updater, so the callback goes in wrapped.
-    setAttach(() => feed.push);
+    // updater, so the callback goes in wrapped. A script's output is read
+    // for the dev server it prints (`./dev-servers`).
+    setAttach(() => scanningDevServers(feed.push, noteDevServers));
     const input = terminal.onData((data) => {
       if (feed.sends(data)) {
         write({ ...ref, data });
@@ -151,7 +157,7 @@ function TerminalAttachment({
       grid.dispose();
       setAttach(Atom.Reset);
     };
-  }, [ownerKey, terminalId, terminal, setAttach, write, resize]);
+  }, [ownerKey, terminalId, terminal, setAttach, write, resize, noteDevServers]);
 
   return null;
 }
