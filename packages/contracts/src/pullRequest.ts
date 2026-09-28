@@ -152,13 +152,59 @@ export const PullRequestMarks = Schema.Struct({
 });
 export type PullRequestMarks = typeof PullRequestMarks.Type;
 
+/**
+ * A write to a pull request, each one a single gh command: mark it ready for
+ * review, turn it back into a draft, merge it with one of the repository's
+ * methods, close it, or reopen it.
+ */
+export const PullRequestAction = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("ready") }),
+  Schema.Struct({ kind: Schema.Literal("draft") }),
+  Schema.Struct({
+    kind: Schema.Literal("merge"),
+    method: Schema.Literals(["merge", "squash", "rebase"]),
+  }),
+  Schema.Struct({ kind: Schema.Literal("close") }),
+  Schema.Struct({ kind: Schema.Literal("reopen") }),
+]);
+export type PullRequestAction = typeof PullRequestAction.Type;
+
+/**
+ * What a "fix" thread is seeded with. `checks` are the failing checks, each
+ * with the tail of its failed log when one could be read (GitHub Actions jobs
+ * only, `null` otherwise); `conflictFiles` are the files a merge of the base
+ * into the branch would conflict in, as of the last fetch; `base` is what they
+ * were read against — the remote-tracking ref (`origin/main`) for conflicts,
+ * the pull request's base branch for checks.
+ */
+export const PullRequestFixContext = Schema.Struct({
+  checks: Schema.Array(
+    Schema.Struct({
+      name: NonEmptyString,
+      url: Schema.NullOr(NonEmptyString),
+      logTail: Schema.NullOr(Schema.String),
+    }),
+  ),
+  conflictFiles: Schema.Array(NonEmptyString),
+  base: NonEmptyString,
+});
+export type PullRequestFixContext = typeof PullRequestFixContext.Type;
+
 // ── Method names and RPCs ──────────────────────────────────────
 
 /** Spread into `RPC_METHODS`, so the names stay in the one table. */
 export const PULL_REQUEST_RPC_METHODS = {
   gitPullRequestView: "git.pullRequest.view",
   gitPullRequestMarks: "git.pullRequest.marks",
+  gitPullRequestAction: "git.pullRequest.action",
+  gitPullRequestFixContext: "git.pullRequest.fixContext",
 } as const;
+
+/** A pull request's number as gh takes it. */
+const PullRequestNumber = Schema.Int.check(Schema.isGreaterThan(0));
+
+/** A commit id, full or abbreviated: the only shape a merge will pin. */
+const CommitOid = Schema.String.check(Schema.isPattern(/^[0-9a-f]{7,64}$/i));
 
 /**
  * The pull request of the current branch of the thread's root when
@@ -182,3 +228,42 @@ export const GitPullRequestMarksRpc = Rpc.make(PULL_REQUEST_RPC_METHODS.gitPullR
   success: PullRequestMarks,
   error: PoseidonRpcError,
 });
+
+/**
+ * Runs `action` on pull request `number` in the thread's root (the project's
+ * when `threadId` is unset) and answers the view as it is afterwards. A merge
+ * given `headRefOid` only lands that head commit, so a pane that is out of
+ * date cannot merge a commit its user never saw. `unavailable` when gh is
+ * missing or signed out; `conflict` with gh's own words when GitHub refuses.
+ */
+export const GitPullRequestActionRpc = Rpc.make(PULL_REQUEST_RPC_METHODS.gitPullRequestAction, {
+  payload: Schema.Struct({
+    projectId: ProjectId,
+    threadId: Schema.optional(ThreadId),
+    number: PullRequestNumber,
+    headRefOid: Schema.optional(CommitOid),
+    action: PullRequestAction,
+  }),
+  success: PullRequestView,
+  error: PoseidonRpcError,
+});
+
+/**
+ * The context a new thread fixing pull request `number` starts from: its
+ * failing checks with their log tails (`kind: "checks"`), or the files that
+ * conflict with its base (`kind: "conflicts"`). Nothing is fetched first.
+ * Review comments need no call: the view already carries them.
+ */
+export const GitPullRequestFixContextRpc = Rpc.make(
+  PULL_REQUEST_RPC_METHODS.gitPullRequestFixContext,
+  {
+    payload: Schema.Struct({
+      projectId: ProjectId,
+      threadId: Schema.optional(ThreadId),
+      number: PullRequestNumber,
+      kind: Schema.Literals(["checks", "conflicts"]),
+    }),
+    success: PullRequestFixContext,
+    error: PoseidonRpcError,
+  },
+);

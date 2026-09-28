@@ -1,0 +1,16 @@
+{
+  "checks": [
+    {
+      "name": "govulncheck",
+      "url": "https://github.com/cli/cli/actions/runs/34558150659/job/103156848767",
+      "logTail": "golang.org/x/sync/errgroup.(*Group).Go.func1()\nruntime.goexit({})\nexit status 2\n##[error]Process completed with exit code 1."
+    },
+    {
+      "name": "ci/circleci: build",
+      "url": null,
+      "logTail": null
+    }
+  ],
+  "conflictFiles": [],
+  "base": "main"
+}

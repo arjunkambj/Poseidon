@@ -1,0 +1,5 @@
+{
+  "checks": [],
+  "conflictFiles": ["pkg/cmd/pr/merge/merge.go", "README.md"],
+  "base": "origin/trunk"
+}

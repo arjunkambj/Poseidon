@@ -67,7 +67,12 @@ import {
   ServerHello,
   StagedAttachment,
 } from "../src/rpc";
-import { PullRequestMarks, PullRequestView } from "../src/pullRequest";
+import {
+  PullRequestAction,
+  PullRequestFixContext,
+  PullRequestMarks,
+  PullRequestView,
+} from "../src/pullRequest";
 import { ItemSnapshot, RuntimeEvent, RuntimeEventType } from "../src/runtime";
 import { Settings } from "../src/settings";
 import { TerminalStreamItem, TerminalSummary } from "../src/terminal";
@@ -181,6 +186,12 @@ const families: ReadonlyArray<Family> = [
     variants: tagsOf(WorktreeSetupFrame.members, "kind"),
   },
   {
+    directory: "rpc/pull-request-action",
+    schema: PullRequestAction,
+    tag: "kind",
+    variants: tagsOf(PullRequestAction.members, "kind"),
+  },
+  {
     directory: "rpc/terminal-stream-item",
     schema: TerminalStreamItem,
     tag: "kind",
@@ -236,6 +247,8 @@ const singles: ReadonlyArray<{ readonly path: string; readonly schema: FixtureSc
   { path: "rpc/pull-request-view.none.json", schema: PullRequestView },
   { path: "rpc/pull-request-view.unavailable.json", schema: PullRequestView },
   { path: "rpc/pull-request-marks.json", schema: PullRequestMarks },
+  { path: "rpc/pull-request-fix-context.json", schema: PullRequestFixContext },
+  { path: "rpc/pull-request-fix-context.conflicts.json", schema: PullRequestFixContext },
   { path: "rpc/git-worktree-info.json", schema: GitWorktreeInfo },
   { path: "rpc/git-worktree-info.main.json", schema: GitWorktreeInfo },
   { path: "rpc/detected-editor.json", schema: DetectedEditor },
