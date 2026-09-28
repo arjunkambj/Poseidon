@@ -94,11 +94,17 @@ export const fixturesRoot = (kind: string, root: string = FIXTURES): string =>
 /**
  * Every recorded scenario of a kind, by name. A scenario is a directory holding
  * a `manifest.json` with turns; the probe captures sit in their own directory
- * and are not a scenario.
+ * and are not a scenario, and a directory with no manifest (config files a
+ * connector reads, say) is not a recording at all.
  */
 export const recordingNames = (kind: string, root?: string): ReadonlyArray<string> =>
   NodeFS.readdirSync(fixturesRoot(kind, root), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name !== "probe")
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        entry.name !== "probe" &&
+        NodeFS.existsSync(NodePath.join(fixturesRoot(kind, root), entry.name, "manifest.json")),
+    )
     .map((entry) => entry.name)
     .sort();
 

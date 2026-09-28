@@ -53,6 +53,8 @@ describe("the fixtures/<kind>/ convention", () => {
   it("loads every Command Code recording through the shared reader", () => {
     const names = recordingNames("cmd");
     expect(names).not.toContain("probe");
+    // `fixtures/claude/plugins/` is config files, not a recording.
+    expect(recordingNames("claude")).not.toContain("plugins");
     expect(names.length).toBeGreaterThanOrEqual(13);
     for (const name of names) {
       expect(readManifest("cmd", name).transport).toBe("stdio-ndjson");

@@ -27,6 +27,7 @@ import { ClaudeConnectorConfig } from "./configSchema";
 import { childEnv } from "./env";
 import { CLAUDE_KIND } from "./kind";
 import { LOGIN_ARGS, probe as probeBinary, readInitialization, type Initialization } from "./probe";
+import { makeClaudePlugins } from "./plugins";
 import type { SessionLimits } from "./queryOptions";
 import { makeClaudeSession } from "./session";
 import { parseSessionRef, type ClaudeSessionRef } from "./sessionRef";
@@ -170,7 +171,10 @@ export const makeClaudeConnectorDefinition = (
           );
         },
         listModels,
-        extensions: { commands },
+        extensions: {
+          commands,
+          plugins: makeClaudePlugins({ env: childEnv(process.env, config) }),
+        },
       };
     }),
 });

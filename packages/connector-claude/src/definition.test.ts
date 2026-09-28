@@ -3,6 +3,9 @@
  * form `connectors.describe` serves — and what an instance of it offers.
  */
 
+import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
 import { eraseConnectorDefinition, SpawnFailed } from "@poseidon/connector-sdk/definition";
 import { makeConnectorInstanceId } from "@poseidon/contracts/ids";
 import { describe, expect, it } from "@effect/vitest";
@@ -66,8 +69,31 @@ describe("claudeConnectorDefinition", () => {
       });
       expect(instance.kind).toBe(CLAUDE_KIND);
       expect(instance.capabilities).toEqual(CLAUDE_CAPABILITIES);
-      // Only the harness's own slash commands; plugins, skills and MCP are not managed here.
-      expect(Object.keys(instance.extensions ?? {})).toEqual(["commands"]);
+      // The harness's own slash commands and installed plugins; skills and MCP are not managed here.
+      expect(Object.keys(instance.extensions ?? {})).toEqual(["commands", "plugins"]);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("lists the plugins of the account the instance's config names", () =>
+    Effect.gen(function* () {
+      const configDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "claude-config-"));
+      NodeFS.mkdirSync(NodePath.join(configDir, "plugins"));
+      NodeFS.writeFileSync(
+        NodePath.join(configDir, "plugins", "installed_plugins.json"),
+        JSON.stringify({
+          version: 2,
+          plugins: { "formatter@team": [{ scope: "user", installPath: "/nowhere" }] },
+        }),
+      );
+      const instance = yield* claudeConnectorDefinition.createInstance({
+        instanceId: makeConnectorInstanceId(),
+        config: { configDir },
+        services: yield* testServices(),
+      });
+      const plugins = yield* instance.extensions!.plugins!.list({ workspaceRoot: null });
+      expect(plugins).toEqual([
+        { name: "formatter", source: "team", scope: "user", enabled: true },
+      ]);
     }).pipe(Effect.scoped),
   );
 

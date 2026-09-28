@@ -70,3 +70,8 @@ and re-record `conformance` signed in the same way from its own file, so the
 suite's turns are answered ones. That recording also takes the suite's
 approval case (a file write stopped on a card and allowed once), which the
 replay runs only once the recording has it.
+
+`plugins/` is the one directory that is not a recording: it holds the config
+files the real CLI wrote while installing two plugins into a scratch config
+directory, for the connector's plugins extension. It has no manifest, so
+`recordingNames` skips it; its own README says how it was made.

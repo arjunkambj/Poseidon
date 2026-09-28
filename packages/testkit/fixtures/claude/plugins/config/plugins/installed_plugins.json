@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "plugins": {
+    "agent-sdk-dev@poseidon-fixtures": [
+      {
+        "scope": "user",
+        "installPath": "<config>/plugins/cache/poseidon-fixtures/agent-sdk-dev/unknown",
+        "version": "unknown",
+        "installedAt": "2026-09-28T03:41:21.960Z",
+        "lastUpdated": "2026-09-28T03:41:21.960Z"
+      }
+    ],
+    "commit-commands@poseidon-fixtures": [
+      {
+        "scope": "project",
+        "installPath": "<config>/plugins/cache/poseidon-fixtures/commit-commands/unknown",
+        "version": "unknown",
+        "installedAt": "2026-09-28T03:41:22.584Z",
+        "lastUpdated": "2026-09-28T03:41:22.584Z",
+        "projectPath": "<project>"
+      }
+    ]
+  }
+}

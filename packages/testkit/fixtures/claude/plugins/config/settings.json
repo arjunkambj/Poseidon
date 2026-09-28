@@ -1,0 +1,13 @@
+{
+  "enabledPlugins": {
+    "agent-sdk-dev@poseidon-fixtures": false
+  },
+  "extraKnownMarketplaces": {
+    "poseidon-fixtures": {
+      "source": {
+        "source": "directory",
+        "path": "<market>"
+      }
+    }
+  }
+}

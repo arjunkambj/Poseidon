@@ -3676,9 +3676,13 @@ symlinks one into `~/.commandcode/skills`. Those homes follow the instance's
 
 **Plugins** have an extension of their own, read-only, for a harness that has
 them: `connectors.plugins.list` answers each installed plugin's name,
-description, source, scope and whether it is enabled. Command Code has no
-plugins, so its instance answers `unavailable`, and the client runtime's
-`pluginsAtom` reads that as an empty list rather than an error.
+description, source, scope and whether it is enabled. Claude Code's instance
+reads them from the CLI's `plugins/installed_plugins.json` and the
+`enabledPlugins` of its user and project settings, without starting the CLI
+(docs/claude-code-connector.md, "Claude Code's own plugins"); the source is the
+marketplace. Command Code has no plugins, so its instance answers
+`unavailable`, and the client runtime's `pluginsAtom` reads that as an empty
+list rather than an error.
 
 **Harness commands** are the slash commands a harness runs itself when a
 message starts with `/name`. An instance that can name them truthfully carries

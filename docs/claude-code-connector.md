@@ -58,6 +58,7 @@ routes new threads to Command Code until the user picks this instance.
 | `userMessage.ts`          | one composer turn as the user message the CLI reads                       |
 | `references.ts`           | skill and plugin references as prompt lines                               |
 | `pluginOptions.ts`        | Poseidon's enabled plugins as SDK `plugins` and `mcpServers` entries      |
+| `plugins.ts`              | the `plugins` extension: Claude Code's own installed plugins, read-only   |
 | `attachments.ts`          | images as content blocks, other files by path                             |
 | `session.ts`              | one long-lived CLI process per thread: send, steer, interrupt, close      |
 | `sessionRef.ts`           | the persisted session reference                                           |
@@ -132,6 +133,32 @@ form the connectors page renders, served over `connectors.describe`.
 keychain under `HOME`, so moving it signs the child out; a second account is a
 second config directory instead. A `configDir` outside `~/.claude` is not among
 the permission ladder's sensitive paths yet.
+
+## Claude Code's own plugins
+
+The instance carries the `plugins` extension (`plugins.ts`), so the composer's
+`@` menu and the Customize page list the plugins the CLI itself has installed,
+next to Poseidon's. It reads the CLI's files and runs nothing, so it works
+signed out, and it never writes: installing, enabling and removing stay with
+`claude plugin`.
+
+- `<config>/plugins/installed_plugins.json` (version 2) maps
+  `name@marketplace` to its installs. `<config>` is the instance's
+  `CLAUDE_CONFIG_DIR`, else `~/.claude`. A missing file lists none, and so
+  does a layout other than version 2; a file that is not JSON fails with its
+  path.
+- A `project` or `local` install names its project and is listed only for
+  that project's workspace root.
+- Whether a plugin is enabled comes from `enabledPlugins` in
+  `<config>/settings.json`, overlaid in a project by its
+  `.claude/settings.json` and then `.claude/settings.local.json`. A plugin no
+  file names is enabled.
+- The description is the plugin's own `.claude-plugin/plugin.json`
+  `description`; the marketplace is the row's source.
+
+The tests read `packages/testkit/fixtures/claude/plugins/`, the files the real
+CLI wrote when it installed two plugins into a scratch config (its README says
+how).
 
 ## The probe
 
