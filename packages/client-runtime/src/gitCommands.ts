@@ -142,7 +142,7 @@ export const makeGitCommands = (
   const worktreeCreate = (registry: AtomRegistry.AtomRegistry, input: WorktreeCreate) =>
     runOneShot(runtime, registry, () =>
       Effect.gen(function* () {
-        const worktree: ThreadWorktree = yield* Effect.flatMap(client, (c) =>
+        const created = yield* Effect.flatMap(client, (c) =>
           c["git.worktree.create"]({
             projectId: input.projectId,
             name: input.name,
@@ -150,6 +150,13 @@ export const makeGitCommands = (
           }),
         );
         registry.refresh(git.gitBranchesAtom({ projectId: input.projectId }));
+        // Only what `thread.create` records: the answer's `notice` is not part
+        // of a thread's worktree, and the command's schema would refuse it.
+        const worktree: ThreadWorktree = {
+          path: created.path,
+          branch: created.branch,
+          ...(created.baseBranch === undefined ? {} : { baseBranch: created.baseBranch }),
+        };
         return worktree;
       }),
     );

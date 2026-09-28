@@ -2676,7 +2676,15 @@ directory of its own. The branch is the settings document's `git.branchPrefix`
 dashes, at most 40 characters cut at a word boundary, `thread` when nothing is
 left). A prefix that makes an invalid name is refused as `invalid`, naming the
 setting. The base is the payload's, else the default branch, and it has to
-resolve to a commit. The worktree goes in
+resolve to a commit. With Settings → Git's "Start new worktrees from origin"
+(`git.worktreeFromOrigin`, on by default), a base that is a local branch of a
+repository with an `origin` remote is fetched first (`git fetch origin
+<base>`, `GIT_TERMINAL_PROMPT=0`, 30 seconds at most), and the worktree is cut
+from `origin/<base>`, which is then the base the thread records, so its
+merge-base diffs compare against the ref it really started from. A fetch that
+fails, or an `origin` without that branch, cuts from the local branch instead
+and the answer carries a `notice` saying so; a base that is already a remote
+branch, or a repository with no `origin`, is used as it is. The worktree goes in
 `<Poseidon home>/worktrees/<project slug>/<slug>`, and `-2`, `-3`… is appended
 until neither a branch nor a directory of that name exists — two projects with
 the same name share the parent directory. `git worktree add --no-track -b`

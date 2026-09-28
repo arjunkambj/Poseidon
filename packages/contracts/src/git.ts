@@ -32,6 +32,20 @@ export const ThreadWorktree = Schema.Struct({
 });
 export type ThreadWorktree = typeof ThreadWorktree.Type;
 
+/**
+ * What `git.worktree.create` answers: the `ThreadWorktree` a thread records,
+ * plus a `notice` when the worktree could not start where the settings asked —
+ * `origin` could not be fetched, so it was cut from the local branch instead.
+ * A struct of its own because `ThreadWorktree` is stored in events and must
+ * not grow a field that means nothing there; a client drops `notice` before
+ * `thread.create`.
+ */
+export const GitWorktreeCreated = Schema.Struct({
+  ...ThreadWorktree.fields,
+  notice: Schema.optional(NonEmptyString),
+});
+export type GitWorktreeCreated = typeof GitWorktreeCreated.Type;
+
 // ── Branches ───────────────────────────────────────────────────
 
 /**
@@ -260,9 +274,12 @@ export const GitPullRequestReadinessRpc = Rpc.make(GIT_RPC_METHODS.gitPullReques
  * Creates a worktree for a new thread: branch `<branchPrefix><slug of name>`
  * cut `--no-track` from `baseBranch` (default: the default branch), in
  * `<Poseidon home>/worktrees/<project>/<slug>`, with `-2`, `-3`… appended when
- * the branch or the directory is taken. `name` is free text — the thread's
- * first message will do. Answers what `thread.create` records as its
- * `worktree`.
+ * the branch or the directory is taken. With `git.worktreeFromOrigin` on, a
+ * local base is fetched from `origin` first and the worktree cut from
+ * `origin/<base>`, which is then its recorded base; a fetch that fails falls
+ * back to the local branch with a `notice`. `name` is free text — the
+ * thread's first message will do. Answers what `thread.create` records as its
+ * `worktree`, plus that notice.
  */
 export const GitWorktreeCreateRpc = Rpc.make(GIT_RPC_METHODS.gitWorktreeCreate, {
   payload: Schema.Struct({
@@ -270,7 +287,7 @@ export const GitWorktreeCreateRpc = Rpc.make(GIT_RPC_METHODS.gitWorktreeCreate, 
     name: NonEmptyString,
     baseBranch: Schema.optional(NonEmptyString),
   }),
-  success: ThreadWorktree,
+  success: GitWorktreeCreated,
   error: PoseidonRpcError,
 });
 

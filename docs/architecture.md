@@ -909,7 +909,10 @@ or null for Same as the thread, `writingEffort` `low`/`medium`/`high` and
 the `CUSTOM_INSTRUCTIONS_MAX` of 20 000 characters the git settings use) and
 the shapes of `git.generateCommitMessage`, `git.generatePullRequest` and
 `thread.regenerateTitle` with their `GENERATION_RPC_METHODS`, spread into
-`RPC_METHODS` and listed in the group like the others.
+`RPC_METHODS` and listed in the group like the others. `git.ts` holds
+`GitWorktreeCreated`, what `git.worktree.create` answers: the `ThreadWorktree`
+fields plus an optional `notice`. `ThreadWorktree` itself is stored in events
+and does not carry it.
 `PoseidonRpcError` lives in `rpcError.ts` so `git`, `editors`, `search` and
 `scripts` can name it without an import cycle, and `rpc` re-exports it.
 `browser.ts` holds the browser pane's
@@ -2409,7 +2412,7 @@ the client in the terminal `incompatible` state.
 | `git.generateCommitMessage`   | call   | A commit subject and body written from the diff of the ticked paths; `unavailable` when no harness can write                            |
 | `git.generatePullRequest`     | call   | A pull request title and body from the branch's commits and diff against the base; `unavailable` as above                               |
 | `thread.regenerateTitle`      | call   | A title written from the end of the thread's conversation, applied with `thread.rename`; `unavailable` as above                         |
-| `git.worktree.create`         | call   | Cuts a new thread's worktree and branch under the Poseidon home                                                                         |
+| `git.worktree.create`         | call   | Cuts a new thread's worktree and branch under the Poseidon home, from `origin` when the setting asks; a `notice` when it could not      |
 | `git.worktree.list`           | call   | The repository's worktrees, the project's own checkout first                                                                            |
 | `git.worktree.remove`         | call   | Removes one, keeping its branch; `conflict` on unsaved work unless `force`                                                              |
 | `git.worktree.setup`          | stream | Runs the project's setup script (from settings) in a worktree, streaming its output                                                     |

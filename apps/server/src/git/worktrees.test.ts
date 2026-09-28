@@ -291,6 +291,112 @@ describe("git.worktree.create", () => {
   );
 });
 
+/** A commit pushed to `bare`'s main from another clone, so origin is ahead of the local main. */
+const advanceRemote = (bare: string) => {
+  const other = tempDir("poseidon-worktrees-other-");
+  git(other, "clone", "-q", bare, ".");
+  git(other, "config", "user.email", "test@poseidon.local");
+  git(other, "config", "user.name", "Poseidon Test");
+  writeFileSync(nodePath.join(other, "remote.txt"), "from origin\n");
+  git(other, "add", "-A");
+  git(other, "commit", "-qm", "remote work");
+  git(other, "push", "-q", "origin", "main");
+  return git(other, "rev-parse", "HEAD").trim();
+};
+
+describe("git.worktree.create from origin", () => {
+  it.live("fetches the base and cuts from origin/<base>, recording that ref", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        const remoteHead = advanceRemote(addBareRemote(root));
+        const { git: service, addProject } = yield* stack;
+        const projectId = yield* addProject(root);
+
+        const worktree = yield* service.createWorktree(projectId, { name: "fresh start" });
+        expect(worktree.baseBranch).toBe("origin/main");
+        expect(worktree.notice).toBeUndefined();
+        expect(git(worktree.path, "rev-parse", "HEAD").trim()).toBe(remoteHead);
+        // Still cut `--no-track`: the first push must not land on main.
+        const upstream = git(
+          root,
+          "for-each-ref",
+          "--format=%(upstream)",
+          `refs/heads/${worktree.branch}`,
+        );
+        expect(upstream.trim()).toBe("");
+        // The project's own main did not move.
+        expect(git(root, "rev-parse", "main").trim()).not.toBe(remoteHead);
+      }),
+    ),
+  );
+
+  it.live("falls back to the local base with a notice when the fetch fails", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        git(root, "remote", "add", "origin", nodePath.join(tmpdir(), "poseidon-no-such-remote"));
+        const { git: service, addProject } = yield* stack;
+        const projectId = yield* addProject(root);
+
+        const worktree = yield* service.createWorktree(projectId, { name: "offline" });
+        expect(worktree.baseBranch).toBe("main");
+        expect(worktree.notice).toContain("Couldn't fetch main from origin");
+        expect(git(worktree.path, "rev-parse", "HEAD")).toBe(git(root, "rev-parse", "main"));
+
+        // A local branch origin does not have: the fetch is refused, and the
+        // local branch is used as it is.
+        const reachable = makeRepo();
+        addBareRemote(reachable);
+        git(reachable, "branch", "local-only");
+        const reachableProject = yield* addProject(reachable, "Reachable");
+        const localOnly = yield* service.createWorktree(reachableProject, {
+          name: "local only",
+          baseBranch: "local-only",
+        });
+        expect(localOnly.baseBranch).toBe("local-only");
+        expect(localOnly.notice).toContain("local local-only");
+      }),
+    ),
+  );
+
+  it.live("with no origin remote the local base is used without a notice", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        const { git: service, addProject } = yield* stack;
+        const projectId = yield* addProject(root);
+
+        const worktree = yield* service.createWorktree(projectId, { name: "no remote" });
+        expect(worktree).toEqual({
+          path: worktree.path,
+          branch: "poseidon/no-remote",
+          baseBranch: "main",
+        });
+      }),
+    ),
+  );
+
+  it.live("with the setting off it cuts from the local base and fetches nothing", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        const bare = addBareRemote(root);
+        const trackedBefore = git(root, "rev-parse", "origin/main").trim();
+        advanceRemote(bare);
+        const { git: service, addProject, settings } = yield* stack;
+        const projectId = yield* addProject(root);
+        yield* settings.update({ git: { ...DEFAULT_GIT_SETTINGS, worktreeFromOrigin: false } });
+
+        const worktree = yield* service.createWorktree(projectId, { name: "as today" });
+        expect(worktree.baseBranch).toBe("main");
+        expect(worktree.notice).toBeUndefined();
+        expect(git(root, "rev-parse", "origin/main").trim()).toBe(trackedBefore);
+      }),
+    ),
+  );
+});
+
 describe("git.worktree.list", () => {
   it.live("lists the project's checkout first, then its worktrees", () =>
     Effect.scoped(

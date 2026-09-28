@@ -630,6 +630,7 @@ export const layer = Layer.effect(
             branchPrefix: gitSettings.branchPrefix,
             name: options.name,
             baseBranch: options.baseBranch,
+            fromOrigin: gitSettings.worktreeFromOrigin,
           });
         }).pipe(Effect.mapError(asRpcError)),
 

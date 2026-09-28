@@ -9,6 +9,7 @@ import {
   GitGeneratePullRequestRpc,
   ThreadRegenerateTitleRpc,
 } from "./generation";
+import { GitWorktreeCreated, ThreadWorktree } from "./git";
 import { PoseidonRpcGroup, RPC_METHODS } from "./rpc";
 
 const PROJECT_ID = "018f2b6e-1c2d-7a3b-8c4d-5e6f7a8b9c0e";
@@ -32,6 +33,24 @@ describe("generation RPC names", () => {
       expect(Object.values(RPC_METHODS)).toContain(method);
       expect(PoseidonRpcGroup.requests.has(method)).toBe(true);
     }
+  });
+});
+
+describe("git.worktree.create's answer", () => {
+  const worktree = { path: "/w/fix", branch: "poseidon/fix", baseBranch: "origin/main" };
+
+  it("carries a notice beside the worktree, and the worktree alone still decodes", () => {
+    const decode = Schema.decodeUnknownSync(GitWorktreeCreated);
+    expect(decode(worktree)).toEqual(worktree);
+    expect(decode({ ...worktree, notice: "Couldn't fetch main." })).toEqual({
+      ...worktree,
+      notice: "Couldn't fetch main.",
+    });
+    expect(() => decode({ ...worktree, notice: "" })).toThrow();
+  });
+
+  it("leaves the stored ThreadWorktree without a notice", () => {
+    expect(Object.keys(ThreadWorktree.fields).sort()).toEqual(["baseBranch", "branch", "path"]);
   });
 });
 

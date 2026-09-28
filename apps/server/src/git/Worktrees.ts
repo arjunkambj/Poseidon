@@ -18,7 +18,7 @@
  */
 import { existsSync, mkdirSync, realpathSync } from "node:fs";
 import * as nodePath from "node:path";
-import type { GitWorktreeInfo, ThreadWorktree } from "@poseidon/contracts/git";
+import type { GitWorktreeCreated, GitWorktreeInfo } from "@poseidon/contracts/git";
 import { branchSlug } from "@poseidon/shared/branchSlug";
 import { worktreesDir } from "@poseidon/shared/paths";
 import * as Context from "effect/Context";
@@ -172,9 +172,51 @@ const freeName = (root: string, parent: string, prefix: string, slug: string) =>
     );
   });
 
+/** How long fetching the base from `origin` may take before the local branch is used. */
+const ORIGIN_FETCH_TIMEOUT_MS = 30_000;
+
+/** A fetch never asks for credentials: one that would have to fails fast instead. */
+const FETCH_ENV = { GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" };
+
+/**
+ * Where a worktree of the local branch `base` starts when the setting asks for
+ * origin: `origin/<base>` freshly fetched, or `base` itself with a notice
+ * saying why not. A base that is not a local branch (`origin/main`, a sha) or
+ * a repository with no `origin` is used as it is, with nothing to say.
+ */
+const originBase = (root: string, base: string) =>
+  Effect.gen(function* () {
+    const remotes = yield* run(root, ["remote"]);
+    const hasOrigin = remotes.stdout.split("\n").some((line) => line.trim() === "origin");
+    if (!hasOrigin || !(yield* refExists(root, `refs/heads/${base}`))) {
+      return { base };
+    }
+    const fetched = yield* run(root, ["fetch", "--quiet", "--no-tags", "origin", base], {
+      env: FETCH_ENV,
+      timeoutMs: ORIGIN_FETCH_TIMEOUT_MS,
+      allowNonZeroExit: true,
+    }).pipe(Effect.catch(() => Effect.succeed({ exitCode: 1 })));
+    if (fetched.exitCode !== 0) {
+      return {
+        base,
+        notice: `Couldn't fetch ${base} from origin, so the worktree starts from your local ${base}.`,
+      };
+    }
+    if (!(yield* refExists(root, `refs/remotes/origin/${base}`))) {
+      return {
+        base,
+        notice: `origin has no ${base}, so the worktree starts from your local ${base}.`,
+      };
+    }
+    return { base: `origin/${base}` };
+  });
+
 /**
  * Cuts a new worktree for a thread named `name`, from `baseBranch` or the
- * repository's default branch, and answers what the thread records.
+ * repository's default branch, and answers what the thread records. With
+ * `fromOrigin`, a local base is swapped for `origin/<base>` (`originBase`),
+ * and the ref actually cut from is the one recorded, so a merge-base diff
+ * against it stays right.
  */
 export const createWorktree = (
   root: string,
@@ -184,18 +226,23 @@ export const createWorktree = (
     readonly branchPrefix: string;
     readonly name: string;
     readonly baseBranch?: string | undefined;
+    readonly fromOrigin?: boolean | undefined;
   },
 ) =>
   Effect.gen(function* () {
     const slug = branchSlug(options.name);
     yield* validPrefix(root, options.branchPrefix, slug);
-    const base = options.baseBranch ?? (yield* listBranches(root)).defaultBranch;
-    if (base === null) {
+    const requested = options.baseBranch ?? (yield* listBranches(root)).defaultBranch;
+    if (requested === null) {
       return yield* Effect.fail(
         invalid("There is no branch to cut a worktree from yet — make a first commit."),
       );
     }
-    yield* validRef(base, "base");
+    yield* validRef(requested, "base");
+    const { base, notice } =
+      options.fromOrigin === true
+        ? yield* originBase(root, requested)
+        : { base: requested, notice: undefined };
     const resolved = yield* run(root, ["rev-parse", "--verify", "--quiet", `${base}^{commit}`], {
       allowNonZeroExit: true,
     });
@@ -213,7 +260,12 @@ export const createWorktree = (
     yield* run(root, ["worktree", "add", "--quiet", "--no-track", "-b", branch, dir, base]).pipe(
       Effect.mapError((error) => conflict(error.message)),
     );
-    const worktree: ThreadWorktree = { path: realpathSync(dir), branch, baseBranch: base };
+    const worktree: GitWorktreeCreated = {
+      path: realpathSync(dir),
+      branch,
+      baseBranch: base,
+      ...(notice === undefined ? {} : { notice }),
+    };
     return worktree;
   });
 

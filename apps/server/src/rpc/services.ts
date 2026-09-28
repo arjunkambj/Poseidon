@@ -37,8 +37,8 @@ import type {
   GitPullRequestReadiness,
   GitPullRequestResult,
   GitPushResult,
+  GitWorktreeCreated,
   GitWorktreeInfo,
-  ThreadWorktree,
   WorktreeSetupFrame,
 } from "@poseidon/contracts/git";
 import type { GitBlame } from "@poseidon/contracts/git-review";
@@ -258,7 +258,7 @@ export class GitService extends Context.Service<
     readonly createWorktree: (
       projectId: ProjectId,
       options: { readonly name: string; readonly baseBranch?: string | undefined },
-    ) => Effect.Effect<ThreadWorktree, PoseidonRpcError>;
+    ) => Effect.Effect<GitWorktreeCreated, PoseidonRpcError>;
     readonly listWorktrees: (
       projectId: ProjectId,
     ) => Effect.Effect<ReadonlyArray<GitWorktreeInfo>, PoseidonRpcError>;
