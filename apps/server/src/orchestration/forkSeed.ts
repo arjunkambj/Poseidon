@@ -18,6 +18,7 @@ import type { ThreadSettingsPatch } from "@poseidon/contracts/orchestration";
 import type { TurnId } from "@poseidon/contracts/ids";
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 
+import { forkOf, isFirstTurn, nativeForkSession } from "./nativeFork";
 import type { ThreadDoc } from "./state";
 
 /** Roughly how much transcript a fork carries; older turns are dropped first. */
@@ -118,10 +119,6 @@ export const forkTranscript = (
   return [OMITTED_MARKER, ...kept].join("\n\n");
 };
 
-/** The thread's fork, tolerating a document written before forks existed. */
-const forkOf = (doc: ThreadDoc): ThreadFork | null =>
-  (doc.fork as ThreadFork | null | undefined) ?? null;
-
 /** The wire's optional `forkedFrom`: present only on a fork. */
 export const forkedFromField = (doc: ThreadDoc): Pick<ThreadSummary, "forkedFrom"> => {
   const fork = forkOf(doc);
@@ -138,20 +135,22 @@ interface TurnText {
  * otherwise the input unchanged. "First" means no user message of another
  * turn exists, so a resend of the same turn after a lost session is prefixed
  * again, which the fresh session needs.
+ *
+ * `forkedNatively` is the session manager's word that the thread's session is
+ * the harness's own fork of the source (`nativeFork.ts`): it already holds the
+ * conversation, and the transcript would only say it twice.
  */
 export const withForkContext = <Input extends TurnText>(
   doc: ThreadDoc,
   turnId: TurnId,
   input: Input,
+  forkedNatively = false,
 ): Input => {
   const fork = forkOf(doc);
-  if (fork === null || fork.transcript.length === 0) {
+  if (fork === null || fork.transcript.length === 0 || forkedNatively) {
     return input;
   }
-  const later = doc.items.some(
-    (item) => item.kind === "user_message" && item.turnId !== undefined && item.turnId !== turnId,
-  );
-  if (later) {
+  if (!isFirstTurn(doc, turnId)) {
     return input;
   }
   return {
@@ -212,20 +211,30 @@ export const resolveFork = (
   }
   const settings = source.settings;
   const connectorInstanceId = source.session?.connectorInstanceId ?? settings.connectorInstanceId;
+  const patch: ThreadSettingsPatch = {
+    model: settings.model,
+    runtimeMode: settings.runtimeMode,
+    ...(settings.effort === undefined ? {} : { effort: settings.effort }),
+    ...(connectorInstanceId === undefined ? {} : { connectorInstanceId }),
+    ...definedOf(command.settings ?? {}),
+  };
+  // The harness forks the session itself when it can and the point is the
+  // tail; the transcript is still kept, for when it cannot after all.
+  const session = nativeForkSession({
+    source,
+    throughItemId,
+    connectorInstanceId: patch.connectorInstanceId,
+    worktree: command.worktree,
+  });
   return {
     fork: {
       threadId: source.threadId,
       title: source.title,
       ...(throughItemId === undefined ? {} : { throughItemId }),
       transcript: forkTranscript(source.items, throughItemId),
+      ...(session === undefined ? {} : { session }),
     },
     title: `${source.title} (fork)`,
-    patch: {
-      model: settings.model,
-      runtimeMode: settings.runtimeMode,
-      ...(settings.effort === undefined ? {} : { effort: settings.effort }),
-      ...(connectorInstanceId === undefined ? {} : { connectorInstanceId }),
-      ...definedOf(command.settings ?? {}),
-    },
+    patch,
   };
 };

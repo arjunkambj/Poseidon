@@ -213,18 +213,33 @@ export const ThreadForkRequest = Schema.Struct({
 export type ThreadForkRequest = typeof ThreadForkRequest.Type;
 
 /**
+ * The harness session a fork continues natively, when it does: the source's
+ * connector instance and the session reference it had bound. Its first turn
+ * resumes that session with `fork: true`, so the harness itself copies the
+ * conversation into a new session and leaves the source's alone.
+ */
+export const ForkSession = Schema.Struct({
+  connectorInstanceId: ConnectorInstanceId,
+  sessionRef: Schema.Unknown,
+});
+export type ForkSession = typeof ForkSession.Type;
+
+/**
  * A fork as `thread.created` records it: the source and its title when the
  * fork was made, the message it was forked from, and the transcript the
  * server built from the source at that moment. The transcript is kept here,
  * not read from the source later, so the fork's first turn still has it after
  * the source is renamed, changed or deleted. It is sent to the harness ahead
- * of the fork's first message and never shown as a row.
+ * of the fork's first message and never shown as a row — unless `session` is
+ * set and the harness forked that session itself, in which case it already
+ * holds the conversation and the transcript is only the fallback.
  */
 export const ThreadFork = Schema.Struct({
   threadId: ThreadId,
   title: NonEmptyString,
   throughItemId: Schema.optional(ItemId),
   transcript: Schema.String,
+  session: Schema.optional(ForkSession),
 });
 export type ThreadFork = typeof ThreadFork.Type;
 

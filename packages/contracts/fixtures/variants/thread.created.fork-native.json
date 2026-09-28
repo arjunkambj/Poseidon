@@ -1,0 +1,37 @@
+{
+  "sequence": 41,
+  "eventId": "0199c0de-0006-7000-8000-000000000141",
+  "streamKind": "thread",
+  "streamId": "0199c0de-0002-7000-8000-000000000003",
+  "streamVersion": 1,
+  "occurredAt": "2026-09-15T12:10:00.000Z",
+  "commandId": "0199c0de-0008-7000-8000-000000000031",
+  "actor": "user",
+  "type": "thread.created",
+  "payload": {
+    "threadId": "0199c0de-0002-7000-8000-000000000003",
+    "projectId": "0199c0de-0001-7000-8000-000000000001",
+    "title": "Health check endpoint (fork)",
+    "settings": {
+      "model": "stealth/ox-alpha",
+      "effort": "medium",
+      "runtimeMode": "approval-required",
+      "interactionMode": "default",
+      "connectorInstanceId": "0199c0de-0003-7000-8000-000000000001"
+    },
+    "fork": {
+      "threadId": "0199c0de-0002-7000-8000-000000000001",
+      "title": "Health check endpoint",
+      "transcript": "User:\nAdd a health check endpoint.\n\nAssistant:\nAdded GET /healthz returning 200 with the build id.",
+      "session": {
+        "connectorInstanceId": "0199c0de-0003-7000-8000-000000000001",
+        "sessionRef": {
+          "sessionId": "22a15391-8cfd-464e-abf4-dc80f51037e0",
+          "transcriptPath": "/home/user/.commandcode/projects/home-user-app/22a15391-8cfd-464e-abf4-dc80f51037e0.jsonl",
+          "cwd": "/home/user/app",
+          "lastMessageId": "9f86946d-c9ec-4360-ab58-c0899d46a975"
+        }
+      }
+    }
+  }
+}

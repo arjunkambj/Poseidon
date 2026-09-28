@@ -74,6 +74,7 @@ export {
   CheckpointSummary,
   ContextWindowUsage,
   ForkedFrom,
+  ForkSession,
   latestTurnId,
   Mention,
   PlanResponseAction,

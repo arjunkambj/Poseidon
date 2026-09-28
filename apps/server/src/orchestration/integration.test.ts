@@ -1335,7 +1335,9 @@ describe("forking a thread", () => {
     "sends the fork's first turn with the source's transcript, and shows only what was typed",
     () =>
       Effect.gen(function* () {
-        const { fake, instance } = yield* openFake();
+        // A harness that cannot fork its sessions: every fork is a copy
+        // (`nativeFork.test.ts` has the one that can).
+        const { fake, instance } = yield* openFake({ capabilities: { fork: false } });
         const forkId = makeThreadId();
         const forkTurn = (text: string): Command => ({
           commandId: makeCommandId(),

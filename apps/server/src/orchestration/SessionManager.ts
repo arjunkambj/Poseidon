@@ -16,7 +16,11 @@
  */
 
 import type { ConnectorInstanceId, ThreadId } from "@poseidon/contracts/ids";
-import type { ConnectorError, ConnectorInstance } from "@poseidon/connector-sdk/definition";
+import type {
+  ConnectorError,
+  ConnectorInstance,
+  StartSessionInput,
+} from "@poseidon/connector-sdk/definition";
 import { ConnectorNotFound } from "@poseidon/connector-sdk/definition";
 import type { ConnectorRegistry } from "@poseidon/connector-sdk/registry";
 import type { SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
@@ -38,6 +42,7 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 
 import { EngineEnv, OrchestrationEngine } from "./Engine";
+import { pendingNativeFork } from "./nativeFork";
 import { ingestSession, type SessionLifecycle } from "./RuntimeIngestion";
 import type { ThreadDoc } from "./state";
 
@@ -139,6 +144,13 @@ export class SessionManager extends Context.Service<
       doc: ThreadDoc,
       projectWorkspaceRoot: string,
     ) => Effect.Effect<TurnScopedSessionHandle, ConnectorError | ConnectorNotFound | NoConnector>;
+    /**
+     * True when the thread's session is the harness's own fork of its
+     * source's (`nativeFork.ts`): it holds the conversation already, so the
+     * fork's first message goes without the transcript. Known for sessions
+     * this process started.
+     */
+    readonly forkedNatively: (threadId: ThreadId) => Effect.Effect<boolean>;
     /** Closes and deregisters the thread's session, if one is running. */
     readonly close: (threadId: ThreadId) => Effect.Effect<void>;
     /** Session start/end reports — the supervisor's input. */
@@ -152,10 +164,44 @@ export class SessionManager extends Context.Service<
       const selection = yield* ConnectorSelection;
       const drivers = yield* Ref.make<ReadonlyMap<ThreadId, SessionDriver>>(new Map());
       const lifecycle = yield* PubSub.unbounded<SessionLifecycle>();
+      const nativeForks = yield* Ref.make<ReadonlySet<ThreadId>>(new Set());
       // One attach at a time: a raced ensure() must not spawn two sessions.
       const attachMutex = yield* Semaphore.make(1);
 
       const report = (entry: SessionLifecycle) => PubSub.publish(lifecycle, entry);
+
+      /**
+       * A fork's first session, forked by the harness from its source's
+       * (`pendingNativeFork`), in a scope of its own. `null` when the thread
+       * is not one, and when the fork fails — the source's instance is gone,
+       * or the harness no longer has the session — so the caller starts a
+       * fresh session and the fork's transcript goes out with its first
+       * message instead.
+       */
+      const forkNatively = (doc: ThreadDoc, input: StartSessionInput) =>
+        Effect.gen(function* () {
+          const source = pendingNativeFork(doc);
+          if (source === null) {
+            return null;
+          }
+          const scope = yield* Scope.make();
+          return yield* selection.instanceById(source.connectorInstanceId).pipe(
+            Effect.flatMap((instance) =>
+              instance.resumeSession({ ...input, sessionRef: source.sessionRef, fork: true }).pipe(
+                Scope.provide(scope),
+                Effect.map((raw) => ({ instance, raw, scope })),
+              ),
+            ),
+            Effect.catch((error) =>
+              Scope.close(scope, Exit.succeed(undefined)).pipe(
+                Effect.andThen(
+                  Effect.logWarning("could not fork the source session; starting fresh", error),
+                ),
+                Effect.as(null),
+              ),
+            ),
+          );
+        });
 
       const attach = (
         doc: ThreadDoc,
@@ -168,23 +214,34 @@ export class SessionManager extends Context.Service<
             if (running !== undefined && (yield* Ref.get(running.alive))) {
               return running.handle;
             }
-            const instance =
-              doc.session === null
-                ? yield* selection.instanceFor(doc)
-                : yield* selection.instanceById(doc.session.connectorInstanceId);
-
             const input = {
               threadId: doc.threadId,
               projectId: doc.projectId,
               workspaceRoot,
               settings: doc.settings,
             };
-            const driverScope = yield* Scope.make();
-            const raw: SessionHandle = yield* (
-              doc.session === null
-                ? instance.startSession(input)
-                : instance.resumeSession({ ...input, sessionRef: doc.session.sessionRef })
-            ).pipe(Scope.provide(driverScope));
+            const forked = yield* forkNatively(doc, input);
+            const driverScope = forked?.scope ?? (yield* Scope.make());
+            const instance =
+              forked?.instance ??
+              (doc.session === null
+                ? yield* selection.instanceFor(doc)
+                : yield* selection.instanceById(doc.session.connectorInstanceId));
+            const raw: SessionHandle =
+              forked?.raw ??
+              (yield* (
+                doc.session === null
+                  ? instance.startSession(input)
+                  : instance.resumeSession({ ...input, sessionRef: doc.session.sessionRef })
+              ).pipe(Scope.provide(driverScope)));
+            if (doc.session === null) {
+              yield* Ref.update(nativeForks, (all) => {
+                const next = new Set(all);
+                if (forked === null) next.delete(doc.threadId);
+                else next.add(doc.threadId);
+                return next;
+              });
+            }
             const handle = yield* makeTurnScopedHandle(raw, {
               connectorInstanceId: instance.instanceId,
               threadId: doc.threadId,
@@ -321,6 +378,8 @@ export class SessionManager extends Context.Service<
             return driver.handle;
           }),
         ensure: (doc, projectWorkspaceRoot) => attach(doc, projectWorkspaceRoot),
+        forkedNatively: (threadId) =>
+          Ref.get(nativeForks).pipe(Effect.map((all) => all.has(threadId))),
         close: closeSession,
         lifecycle: Stream.fromPubSub(lifecycle),
       });

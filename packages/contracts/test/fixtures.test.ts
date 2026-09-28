@@ -218,6 +218,8 @@ const singles: ReadonlyArray<{ readonly path: string; readonly schema: FixtureSc
   // families hold one file per variant, so these sit apart.
   { path: "variants/thread.create.fork.json", schema: Command },
   { path: "variants/thread.created.fork.json", schema: OrchestrationEvent },
+  // A fork the harness makes itself: the source's session rides along.
+  { path: "variants/thread.created.fork-native.json", schema: OrchestrationEvent },
   // Edit and resend: a restore that carries the edited message to send once
   // it lands, on the command and on the durable work order.
   { path: "variants/thread.checkpoint.restore.resend.json", schema: Command },
@@ -571,6 +573,15 @@ describe("a forked thread", () => {
       const fork = created.type === "thread.created" ? created.payload.fork : undefined;
       expect(fork?.title).toBe("Health check endpoint");
       expect(fork?.transcript).toContain("User:\nAdd a health check endpoint.");
+      expect(fork?.session).toBeUndefined();
+      const native = yield* Effect.sync(() =>
+        Schema.decodeUnknownSync(OrchestrationEvent)(
+          read("variants/thread.created.fork-native.json"),
+        ),
+      );
+      const session = native.type === "thread.created" ? native.payload.fork?.session : undefined;
+      expect(session?.connectorInstanceId).toBe("0199c0de-0003-7000-8000-000000000001");
+      expect(session?.sessionRef).toMatchObject({ sessionId: expect.any(String) });
     }),
   );
 });

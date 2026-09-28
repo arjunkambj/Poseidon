@@ -1617,6 +1617,94 @@ describe("forking a thread", () => {
     expect(payload.fork.transcript).toBe("User:\nAdd it.\n\nAssistant:\nDone.\n\nUser:\nTest it.");
   });
 
+  describe("natively, when the harness can", () => {
+    const sessionRef = { sessionId: "source-session" };
+    const bound = (fork: boolean): ThreadDoc["session"] => ({
+      connectorInstanceId: instance,
+      connectorKind: "cmd",
+      sessionRef,
+      capabilities: {
+        modelSwitch: "per-turn",
+        effortSwitch: "per-turn",
+        steering: false,
+        planMode: true,
+        subagents: true,
+        images: true,
+        resume: true,
+        fork,
+        interrupt: "turn",
+        rollback: false,
+        compaction: false,
+        questions: true,
+        runtimeModes: ["approval-required"],
+        attachments: "files",
+      },
+    });
+    const forkable = { ...source, session: bound(true) };
+    const sessionOf = (result: ReturnType<typeof decide>) =>
+      result.accepted
+        ? (result.events[0]!.payload as { fork: { session?: unknown } }).fork.session
+        : "rejected";
+
+    it("records the source's session for a fork of its latest turn", () => {
+      const result = fork({}, forkable, ask2);
+      expect(sessionOf(result)).toEqual({ connectorInstanceId: instance, sessionRef });
+      // The transcript is kept anyway, for when the harness cannot fork after all.
+      expect(result.accepted && result.events[0]!.payload).toMatchObject({
+        fork: { transcript: expect.stringContaining("User:\nTest it.") },
+        settings: { connectorInstanceId: instance },
+      });
+    });
+
+    it("records it for a fork of the whole thread", () => {
+      expect(sessionOf(fork({}, forkable, null))).toEqual({
+        connectorInstanceId: instance,
+        sessionRef,
+      });
+    });
+
+    it("copies a fork of an earlier turn", () => {
+      expect(sessionOf(fork({}, forkable, ask1))).toBeUndefined();
+    });
+
+    it("copies when the harness cannot fork, or no session is bound", () => {
+      expect(sessionOf(fork({}, { ...source, session: bound(false) }, ask2))).toBeUndefined();
+      expect(sessionOf(fork({}, source, ask2))).toBeUndefined();
+    });
+
+    it("copies while the source is running", () => {
+      const running = {
+        ...forkable,
+        status: "running" as const,
+        currentTurn: {
+          turnId: makeTurnId(),
+          input: { text: "More.", attachments: [], mentions: [] },
+        },
+      };
+      expect(sessionOf(fork({}, running, null))).toBeUndefined();
+    });
+
+    it("copies onto another connector instance", () => {
+      const other = makeConnectorInstanceId();
+      const result = fork({ settings: { connectorInstanceId: other } }, forkable, ask2);
+      expect(sessionOf(result)).toBeUndefined();
+      expect(result.accepted && result.events[0]!.payload).toMatchObject({
+        settings: { connectorInstanceId: other },
+      });
+    });
+
+    it("copies into a workspace other than the source's", () => {
+      const worktree = { path: "/repo/.worktrees/other", branch: "other" };
+      expect(sessionOf(fork({ worktree }, forkable, ask2))).toBeUndefined();
+      // The source's own worktree is the source's workspace: still native.
+      const inWorktree = { ...forkable, worktree };
+      expect(sessionOf(fork({ worktree }, inWorktree, ask2))).toEqual({
+        connectorInstanceId: instance,
+        sessionRef,
+      });
+    });
+  });
+
   it("leaves a thread that is not a fork without one", () => {
     const result = decide(
       { ...baseCommand, type: "thread.create", threadId: makeThreadId(), projectId } as Command,

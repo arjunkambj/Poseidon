@@ -1517,6 +1517,19 @@ is renamed or deleted; the summary and snapshot carry only
 `forkedFrom: { threadId, title }`. `fork` and `forkedFrom` are optional, so
 events and documents written before forks decode unchanged.
 
+A fork can also be native (`nativeFork.ts`). When the source's bound session
+declares the `fork` capability, nothing runs in the source, the fork point is
+its latest turn (or the whole thread), and the fork stays on the source's
+connector instance (pinned in its settings) and in the source's workspace,
+the `ThreadFork` also records `session: { connectorInstanceId, sessionRef }`.
+The fork's first session then comes from `resumeSession({ sessionRef, fork:
+true })` on that instance instead of `startSession`, and the harness copies the
+conversation itself. The transcript is recorded anyway: if that resume fails,
+the session manager starts a fresh session and the transcript goes ahead of the
+first message as for any other fork. Every other fork — an earlier message, a
+running source, another harness or workspace, a harness without `fork` —
+is a copy.
+
 A plan's "Implement in new thread" goes through the same dialog but is not a
 fork: the renderer sends `thread.create` with the source's settings out of plan
 mode and no `fork`, sends the plan as the first turn, and, from the pending
@@ -1596,7 +1609,9 @@ more watcher of its own, subscribed the same eager way inside its layer: on
 turn exists yet — is sent with the source's transcript and a line saying what
 it is ahead of the user's text (`withForkContext`), here and in the mid-turn
 resend after `session.bound`; the user's row keeps only what they typed, so
-the transcript never reaches the timeline or message search. `turn.steered` →
+the transcript never reaches the timeline or message search. A fork whose
+session the harness forked natively goes without it: the session manager says
+so (`forkedNatively`), for the sessions this process started. `turn.steered` →
 `handle.steer(turnId, turn)`, then the user's `user_message` row on that turn
 once it is delivered; when there is no live handle or the steer fails, no row
 is written there and the message is dispatched
@@ -1790,6 +1805,11 @@ harness's commands itself.
 
 A `ConnectorInstance` is one _configured_ connector, live —
 `startSession`, `resumeSession`, `listModels`, plus its capabilities.
+`resumeSession` takes the persisted `sessionRef` and an optional `fork`: with
+it, the connector continues that session's conversation in a new harness
+session and leaves the original untouched. Only a connector declaring the
+`fork` capability is asked, and one that cannot fork the ref fails rather than
+starting fresh, so the server can carry the conversation over as text instead.
 `ConnectorCapabilities` is what the harness can do, and the renderer reads it
 instead of the kind:
 
@@ -1807,7 +1827,7 @@ instead of the kind:
 | `steering`                   | boolean                              | the decider (bound session) and the composer's Enter |
 | `subagents`, `resume`        | boolean                              | declared                                             |
 | `stopTask`                   | optional boolean                     | the decider and the agents strip's Stop              |
-| `fork`                       | boolean                              | declared; read once a harness supports it            |
+| `fork`                       | boolean                              | the decider: a fork of the tail forks the session    |
 
 `steering` also decides `TurnInProgress` and whether a handle has `steer`,
 below.

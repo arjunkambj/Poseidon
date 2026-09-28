@@ -166,8 +166,10 @@ export type CapabilitySwitch = typeof CapabilitySwitch.Type;
  *   (`SessionHandle.stopTask`). Optional: a session bound before it existed
  *   has none, and absent reads as false.
  *
- * `fork` is declared, but nothing reads it yet: no harness so far forks
- * anywhere Poseidon can show. It is read once one does.
+ * - `fork` — the harness can copy a session into a new one and leave the
+ *   original untouched. The decider reads it on the source's bound session:
+ *   a fork of the source's latest settled turn resumes that session with
+ *   `fork: true` instead of carrying the conversation over as text.
  */
 export const ConnectorCapabilities = Schema.Struct({
   modelSwitch: CapabilitySwitch,

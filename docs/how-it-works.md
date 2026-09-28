@@ -2783,7 +2783,7 @@ worktree. On success the dialog closes and the fork opens with its composer
 focused (`branch-off.ts`, `use-branch-off.ts`).
 
 The fork is `thread.create` with `fork: { threadId, throughItemId }`. It is
-harness-neutral: no session is copied. The server takes the source's settings
+harness-neutral by default: no session is copied. The server takes the source's settings
 (harness, model, effort, runtime mode; never plan mode), builds a plain
 "User:" / "Assistant:" transcript of the source's messages and plans through
 the chosen turn — tool calls and subagents left out, oldest turns dropped past
@@ -2792,6 +2792,16 @@ turn is sent to the harness with that transcript ahead of what the user typed;
 the timeline and message search show only the typed text, and later turns are
 sent as they are. Because the transcript is stored with the fork, renaming or
 deleting the source changes nothing.
+
+One case is forked by the harness itself instead: a fork of the source's latest
+message (or of the whole thread, from the menu), while nothing runs in the
+source, into the same workspace, on a harness that can fork its sessions —
+Command Code today. Its first turn resumes the source's session as a new
+harness session, so the model has the source's full history, tool calls
+included, and no transcript is added; the source's own session is left as it
+was, and the fork stays on the source's connector. If the harness cannot fork
+it after all, the fork starts fresh with the transcript as above. Every other
+fork, and every fork on Claude, is a transcript copy.
 
 A fork names its source: "Forked from <title>" under the greeting while it is
 empty, and a fork icon beside the title in the header, whose tooltip says the

@@ -5,6 +5,7 @@ import type { TurnId } from "@poseidon/contracts/ids";
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 
 import { forkTranscript, OMITTED_MARKER, withForkContext } from "./forkSeed";
+import { pendingNativeFork } from "./nativeFork";
 import type { ThreadDoc } from "./state";
 
 const NOW = "2026-01-02T03:04:05.000Z";
@@ -129,8 +130,48 @@ describe("withForkContext", () => {
     expect(withForkContext(resent, t1, input).text).toContain(fork.transcript);
   });
 
+  it("leaves the first turn alone when the harness forked the source's session", () => {
+    const first = row("user_message", t1, "Now test it.");
+    expect(withForkContext(doc({ fork, items: [first] }), t1, input, true)).toBe(input);
+  });
+
   it("leaves a thread that is not a fork, or a fork of nothing, alone", () => {
     expect(withForkContext(doc({}), t1, input)).toBe(input);
     expect(withForkContext(doc({ fork: { ...fork, transcript: "" } }), t1, input)).toBe(input);
+  });
+});
+
+describe("pendingNativeFork", () => {
+  const session = { connectorInstanceId: "instance" as never, sessionRef: { sessionId: "a" } };
+  const fork = { threadId: makeThreadId(), title: "Health check", transcript: "…", session };
+  const doc = (fields: Partial<ThreadDoc>): ThreadDoc =>
+    ({ items: [], session: null, currentTurn: null, ...fields }) as ThreadDoc;
+  const running = (turnId: TurnId) => ({
+    turnId,
+    input: { text: "go", attachments: [], mentions: [] },
+  });
+
+  it("forks the source's session for the fork's first turn", () => {
+    const first = doc({
+      fork,
+      items: [row("user_message", t1, "go")],
+      currentTurn: running(t1),
+    });
+    expect(pendingNativeFork(first)).toBe(session);
+  });
+
+  it("never once the fork has a session, or turns of its own", () => {
+    expect(pendingNativeFork(doc({ fork, session: { sessionRef: {} } as never }))).toBeNull();
+    const later = doc({
+      fork,
+      items: [row("user_message", t1, "first"), row("user_message", t2, "second")],
+      currentTurn: running(t2),
+    });
+    expect(pendingNativeFork(later)).toBeNull();
+  });
+
+  it("never for a copy, or a thread that is not a fork", () => {
+    expect(pendingNativeFork(doc({ fork: { ...fork, session: undefined } }))).toBeNull();
+    expect(pendingNativeFork(doc({}))).toBeNull();
   });
 });

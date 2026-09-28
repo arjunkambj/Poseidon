@@ -124,7 +124,8 @@ Capabilities are how the UI adapts without knowing. A connector declares
 connector's `runtimeModes`, the composer refuses attachments when `images` is
 false, and the decider steers a message into a running turn only for a
 session whose `steering` is true — a harness without it keeps the queue.
-`fork` is declared ahead of any UI for it and read once a harness supports it.
+A fork of a thread's latest turn is made by the harness itself when its
+session declares `fork`, and is a transcript copy everywhere else.
 
 **To honour it:** if the UI needs to behave differently for one harness, add a
 capability flag to the contract and let the connector declare it. Never add a

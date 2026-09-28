@@ -264,15 +264,23 @@ export const ProviderCommandReactor = Layer.effectDiscard(
             const turnId = payload.turnId as TurnId;
             yield* sessions.ensure(doc, threadWorkspaceRoot(doc, project)).pipe(
               Effect.flatMap((handle) =>
-                // A fork's first turn carries its source's transcript.
-                handle.send(
-                  turnId,
-                  withForkContext(doc, turnId, {
-                    text: payload.text as string,
-                    attachments: (payload.attachments ?? []) as ReadonlyArray<Attachment>,
-                    mentions: (payload.mentions ?? []) as ReadonlyArray<Mention>,
-                    references: (payload.references ?? []) as ReadonlyArray<TurnReference>,
-                  }),
+                Effect.flatMap(sessions.forkedNatively(threadId), (native) =>
+                  // A fork's first turn carries its source's transcript,
+                  // unless the harness forked the source's session itself.
+                  handle.send(
+                    turnId,
+                    withForkContext(
+                      doc,
+                      turnId,
+                      {
+                        text: payload.text as string,
+                        attachments: (payload.attachments ?? []) as ReadonlyArray<Attachment>,
+                        mentions: (payload.mentions ?? []) as ReadonlyArray<Mention>,
+                        references: (payload.references ?? []) as ReadonlyArray<TurnReference>,
+                      },
+                      native,
+                    ),
+                  ),
                 ),
               ),
               Effect.catch((error) =>
@@ -305,8 +313,9 @@ export const ProviderCommandReactor = Layer.effectDiscard(
             const handle = yield* sessions.handleFor(threadId);
             if (doc !== null && handle !== null && doc.currentTurn !== null) {
               const { turnId, input } = doc.currentTurn;
+              const native = yield* sessions.forkedNatively(threadId);
               yield* handle
-                .send(turnId, withForkContext(doc, turnId, input))
+                .send(turnId, withForkContext(doc, turnId, input, native))
                 .pipe(Effect.catch((error) => Effect.logWarning("resume resend failed", error)));
             }
             return;
