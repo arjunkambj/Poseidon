@@ -170,6 +170,12 @@ export type CapabilitySwitch = typeof CapabilitySwitch.Type;
  *   original untouched. The decider reads it on the source's bound session:
  *   a fork of the source's latest settled turn resumes that session with
  *   `fork: true` instead of carrying the conversation over as text.
+ *
+ * - `textGeneration` — the connector can write one piece of text in a
+ *   one-shot, tool-less, read-only call outside any session
+ *   (`ConnectorInstance.generateText`): commit messages, pull-request text,
+ *   thread titles. Optional like `stopTask`: capabilities are copied into
+ *   stored session events, and absent reads as false.
  */
 export const ConnectorCapabilities = Schema.Struct({
   modelSwitch: CapabilitySwitch,
@@ -187,6 +193,7 @@ export const ConnectorCapabilities = Schema.Struct({
   runtimeModes: Schema.Array(RuntimeMode),
   attachments: Schema.Literals(["images", "files"]),
   stopTask: Schema.optional(Schema.Boolean),
+  textGeneration: Schema.optional(Schema.Boolean),
 });
 export type ConnectorCapabilities = typeof ConnectorCapabilities.Type;
 

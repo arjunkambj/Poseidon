@@ -929,7 +929,8 @@ Public seam: its `exports` map. May import `shared` only.
 What a connector is, and the promises it must keep.
 
 - `definition.ts` — `ConnectorDefinition<Config>`, `ConnectorInstance`,
-  `ConnectorServices`, the error union, `eraseConnectorDefinition`.
+  `ConnectorServices`, `GenerateTextInput`, the error union,
+  `eraseConnectorDefinition`.
 - `sessionHandle.ts` — `SessionHandle` and the bounded event queue.
 - `turnScopedHandle.ts` — the turn correlation wrapper.
 - `extensions.ts` — the optional per-instance extensions (skills, plugins, MCP
@@ -1841,6 +1842,14 @@ it, the connector continues that session's conversation in a new harness
 session and leaves the original untouched. Only a connector declaring the
 `fork` capability is asked, and one that cannot fork the ref fails rather than
 starting fresh, so the server can carry the conversation over as text instead.
+An instance may also have `generateText({ prompt, system?, model, effort?,
+jsonSchema? })`, present exactly when it declares `textGeneration`: one piece
+of text (a commit message, PR text, a thread title) written in a one-shot,
+tool-less, read-only call in a temporary directory, with no session persisted.
+It answers the harness's final text, and the caller parses and trims it. A call
+the harness refuses or answers unusably fails with `GenerationFailed`
+(`kind`, `instanceId`, `message`), which joins the `ConnectorError` union
+beside `SpawnFailed`. No connector implements it yet.
 `ConnectorCapabilities` is what the harness can do, and the renderer reads it
 instead of the kind:
 
@@ -1859,6 +1868,7 @@ instead of the kind:
 | `subagents`, `resume`        | boolean                              | declared                                             |
 | `stopTask`                   | optional boolean                     | the decider and the agents strip's Stop              |
 | `fork`                       | boolean                              | the decider: a fork of the tail forks the session    |
+| `textGeneration`             | optional boolean                     | whether `generateText` exists                        |
 
 `steering` also decides `TurnInProgress` and whether a handle has `steer`,
 below.

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "@effect/vitest";
 
-import type { ConnectorProbe } from "./definition";
-import { toWireProbe } from "./definition";
+import { makeConnectorInstanceId } from "@poseidon/contracts/ids";
+import * as Effect from "effect/Effect";
+
+import type { ConnectorError, ConnectorProbe } from "./definition";
+import { GenerationFailed, toWireProbe } from "./definition";
 
 const base: ConnectorProbe = {
   status: "ready",
@@ -57,4 +60,19 @@ describe("toWireProbe", () => {
     expect(wire.models).toBeUndefined();
     expect(wire.warnings).toBeUndefined();
   });
+});
+
+describe("GenerationFailed", () => {
+  it.effect("is a ConnectorError a caller can tell apart by its tag", () =>
+    Effect.gen(function* () {
+      const failed: ConnectorError = new GenerationFailed({
+        kind: "acme",
+        instanceId: makeConnectorInstanceId(),
+        message: "the answer was not JSON",
+      });
+      const error = yield* Effect.flip(Effect.fail(failed));
+      expect(error._tag).toBe("GenerationFailed");
+      expect(error.message).toBe("the answer was not JSON");
+    }),
+  );
 });

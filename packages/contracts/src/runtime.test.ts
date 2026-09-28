@@ -3,7 +3,13 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import { makeConnectorInstanceId, makeEventId, makeRequestId, makeThreadId } from "./ids";
-import { ApprovalRequest, RuntimeEvent, RuntimeEventType, runtimeEventTypes } from "./runtime";
+import {
+  ApprovalRequest,
+  ConnectorCapabilities,
+  RuntimeEvent,
+  RuntimeEventType,
+  runtimeEventTypes,
+} from "./runtime";
 
 const envelope = () => ({
   eventId: makeEventId(),
@@ -93,6 +99,43 @@ describe("ApprovalRequest", () => {
         Schema.decodeUnknownExit(ApprovalRequest)({ ...request, mcpTool: { server: "" } }),
       );
       expect(exit._tag).toBe("Failure");
+    }),
+  );
+});
+
+describe("ConnectorCapabilities", () => {
+  const stored = {
+    modelSwitch: "per-turn",
+    effortSwitch: "per-turn",
+    steering: false,
+    planMode: true,
+    subagents: true,
+    images: true,
+    resume: true,
+    fork: false,
+    interrupt: "turn",
+    rollback: false,
+    compaction: false,
+    questions: true,
+    runtimeModes: ["approval-required"],
+    attachments: "images",
+  };
+
+  it.effect("decodes capabilities stored before textGeneration existed, as absent", () =>
+    Effect.gen(function* () {
+      const decoded = yield* Schema.decodeUnknownEffect(ConnectorCapabilities)(stored);
+      expect(decoded.textGeneration).toBeUndefined();
+      expect("textGeneration" in decoded).toBe(false);
+    }),
+  );
+
+  it.effect("carries textGeneration when a connector declares it", () =>
+    Effect.gen(function* () {
+      const decoded = yield* Schema.decodeUnknownEffect(ConnectorCapabilities)({
+        ...stored,
+        textGeneration: true,
+      });
+      expect(decoded.textGeneration).toBe(true);
     }),
   );
 });

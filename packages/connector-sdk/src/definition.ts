@@ -15,7 +15,7 @@
  * connector's own schema on the way in.
  */
 
-import type { InteractionMode, RuntimeMode } from "@poseidon/contracts/enums";
+import type { Effort, InteractionMode, RuntimeMode } from "@poseidon/contracts/enums";
 import type { ApprovalRequest, ConnectorCapabilities } from "@poseidon/contracts/runtime";
 import type {
   ConnectorInstanceId,
@@ -98,6 +98,17 @@ export class ConnectorNotFound extends Data.TaggedError("ConnectorNotFound")<{
   readonly kind: ConnectorKind | null;
 }> {}
 
+/**
+ * A one-shot `generateText` call ran but produced nothing usable: the harness
+ * refused it (signed out, unknown model), timed out, or answered with text
+ * that does not parse. `SpawnFailed` stays for a process that would not start.
+ */
+export class GenerationFailed extends Data.TaggedError("GenerationFailed")<{
+  readonly kind: ConnectorKind;
+  readonly instanceId: ConnectorInstanceId;
+  readonly message: string;
+}> {}
+
 /** Everything a connector is allowed to fail with. */
 export type ConnectorError =
   | ProbeFailed
@@ -105,7 +116,8 @@ export type ConnectorError =
   | TurnInProgress
   | NotSteerable
   | SessionClosed
-  | ConnectorNotFound;
+  | ConnectorNotFound
+  | GenerationFailed;
 
 // ── Probe ──────────────────────────────────────────────────────
 
@@ -275,6 +287,22 @@ export interface ResumeSessionInput extends StartSessionInput {
   readonly fork?: boolean;
 }
 
+/**
+ * One piece of text to write outside any session: a commit message, a
+ * pull-request title and body, a thread title. `system` is the instruction the
+ * harness gets apart from the prompt where it takes one, and is otherwise put
+ * in front of it. `effort` is left out for a model that takes none.
+ * `jsonSchema` asks for JSON of that shape where the harness can enforce one;
+ * the caller parses the answer either way.
+ */
+export interface GenerateTextInput {
+  readonly prompt: string;
+  readonly system?: string;
+  readonly model: string;
+  readonly effort?: Effort;
+  readonly jsonSchema?: UnknownRecord;
+}
+
 // ── Instance and definition ────────────────────────────────────
 
 /**
@@ -299,6 +327,14 @@ export interface ConnectorInstance {
    * skills, MCP servers. Absent for a harness that keeps none (`extensions.ts`).
    */
   readonly extensions?: ConnectorExtensions;
+  /**
+   * Writes one piece of text and answers the harness's final text as it
+   * came; the caller parses and trims it. The call is one-shot and tool-less, and it is read-only:
+   * it runs in a temporary directory of its own, may not edit files or run
+   * commands, and persists no session. Present exactly when `capabilities`
+   * declares `textGeneration`; the server never calls it otherwise.
+   */
+  readonly generateText?: (input: GenerateTextInput) => Effect.Effect<string, ConnectorError>;
 }
 
 export interface CreateInstanceInput<Config> {
