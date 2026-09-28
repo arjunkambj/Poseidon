@@ -960,6 +960,11 @@ Everything a client needs that is not React.
   interrupt a call still in flight when the next one starts and hand the first
   caller the second's result; two threads committing at once, or two deleted
   threads removing their worktrees, must not.
+- `oneShotCommands.ts` — `dispatch` and `stageAttachment` as one-shot calls,
+  for starts that run in the background or side by side. `dispatchAtom` and
+  `stageAttachmentAtom` are single atoms the composer shares, so a second
+  start would interrupt the first. The renderer binds them to its registry in
+  `lib/one-shot-commands.ts`.
 - `terminalAtoms.ts` — a thread's terminal list, every thread's running
   terminals in one listing (`runningTerminalsAtom`), the open/write/resize/close
   calls, and `terminalAttachAtom`, which hands one terminal's output to a
