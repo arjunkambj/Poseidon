@@ -87,6 +87,8 @@ export const ThreadOpenResponse = Schema.Struct({
   }),
   /** The model the thread resolved to — the CLI's default when none was named. */
   model: Schema.String,
+  /** The effort the thread resolved to; null when the CLI names none. */
+  reasoningEffort: Schema.optional(Schema.NullOr(Schema.String)),
 });
 export type ThreadOpenResponse = typeof ThreadOpenResponse.Type;
 

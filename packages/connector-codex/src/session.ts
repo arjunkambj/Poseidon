@@ -13,8 +13,9 @@
  * 3. announces itself with `session.started`, its ref naming the CLI's thread
  *    (`sessionRef.ts`), then translates every notification on one consumer
  *    fiber (`translate/translator.ts`), in the order the server sent them;
- * 4. starts each turn with `turn/start`, naming the thread's model and effort
- *    for that turn, its modes again when they changed (`modes.ts`), and its
+ * 4. starts each turn with `turn/start`, naming the model and effort when
+ *    they differ from what the CLI's thread holds (`turnSettings.ts`), its
+ *    modes again when they changed (`modes.ts`), and its
  *    collaboration mode — plan or default — from the first plan turn on
  *    (`plans.ts`); a
  *    `/compact` turn is `thread/compact/start` instead (`compaction.ts`), and
@@ -47,7 +48,7 @@ import {
   TurnInProgress,
 } from "@poseidon/connector-sdk/definition";
 import { makeBoundedEventQueue, type SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
-import type { Effort, RuntimeMode } from "@poseidon/contracts/enums";
+import type { RuntimeMode } from "@poseidon/contracts/enums";
 import type { ConnectorInstanceId, ThreadId, TurnId } from "@poseidon/contracts/ids";
 import { makeEventId, makeTurnId } from "@poseidon/contracts/ids";
 import type { ThreadSettings, ThreadSettingsPatch } from "@poseidon/contracts/orchestration";
@@ -66,7 +67,7 @@ import { isCompactCommand, ThreadCompactStartResponse } from "./compaction";
 import { call, initialize } from "./handshake";
 import { CODEX_KIND } from "./kind";
 import { sessionEnv, sessionServerArgs } from "./launch";
-import { codexModelFor } from "./models";
+import type { CodexModelFacts } from "./models";
 import { APPROVAL_POLICY, sandboxPolicyFor } from "./modes";
 import { collaborationModeFor } from "./plans";
 import { TurnStartResponse } from "./protocol";
@@ -78,6 +79,7 @@ import { makeProcessGroup } from "./spawn";
 import { steerRefusal, TurnSteerResponse } from "./steering";
 import { openThread } from "./threadOpen";
 import { isGatedRequest, makeCodexToolGate } from "./toolGate";
+import { holdsOf, turnOverrides, turnTarget, type ThreadHolds } from "./turnSettings";
 import {
   asRecord,
   asString,
@@ -103,11 +105,11 @@ export interface CodexSessionOptions {
   /** Said once after `session.started` — why a resume became a fresh start. */
   readonly warning?: string;
   /**
-   * The efforts a model offers, when the instance has listed its models. An
-   * effort the model does not offer is left out of `turn/start`, so the CLI
-   * uses the model's own default rather than refusing the turn.
+   * A model's efforts and default, when the instance has listed its models:
+   * an effort the model does not offer is replaced by its own default, named
+   * explicitly (`turnSettings.ts`).
    */
-  readonly effortsFor?: (model: string) => ReadonlyArray<Effort> | undefined;
+  readonly modelFacts?: (model: string) => CodexModelFacts | undefined;
 }
 
 /** How long the app-server may take to answer the handshake and open the thread. */
@@ -207,6 +209,8 @@ export const makeCodexSession = (
      * for a resumed thread, which the previous process may have left in plan.
      */
     let carriesMode = options.sessionRef !== undefined && opened.warning === undefined;
+    /** The model and effort the CLI's thread holds, so a turn names each change. */
+    let holds: ThreadHolds = holdsOf(opened);
 
     const currentRef = (): CodexSessionRef => ({
       threadId: codexThreadId,
@@ -378,36 +382,43 @@ export const makeCodexSession = (
     const close = endSession("stopped", consumer);
     yield* Effect.addFinalizer(() => close);
 
-    /** The effort `turn/start` names: none when unset or not one the model offers. */
-    const effortFor = (): Effort | undefined => {
-      const { effort, model } = settings;
-      if (effort === undefined) return undefined;
-      const offered = options.effortsFor?.(model);
-      return offered === undefined || offered.includes(effort) ? effort : undefined;
-    };
+    /** What the next turn runs on. */
+    const target = () =>
+      turnTarget({
+        settings,
+        opened,
+        ...(options.modelFacts === undefined ? {} : { factsFor: options.modelFacts }),
+      });
 
+    /**
+     * One turn's `turn/start` params, and what the CLI's thread holds once it
+     * accepted them — committed by the caller only then.
+     */
     const turnParams = (input: ReturnType<typeof userInput>) => {
-      const model = codexModelFor(settings.model);
-      const effort = effortFor();
+      const aim = target();
+      const overrides = turnOverrides(aim, holds);
       const mode = settings.runtimeMode;
       const modeChanged = mode !== appliedMode;
       appliedMode = mode;
       const collaborationMode = collaborationModeFor({
         mode: settings.interactionMode,
         carried: carriesMode,
-        model: model ?? opened.model,
-        effort,
+        model: aim.model,
+        effort: aim.effort,
       });
       if (collaborationMode !== undefined) carriesMode = true;
       return {
-        threadId: codexThreadId,
-        input,
-        ...(model === undefined ? {} : { model }),
-        ...(effort === undefined ? {} : { effort }),
-        ...(modeChanged
-          ? { approvalPolicy: APPROVAL_POLICY, sandboxPolicy: sandboxPolicyFor(mode) }
-          : {}),
-        ...(collaborationMode === undefined ? {} : { collaborationMode }),
+        params: {
+          threadId: codexThreadId,
+          input,
+          ...overrides.params,
+          ...(modeChanged
+            ? { approvalPolicy: APPROVAL_POLICY, sandboxPolicy: sandboxPolicyFor(mode) }
+            : {}),
+          ...(collaborationMode === undefined ? {} : { collaborationMode }),
+        },
+        // A collaboration mode names the model and effort of its own.
+        next: collaborationMode === undefined ? overrides.next : aim,
       };
     };
 
@@ -437,7 +448,9 @@ export const makeCodexSession = (
         ? call(rpc, "thread/compact/start", { threadId: codexThreadId }, ThreadCompactStartResponse)
         : Effect.gen(function* () {
             const input = userInput(turn, yield* staged(turn));
-            const response = yield* call(rpc, "turn/start", turnParams(input), TurnStartResponse);
+            const { params, next } = turnParams(input);
+            const response = yield* call(rpc, "turn/start", params, TurnStartResponse);
+            holds = next;
             yield* Deferred.succeed(codexTurnId, response.turn.id);
           });
 
@@ -529,21 +542,19 @@ export const makeCodexSession = (
 
     /**
      * The thread's new settings, kept for the next `turn/start`, which names
-     * the model, the effort and — when they changed — the modes. The CLI
-     * takes them per turn, so `model.changed` says at once what the next
-     * turn runs on.
+     * the model, the effort and the modes where they changed. The CLI takes
+     * them per turn, so `model.changed` says at once what the next turn runs
+     * on — an effort the new model does not offer as the one it will run at.
      */
     const updateSettings = (patch: ThreadSettingsPatch): Effect.Effect<void> =>
       Effect.gen(function* () {
         const before = settings;
         settings = { ...settings, ...patch };
         if (settings.model === before.model && settings.effort === before.effort) return;
+        const effort = settings.effort === undefined ? undefined : target().effort;
         yield* emit({
           type: "model.changed",
-          payload: {
-            model: settings.model,
-            ...(settings.effort === undefined ? {} : { effort: settings.effort }),
-          },
+          payload: { model: settings.model, ...(effort === undefined ? {} : { effort }) },
         });
       });
 

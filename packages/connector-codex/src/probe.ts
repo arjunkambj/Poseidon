@@ -33,7 +33,7 @@ import type { CodexConnectorConfig } from "./configSchema";
 import { childEnv } from "./env";
 import { initialize, readAccount, readModels } from "./handshake";
 import { CODEX_KIND } from "./kind";
-import { toModelOptions } from "./models";
+import { modelFactsOf, toModelOptions, type CodexModelFacts } from "./models";
 import type { Account, GetAccountResponse } from "./protocol";
 import { makeRpcClient } from "./rpc";
 import { makeProcessGroup } from "./spawn";
@@ -158,6 +158,8 @@ const authOf = (response: GetAccountResponse): ConnectorProbe["auth"] =>
 
 export interface Handshake {
   readonly models: ReadonlyArray<ModelOption>;
+  /** Each model's efforts and default, for the sessions choosing a turn's effort. */
+  readonly modelFacts: ReadonlyMap<string, CodexModelFacts>;
   readonly auth: ConnectorProbe["auth"];
   readonly account?: string;
 }
@@ -186,6 +188,7 @@ export const readHandshake = (input: {
       const rows = yield* readModels(rpc);
       return {
         models: toModelOptions(rows),
+        modelFacts: modelFactsOf(rows),
         auth: authOf(account),
         ...(account.account === null ? {} : { account: describeAccount(account.account) }),
       };
@@ -262,7 +265,7 @@ export const probe = (
     const handshake = yield* readHandshake({ binary, env, cwd: NodeOS.tmpdir() }).pipe(
       Effect.catch((error) => {
         warnings.push(error.message);
-        return Effect.succeed<Handshake>({ models: [], auth: "unknown" });
+        return Effect.succeed<Handshake>({ models: [], modelFacts: new Map(), auth: "unknown" });
       }),
     );
     const auth = loggedIn === "unknown" ? handshake.auth : loggedIn;

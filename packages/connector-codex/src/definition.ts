@@ -23,6 +23,7 @@ import { childEnv, expandHome } from "./env";
 import { makeCodexMcpServers } from "./extensions/mcpServers";
 import { makeCodexSkills } from "./extensions/skills";
 import { CODEX_KIND } from "./kind";
+import type { CodexModelFacts } from "./models";
 import { LOGIN_ARGS, NOT_FOUND, probe as probeBinary, readHandshake } from "./probe";
 import { makeCodexSession } from "./session";
 import { parseSessionRef, type CodexSessionRef } from "./sessionRef";
@@ -106,10 +107,9 @@ export const makeCodexConnectorDefinition = (
 
         /** One model list per instance: the handshake is a process start. */
         const models = yield* Ref.make<ReadonlyArray<ModelOption> | null>(null);
-        /** The same list, read synchronously by a session choosing a turn's effort. */
-        let listed: ReadonlyArray<ModelOption> | null = null;
-        const effortsFor = (model: string) =>
-          listed?.find((option) => option.id === model)?.efforts;
+        /** Each listed model's efforts and default, read by a session choosing a turn's effort. */
+        let facts: ReadonlyMap<string, CodexModelFacts> | null = null;
+        const modelFacts = (model: string) => facts?.get(model);
         const listModels = () =>
           Effect.gen(function* () {
             const cached = yield* Ref.get(models);
@@ -120,7 +120,7 @@ export const makeCodexConnectorDefinition = (
               Effect.mapError((error) => failed(error.message)),
             );
             yield* Ref.set(models, handshake.models);
-            listed = handshake.models;
+            facts = handshake.modelFacts;
             return handshake.models;
           });
 
@@ -137,7 +137,7 @@ export const makeCodexConnectorDefinition = (
               loginCommand: terminalCommand(binary, LOGIN_ARGS, env.CODEX_HOME),
               services,
               settings: input.settings,
-              effortsFor,
+              modelFacts,
               ...(sessionRef === undefined ? {} : { sessionRef }),
               ...(warning === undefined ? {} : { warning }),
             });

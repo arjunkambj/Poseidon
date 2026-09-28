@@ -18,27 +18,52 @@ import type { CodexModel } from "./protocol";
 
 /**
  * The model id that means "whatever the CLI's default is": a thread on it
- * names no model to the CLI at all. The recordings run on it, so they follow
- * the account's default rather than naming one.
+ * names no model to `thread/start`, and its turns run on the model the CLI
+ * opened the thread on. The recordings run on it, so they follow the
+ * account's default rather than naming one.
  */
 export const DEFAULT_MODEL = "default";
 
-/** What `thread/start` and `turn/start` name as the model: nothing for the default. */
+/** What `thread/start` names as the model: nothing for the default. */
 export const codexModelFor = (model: string): string | undefined =>
   model === DEFAULT_MODEL ? undefined : model;
 
 /** The picker's group header for every row this connector lists. */
 export const MODEL_FAMILY = "Codex";
 
+/** An effort Poseidon has a name for; the protocol's effort is an open string. */
+export const toEffort = (value: unknown): Effort | undefined =>
+  EFFORT_ORDER.find((effort) => effort === value);
+
 /**
- * The model's effort rungs that Poseidon knows, lowest first. The protocol's
- * effort is an open string, so a rung Poseidon has no name for is dropped
- * rather than guessed at.
+ * The model's effort rungs that Poseidon knows, lowest first. A rung Poseidon
+ * has no name for is dropped rather than guessed at.
  */
 const effortsOf = (row: CodexModel): Array<Effort> => {
   const offered = new Set(row.supportedReasoningEfforts.map((option) => option.reasoningEffort));
   return EFFORT_ORDER.filter((effort) => offered.has(effort));
 };
+
+/** What a session needs of a model to choose a turn's effort. */
+export interface CodexModelFacts {
+  readonly efforts: ReadonlyArray<Effort>;
+  /** The model's own effort (`defaultReasoningEffort`), when Poseidon names it. */
+  readonly defaultEffort?: Effort;
+}
+
+/** Every row's efforts and default, hidden rows included: a thread may run on one. */
+export const modelFactsOf = (
+  rows: ReadonlyArray<CodexModel>,
+): ReadonlyMap<string, CodexModelFacts> =>
+  new Map(
+    rows.map((row) => {
+      const defaultEffort = toEffort(row.defaultReasoningEffort);
+      return [
+        row.model,
+        { efforts: effortsOf(row), ...(defaultEffort === undefined ? {} : { defaultEffort }) },
+      ];
+    }),
+  );
 
 export const toModelOptions = (rows: ReadonlyArray<CodexModel>): ReadonlyArray<ModelOption> =>
   rows

@@ -41,7 +41,8 @@ picks this instance. Adding it changed no existing install's routing.
 | `protocol.ts`              | narrow schemas for the responses read, pinned to `PROTOCOL_CLI_VERSION`          |
 | `handshake.ts`             | `initialize` with the experimental API, `account/read`, `model/list`             |
 | `probe.ts`                 | `--version`, `login status`, the zero-turn handshake, version floor              |
-| `models.ts`                | the CLI's model rows and their effort ladders                                    |
+| `models.ts`                | the CLI's model rows, their effort ladders and default efforts                   |
+| `turnSettings.ts`          | the model and effort a turn runs on, and what `turn/start` names                 |
 | `capabilities.ts`          | what a Codex session can do, and why                                             |
 | `launch.ts`                | the session's argv and environment, with Poseidon's MCP server                   |
 | `session.ts`               | one app-server process per thread: send, steer, interrupt, close                 |
@@ -160,8 +161,10 @@ family "Codex". Efforts are the row's `supportedReasoningEfforts` that
 Poseidon's ladder names; the protocol's effort is an open string, so a rung
 Poseidon has no name for is dropped. Vision is read from the row's input
 modalities. The model id `default` means the CLI's own default: a thread on it
-names no model to the CLI, which is how every recording but `model-switch`
-ran.
+names no model to `thread/start`, and its turns run on the model the CLI
+opened it on, which is how every recording but `model-switch` ran. The same
+`model/list` answer gives each model's own effort (`defaultReasoningEffort`),
+which the instance keeps beside the list for its sessions (`modelFactsOf`).
 
 ## The child environment
 
@@ -395,8 +398,9 @@ A plan turn sends `collaborationMode: { mode: "plan", settings: { model,
 reasoning_effort, developer_instructions: null } }` on `turn/start` — an
 experimental field, which is why the handshake opts in. The model is the
 thread's, or the one `thread/start` resolved for a thread on `default`. After
-the first plan turn every turn names its mode (`default` or `plan`), because
-the CLI keeps the mode, with its model and effort, on the thread; a resumed
+the first plan turn every turn names its mode (`default` or `plan`), with the
+turn's model and effort (`turnSettings.ts`), because the CLI keeps the mode,
+with its model and effort, on the thread; a resumed
 thread names it from its first turn. A thread that never used plan mode sends
 none. The `plan` item is the plan row, and a turn that ends `end_turn` with one
 emits `turn.plan.proposed` just before `turn.completed` (`plans.ts`).
@@ -441,12 +445,27 @@ not a failed turn (`attachments.ts`, `userInput.ts`).
 
 ## Resume, model and effort
 
-Resume is covered above. Each `turn/start` names the model (left out for
-`default`) and the effort, left out when the listed model does not offer it;
-it repeats the approval policy and sandbox only when the mode changed.
+Resume is covered above. `turn/start`'s `model` and `effort` apply "for this
+turn and subsequent turns": the CLI's thread keeps the last value sent, and
+leaving one out keeps it rather than going back to a default. So the session
+keeps what the thread holds — first what `thread/start` or `thread/resume`
+answered (`model`, `reasoningEffort`) — and each turn names the model and the
+effort wherever they differ from it (`turnSettings.ts`):
+
+- the model is the thread's, or for `default` the model the CLI opened the
+  thread on, so a thread switched back to `default` really goes back;
+- the effort is the thread's when the model offers it; unset or not offered,
+  it is the effort the CLI opened the thread with when the turn runs on that
+  model, else the model's own default from `model/list`, named explicitly —
+  a switch to a model that stops below the thread's effort never runs it at
+  the old one. With neither known, none is named.
+
+What the thread holds moves only once the CLI accepted the `turn/start`. The
+approval policy and sandbox are repeated only when the mode changed.
 `updateSettings` stores the new settings and emits `model.changed` at once, so
-the next turn runs on them (`model-switch`: the second turn on another model at
-effort `low`, in the same process).
+the next turn runs on them; an effort the new model does not offer is
+reported as the one the turn will run at (`model-switch`: the second turn on
+another model at effort `low`, in the same process).
 
 ## Capabilities
 

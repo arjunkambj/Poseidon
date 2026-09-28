@@ -14,11 +14,12 @@
  * Any other refusal fails the start.
  */
 
+import type { Effort } from "@poseidon/contracts/enums";
 import type { ThreadSettings } from "@poseidon/contracts/orchestration";
 import * as Effect from "effect/Effect";
 
 import { call } from "./handshake";
-import { codexModelFor } from "./models";
+import { codexModelFor, toEffort } from "./models";
 import { APPROVAL_POLICY, sandboxModeFor } from "./modes";
 import { ThreadOpenResponse } from "./protocol";
 import type { RpcClient, RpcFailed } from "./rpc";
@@ -33,6 +34,8 @@ export interface OpenedThread {
   readonly threadId: string;
   /** The model the CLI resolved the thread to. */
   readonly model: string;
+  /** The effort the CLI resolved the thread to, when Poseidon names it. */
+  readonly effort?: Effort;
   /** Why a resume became a fresh start, when it did. */
   readonly warning?: string;
 }
@@ -47,13 +50,23 @@ const baseParams = (cwd: string, settings: ThreadSettings) => {
   };
 };
 
+/** What the CLI opened, from its answer to `thread/start` or `thread/resume`. */
+const openedFrom = (response: ThreadOpenResponse): OpenedThread => {
+  const effort = toEffort(response.reasoningEffort);
+  return {
+    threadId: response.thread.id,
+    model: response.model,
+    ...(effort === undefined ? {} : { effort }),
+  };
+};
+
 const start = (
   rpc: RpcClient,
   cwd: string,
   settings: ThreadSettings,
 ): Effect.Effect<OpenedThread, RpcFailed> =>
   call(rpc, "thread/start", baseParams(cwd, settings), ThreadOpenResponse).pipe(
-    Effect.map((response) => ({ threadId: response.thread.id, model: response.model })),
+    Effect.map(openedFrom),
   );
 
 export const openThread = (input: {
@@ -71,10 +84,7 @@ export const openThread = (input: {
     { threadId: input.resume, excludeTurns: true, ...baseParams(cwd, settings) },
     ThreadOpenResponse,
   ).pipe(
-    Effect.map((response): OpenedThread => ({
-      threadId: response.thread.id,
-      model: response.model,
-    })),
+    Effect.map(openedFrom),
     Effect.catchIf(
       (error) => NO_ROLLOUT.test(error.message),
       () =>
