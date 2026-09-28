@@ -1,7 +1,7 @@
 /**
  * The composer. Textarea with `#` file mentions and `@` / `$` plugin and skill
  * references (chips, wired in `use-mention-menus`), a `/` command popover, file
- * attach, the queued-message strip, and the interaction-card slot — one card
+ * attach, the queued-message and agents-working strips, and the interaction-card slot — one card
  * at a time, above the input.
  *
  * Keys: Enter sends — while a turn runs it steers that turn when the harness
@@ -35,6 +35,7 @@ import { canSteer, sendMode } from "@/components/composer/send-mode";
 import { canCompact } from "@/components/composer/compact-now";
 import { PendingCard } from "@/components/composer/pending-card";
 import { QueueStrip } from "@/components/composer/queue-strip";
+import { AgentsStrip } from "@/components/composer/agents-strip";
 import { SlashMenu, slashMenuItems, type SlashMenuItem } from "@/components/composer/slash-menu";
 import { useAttachments } from "@/components/composer/use-attachments";
 import { useCompactNow } from "@/components/composer/use-compact-now";
@@ -307,6 +308,7 @@ export function Composer({
         // so "Steer now" would put the row at the back of the queue instead.
         <QueueStrip threadId={threadId} queue={doc.queue} steerable={steerable && !interrupting} />
       )}
+      {doc === null ? null : <AgentsStrip threadId={threadId} doc={doc} />}
       <ComposerSurface
         dragging={attachments.dragging}
         context={

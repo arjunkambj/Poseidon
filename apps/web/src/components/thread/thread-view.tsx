@@ -27,6 +27,8 @@
  * the right dock is, and mounts `ThreadShortcuts` — rename, archive and delete
  * for this thread — once the snapshot is in.
  * `AgentsTabShortcut` answers `dock.agents` here too, beside the other dock keys.
+ * The agents strip's View asks with `useRequestAgentsTab`, and
+ * `useAgentsTabRequests` answers by opening the dock on Agents.
  */
 
 import { useNavigate } from "@tanstack/react-router";
@@ -69,6 +71,7 @@ import { useConnectionState, useProjects, useThreadDetail } from "@/state/hooks"
 import { useChatWidth } from "@/lib/use-chat-width";
 import { useBrowserRevealRequests } from "@/state/browser-activity";
 import { type FileRevealTarget, useFileRevealRequests } from "@/state/file-reveal";
+import { useAgentsTabRequests } from "@/state/agents-reveal";
 import { AlertTriangle, Spinner, WifiOff } from "@honeyicons/react";
 
 type ThreadDetailResult = AsyncResult.AsyncResult<
@@ -203,6 +206,10 @@ export function ThreadView({
     [revealFile, setDockTab],
   );
   useFileRevealRequests(threadId, showFile);
+  useAgentsTabRequests(
+    threadId,
+    React.useCallback(() => setDockTab("agents"), [setDockTab]),
+  );
 
   const snapshot = snapshotOf(result);
 

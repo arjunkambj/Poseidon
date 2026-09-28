@@ -45,6 +45,9 @@ export interface AgentsStripSummary {
 
 const RECENT_LIMIT = 5;
 
+/** The disclosure id of a subagent's entry in the Agents tab. */
+export const agentEntryRowId = (itemId: string): string => `agents:${itemId}`;
+
 const promptOf = (item: ItemSnapshot): string | undefined => {
   const input = item.tool?.input;
   if (typeof input !== "object" || input === null || !("prompt" in input)) return undefined;

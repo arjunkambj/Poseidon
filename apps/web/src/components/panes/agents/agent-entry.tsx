@@ -45,10 +45,7 @@ import {
   Terminal,
 } from "@honeyicons/react";
 
-import type { Subagent } from "./subagents";
-
-/** The disclosure id of a subagent's entry in the Agents tab. */
-const agentEntryRowId = (itemId: string): string => `agents:${itemId}`;
+import { type Subagent, agentEntryRowId } from "./subagents";
 
 const markClass = "size-3.5 shrink-0";
 
