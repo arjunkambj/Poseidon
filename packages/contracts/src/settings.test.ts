@@ -345,3 +345,40 @@ describe("notification settings", () => {
     }),
   );
 });
+
+describe("preferred editor", () => {
+  it.effect("is unset on a fresh install and on a stored document that predates it", () =>
+    Effect.gen(function* () {
+      expect(defaultSettings().preferredEditor).toBeUndefined();
+      const older = Schema.encodeUnknownSync(Settings)(defaultSettings()) as Record<
+        string,
+        unknown
+      >;
+      expect("preferredEditor" in older).toBe(false);
+      const decoded = yield* Schema.decodeUnknownEffect(Settings)(older);
+      expect(decoded.preferredEditor).toBeUndefined();
+    }),
+  );
+
+  it.effect("round-trips, and keeps an id no build knows", () =>
+    Effect.gen(function* () {
+      for (const id of ["cursor", "an-editor-since-dropped"]) {
+        const settings = { ...defaultSettings(), preferredEditor: id };
+        const encoded = Schema.encodeUnknownSync(Settings)(settings);
+        const decoded = yield* Schema.decodeUnknownEffect(Settings)(encoded);
+        expect(decoded).toEqual(settings);
+      }
+    }),
+  );
+
+  it.effect("applies through a patch", () =>
+    Effect.gen(function* () {
+      const patch = yield* Schema.decodeUnknownEffect(SettingsPatch)({ preferredEditor: "zed" });
+      const applied = yield* Schema.decodeUnknownEffect(Settings)({
+        ...(Schema.encodeUnknownSync(Settings)(defaultSettings()) as object),
+        ...patch,
+      });
+      expect(applied.preferredEditor).toBe("zed");
+    }),
+  );
+});

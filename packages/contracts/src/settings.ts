@@ -409,6 +409,12 @@ export const Settings = Schema.Struct({
     Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_NOTIFICATION_SETTINGS)),
     settingsForm({ label: "Notifications", control: "hidden" }),
   ),
+  // The editor the thread header's "Open in" button opens, picked from its
+  // menu. A plain string rather than `EditorId`, so a stored id a later build
+  // drops still decodes; the client treats an id it does not know as unset.
+  preferredEditor: Schema.optional(Schema.String).pipe(
+    settingsForm({ label: "Preferred editor", control: "hidden" }),
+  ),
 });
 export type Settings = typeof Settings.Type;
 
@@ -426,6 +432,7 @@ export const SettingsPatch = Schema.Struct({
   projectSettings: Schema.optional(Schema.Record(Schema.String, ProjectSettings)),
   browser: Schema.optional(BrowserSettings),
   notifications: Schema.optional(NotificationSettings),
+  preferredEditor: Schema.optional(Schema.String),
 });
 export type SettingsPatch = typeof SettingsPatch.Type;
 

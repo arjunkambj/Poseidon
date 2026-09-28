@@ -2759,6 +2759,7 @@ Settings
   projectSettings    { [projectId]: { setupScript? } }
   browser            { openPaneOnAgentUse }     off by default
   notifications      { finished, failed, needsYou, sound, dockBadge, keepAwake }
+  preferredEditor    string?                    the "Open in" button's editor; unset until picked
 ```
 
 `git` and `projectSettings`, like the two font sizes, are defaulted on decode
@@ -2766,7 +2767,10 @@ Settings
 `browser`, whose `openPaneOnAgentUse` comes back as `false`, and `chatWidth`,
 which comes back as `comfortable`.
 `notifications` is defaulted the same way: every alert, the Dock badge and
-keep-awake on, the sound off.
+keep-awake on, the sound off. `preferredEditor`
+is a plain string, not the editor id enum, so an id a later build drops still
+decodes; the client treats an id it does not know, or one not detected on this
+machine, as unset.
 
 `chatWidth` sets how far the thread column runs. One helper,
 `chatWidthClasses` in `apps/web/src/lib/chat-width.ts`, maps it to literal
