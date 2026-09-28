@@ -43,10 +43,17 @@ export const CMD_ACCOUNT_HELP_URL = "https://commandcode.ai/billing";
  * lists for it (`fixtures/cmd/probe/help.stdout.txt`) and its exit-3 message
  * names (`exitCodes.ts`). The probe reports it spelled against the binary it
  * resolved (`terminalCommand`), so an npx fallback or a configured path gets a
- * line that runs. There is no install command beside it: when nothing
- * resolves, `npx` is missing too, and no recording or doc names another way.
+ * line that runs.
  */
 export const CMD_LOGIN_SUBCOMMAND = "login";
+
+/**
+ * How a machine without `cmd` gets it: a global install of the npm package the
+ * npx fallback runs (`NPX_PACKAGE`). The probe only reports it when nothing
+ * resolves, which means `npx` is missing as well — usually Node itself — so
+ * the line is what to run once Node is there.
+ */
+export const CMD_INSTALL_COMMAND = "npm install -g command-code";
 
 /**
  * The oldest release the connector has been recorded against — the floor the
@@ -322,6 +329,7 @@ export const probe = (
         probedAt,
         installed: false,
         message: "cmd not found on PATH and npx is unavailable",
+        installCommand: CMD_INSTALL_COMMAND,
         auth: "unknown" as const,
         models: [],
         warnings: [],

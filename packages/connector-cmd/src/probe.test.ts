@@ -23,6 +23,7 @@ import { NPX_PACKAGE, resolveBinary } from "./binary";
 import { EXIT_MESSAGES } from "./exitCodes";
 import {
   CMD_ACCOUNT_HELP_URL,
+  CMD_INSTALL_COMMAND,
   CMD_LOGIN_SUBCOMMAND,
   isBelowOldestTested,
   OLDEST_TESTED_VERSION,
@@ -454,6 +455,22 @@ process.exit(10);
       expect(recordedCreditsError).toContain(CMD_ACCOUNT_HELP_URL);
       expect(result.message).toBe(EXIT_MESSAGES[10]!.message);
       expect(recordedCreditsError).toContain("insufficient credits");
+    }),
+  );
+
+  it.effect("says not installed, with the install line, when nothing resolves", () =>
+    Effect.gen(function* () {
+      const result = yield* probe({}, () => null);
+      expect(result).toMatchObject({
+        status: "not-installed",
+        installed: false,
+        installCommand: CMD_INSTALL_COMMAND,
+        auth: "unknown",
+        models: [],
+      });
+      expect(result.loginCommand).toBeUndefined();
+      // The install names the same package the npx fallback runs.
+      expect(CMD_INSTALL_COMMAND).toBe(`npm install -g ${NPX_PACKAGE.replace(/@latest$/, "")}`);
     }),
   );
 

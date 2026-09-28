@@ -277,7 +277,9 @@ thread that names no instance still routes to it. For Command Code,
    `binaryPath`, then `cmd` on `PATH` plus the global bin directories a GUI
    process never inherits (`/usr/local/bin`, `/opt/homebrew/bin`, `~/.bun/bin`,
    `~/.local/share/pnpm`, `~/.npm-global/bin`), then `npx -y
-command-code@latest`. Nothing resolvable at all reports `not-installed`.
+command-code@latest`. Nothing resolvable at all reports `not-installed`
+   with `installCommand` `npm install -g command-code`. That happens only when
+   `npx` is missing too, so it is rare.
 2. run `status --json` (30 s timeout);
 3. run `--list-models` (60 s timeout) and parse the two-column table into
    `ModelOption`s, with the section headers as `family`. The table prints an
@@ -321,8 +323,10 @@ The Claude Code probe (`packages/connector-claude/src/probe.ts`) resolves
 `claude` the same way — the configured `binaryPath`, then `PATH`, then the
 directories its installers use (`/opt/homebrew/bin`, `/usr/local/bin`,
 `~/.local/bin`, `~/.claude/local`, and the npm, pnpm and bun global bins) —
-with no runner to fall back on, and asks three questions under the
-environment a session gets:
+with no runner to fall back on; nothing found is `not-installed` with
+`installCommand` `npm install -g @anthropic-ai/claude-code`, as the Codex probe
+reports `npm install -g @openai/codex`. A found binary is asked three questions
+under the environment a session gets:
 
 1. `claude --version`, which prints `2.1.280 (Claude Code)`. Below
    `OLDEST_TESTED_VERSION`, the release the recordings were made at, the probe
@@ -349,7 +353,8 @@ name. Signed-out is decided before ready: a harness that answers `ready` with
 `auth: "absent"` (or `authenticated: false`) is installed and reachable but
 cannot run a turn. The command is the probe's `installCommand` for
 not-installed and its `loginCommand` for signed-out, and null when the
-connector named none; the renderer never spells a command of its own.
+connector named none; the renderer never spells a command of its own. Each
+connector keeps its install line as a constant in its own `probe.ts`.
 
 Two surfaces show it. Each Settings → Connectors card has a status badge beside
 the instance's name and a line under it with the binary, version, account,

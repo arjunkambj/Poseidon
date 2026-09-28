@@ -120,9 +120,11 @@ subcommand the recorded `cmd --help`
 and the exit-3 message names. `terminalCommand` in `binary.ts` spells it against
 the resolved binary: the configured or found path (`/opt/homebrew/bin/cmd
 login`), or `npx -y command-code@latest login` for the npx fallback, which only
-runs when no `cmd` was found and so must not be told to run one. No
-`installCommand` is reported: nothing resolves only when `npx` is missing too,
-and no recording or doc names another way to install.
+runs when no `cmd` was found and so must not be told to run one. Nothing
+resolvable reports `installCommand`, `npm install -g command-code`
+(`CMD_INSTALL_COMMAND`), a global install of the package the npx fallback
+runs. Nothing resolves only when `npx` is missing too — usually Node itself —
+so in practice the line is what to run once Node is there.
 
 ### `status --json`
 
