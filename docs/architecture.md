@@ -343,8 +343,8 @@ more than one runs and a tooltip naming them
 (`apps/web/src/components/terminal/thread-terminals-mark.tsx`); every row reads
 one `terminal.listRunning` listing, so a long sidebar costs one call per
 refetch rather than one per row. On hover the time gives
-way to two actions: archive, and the overflow menu, which a right-click on
-the row opens too (`apps/web/src/components/sidebar/thread-menu-items.tsx`):
+way to the overflow menu, which a right-click on the row opens too
+(`apps/web/src/components/sidebar/thread-menu-items.tsx`):
 rename, pin or unpin, mark unread, a Copy submenu (the workspace path, the
 branch of a worktree thread, the thread ID), open terminal here (the thread
 with its terminal drawer open), new thread in this project (in the same

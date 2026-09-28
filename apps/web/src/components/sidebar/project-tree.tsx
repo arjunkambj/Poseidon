@@ -40,8 +40,7 @@
  *
  * Every row has an overflow menu, revealed on hover: for a thread, rename,
  * pin, mark unread, copy, open a terminal, start a thread beside it, archive
- * and delete (`./thread-menu-items`); for a project, remove. A thread row also
- * offers archive on its own.
+ * and delete (`./thread-menu-items`); for a project, remove.
  * Those four commands existed end to end — decider, reactors, tests — with
  * nothing in the UI that could send them, so the sidebar only ever grew and a
  * mistyped project root could not be dropped.
