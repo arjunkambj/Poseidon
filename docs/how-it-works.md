@@ -1848,14 +1848,34 @@ mounted, which is only while it shows.
 
 Whether a thread's branch has a pull request comes from the project's marks
 (`useThreadHasPullRequest`), one listing shared by every reader, so the dock's
-launcher costs no gh call of its own. Marks are throttled per project: a
-revision bump within 60 seconds of the last successful listing answers that
-listing again, and only `refreshPullRequests` lists at once.
+launcher and the sidebar's glyphs cost no gh call of their own. Marks are
+throttled per project: a revision bump within 60 seconds of the last
+successful listing answers that listing again, and only `refreshPullRequests`
+lists at once.
+
+Every thread row whose branch has a pull request carries a small glyph
+(`apps/web/src/components/sidebar/thread-pr-mark.tsx`) before the fork mark,
+tinted by `apps/web/src/lib/pull-request-tone.ts`: open in the added colour, a
+draft muted, merged as the merge glyph in the primary colour, closed in the
+removed colour, and an open or draft one with a failing check in the
+destructive colour. The tab's state badge takes its glyph and tint from the
+same function. The tooltip reads `PR #12 · Open · Checks failing`. A click
+opens that thread with the dock on its Pull request tab
+(`?pane=pullRequest`) instead of following the row's link; the row menu's
+**Open pull request**, listed only while the branch has one, does the same
+from the keyboard. Besides the header's window-return refresh of the open
+project, the rows ask for their project's marks again on every return to the
+window through `revisitPullRequestMarks`, once per project however many rows
+ask and still under the 60-second throttle. So marks are read on connect, on a
+return to the window, on the tab's refresh and after a write to the pull
+request, and never on a timer. With gh missing or signed out the server
+answers no marks, and no row shows a glyph.
 
 The tab, top to bottom:
 
 - **Summary** — the title, a `#number` button that opens the pull request on
-  GitHub, the state (Open, Draft, Merged or Closed), base ← head, the author,
+  GitHub, the state (Open, Draft, Merged or Closed, with the sidebar's glyph in
+  its tint), base ← head, the author,
   when it was last updated, and the refresh button.
 - **Checks** — a count line (`2 failing, 1 pending, 12 passing`), then one row
   per check, failing first as the server sorts them: the bucket's icon, name,

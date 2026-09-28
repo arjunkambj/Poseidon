@@ -416,12 +416,17 @@ run a shell, a small terminal mark sits beside the title, with the count when
 more than one runs and a tooltip naming them
 (`apps/web/src/components/terminal/thread-terminals-mark.tsx`); every row reads
 one `terminal.listRunning` listing, so a long sidebar costs one call per
-refetch rather than one per row. On hover the time gives
+refetch rather than one per row. A thread whose branch has a pull request
+shows a glyph tinted by its state (open, draft, merged, closed, checks failing;
+`apps/web/src/components/sidebar/thread-pr-mark.tsx`), read from one
+`git.pullRequest.marks` listing per project; a click on it opens the thread on
+its Pull request tab. On hover the time gives
 way to the overflow menu, which a right-click on the row opens too
 (`apps/web/src/components/sidebar/thread-menu-items.tsx`):
 rename, pin or unpin, mark unread, a Copy submenu (the workspace path, the
 branch of a worktree thread, the thread ID), open terminal here (the thread
-with its terminal drawer open), new thread in this project (in the same
+with its terminal drawer open), open pull request (only while the branch has
+one), new thread in this project (in the same
 worktree for a worktree thread), then archive or unarchive and delete. An
 archived row, listed only while it is open, offers the menu alone. The
 selection bar under the tree archives, marks unread or deletes every picked
