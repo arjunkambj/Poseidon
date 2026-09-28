@@ -4,7 +4,7 @@
  * Two halves, so the rule is testable without a DOM. `focusSnapshot` reads the
  * page at the moment of the press: whether focus is in a text field, which
  * surface it is in (the closest `data-context` — `composer`, `terminal`,
- * `browser`), and whether an overlay is on screen. `keybindingContext` turns
+ * `browser`, `files`), and whether an overlay is on screen. `keybindingContext` turns
  * that snapshot, the registry's published flags and the platform into the
  * lookup the matcher calls.
  *
@@ -50,12 +50,14 @@ const OVERLAY_SELECTOR =
 /**
  * The `data-context` a surface sets on its root so focus anywhere inside it
  * reads as that surface's focus key: the composers set it on their textarea,
- * the browser pane on the element holding its address bar and page.
+ * the browser pane on the element holding its address bar and page, the Files
+ * pane on its root.
  */
 export const FOCUS_SURFACE = {
   composer: "composer",
   terminal: "terminal",
   browser: "browser",
+  files: "files",
 } as const;
 
 /** The part of an element `surfaceOf` reads — structural, so a test needs no DOM. */
@@ -99,6 +101,7 @@ export const keybindingContext = (
     ["composerFocus", snapshot.surface === FOCUS_SURFACE.composer],
     ["terminalFocus", snapshot.surface === FOCUS_SURFACE.terminal],
     ["browserFocus", snapshot.surface === FOCUS_SURFACE.browser],
+    ["filesFocus", snapshot.surface === FOCUS_SURFACE.files],
     ["dialogOpen", snapshot.overlayOpen],
     ["isMac", isMac],
   ]);

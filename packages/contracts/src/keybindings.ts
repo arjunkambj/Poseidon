@@ -59,6 +59,11 @@ const THREAD = "threadOpen";
 const DOCK = "threadOpen || newTaskOpen";
 const OUTSIDE_BROWSER = "!browserFocus";
 const TIMELINE_KEYS = "threadOpen && !inputFocus";
+/**
+ * Find in thread: anywhere beside a thread but the terminal, the browser pane
+ * and the Files tab, which each keep their own find.
+ */
+const THREAD_FIND = "threadOpen && !terminalFocus && !browserFocus && !filesFocus";
 
 /**
  * The Changes pane's file keys: live only while the pane is the dock's tab,
@@ -139,6 +144,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<Keybinding> = [
   // Outside text fields, where Alt+Shift+Up/Down select to the paragraph edge.
   { command: "timeline.previousMessage", shortcut: "Alt+Shift+ArrowUp", when: TIMELINE_KEYS },
   { command: "timeline.nextMessage", shortcut: "Alt+Shift+ArrowDown", when: TIMELINE_KEYS },
+  { command: "timeline.find", shortcut: "Mod+F", when: THREAD_FIND },
   // Changes
   { command: "changes.nextFile", shortcut: "Alt+ArrowDown", when: CHANGES_PANE_KEYS },
   { command: "changes.previousFile", shortcut: "Alt+ArrowUp", when: CHANGES_PANE_KEYS },

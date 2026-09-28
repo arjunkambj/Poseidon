@@ -189,6 +189,9 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   command("Timeline", "timeline.nextMessage", "Next message", ChevronDown, {
     description: "Scrolls to your next message",
   }),
+  command("Timeline", "timeline.find", "Find in thread", Search, {
+    description: "Searches this thread's messages and tool calls",
+  }),
 
   // Changes — answered while the Changes pane lists files.
   command("View", "changes.nextFile", "Next changed file", ArrowDown),

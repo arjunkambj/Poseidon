@@ -46,6 +46,13 @@ describe("COMMAND_CATALOG", () => {
     expect(entry?.area).toBe("View");
     expect(DEFAULT_KEYBINDINGS.filter((row) => row.command === "chatWidth.cycle")).toEqual([]);
   });
+
+  it("files find in thread under Timeline", () => {
+    const find = COMMAND_CATALOG.find((entry) => entry.id === "timeline.find");
+    expect(find?.area).toBe("Timeline");
+    expect(find?.title).toBe("Find in thread");
+    expect(find?.palette).toBe(true);
+  });
 });
 
 describe("FIXED_KEYS", () => {

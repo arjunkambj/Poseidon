@@ -2746,6 +2746,7 @@ fields entirely.
 | Timeline | `timeline.jumpToLatest`                               | `Mod+Shift+J`                 | `threadOpen`                                                                           |
 | Timeline | `timeline.collapseAll` / `expandAll`                  | `Mod+Alt+[` / `Mod+Alt+]`     | `threadOpen`                                                                           |
 | Timeline | `timeline.previousMessage` / `nextMessage`            | `Alt+Shift+ArrowUp` / `Down`  | `threadOpen && !inputFocus`                                                            |
+| Timeline | `timeline.find`                                       | `Mod+F`                       | `threadOpen && !terminalFocus && !browserFocus && !filesFocus`                         |
 | Git      | `git.commit`                                          | `Mod+Alt+C`                   |                                                                                        |
 | Git      | `git.push`                                            | `Mod+Alt+P`                   |                                                                                        |
 | Git      | `git.branchPicker`                                    | `Mod+Shift+G`                 |                                                                                        |
@@ -2901,12 +2902,12 @@ The matcher is `packages/client-runtime/src/keybindings.ts`:
 The context keys a clause may name are listed, with what each means and who
 sets it, in `KEYBINDING_CONTEXT_KEYS` (`packages/client-runtime/src/keymap.ts`).
 The listener computes `inputFocus`, `composerFocus`, `terminalFocus`,
-`browserFocus`, `dialogOpen` and `isMac` from the keypress; components publish
+`browserFocus`, `filesFocus`, `dialogOpen` and `isMac` from the keypress; components publish
 `threadOpen`, `newTaskOpen`, `dockOpen`, `changesOpen`, `turnRunning` (`threadRunning` is an alias),
 `approvalPending`, `questionPending` and `planPending`. `CONTEXT_AXIOMS`
 records what always holds between them: `composerFocus` and `terminalFocus`
-each imply `inputFocus`; focus is in at most one of the composer, the terminal
-and the browser; at most one of an approval, a question and a plan is pending;
+each imply `inputFocus`; focus is in at most one of the composer, the terminal,
+the browser and the Files pane; at most one of an approval, a question and a plan is pending;
 a thread and the New task page are never on screen together; `isMac` is fixed
 per platform.
 
@@ -2934,12 +2935,13 @@ under `changesOpen && !inputFocus && !dialogOpen` (`CHANGES_PANE_KEYS`).
 
 The context for each press is built by `apps/web/src/lib/keybinding-context.ts`:
 `focusSnapshot` reads whether the focused element is a text field, its closest
-`data-context` (`FOCUS_SURFACE`: `composer`, `terminal`, `browser`) and
+`data-context` (`FOCUS_SURFACE`: `composer`, `terminal`, `browser`, `files`) and
 whether a dialog, alert, menu, menubar or listbox is on screen. Both composers
 set `composer` on their textarea, and the browser pane sets `browser` on its
 root, so its address bar and toolbar read as `browserFocus` and keep `Mod+L`,
-`Mod+[` and `Mod+]` from the app; nothing sets `terminal` until the terminal
-lands. `keybindingContext` answers the
+`Mod+[` and `Mod+]` from the app. The terminal drawer sets `terminal` on its
+root, and the dock's Files tab sets `files` on its root, so `Mod+F` in its
+search field is left to the field rather than to the thread's find. `keybindingContext` answers the
 built-in keys from that snapshot and the platform, and every other key from the
 registry under its canonical name, so an older stored clause naming
 `threadRunning` still reads `turnRunning`. A component cannot publish a

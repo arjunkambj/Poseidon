@@ -49,6 +49,10 @@ describe("keybindingContext", () => {
     expect(terminal("composerFocus")).toBe(false);
     const browser = keybindingContext(snapshot({ surface: "browser" }), () => undefined, false);
     expect(browser("browserFocus")).toBe(true);
+    const files = keybindingContext(snapshot({ surface: "files" }), () => undefined, false);
+    expect(files("filesFocus")).toBe(true);
+    expect(files("browserFocus")).toBe(false);
+    expect(browser("filesFocus")).toBe(false);
   });
 
   it("reports an open dialog", () => {
@@ -114,6 +118,19 @@ describe("surfaceOf", () => {
     expect(surfaceOf(addressBar as unknown as EventTarget)).toBe("browser");
     expect(surfaceOf(element({}) as unknown as EventTarget)).toBeUndefined();
     expect(surfaceOf(null)).toBeUndefined();
+  });
+
+  it("reads the Files pane's search field as files focus", () => {
+    const pane = element({ "data-context": FOCUS_SURFACE.files });
+    const search = element({ placeholder: "Search files" }, element({}, pane));
+    const context = keybindingContext(
+      snapshot({ editable: true, surface: surfaceOf(search as unknown as EventTarget) }),
+      () => undefined,
+      true,
+    );
+    expect(context("filesFocus")).toBe(true);
+    expect(context("inputFocus")).toBe(true);
+    expect(context("composerFocus")).toBe(false);
   });
 
   it("gives Mod+L, Mod+[ and Mod+] to the browser pane inside it and to the app elsewhere", () => {

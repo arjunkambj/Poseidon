@@ -46,6 +46,7 @@ export const KEYBINDING_CONTEXT_KEYS: ReadonlyArray<KeybindingContextKey> = [
   { name: "composerFocus", description: "Focus is in the composer.", kind: "builtin" },
   { name: "terminalFocus", description: "Focus is in the terminal.", kind: "builtin" },
   { name: "browserFocus", description: "Focus is in the browser pane.", kind: "builtin" },
+  { name: "filesFocus", description: "Focus is in the Files pane.", kind: "builtin" },
   {
     name: "dialogOpen",
     description: "A dialog, alert, menu or list popup is on screen.",
@@ -89,7 +90,8 @@ export const KEYBINDING_CONTEXT_KEYS: ReadonlyArray<KeybindingContextKey> = [
  *
  * - `composerFocus` and `terminalFocus` each imply `inputFocus` (the terminal
  *   focuses a textarea).
- * - Focus is in at most one of the composer, the terminal and the browser.
+ * - Focus is in at most one of the composer, the terminal, the browser and the
+ *   Files pane.
  * - At most one of an approval, a question and a plan is pending.
  * - `isMac` is fixed for a platform.
  */
@@ -99,7 +101,7 @@ export const CONTEXT_AXIOMS = {
     ["terminalFocus", "inputFocus"],
   ],
   exclusive: [
-    ["composerFocus", "terminalFocus", "browserFocus"],
+    ["composerFocus", "terminalFocus", "browserFocus", "filesFocus"],
     ["approvalPending", "questionPending", "planPending"],
     ["threadOpen", "newTaskOpen"],
   ],

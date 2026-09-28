@@ -57,6 +57,8 @@ describe("whenOverlaps", () => {
     expect(whenOverlaps("composerFocus", "browserFocus", "meta")).toBe(false);
     expect(whenOverlaps("composerFocus", "inputFocus", "meta")).toBe(true);
     expect(whenOverlaps("!browserFocus", "browserFocus", "meta")).toBe(false);
+    expect(whenOverlaps("filesFocus", "composerFocus", "meta")).toBe(false);
+    expect(whenOverlaps("filesFocus", "inputFocus", "meta")).toBe(true);
   });
 
   it("fixes isMac per platform", () => {
