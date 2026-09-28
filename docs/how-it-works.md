@@ -1876,7 +1876,10 @@ on, so a file the agent edits again reads as unviewed with nothing to reset.
 Each row's "…" menu, and a right-click anywhere on the row, holds the file
 menu (see "Opening the workspace in an editor" below): open the file in the
 Files tab or an editor, reveal it, copy its path, or append a reference to it
-to the thread's composer draft; nothing in the pane reverts a file. While the pane is
+to the thread's composer draft. After them come the pane's own entries
+(`review-menu-items.tsx`): "Copy diff" copies the file's patch as git printed
+it, and is left out for a file with no patch. Nothing in the pane reverts a
+file. While the pane is
 shown it publishes `changesOpen`, and `Alt+ArrowDown` / `Alt+ArrowUp`
 (`changes.nextFile` / `previousFile`) open the next or previous file and
 scroll its header to the top. `Alt+U` (`changes.nextUnviewed`), and the eye

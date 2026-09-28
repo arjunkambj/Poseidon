@@ -7,7 +7,8 @@
  * The checkbox at the row's end marks the file viewed, which also closes it;
  * a viewed file's name dims, so what is left to read stands out. The "…"
  * menu after it holds the file's own actions (`./file-actions`), and a
- * right-click anywhere on the row opens the same entries.
+ * right-click anywhere on the row opens the same entries, the review's own
+ * (`./review-menu-items`) included.
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
 import type { DiffStyle } from "@/state/ui";
 
 import { FileActions } from "./file-actions";
+import { ReviewContextItems } from "./review-menu-items";
 
 import { type HoneyIcon, ChevronRight, Edit, FileAdd, FileRemove } from "@honeyicons/react";
 
@@ -136,10 +138,11 @@ export function FileSection({
             />
             <TooltipContent>{viewed ? "Viewed" : "Mark as viewed"}</TooltipContent>
           </Tooltip>
-          <FileActions threadId={threadId} {...menu} />
+          <FileActions threadId={threadId} {...menu} file={file} />
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
           <FileContextItems {...menu} chatId={threadId} />
+          <ReviewContextItems file={file} />
         </ContextMenuContent>
       </ContextMenu>
       {open && expandable ? (
