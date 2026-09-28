@@ -728,14 +728,16 @@ its rules in pure modules with unit tests and its rows in thin components:
 | Markdown and code     | `markdown-blocks.ts`, `code-fence.ts`, `remark-user-text.ts`, `user-message-collapse.ts`  | `markdown.tsx`, `code-block.tsx`, `user-message-row.tsx`, `message-rows.tsx`, `attachments.tsx`     |
 | File chips            | `path-links.ts`, `tool-target.ts`                                                         | `path-chips.tsx`, `use-path-chips.ts`, `markdown-paths.tsx`, `file-chip.tsx`, `file-change-row.tsx` |
 | Footers and restore   | `turn-checkpoints.ts`                                                                     | `message-footer.tsx`, `restore-before-turn.tsx` (the Changes pane's `restore-dialog.tsx`)           |
-| Scroll and navigation | `send-anchor.ts`, `turn-rail.ts`, `list-hold.ts` (the scroll holds)                       | `use-send-anchor.ts`, `jump-to-latest.tsx`, `turn-rail-view.tsx`                                    |
+| Scroll and navigation | `send-anchor.ts`, `turn-rail.ts`, `list-hold.ts` (scroll holds), `reading-position.ts`    | `use-send-anchor.ts`, `use-reading-position.ts`, `jump-to-latest.tsx`, `turn-rail-view.tsx`         |
 | Context for every row | —                                                                                         | `thread-context.tsx`, filled by `use-timeline-thread.ts`                                            |
 
 Row state that must outlive a recycled container — disclosures, turn folds,
 "Show more" — lives in the row disclosure map (`state/ui.ts`,
 `state/turn-folds.ts`), and stateful subtrees are keyed by item id. The
 composer notes each send in `state/local-sends.ts`, which the send anchor
-reads to tell this reader's send from a drained queue or another window.
+reads to tell this reader's send from a drained queue or another window, and
+the timeline keeps each thread's reading position for the session in
+`state/timeline-positions.ts`.
 
 Public seam: none; it is a leaf. May import `ui`, `contracts`,
 `client-runtime`, `shared`. Must never name a connector.

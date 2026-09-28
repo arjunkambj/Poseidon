@@ -26,6 +26,11 @@
  * viewport would move what the reader sees. Unless the list follows at its
  * end, the row they were on is held where it sat (`keepInView`), the same way
  * the send hold does, and the reader's scroll stops that hold too.
+ *
+ * A thread reopened at the reader's saved place starts free (`startFree`), and
+ * `keepPlace` holds the saved row where it sat while the rows settle, in the
+ * same slot as the bulk fold hold: the reader's first scroll lets go of it,
+ * and reaching the end follows again.
  */
 
 import type { LegendListRef } from "@legendapp/list/react";
@@ -47,11 +52,13 @@ import {
   bulkFoldKeepsEnd,
   foldsOpened,
   INITIAL_SEND_ANCHOR,
+  initialSendAnchor,
   rowIdSet,
   sendAnchorProps,
   sendAnchorReducer,
   sentUserMessageId,
   type SendAnchorEvent,
+  type SendAnchorMode,
   type SendAnchorState,
   type ViewAnchor,
 } from "./send-anchor";
@@ -78,6 +85,10 @@ export interface SendAnchor {
   readonly release: () => void;
   /** Call right before expand-all or collapse-all writes the folds. */
   readonly beforeFoldAll: () => void;
+  /** Hold a row where it sat until the rows settle or the reader scrolls: a restored place. */
+  readonly keepPlace: (anchor: ViewAnchor) => void;
+  /** Who owns the scroll now. */
+  readonly mode: SendAnchorMode;
 }
 
 export function useSendAnchor({
@@ -86,6 +97,7 @@ export function useSendAnchor({
   openFolds,
   threadId,
   turnActive,
+  startFree = false,
 }: {
   listRef: React.RefObject<LegendListRef | null>;
   rows: ReadonlyArray<TimelineRow>;
@@ -93,8 +105,10 @@ export function useSendAnchor({
   openFolds: ReadonlySet<string>;
   threadId: string;
   turnActive: boolean;
+  /** The list opens at a saved place rather than its end: do not follow from the first render. */
+  startFree?: boolean;
 }): SendAnchor {
-  const [state, dispatch] = React.useReducer(reduce, INITIAL_SEND_ANCHOR);
+  const [state, dispatch] = React.useReducer(reduce, startFree, initialSendAnchor);
   const modeRef = React.useRef(state.mode);
   modeRef.current = state.mode;
   // Expand-all or collapse-all on its way: the folds it was taken against, and
@@ -285,6 +299,17 @@ export function useSendAnchor({
     stopKeep.current = keepInView(list, pending.anchors);
   }, [listRef, openFolds]);
   React.useEffect(() => () => stopKeep.current(), []);
+  const keepPlace = React.useCallback(
+    (anchor: ViewAnchor) => {
+      const list = listRef.current;
+      if (list === null) {
+        return;
+      }
+      stopKeep.current();
+      stopKeep.current = keepInView(list, [anchor]);
+    },
+    [listRef],
+  );
 
   const reserveIndex =
     props.reserveRowId === null ? -1 : rows.findIndex((row) => row.id === props.reserveRowId);
@@ -307,5 +332,7 @@ export function useSendAnchor({
     jumpToLatest,
     release,
     beforeFoldAll,
+    keepPlace,
+    mode: state.mode,
   };
 }

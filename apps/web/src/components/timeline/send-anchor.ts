@@ -10,6 +10,9 @@
  *   fold (`rowsOpened`) while following or anchored: nothing moves the
  *   list until it is back at its end or the reader jumps to the latest row —
  *   or until they send a message themselves (`sentHere`).
+ *   A thread reopened at the reader's saved place (`reading-position.ts`)
+ *   starts here too (`initialSendAnchor`), so the list never chases its end
+ *   from the first render.
  *
  * Expand-all and collapse-all (`timeline.expandAll` / `collapseAll`) open or
  * close every turn fold at once, most of them in turns above the viewport, so
@@ -71,6 +74,10 @@ export const INITIAL_SEND_ANCHOR: SendAnchorState = {
   sentRowId: null,
   placement: 0,
 };
+
+/** Where a freshly mounted list starts: free when it reopens at a saved place. */
+export const initialSendAnchor = (restoring: boolean): SendAnchorState =>
+  restoring ? { ...INITIAL_SEND_ANCHOR, mode: "free" } : INITIAL_SEND_ANCHOR;
 
 export const sendAnchorReducer = (
   state: SendAnchorState,

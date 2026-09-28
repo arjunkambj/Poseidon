@@ -11,6 +11,9 @@
  * scrolls through history do not count. Reaching the end, by any route,
  * clears it. While a just-sent message is carried to the top the list is away
  * from its end on purpose, so the button stays hidden then.
+ *
+ * A thread reopened at the reader's saved place (`opensAway`) does not start
+ * at its end: the button reads the list's flag once it has laid out instead.
  */
 
 import { Button } from "@poseidon/ui/components/button";
@@ -25,6 +28,7 @@ export function JumpToLatest({
   listRef,
   activity,
   hidden,
+  opensAway = false,
   onJump,
 }: {
   listRef: React.RefObject<LegendListRef | null>;
@@ -32,23 +36,32 @@ export function JumpToLatest({
   activity: unknown;
   /** The list is away from its end on purpose, carrying a sent message to the top. */
   hidden: boolean;
+  /** The list opens at a saved place rather than at its end. */
+  opensAway?: boolean;
   onJump: () => void;
 }) {
   // Starts hidden: the list opens at its end, and its own flag reads false until
   // the first layout, which would flash the button on every mount.
-  const [nearEnd, setNearEnd] = React.useState(true);
+  const [nearEnd, setNearEnd] = React.useState(!opensAway);
   const [unseen, setUnseen] = React.useState(false);
 
-  React.useEffect(
-    () =>
-      listRef.current?.getState().listen("isNearEnd", (near) => {
-        setNearEnd(near);
-        if (near) {
-          setUnseen(false);
-        }
-      }),
-    [listRef],
-  );
+  const opensAwayRef = React.useRef(opensAway);
+  React.useEffect(() => {
+    const state = listRef.current?.getState();
+    if (state === undefined) {
+      return;
+    }
+    // Laid out by now: a saved place near the end hides the button again.
+    if (opensAwayRef.current) {
+      setNearEnd(state.isNearEnd);
+    }
+    return state.listen("isNearEnd", (near) => {
+      setNearEnd(near);
+      if (near) {
+        setUnseen(false);
+      }
+    });
+  }, [listRef]);
 
   const awayRef = React.useRef(false);
   awayRef.current = !nearEnd && !hidden;

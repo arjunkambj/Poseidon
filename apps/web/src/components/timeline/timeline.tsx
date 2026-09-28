@@ -21,6 +21,12 @@
  * place instead of pushing the toggle up (`send-anchor.ts`). The turn rail and the
  * previous/next message keys (`turn-rail-view.tsx`) hand the scroll to the
  * reader the same way before they move it.
+ *
+ * The list is keyed by thread, so leaving a thread unmounts it and entering
+ * one mounts it afresh: that is where the reader's place is saved and put
+ * back (`use-reading-position.ts`). A thread left away from its end reopens
+ * at the same row, free rather than following; one left at its end opens
+ * there and follows.
  */
 
 import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
@@ -42,6 +48,7 @@ import {
 import { TimelineRowView } from "@/components/timeline/timeline-item";
 import { turnEndTimes } from "@/components/timeline/turn-checkpoints";
 import { TurnRail, useTurnNavigation } from "@/components/timeline/turn-rail-view";
+import { useReadingPosition, useRestorePlace } from "@/components/timeline/use-reading-position";
 import { useSendAnchor } from "@/components/timeline/use-send-anchor";
 import { useThreadFind } from "@/components/timeline/use-thread-find";
 import { useTimelineThreadValue } from "@/components/timeline/use-timeline-thread";
@@ -52,6 +59,10 @@ import { useOpenTurnFolds } from "@/state/turn-folds";
 import { useSetRowDisclosures } from "@/state/ui";
 
 export function Timeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
+  return <ThreadTimeline key={snapshot.threadId} snapshot={snapshot} />;
+}
+
+function ThreadTimeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
   const listRef = React.useRef<LegendListRef>(null);
   const chatWidth = useChatWidth();
   const openFolds = useOpenTurnFolds();
@@ -79,12 +90,21 @@ export function Timeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
     disclosureIds(buildTimeline(snapshot.items, { ...options, isFoldOpen: ALL_FOLDS_OPEN }));
 
   const thread = useTimelineThreadValue(snapshot);
+  const restore = useRestorePlace(snapshot.threadId, projection.rows);
   const anchor = useSendAnchor({
     listRef,
     rows: projection.rows,
     openFolds,
     threadId: snapshot.threadId,
     turnActive: options.turnActive,
+    startFree: restore !== undefined,
+  });
+  useReadingPosition({
+    listRef,
+    threadId: snapshot.threadId,
+    restore,
+    mode: anchor.mode,
+    keepPlace: anchor.keepPlace,
   });
   const navigation = useTurnNavigation({ listRef, rows: projection.rows, release: anchor.release });
   const find = useThreadFind({ snapshot, options, projection, listRef, release: anchor.release });
@@ -119,7 +139,10 @@ export function Timeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
           estimatedItemSize={40}
           drawDistance={500}
           recycleItems
-          initialScrollAtEnd
+          initialScrollAtEnd={restore === undefined}
+          initialScrollIndex={
+            restore === undefined ? undefined : { index: restore.index, viewOffset: restore.offset }
+          }
           maintainScrollAtEnd={anchor.maintainScrollAtEnd}
           anchoredEndSpace={anchor.anchoredEndSpace}
           extraData={projection.childrenByParent}
@@ -141,6 +164,7 @@ export function Timeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
           listRef={listRef}
           activity={snapshot.items}
           hidden={anchor.placing}
+          opensAway={restore !== undefined}
           onJump={anchor.jumpToLatest}
         />
         <TurnRail listRef={listRef} navigation={navigation} />

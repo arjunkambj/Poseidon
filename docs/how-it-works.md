@@ -1050,6 +1050,25 @@ is on its way to the top the list is away from its end on purpose, so the
 button stays hidden then. `timeline.jumpToLatest` and the button both resume
 following; the scroll to the end is instant under reduced motion.
 
+Each thread keeps the reader's place for the session
+(`timeline/reading-position.ts`, `use-reading-position.ts`, stored in
+`state/timeline-positions.ts`). The timeline mounts once per thread, keyed by
+its id, so leaving a thread unmounts its list: if it sat away from its end, the
+first row on screen and how far below the viewport top it sat are saved; a
+list at its end, or holding a message just sent, saves nothing. Reopening the
+thread passes that row to LegendList as the first scroll target, so the first
+paint is already there, and holds it where it sat, from a layout effect before
+that paint, while rows around it settle to their measured heights. The list
+starts in Free rather than Follow, so it never chases its end, and the jump
+button shows from the start. A thread left at its end opens at its end and
+follows, as always. The reader's first wheel, touch drag, scrolling key,
+scrollbar press or selection lets go of the hold, the same as a send hold;
+reaching the end follows again, and a send of their own anchors as usual. A
+saved row that is gone — the live burst of a turn that has settled since —
+opens the thread at its end. The positions live in memory only, at most 100
+threads, dropping the one saved longest ago, so a relaunch opens every thread
+at its end.
+
 A slim turn rail sits at the timeline's right edge (`turn-rail.ts`, drawn by
 `turn-rail-view.tsx`): one tick per user message, steered messages included.
 Hovering a tick previews the message's first line with its markdown marks

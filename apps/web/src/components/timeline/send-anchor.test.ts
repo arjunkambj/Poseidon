@@ -7,6 +7,7 @@ import {
   bulkFoldKeepsEnd,
   foldsOpened,
   INITIAL_SEND_ANCHOR,
+  initialSendAnchor,
   isScrollKey,
   pickViewAnchor,
   rowIdSet,
@@ -170,6 +171,37 @@ describe("sendAnchorReducer", () => {
     const free = run([{ type: "userScrollIntent" }], anchored);
     expect(run([{ type: "jumpToLatest" }], free).mode).toBe("follow");
     expect(run([{ type: "jumpToLatest" }])).toBe(INITIAL_SEND_ANCHOR);
+  });
+});
+
+describe("a list reopened at a saved place", () => {
+  const restored = initialSendAnchor(true);
+
+  it("starts free, not following, and otherwise as a fresh list", () => {
+    expect(initialSendAnchor(false)).toBe(INITIAL_SEND_ANCHOR);
+    expect(restored.mode).toBe("free");
+    expect(sendAnchorProps(restored)).toEqual({
+      maintainScrollAtEnd: false,
+      anchorRowId: null,
+      reserveRowId: null,
+    });
+  });
+
+  it("stays free on its first rows: the history it opens with is not a send", () => {
+    expect(run([{ type: "rowsChanged", turnActive: true }], restored)).toBe(restored);
+    // A message drained from the queue, or sent from another window, leaves the place alone.
+    expect(run([send("u3", false)], restored)).toBe(restored);
+  });
+
+  it("follows again at the end, or on a jump", () => {
+    expect(run([{ type: "reachedEnd" }], restored).mode).toBe("follow");
+    expect(run([{ type: "jumpToLatest" }], restored).mode).toBe("follow");
+  });
+
+  it("anchors the reader's own send", () => {
+    const state = run([send("u3")], restored);
+    expect(state.mode).toBe("anchored");
+    expect(sendAnchorProps(state).anchorRowId).toBe("u3");
   });
 });
 
