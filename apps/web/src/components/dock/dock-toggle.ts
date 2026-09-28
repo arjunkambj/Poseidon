@@ -41,7 +41,11 @@ export type DockTab = (typeof DOCK_TABS)[number];
 /** The tabs, in strip order. */
 export const dockTabs: ReadonlyArray<DockTab> = DOCK_TABS;
 
-/** The tabs a project's dock offers before any thread exists, in strip order. */
+/**
+ * The tabs a project's dock offers before any thread exists, in strip order —
+ * the kinds `./dock-tab-meta` marks available to a project (a test holds the
+ * two equal). A literal here keeps route validation free of the registry.
+ */
 export const projectDockTabs: ReadonlyArray<DockTab> = ["changes", "files"];
 
 /** The launcher: the dock open with no tab chosen. */

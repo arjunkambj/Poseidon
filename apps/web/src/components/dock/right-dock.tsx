@@ -4,12 +4,14 @@
  *
  * It docks beside a thread, or beside the New task page for the picked
  * project (`DockScope`). A project has no thread yet, so its dock offers
- * `projectDockTabs` — Changes over the project folder's own working tree and
- * branch (`ProjectChangesPane`), and Files searching that folder — and no
- * Browser, which is a thread's browser.
+ * only the kinds available there (`dockTabsFor`) — Changes over the project
+ * folder's own working tree and branch (`ProjectChangesPane`), and Files
+ * searching that folder — and no Browser, which is a thread's browser.
  *
  * The dock is a shell — the tab strip, the drag-to-resize edge and the panel
- * chrome live here; what each tab renders is its own concern. What it shows
+ * chrome live here; what each tab renders is its own concern, registered per
+ * kind (`./dock-tab-meta` for name, icon, key and availability,
+ * `./dock-tab-panes` for the pane). What it shows
  * is not component state: it travels in the route's `?pane=` search param — a
  * tab, or `home` for the launcher — so a reload lands on the same view ("pane
  * state in atoms and search params"). The rules for where the keys and buttons
@@ -57,14 +59,6 @@
 
 import * as React from "react";
 
-import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
-import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
-
-import { BrowserPane } from "@/components/panes/browser/browser-pane";
-import { ChangesPane } from "@/components/panes/changes/changes-pane";
-import { ProjectChangesPane } from "@/components/panes/changes/project-changes-pane";
-import { FilesPane } from "@/components/panes/files/files-pane";
-import { workspaceKey } from "@/lib/workspace-key";
 import type { Presence } from "@/lib/use-presence";
 import { cn } from "@/lib/utils";
 import { useConnectionState } from "@/state/hooks";
@@ -77,23 +71,13 @@ import {
 
 import { DockLauncher } from "./dock-launcher";
 import { dockWidthForKey } from "./dock-resize";
+import { dockScopeKind, type DockScope } from "./dock-scope";
 import { DockTabStrip, dockPanelId, dockTabId } from "./dock-tab-strip";
-import {
-  DOCK_HOME,
-  dockTabs,
-  isDockTab,
-  projectDockTabs,
-  type DockPane,
-  type DockTab,
-} from "./dock-toggle";
+import { dockTabsFor } from "./dock-tab-meta";
+import { DOCK_TAB_PANES } from "./dock-tab-panes";
+import { DOCK_HOME, isDockTab, type DockPane, type DockTab } from "./dock-toggle";
 
-/**
- * What the dock is beside: a thread, or — on the New task page — a project
- * with no thread yet, and the page's draft its "Add to chat" writes into.
- */
-export type DockScope =
-  | { readonly snapshot: ThreadDetailSnapshot }
-  | { readonly projectId: ProjectId; readonly draftId: ThreadId };
+export type { DockScope } from "./dock-scope";
 
 /**
  * The resize edge: drag it, or focus it and use the arrow keys, and
@@ -180,7 +164,7 @@ export function RightDock({
   const onPick = React.useCallback((tab: DockTab) => onPaneChange(tab), [onPaneChange]);
   const snapshot = "snapshot" in scope ? scope.snapshot : null;
   const projectId = "snapshot" in scope ? scope.snapshot.projectId : scope.projectId;
-  const tabs = snapshot === null ? projectDockTabs : dockTabs;
+  const tabs = dockTabsFor(dockScopeKind(scope));
 
   return (
     <aside
@@ -241,30 +225,16 @@ export function RightDock({
               onFocused={onLauncherFocused}
             />
           ) : null}
-          {pane === "changes" && snapshot !== null ? <ChangesPane snapshot={snapshot} /> : null}
-          {pane === "changes" && "draftId" in scope ? (
-            <ProjectChangesPane projectId={scope.projectId} draftId={scope.draftId} />
-          ) : null}
-          {/*
-            Unmounting the pane is safe: its tabs are webviews the browser
-            host keeps above the routes, and the pane only marks where the
-            selected one goes.
-          */}
-          {pane === "browser" && snapshot !== null ? (
-            <BrowserPane threadId={snapshot.threadId} projectId={snapshot.projectId} />
-          ) : null}
-          {pane === "files" ? (
-            <FilesPane
-              // Per thread (or project): the pane saves its scroll for the
-              // workspace it was mounted for as it unmounts.
-              key={workspaceKey({ projectId, threadId: snapshot?.threadId })}
-              projectId={projectId}
-              threadId={snapshot?.threadId ?? null}
-              connected={connection.status === "connected"}
-              focusSearch={focusFilesSearch}
-              onSearchFocused={onFilesSearchFocused}
-            />
-          ) : null}
+          {isDockTab(pane)
+            ? DOCK_TAB_PANES[pane]({
+                scope,
+                snapshot,
+                projectId,
+                connected: connection.status === "connected",
+                focusFilesSearch,
+                onFilesSearchFocused,
+              })
+            : null}
         </div>
       </div>
     </aside>
