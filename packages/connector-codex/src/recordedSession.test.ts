@@ -10,7 +10,8 @@
  * process resuming the thread by the first one's ref and recalling the word.
  * `resume-missing`: a resume of a thread the CLI does not have, started
  * afresh with a warning. `model-switch`: `model.changed`, and the second turn
- * on the switched model. `image`: a PNG as a `localImage` input.
+ * on the switched model. `ultra-effort`: a thread at effort `ultra` names it
+ * on `turn/start`. `image`: a PNG as a `localImage` input.
  * `edit-approval`, `deny` and `sensitive-full-access`: the CLI's approval
  * requests reaching the ladder and a card, and the card's answer reaching the
  * CLI — accept, decline, and a read of `.env` stopped even under full access.
@@ -242,6 +243,36 @@ describe("a Codex session replaying codex/model-switch", () => {
         expect(rows(events, "assistant_message").map((row) => row.text)).toEqual(["ok", "ok"]);
       }),
     ),
+  );
+});
+
+describe("a Codex session replaying codex/ultra-effort", () => {
+  it.live(
+    "names effort ultra on turn/start for a model that lists it, and the turn completes",
+    () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const { open, assertDone } = yield* replaying("ultra-effort", {
+            ...SETTINGS,
+            effort: "ultra",
+          });
+          const [prompt] = prompts("ultra-effort");
+          const session = yield* open();
+          yield* turn(session, text(prompt!));
+          const events = yield* closed(session);
+          assertDone();
+
+          // The default model (gpt-6-astra) lists ultra, so the thread's effort
+          // is named as it is; the replay held the live turn/start to it.
+          expect(
+            recordedTurnStarts("ultra-effort").map(({ model, effort }) => ({ model, effort })),
+          ).toEqual([{ model: undefined, effort: "ultra" }]);
+          expect(stopReasons(events)).toEqual(["end_turn"]);
+          expect(rows(events, "assistant_message").map((row) => row.text)).toEqual(["ok"]);
+          // On a one-word prompt the model delegated nothing: no subagent rows.
+          expect(rows(events, "task")).toEqual([]);
+        }),
+      ),
   );
 });
 

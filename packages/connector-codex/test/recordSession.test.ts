@@ -154,6 +154,25 @@ describe("session recordings", () => {
     ),
   );
 
+  it.live.skipIf(!RECORD)("ultra-effort: one turn at effort ultra on the default model", () =>
+    recordScenario(
+      {
+        scenario: "ultra-effort",
+        description:
+          "One turn on the CLI's default model with the thread's effort ultra (the rung model/list lists as 'Maximum reasoning with automatic task delegation'), named on its turn/start; whatever the model delegated is recorded as it happened.",
+        prompts: [PROMPTS.plain],
+        settings: { ...SETTINGS, effort: "ultra" },
+        model: (ranAs) => `${ranAs} (effort ultra)`,
+      },
+      (session) =>
+        Effect.gen(function* () {
+          const recording = yield* session.open();
+          yield* turn(recording, text(PROMPTS.plain));
+          yield* closed(recording);
+        }),
+    ),
+  );
+
   it.live.skipIf(!RECORD)("image: a PNG sent as a localImage input", () =>
     recordScenario(
       {

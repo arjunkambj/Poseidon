@@ -177,6 +177,12 @@ opened it on, which is how every recording but `model-switch` ran. The same
 `model/list` answer gives each model's own effort (`defaultReasoningEffort`),
 which the instance keeps beside the list for its sessions (`modelFactsOf`).
 
+The probe recording (`fixtures/codex/probe/`, 0.156.1) lists `ultra` —
+`{"reasoningEffort":"ultra","description":"Maximum reasoning with automatic
+task delegation"}` — on `gpt-6-astra` (the default), `gpt-6-sol`,
+`gpt-5.6-sol` and `gpt-5.6-terra`, and not on `gpt-6-luna`, `gpt-5.6-luna`
+or `gpt-5.5`, so only those four offer it (`models.test.ts`).
+
 ## The child environment
 
 `childEnv` in `env.ts` builds the child's environment from nothing: `HOME`,
@@ -551,6 +557,22 @@ to be named again on the next.
 the next turn runs on them; an effort the new model does not offer is
 reported as the one the turn will run at (`model-switch`: the second turn on
 another model at effort `low`, in the same process).
+
+**Ultra.** `ultra` is an effort rung, not a mode or a model: the 0.156.1
+app-server schema (`codex app-server generate-json-schema --experimental`)
+types `ReasoningEffort` as an open string "advertised by the model", and marks
+`TurnStartParams.multiAgentMode` "@deprecated Ignored. Use `effort: \"ultra\"`
+for proactive multi-agent behavior." So a thread at effort `ultra` names it on
+`turn/start` like any other rung, and only on a model whose `model/list` row
+lists it; on another model the rule above runs it at that model's own
+default. The effort keys never step onto it (`stepEffort`), the pickers note
+that it delegates to subagents and uses many more tokens, and Claude Code and
+Command Code list no such rung. `ultra-effort` records one turn at it on
+the default model: `turn/start` names `effort: "ultra"`, the CLI's
+`thread/settings/updated` restates it (with `multiAgentMode` still
+`explicitRequestOnly`), and the one-word prompt delegated nothing. What
+delegation it does launch comes back as `collabAgentToolCall` items, which the
+translator maps to plain `task` rows (`subagents` stays `false`, below).
 
 ## Capabilities
 
