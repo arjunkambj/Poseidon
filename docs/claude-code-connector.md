@@ -327,6 +327,13 @@ itself (`control_request`, `control_response`, `control_cancel_request`,
 choice resolved to (`default` runs as a dated id), and the thread keeps the id
 the user picked.
 
+A text or thinking row is opened by its block's `content_block_start` and
+completed by the snapshot's matching block (`translate/textRows.ts`). A
+thinking block can come back with its text left out and only a signature
+kept. Its row is still completed, with no text. A row still open when the
+turn's `result` arrives is completed there with the text its deltas grew, so
+none stays in progress after the turn.
+
 **A `result`** (`translate/result.ts`) is the end of one of the CLI's turns.
 Its `usage` is the main loop's tokens for that turn alone. `total_cost_usd`
 and `modelUsage` are running totals for the process, which for a resumed

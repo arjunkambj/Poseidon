@@ -9,7 +9,8 @@
  * What it maps:
  *
  * - `stream_event` text and thinking deltas → `content.delta` on rows the
- *   block starts open;
+ *   block starts open. A row still open when the turn's `result` arrives is
+ *   completed there, with the text its deltas grew;
  * - `assistant` snapshots → the finished `assistant_message` and `reasoning`
  *   rows. A snapshot the CLI wrote in place of an answer because the request
  *   failed — it carries `error`, and the text is the CLI's own line, such as
@@ -236,8 +237,8 @@ export const makeTranslator = (options: {
       if (block.type === "text") {
         events.push(...rows.settle(messageId, "assistant_message", asString(block.text) ?? ""));
       } else if (block.type === "thinking") {
-        const thinking = asString(block.thinking) ?? "";
-        if (thinking !== "") events.push(...rows.settle(messageId, "reasoning", thinking));
+        // Settled even when empty, so the row its stream opened completes.
+        events.push(...rows.settle(messageId, "reasoning", asString(block.thinking) ?? ""));
       } else if (block.type === "tool_use") {
         events.push(...tools.started(block));
         const id = asString(block.id);
@@ -455,6 +456,7 @@ export const makeTranslator = (options: {
           ...orphans(),
           ...compaction.abandon(),
           ...tools.abandonOpen(TURN_ENDED_UNDER_TOOL),
+          ...rows.closeOpen(),
           ...events,
         ];
       }

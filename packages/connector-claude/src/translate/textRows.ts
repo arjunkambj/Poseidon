@@ -13,7 +13,14 @@
  * written a second time.
  *
  * A snapshot with no streamed block to match — partial messages off, or a
- * block the stream never showed — opens and completes a row of its own.
+ * block the stream never showed — opens and completes a row of its own, or
+ * none when the block is empty.
+ *
+ * A snapshot's block may come back empty where the stream opened a row for
+ * it: a thinking block whose text the API left out carries only its
+ * signature. The row is completed all the same, with the text its deltas
+ * grew, or none. And a turn's `result` completes every row still open
+ * (`closeOpen`), so no text or reasoning row outlives its turn.
  */
 
 import type { ItemId } from "@poseidon/contracts/ids";
@@ -27,6 +34,8 @@ interface Row {
   readonly itemId: ItemId;
   readonly kind: TextRowKind;
   done: boolean;
+  /** What the deltas grew, for a row completed without a snapshot's text. */
+  text: string;
 }
 
 export interface TextRows {
@@ -42,13 +51,28 @@ export interface TextRows {
     index: number,
     text: string,
   ) => ReadonlyArray<PendingRuntimeEvent>;
-  /** A finished block from an `assistant` snapshot. */
+  /** A finished block from an `assistant` snapshot, its text possibly empty. */
   readonly settle: (
     messageId: string,
     kind: TextRowKind,
     text: string,
   ) => ReadonlyArray<PendingRuntimeEvent>;
+  /** Every row still open, completed: the turn ended. */
+  readonly closeOpen: () => ReadonlyArray<PendingRuntimeEvent>;
 }
+
+const completed = (row: { readonly itemId: ItemId; readonly kind: TextRowKind }, text: string) => ({
+  itemId: row.itemId,
+  type: "item.completed" as const,
+  payload: {
+    item: {
+      itemId: row.itemId,
+      kind: row.kind,
+      status: "completed" as const,
+      ...(text === "" ? {} : { text }),
+    },
+  },
+});
 
 export const makeTextRows = (): TextRows => {
   const byBlock = new Map<string, Row>();
@@ -59,7 +83,7 @@ export const makeTextRows = (): TextRows => {
     open: (messageId, index, kind) => {
       const key = `${messageId}:${index}`;
       if (byBlock.has(key)) return [];
-      const row: Row = { itemId: makeItemId(), kind, done: false };
+      const row: Row = { itemId: makeItemId(), kind, done: false, text: "" };
       byBlock.set(key, row);
       byMessage.set(messageId, [...(byMessage.get(messageId) ?? []), row]);
       return [
@@ -73,6 +97,7 @@ export const makeTextRows = (): TextRows => {
     delta: (messageId, index, text) => {
       const row = byBlock.get(`${messageId}:${index}`);
       if (row === undefined || row.done || text === "") return [];
+      row.text += text;
       return [
         {
           itemId: row.itemId,
@@ -86,18 +111,18 @@ export const makeTextRows = (): TextRows => {
       ];
     },
     settle: (messageId, kind, text) => {
-      const row =
-        (byMessage.get(messageId) ?? []).find((each) => !each.done && each.kind === kind) ??
-        undefined;
-      const itemId = row?.itemId ?? makeItemId();
-      if (row !== undefined) row.done = true;
-      return [
-        {
-          itemId,
-          type: "item.completed",
-          payload: { item: { itemId, kind, status: "completed", text } },
-        },
-      ];
+      const row = (byMessage.get(messageId) ?? []).find((each) => !each.done && each.kind === kind);
+      if (row === undefined) {
+        return text === "" ? [] : [completed({ itemId: makeItemId(), kind }, text)];
+      }
+      row.done = true;
+      return [completed(row, text === "" ? row.text : text)];
     },
+    closeOpen: () =>
+      [...byMessage.values()].flat().flatMap((row) => {
+        if (row.done) return [];
+        row.done = true;
+        return [completed(row, row.text)];
+      }),
   };
 };
