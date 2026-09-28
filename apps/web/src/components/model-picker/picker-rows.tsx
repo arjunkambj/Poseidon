@@ -100,15 +100,17 @@ export function HarnessRailColumn({
  * hover tooltip: a second line would break the 28px row. Under a harness whose
  * models span providers, the provider's mark (or an empty box the same size)
  * sits before the label. In search results the harness's avatar (logo, else
- * monogram) leads it. In compare mode (`checked` given) a checkbox leads it
- * instead of the check: the row is what a click lands on, so the checkbox only
- * shows the state.
+ * monogram) leads it, and when any result has a mark (`markSlot`) every result
+ * keeps the slot, so the labels line up. In compare mode (`checked` given) a
+ * checkbox leads it instead of the check: the row is what a click lands on, so
+ * the checkbox only shows the state.
  */
 export function PickerRow({
   id,
   item,
   active,
   harness,
+  markSlot = false,
   checked,
   onHover,
   onChoose,
@@ -118,6 +120,8 @@ export function PickerRow({
   readonly active: boolean;
   /** The harness the row is under, shown only in search results. */
   readonly harness?: HarnessRailEntry;
+  /** Keep the provider slot even when this row has no provider. */
+  readonly markSlot?: boolean;
   /** Compare mode: whether the model is ticked. */
   readonly checked?: boolean;
   readonly onHover: () => void;
@@ -148,7 +152,9 @@ export function PickerRow({
       {harness === undefined ? null : (
         <HarnessAvatar monogram={harness.monogram} iconKey={harness.iconKey} />
       )}
-      {item.provider === undefined ? null : <ProviderMark providerKey={item.provider} />}
+      {item.provider === undefined && !markSlot ? null : (
+        <ProviderMark providerKey={item.provider} />
+      )}
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {item.efforts === undefined ? null : (
         <span className="shrink-0 text-xs text-muted-foreground">{item.efforts}</span>

@@ -285,6 +285,22 @@ describe("HarnessPickerView provider marks", () => {
     const [row] = options(html, "p-result-");
     expect(row).toContain(` d="${deepseek}"`);
   });
+
+  it("keeps the slot on every search result when one has a mark, so labels line up", () => {
+    // "gpt" matches the mixed harness's GPT-5.5 (marked) and the single one's two (unmarked).
+    const html = render(rail, { ...initialPickerState(rail, onMixed), query: "gpt" });
+    const rows = options(html, "p-result-");
+    expect(rows).toHaveLength(3);
+    for (const row of rows) expect(row).toContain('data-slot="provider-mark"');
+    expect(rows.filter((row) => row.includes(` d="${openai}"`))).toHaveLength(1);
+  });
+
+  it("adds no slot to search results when none has a mark", () => {
+    const html = render(rail, { ...initialPickerState(rail, onMixed), query: "mini" });
+    const rows = options(html, "p-result-");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).not.toContain('data-slot="provider-mark"');
+  });
 });
 
 describe("keyStep", () => {

@@ -147,6 +147,8 @@ export function HarnessPickerView({
 }: HarnessPickerViewProps) {
   const searching = state.query.trim().length > 0;
   const results = searching ? searchModels(rail, state.query) : [];
+  // One marked result keeps the slot on every result, so the labels line up.
+  const markSlot = results.some((result) => result.item.provider !== undefined);
 
   return (
     <div className="flex w-96 max-w-full flex-col gap-2">
@@ -214,6 +216,7 @@ export function HarnessPickerView({
                       id={resultOptionId(base, index)}
                       item={result.item}
                       harness={rail[result.harnessIndex]}
+                      markSlot={markSlot}
                       {...(checked === undefined
                         ? {}
                         : { checked: checked.has(result.item.value) })}
