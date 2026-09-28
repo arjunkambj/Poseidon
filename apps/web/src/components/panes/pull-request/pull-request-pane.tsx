@@ -24,7 +24,7 @@ import {
   EmptyTitle,
 } from "@poseidon/ui/components/empty";
 import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
-import type { PullRequestView } from "@poseidon/contracts/pullRequest";
+import type { PullRequestDetail, PullRequestView } from "@poseidon/contracts/pullRequest";
 import * as React from "react";
 
 import {
@@ -38,6 +38,7 @@ import {
 
 import { PrChecks } from "./pr-checks";
 import type { CommentActions } from "./pr-comment";
+import { PrControls } from "./pr-controls";
 import { PrReviews } from "./pr-reviews";
 import { PrSummary } from "./pr-summary";
 import {
@@ -94,12 +95,19 @@ export function PullRequestPane({
   );
   const onRefresh = useRefreshPullRequests(projectId);
   const actions = useCommentActions(threadId);
+  const renderControls = React.useCallback(
+    (pullRequest: PullRequestDetail) => (
+      <PrControls projectId={projectId} threadId={threadId} pullRequest={pullRequest} />
+    ),
+    [projectId, threadId],
+  );
   return (
     <PullRequestPaneView
       query={query}
       connected={connected}
       onRefresh={onRefresh}
       actions={actions}
+      renderControls={renderControls}
     />
   );
 }
@@ -114,11 +122,14 @@ export const PullRequestPaneView = React.memo(function PullRequestPaneView({
   connected,
   onRefresh,
   actions,
+  renderControls,
 }: {
   readonly query: PullRequestQuery<PullRequestView> | null;
   readonly connected: boolean;
   readonly onRefresh: () => void;
   readonly actions: CommentActions;
+  /** The summary's lifecycle actions and Fix menu; left out by the tests. */
+  readonly renderControls?: (pullRequest: PullRequestDetail) => React.ReactNode;
 }) {
   const retry = (
     <Button type="button" variant="ghost" size="sm" onClick={onRefresh}>
@@ -173,7 +184,12 @@ export const PullRequestPaneView = React.memo(function PullRequestPaneView({
   const nowMs = Date.now();
   return (
     <div className="flex flex-col gap-3 pb-3">
-      <PrSummary pullRequest={view.pullRequest} nowMs={nowMs} onRefresh={onRefresh} />
+      <PrSummary
+        pullRequest={view.pullRequest}
+        nowMs={nowMs}
+        onRefresh={onRefresh}
+        controls={renderControls?.(view.pullRequest)}
+      />
       <PrChecks checks={view.pullRequest.checks} />
       <PrReviews pullRequest={view.pullRequest} nowMs={nowMs} actions={actions} />
     </div>

@@ -1,13 +1,15 @@
 /**
  * The Pull request tab's head: the title, its number as a link to GitHub,
  * its state, where it merges (base ← head), who opened it and when it last
- * changed. The refresh button sits beside the title.
+ * changed. The refresh button sits beside the title, and the lifecycle
+ * actions and the Fix menu (`./pr-controls`) under the author line.
  */
 
 import { Badge } from "@poseidon/ui/components/badge";
 import { Button } from "@poseidon/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 import type { PullRequestDetail } from "@poseidon/contracts/pullRequest";
+import type * as React from "react";
 
 import { openExternal } from "@/lib/desktop";
 
@@ -34,10 +36,13 @@ export function PrSummary({
   pullRequest,
   nowMs,
   onRefresh,
+  controls,
 }: {
   readonly pullRequest: PullRequestDetail;
   readonly nowMs: number;
   readonly onRefresh: () => void;
+  /** The lifecycle actions and the Fix menu, under the author line. */
+  readonly controls?: React.ReactNode;
 }) {
   const badge = stateBadge(pullRequest);
   const updated = updatedLabel(nowMs, pullRequest.updatedAt);
@@ -84,6 +89,7 @@ export function PrSummary({
         @{pullRequest.author}
         {updated === "" ? null : ` · ${updated}`}
       </div>
+      {controls}
     </div>
   );
 }

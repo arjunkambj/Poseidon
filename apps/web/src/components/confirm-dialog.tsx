@@ -33,6 +33,7 @@ export function ConfirmDialog({
   description,
   confirmLabel,
   onConfirm,
+  children,
 }: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
@@ -41,6 +42,8 @@ export function ConfirmDialog({
   readonly description: React.ReactNode;
   readonly confirmLabel: string;
   readonly onConfirm: () => void;
+  /** Anything the choice needs besides the words: a picker, a preview. */
+  readonly children?: React.ReactNode;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,6 +52,7 @@ export function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {children}
         <DialogActions>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
