@@ -2217,7 +2217,10 @@ fixed for the bearer's life, so toggling the plugin changes new sessions only.
 The browser's own security model is untouched by this.
 
 `tools/call` goes through `BrowserService.callTool`, which owns the serialized
-per-thread queue and the human-control epoch. Every human gesture bumps the
+per-thread queue and the human-control epoch. A call whose prepared form is
+marked `script` — `browser_eval`, and `browser_wait` with `fn` — first goes
+through `PermissionService.decide` as a `web` request, so plan mode and deny
+rules refuse it. Every human gesture bumps the
 epoch — a click, a key, a scroll, a toolbar navigation — and a call that
 settles under a different epoch than it started returns
 `interrupted_by_human`, which the agent reads in the tool result. Nothing the

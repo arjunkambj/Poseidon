@@ -59,14 +59,13 @@ const fakePage = (): FakePage => ({
   historyIndex: -1,
 });
 
-const permissionsStub = Layer.succeed(
-  PermissionService,
-  PermissionService.of({
-    decide: () => Effect.succeed("allow" as const),
-    rules: () => Effect.succeed([]),
-    addRule: () => Effect.void,
-  }),
-);
+const permissionsWith = (decide: PermissionService["Service"]["decide"]) =>
+  Layer.succeed(
+    PermissionService,
+    PermissionService.of({ decide, rules: () => Effect.succeed([]), addRule: () => Effect.void }),
+  );
+
+const permissionsStub = permissionsWith(() => Effect.succeed("allow" as const));
 
 type OpenDriver = (
   options: OpenDriverOptions,
@@ -77,6 +76,7 @@ const buildStack = (
   mode: "in-app" | "owned-chromium" | "disabled" = "owned-chromium",
   reap?: Effect.Effect<void>,
   cli?: { readonly installed: boolean; readonly version: string | null },
+  permissions: Layer.Layer<PermissionService> = permissionsStub,
 ) =>
   Effect.gen(function* () {
     const sqliteContext = yield* Layer.build(sqliteTestLayer());
@@ -94,7 +94,7 @@ const buildStack = (
         ...(reap === undefined ? {} : { reap }),
         ...(cli === undefined ? {} : { cli }),
       }),
-    ).pipe(Layer.provide(Layer.mergeAll(engine, permissionsStub)));
+    ).pipe(Layer.provide(Layer.mergeAll(engine, permissions)));
     const context = yield* Layer.build(Layer.mergeAll(engine, browser));
     return {
       browser: Context.get(context, BrowserService),
@@ -168,6 +168,48 @@ describe("BrowserService", () => {
 
         const outcome = yield* Fiber.join(call);
         expect(outcome.kind).toBe("interrupted");
+      }),
+    ),
+  );
+
+  it.live("browser_wait on a JavaScript condition is gated like browser_eval", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const asked: Array<string> = [];
+        const execs: Array<ReadonlyArray<string>> = [];
+        // What plan mode or a deny rule answers for a `web` request.
+        const denyWeb = permissionsWith(({ request }) =>
+          Effect.sync(() => {
+            asked.push(request.toolName);
+            return request.kind === "web" ? ("deny" as const) : ("allow" as const);
+          }),
+        );
+        const { browser } = yield* buildStack(
+          () =>
+            Effect.succeed(
+              makeFakeDriver(fakePage(), {
+                onExec: (argv) => Effect.sync(() => void execs.push(argv)),
+              }),
+            ),
+          "owned-chromium",
+          undefined,
+          undefined,
+          denyWeb,
+        );
+
+        const byCondition = yield* browser.callTool(threadId, "browser_wait", {
+          fn: "fetch('https://example.com/x')",
+        });
+        expect(byCondition.kind).toBe("error");
+        const byEval = yield* browser.callTool(threadId, "browser_eval", { js: "1" });
+        expect(byEval.kind).toBe("error");
+        expect(asked).toEqual(["mcp__poseidon__browser_wait", "mcp__poseidon__browser_eval"]);
+        expect(execs.some((argv) => argv.includes("--fn") || argv[0] === "eval")).toBe(false);
+
+        // A plain wait runs no script and asks nothing.
+        const byTime = yield* browser.callTool(threadId, "browser_wait", { ms: 1 });
+        expect(byTime.kind).toBe("ok");
+        expect(asked).toHaveLength(2);
       }),
     ),
   );

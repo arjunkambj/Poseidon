@@ -59,7 +59,7 @@ rather than starting another one.
 | \`browser_type\` | Type \`text\` into whatever has focus, with real keystrokes. |
 | \`browser_press\` | Press a key or combination: \`Enter\`, \`Tab\`, \`Escape\`, \`Control+a\`, … |
 | \`browser_scroll\` | Scroll the page, or one element with \`selector\` (\`direction\`, \`px\`). |
-| \`browser_wait\` | Wait for a selector, a load state, a URL pattern, text, a JS condition or a number of ms. |
+| \`browser_wait\` | Wait for a selector, a load state, a URL pattern, text, a JS condition or a number of ms. A JS condition runs in the page and is approved like \`browser_eval\`. |
 | \`browser_get\` | Read the page \`url\`, \`title\`, or an element's \`text\`. |
 | \`browser_screenshot\` | Capture the viewport (\`full: true\` for the whole page) as an image. |
 | \`browser_eval\` | Evaluate a JavaScript expression in the page. |

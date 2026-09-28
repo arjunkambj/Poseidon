@@ -5,6 +5,8 @@
  *
  * `mutating` on the prepared call marks calls that can move the page; the
  * service re-reads url/title afterwards so `browser.subscribe` stays truthful.
+ * `script` marks calls that run the agent's own JavaScript in the page, which
+ * the service gates like any other `web` request.
  *
  * There is no notion of an "expected" input echo. Input the agent synthesizes
  * over CDP never comes back as a relayed gesture (the shell's relay only sees
@@ -30,6 +32,11 @@ export interface PreparedCall {
   readonly name: BrowserToolName;
   readonly argv: ReadonlyArray<string>;
   readonly mutating: boolean;
+  /**
+   * Runs the agent's own JavaScript in the page (`browser_eval`, and
+   * `browser_wait` on a condition), so it goes through the `web` approval.
+   */
+  readonly script: boolean;
   /** Result carries a screenshot file at `data.path` to inline as an image. */
   readonly screenshot: boolean;
   /** Overrides the CLI's 30s per-command timeout. */
@@ -92,6 +99,8 @@ interface MakeOptions {
   /** Sends input to the page; not read-only even when it does not navigate. */
   readonly input?: boolean;
   readonly mutating?: boolean;
+  /** Whether these arguments run the agent's JavaScript in the page. */
+  readonly script?: (args: Record<string, unknown>) => boolean;
   readonly screenshot?: boolean;
   readonly timeoutMs?: number;
   readonly timeoutMessage?: string;
@@ -123,6 +132,7 @@ const makeTool = (name: BrowserToolName, options: MakeOptions): BrowserToolSpec 
         name,
         argv,
         mutating: options.mutating ?? false,
+        script: options.script?.(args as Record<string, unknown>) ?? false,
         screenshot: options.screenshot ?? false,
         ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
         ...(options.timeoutMessage === undefined ? {} : { timeoutMessage: options.timeoutMessage }),
@@ -290,11 +300,24 @@ export const BROWSER_TOOLS: ReadonlyArray<BrowserToolSpec> = [
         load: { type: "string", enum: ["load", "domcontentloaded", "networkidle"] },
         url: { ...string, description: "URL glob pattern" },
         text: { ...string, description: "Text to appear on the page" },
-        fn: { ...string, description: "JavaScript expression to become truthy" },
+        fn: {
+          ...string,
+          description:
+            "JavaScript expression to become truthy; runs in the page and needs the same approval as browser_eval",
+        },
         ms: { ...number, description: "Fixed wait in milliseconds" },
       },
       [],
     ),
+    // `fn` runs arbitrary page JavaScript, and annotations are fixed per tool,
+    // so they describe that worst case.
+    annotations: { readOnlyHint: false },
+    script: (args) =>
+      typeof args.selector !== "string" &&
+      typeof args.load !== "string" &&
+      typeof args.url !== "string" &&
+      typeof args.text !== "string" &&
+      typeof args.fn === "string",
     toArgv: (args) => {
       if (typeof args.selector === "string") return ["wait", args.selector];
       if (typeof args.load === "string") return ["wait", "--load", args.load];
@@ -349,6 +372,7 @@ export const BROWSER_TOOLS: ReadonlyArray<BrowserToolSpec> = [
     inputSchema: objectSchema({ js: { ...string, description: "Expression to evaluate" } }, ["js"]),
     annotations: { readOnlyHint: false },
     mutating: true,
+    script: () => true,
     toArgv: (args) => {
       const js = requiredString(args, "js");
       return isError(js) ? js : ["eval", js];

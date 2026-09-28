@@ -280,9 +280,14 @@ export const makeService = (injected: {
         yield* refreshLocation(session, driver);
       });
 
-    /** `browser_eval` carries the `web` approval kind — denied in plan mode. */
-    const gateEval = (
+    /**
+     * A call that runs the agent's JavaScript in the page (`browser_eval`, or
+     * `browser_wait` on a condition) carries the `web` approval kind — denied
+     * in plan mode and by deny rules.
+     */
+    const gateScript = (
       threadId: ThreadId,
+      name: string,
       args: unknown,
     ): Effect.Effect<BrowserCallOutcome | null> =>
       Effect.gen(function* () {
@@ -292,7 +297,7 @@ export const makeService = (injected: {
             request: {
               requestId: makeRequestId(),
               kind: "web",
-              toolName: "mcp__poseidon__browser_eval",
+              toolName: `mcp__poseidon__${name}`,
               input: typeof args === "object" && args !== null ? args : {},
               description: "evaluate JavaScript in the thread's browser",
             },
@@ -304,7 +309,7 @@ export const makeService = (injected: {
         if (decision === "deny") {
           return {
             kind: "error",
-            message: "browser_eval is denied by the thread's current permission mode",
+            message: `${name} runs JavaScript in the page, which the thread's current permission mode denies`,
           };
         }
         // "prompt" reaches us after the harness-side PreToolUse approval, and
@@ -422,8 +427,8 @@ export const makeService = (injected: {
         if (mode === "disabled") {
           return { kind: "error", message: BROWSER_DISABLED_MESSAGE } satisfies BrowserCallOutcome;
         }
-        if (name === "browser_eval") {
-          const denied = yield* gateEval(threadId, args);
+        if (prepared.call.script) {
+          const denied = yield* gateScript(threadId, name, args);
           if (denied !== null) return denied;
         }
         const session = yield* getSession(threadId);

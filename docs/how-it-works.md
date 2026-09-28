@@ -3021,7 +3021,10 @@ The catalogue is `apps/server/src/browser/tools.ts`: `browser_open`,
 `browser_snapshot`, `browser_click`, `browser_fill`, `browser_type`,
 `browser_press`, `browser_scroll`, `browser_wait`, `browser_get`,
 `browser_screenshot`, `browser_eval`, `browser_tabs`. Calls are serialized per
-thread. Results cap at 64 KiB of text, counted in bytes, and the
+thread. `browser_eval`, and `browser_wait` on a JavaScript condition (`fn`),
+run the agent's own script in the page, so each first asks the permission
+ladder as a `web` request: plan mode and deny rules refuse it, and both tools
+are marked not read-only. Results cap at 64 KiB of text, counted in bytes, and the
 `structuredContent` beside it at the same 64 KiB serialized — over it, a
 snapshot's text and refs go and only `origin`, `url`, `title` and `targetId`
 stay, with `truncated: true`. `browser_screenshot` adds an image block, and
