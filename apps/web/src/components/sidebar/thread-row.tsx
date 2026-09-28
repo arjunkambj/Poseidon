@@ -9,6 +9,10 @@
  * title's weight still carries the unread emphasis. The slot sits under the
  * project's folder icon, so the title lines up with the project name.
  *
+ * A row that is only working — running, waiting on nobody, not the open
+ * thread — recedes: a muted title, and how long the turn has been working in
+ * place of when the thread last moved (`./working-time`).
+ *
  * On hover the time fades and the overflow menu takes its place; a
  * right-click on the row opens that same menu. The time is a label, not a clock: `ProjectTree` owns the one
  * minute tick and passes `now` down, so a long list runs a single interval.
@@ -30,6 +34,7 @@ import { ThreadContextMenu, ThreadRowMenu } from "@/components/sidebar/thread-me
 import { isUnread, useThreadSeen } from "@/components/sidebar/thread-seen";
 import { selectGestureOf, type SelectGesture } from "@/components/sidebar/thread-selection";
 import { threadStatusMark } from "@/components/sidebar/thread-status";
+import { recedes, workingLabel } from "@/components/sidebar/working-time";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { GitFork } from "@honeyicons/react";
@@ -88,6 +93,10 @@ export function ThreadRow({
 
   const unread = !active && isUnread(seen, thread);
   const archived = thread.status === "archived";
+  const receding = recedes(thread, active);
+  const working = receding ? workingLabel(thread, now) : null;
+  // "1h 4m" is wider than "3h", so the title keeps further from the corner.
+  const clearTime = working === null ? "mr-6" : "mr-12";
 
   return (
     <ThreadContextMenu thread={thread} active={active} row={<SidebarMenuItem />}>
@@ -124,10 +133,15 @@ export function ThreadRow({
             "min-w-0 flex-1 truncate text-sm",
             // The time is pinned to the corner, so the last inline piece
             // keeps clear of the hover menu on its own.
-            thread.worktree === undefined && "mr-6",
+            thread.worktree === undefined && clearTime,
             // The highlight marks the open row; only unread changes the
-            // weight, so the title and the time undo the active row's.
-            unread ? "font-medium text-foreground" : "font-normal",
+            // weight, so the title and the time undo the active row's. A row
+            // that is only working steps back, unread or not.
+            receding
+              ? "font-normal text-muted-foreground"
+              : unread
+                ? "font-medium text-foreground"
+                : "font-normal",
             // Archiving is a real state change that the row otherwise showed
             // nothing for: `threadStatusMark` has no mark for it by design.
             // Only the open thread can be listed while archived.
@@ -142,17 +156,17 @@ export function ThreadRow({
             title={`Worktree ${thread.worktree.branch}`}
             aria-label={`Worktree ${thread.worktree.branch}`}
             role="img"
-            className="mr-6 flex shrink-0 text-muted-foreground"
+            className={cn("flex shrink-0 text-muted-foreground", clearTime)}
           >
             <GitFork variant="bold" className="size-3.5" />
           </span>
         )}
         <time
-          dateTime={updatedAt}
-          title={new Date(updatedAt).toLocaleString()}
+          dateTime={working === null ? updatedAt : thread.runningSince}
+          title={working === null ? new Date(updatedAt).toLocaleString() : `Working for ${working}`}
           className="absolute top-1/2 right-2 -translate-y-1/2 type-micro font-normal text-muted-foreground tabular-nums transition-opacity duration-150 ease-out group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0 group-has-data-popup-open/menu-item:opacity-0 max-md:hidden"
         >
-          {relativeTime(now, updatedAt)}
+          {working ?? relativeTime(now, updatedAt)}
         </time>
       </SidebarMenuButton>
       {/* The overflow menu brings its own trigger button, so it rides in a

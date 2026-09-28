@@ -332,7 +332,12 @@ left of the title and holds one mark, from `ThreadSummary.awaiting` and
 awaiting review, a spinner while a turn runs, a warning on error — and, only
 when none of those applies, the unread dot. The right edge shows how long ago
 the thread last moved ("now", "5m", "3h", "2d", "4w", then the month), from
-`updatedAt` on a single one-minute tick the tree owns. On hover the time gives
+`updatedAt` on a single one-minute tick the tree owns. A row that is only
+working — running, waiting on nobody, not the open thread — recedes: its title
+turns muted whether or not it is unread, and the right edge shows how long the
+turn has been working instead ("<1m", "3m", "1h 4m", from `runningSince`;
+`apps/web/src/components/sidebar/working-time.ts`). It comes back to full
+weight when the turn ends or needs the user. On hover the time gives
 way to two actions: archive, and the overflow menu (rename, archive or
 unarchive, delete). An archived row, listed only while it is open, offers the
 menu alone.
