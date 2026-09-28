@@ -15,12 +15,13 @@ import {
 } from "node:net";
 
 import { describe, expect, it } from "@effect/vitest";
-import type { ThreadId } from "@poseidon/contracts/ids";
+import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import { DEV_SERVER_LIMIT } from "@poseidon/contracts/rpc";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as TestClock from "effect/testing/TestClock";
 
+import type { ProjectDoc, ThreadDoc } from "../orchestration/state";
 import {
   DISCOVERY_TTL_MS,
   discoverServers,
@@ -32,6 +33,7 @@ import {
   parseListeners,
   probeHostOf,
   probeHttp,
+  threadRootOf,
   type DiscoverySystem,
 } from "./discovery";
 
@@ -303,6 +305,35 @@ const listen = (server: Server | HttpServer, host = "127.0.0.1") =>
         }),
     );
   });
+
+describe("threadRootOf", () => {
+  const projectId = "p-1" as ProjectId;
+  const project = { workspaceRoot: "/code/app" } as ProjectDoc;
+  const readModels = (thread: Partial<ThreadDoc> | null) => ({
+    getThreadDoc: () =>
+      Effect.succeed(thread === null ? null : ({ projectId, ...thread } as ThreadDoc)),
+    getProjectDoc: () => Effect.succeed(project),
+  });
+
+  it.effect("looks in a worktree thread's own worktree, not the project folder", () =>
+    Effect.gen(function* () {
+      const worktree = { path: "/home/me/.poseidon/worktrees/app/fix-login" };
+      const root = yield* threadRootOf(readModels({ worktree } as Partial<ThreadDoc>))(
+        "t-1" as ThreadId,
+      );
+      expect(root).toBe("/home/me/.poseidon/worktrees/app/fix-login");
+    }),
+  );
+
+  it.effect("looks in the project folder for a local thread, and nowhere for a missing one", () =>
+    Effect.gen(function* () {
+      expect(yield* threadRootOf(readModels({ worktree: null }))("t-1" as ThreadId)).toBe(
+        "/code/app",
+      );
+      expect(yield* threadRootOf(readModels(null))("t-1" as ThreadId)).toBeNull();
+    }),
+  );
+});
 
 describe("probeHttp", () => {
   it.live("says yes to a page and a redirect, no to JSON, another protocol and silence", () =>

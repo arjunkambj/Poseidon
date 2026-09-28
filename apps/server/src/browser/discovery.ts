@@ -41,6 +41,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Ref from "effect/Ref";
 
+import { threadWorkspaceRoot } from "../orchestration/workspaceRoot";
 import { ReadModelStore } from "../persistence/ReadModels";
 import { DevServerDiscovery } from "../rpc/services";
 
@@ -339,19 +340,28 @@ export const nodeSystem: DiscoverySystem = {
   selfPid: process.pid,
 };
 
+/**
+ * The directory a thread's dev servers run from: its worktree when it has
+ * one, which lives outside the project folder, and the project's folder
+ * otherwise (`threadWorkspaceRoot`). `null` for a thread or project that is
+ * not there.
+ */
+export const threadRootOf =
+  (readModels: Pick<ReadModelStore["Service"], "getThreadDoc" | "getProjectDoc">) =>
+  (threadId: ThreadId): Effect.Effect<string | null> =>
+    Effect.gen(function* () {
+      const thread = yield* readModels.getThreadDoc(threadId);
+      if (thread === null) return null;
+      const project = yield* readModels.getProjectDoc(thread.projectId);
+      return project === null ? null : threadWorkspaceRoot(thread, project);
+    }).pipe(Effect.catch(() => Effect.succeed(null)));
+
 /** @public The real `DevServerDiscovery`. Wired in `boot.ts`. */
 export const layer = Layer.effect(
   DevServerDiscovery,
   Effect.gen(function* () {
     const readModels = yield* ReadModelStore;
-    const rootOf = (threadId: ThreadId) =>
-      Effect.gen(function* () {
-        const thread = yield* readModels.getThreadDoc(threadId);
-        if (thread === null) return null;
-        const project = yield* readModels.getProjectDoc(thread.projectId);
-        return project?.workspaceRoot ?? null;
-      }).pipe(Effect.catch(() => Effect.succeed(null)));
-    const discovery = yield* makeDevServerDiscovery(nodeSystem, rootOf);
+    const discovery = yield* makeDevServerDiscovery(nodeSystem, threadRootOf(readModels));
     return DevServerDiscovery.of(discovery);
   }),
 );

@@ -2984,7 +2984,7 @@ the agent's hidden ones included.
 
 The servers come from `browser.discoverServers`
 (`apps/server/src/browser/discovery.ts`), because only the server sees the
-machine. It answers "which of this project's processes serve a page here?"
+machine. It answers "which of this thread's processes serve a page here?"
 in three steps:
 
 1. `lsof -nP -iTCP -sTCP:LISTEN -F pcn` lists every listening TCP socket with
@@ -2992,7 +2992,8 @@ in three steps:
    and wildcard sockets count; one bound to a LAN address is not what
    `localhost` reaches.
 2. `lsof -a -d cwd -p <pids> -Fn` gives each one's working directory, and a
-   listener counts only when that is the project's folder or inside it. This
+   listener counts only when that is the thread's folder or inside it: its
+   worktree for a worktree thread, the project's folder otherwise. This
    is the step that keeps another project's dev server, a chat app's local
    port and macOS's AirPlay receiver on `*:5000` out of the list — a bare port
    probe cannot tell whose a port is.

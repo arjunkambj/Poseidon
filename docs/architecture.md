@@ -2088,7 +2088,7 @@ the client in the terminal `incompatible` state.
 | `checkpoints.list`            | call   | Checkpoints that still exist as refs, read in the thread's root                                                                         |
 | `browser.subscribe`           | stream | The browser pane's state, and frames when the browser is ours                                                                           |
 | `browser.humanInput`          | call   | A human gesture into the browser the agent is driving                                                                                   |
-| `browser.discoverServers`     | call   | The dev servers running under the thread's project, for the address bar                                                                 |
+| `browser.discoverServers`     | call   | The dev servers running under the thread's folder, for the address bar                                                                  |
 | `settings.get`                | call   | The settings document                                                                                                                   |
 | `settings.update`             | call   | Applies a patch, returns the new document                                                                                               |
 | `settings.subscribe`          | stream | The settings document as it changes                                                                                                     |
