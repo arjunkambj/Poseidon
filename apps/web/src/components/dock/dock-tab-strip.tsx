@@ -23,7 +23,8 @@
  * the tab they land on and keeping the focus on it (`adjacentDockTab`).
  *
  * After the tabs sits whatever the dock puts there (`children`) — the "+"
- * menu of the kinds not open yet.
+ * menu of the kinds not open yet. A tab opened from it takes the focus
+ * (`focusTab`) once the route shows it.
  *
  * The strip reads nothing of its own: a tab's content loads when it opens.
  */
@@ -144,6 +145,8 @@ export function DockTabStrip({
   pane,
   onTabChange,
   onCloseTab,
+  focusTab = null,
+  onTabFocused,
   children,
 }: {
   baseId: string;
@@ -153,6 +156,9 @@ export function DockTabStrip({
   onTabChange: (pane: DockPane | null) => void;
   /** Close this tab; the dock stays open. */
   onCloseTab: (tab: DockTab) => void;
+  /** A tab to focus once it is on the strip and active — one just opened from the "+" menu. */
+  focusTab?: DockTab | null;
+  onTabFocused?: () => void;
   /** What follows the tabs on the row, before the close button. */
   children?: React.ReactNode;
 }) {
@@ -176,6 +182,15 @@ export function DockTabStrip({
       strip.current?.querySelector<HTMLElement>(`[data-dock-tab="${pane}"]`)?.focus();
     }
   }, [openTabs, pane]);
+
+  React.useEffect(() => {
+    // Wait for the route to reach the tab, and the strip to hold it.
+    if (focusTab === null || pane !== focusTab || !openTabs.includes(focusTab)) {
+      return;
+    }
+    strip.current?.querySelector<HTMLElement>(`[data-dock-tab="${focusTab}"]`)?.focus();
+    onTabFocused?.();
+  }, [focusTab, pane, openTabs, onTabFocused]);
 
   const close = (tab: DockTab) => {
     closed.current = tab;

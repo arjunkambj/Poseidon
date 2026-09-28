@@ -175,6 +175,16 @@ export function RightDock({
   const connection = useConnectionState();
   const baseId = React.useId();
   const onPick = React.useCallback((tab: DockTab) => onPaneChange(tab), [onPaneChange]);
+  // A tab opened from the "+" menu, for the strip to focus once it shows.
+  const [focusTab, setFocusTab] = React.useState<DockTab | null>(null);
+  const onAddTab = React.useCallback(
+    (tab: DockTab) => {
+      setFocusTab(tab);
+      onPaneChange(tab);
+    },
+    [onPaneChange],
+  );
+  const onTabFocused = React.useCallback(() => setFocusTab(null), []);
   const snapshot = "snapshot" in scope ? scope.snapshot : null;
   const projectId = "snapshot" in scope ? scope.snapshot.projectId : scope.projectId;
   const tabs = dockTabsFor(dockScopeKind(scope));
@@ -229,8 +239,10 @@ export function RightDock({
           pane={pane}
           onTabChange={onPaneChange}
           onCloseTab={onCloseTab}
+          focusTab={focusTab}
+          onTabFocused={onTabFocused}
         >
-          <DockAddTabMenu offeredTabs={tabs} openTabs={openTabs} onOpen={onPick} />
+          <DockAddTabMenu offeredTabs={tabs} openTabs={openTabs} onOpen={onAddTab} />
         </DockTabStrip>
         <div
           id={dockPanelId(baseId)}
