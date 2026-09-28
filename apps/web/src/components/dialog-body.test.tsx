@@ -16,6 +16,12 @@ describe("DialogBody", () => {
     expect(markup).toContain("<p>Long body</p>");
   });
 
+  it("pads its edges as far as a checkbox's hit area reaches, so it only scrolls when it overflows", () => {
+    // The stock Checkbox's hit area reaches 8px (inset-y-2) past its box.
+    const markup = renderToStaticMarkup(<DialogBody>x</DialogBody>);
+    expect(markup).toMatch(/class="[^"]*-my-2[^"]*py-2/);
+  });
+
   it("merges a className and passes other props through", () => {
     const markup = renderToStaticMarkup(
       <DialogBody className="flex flex-col gap-3" aria-label="Files">

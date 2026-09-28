@@ -2,7 +2,9 @@
  * The scrolling middle of a dialog. A long body scrolls inside it while the
  * header and the footer stay put. It runs edge to edge (`-mx-4 px-4`), so the
  * scrollbar sits on the dialog's edge rather than beside the content, and
- * `-my-1 py-1` leaves room for a focus ring at its top and bottom edges.
+ * `-my-2 py-2` leaves room at its top and bottom edges for a focus ring and
+ * for a checkbox's hit area, which reaches 8px past the box and would
+ * otherwise make the body scroll by a few pixels.
  */
 import type * as React from "react";
 
@@ -12,7 +14,7 @@ export function DialogBody({ className, ...props }: React.ComponentProps<"div">)
   return (
     <div
       data-slot="dialog-body"
-      className={cn("-mx-4 -my-1 max-h-[60vh] min-h-0 overflow-y-auto px-4 py-1", className)}
+      className={cn("-mx-4 -my-2 max-h-[60vh] min-h-0 overflow-y-auto px-4 py-2", className)}
       {...props}
     />
   );
