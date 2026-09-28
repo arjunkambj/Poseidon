@@ -328,7 +328,9 @@ export function Composer({
     >
       <PendingCard threadId={threadId} doc={doc} />
       {doc === null ? null : (
-        <QueueStrip threadId={threadId} queue={doc.queue} steerable={steerable} />
+        // Not while a stop settles: the server queues a steer that lands then,
+        // so "Steer now" would put the row at the back of the queue instead.
+        <QueueStrip threadId={threadId} queue={doc.queue} steerable={steerable && !interrupting} />
       )}
       <ComposerSurface
         dragging={attachments.dragging}

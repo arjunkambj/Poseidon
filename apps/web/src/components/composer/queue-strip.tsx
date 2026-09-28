@@ -42,7 +42,7 @@ export function QueueStrip({
 }: {
   readonly threadId: ThreadId;
   readonly queue: ReadonlyArray<QueuedMessage>;
-  /** A turn is running on a session that steers: rows offer "Steer now". */
+  /** A turn is running, not stopping, on a session that steers: rows offer "Steer now". */
   readonly steerable: boolean;
 }) {
   const actions = useQueueActions(threadId);
