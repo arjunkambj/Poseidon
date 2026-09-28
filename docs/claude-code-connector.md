@@ -449,6 +449,17 @@ sensitive-path check sees it. Each request also carries a one-line
 description. `approvals.test.ts` parses every suggested pattern with the
 shared `parsePattern`.
 
+The CLI's no-permission tools never reach the ladder: Agent (Task is its older
+name), TodoWrite, TaskCreate, TaskGet, TaskUpdate, TaskList, TaskStop,
+ToolSearch and EnterPlanMode (`NO_PERMISSION_TOOLS`). CLI 2.1.280 allows them
+in every mode Poseidon selects, and none runs a command or touches a file. As
+`other` they would open a card in the ask modes and be refused in every plan
+turn. The hook lets them past with no verdict, and `canUseTool` allows one if
+it is ever asked. A subagent's own calls are still gated one by one. Skill is
+not on the list, since the CLI asks before running a skill no rule allows.
+Monitor, the worktree tools, the cron tools and RemoteTrigger are not on it
+either, since they run commands or change the working directory.
+
 ### The answers
 
 | Card answer       | What the CLI is told                                                                                                       |

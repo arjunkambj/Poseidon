@@ -142,6 +142,52 @@ describe("the PreToolUse hook", () => {
       }),
   );
 
+  it.effect.each([
+    ["Agent", "approval-required", "default"],
+    ["Task", "auto-accept-edits", "default"],
+    ["TodoWrite", "approval-required", "default"],
+    ["ToolSearch", "approval-required", "default"],
+    ["Agent", "approval-required", "plan"],
+    ["TodoWrite", "full-access", "plan"],
+    ["ToolSearch", "approval-required", "plan"],
+    ["EnterPlanMode", "approval-required", "default"],
+    ["TaskStop", "approval-required", "plan"],
+  ] as const)(
+    "lets the CLI's no-permission %s past with no verdict under %s/%s",
+    ([tool, runtimeMode, interactionMode]) =>
+      Effect.gen(function* () {
+        const { toolGate, setSettings } = yield* ladder(() => Effect.die(new Error("asked")));
+        setSettings({ model: "default", runtimeMode, interactionMode });
+        expect(yield* Effect.promise(() => toolGate.preToolUse(hook(tool)))).toEqual({});
+        expect(toolGate.sightings()).toBe(1);
+      }),
+  );
+
+  it.effect.each(["Bash", "Edit", "Skill", "Monitor", "EnterWorktree"])(
+    "still asks the ladder about %s",
+    (tool) =>
+      Effect.gen(function* () {
+        const { toolGate } = yield* ladder(saying("prompt"));
+        const output = yield* Effect.promise(() => toolGate.preToolUse(hook(tool)));
+        expect(output.hookSpecificOutput?.permissionDecision).toBe("ask");
+      }),
+  );
+
+  it.effect("still refuses an edit in a plan turn", () =>
+    Effect.gen(function* () {
+      const { toolGate, setSettings } = yield* ladder((input) =>
+        Effect.succeed(input.interactionMode === "plan" ? "deny" : "allow"),
+      );
+      setSettings({ model: "default", runtimeMode: "approval-required", interactionMode: "plan" });
+      const output = yield* Effect.promise(() =>
+        toolGate.preToolUse(hook("Edit", { file_path: "/repo/src/app.ts" })),
+      );
+      expect(output.hookSpecificOutput?.permissionDecision).toBe("deny");
+      const agent = yield* Effect.promise(() => toolGate.preToolUse(hook("Agent")));
+      expect(agent).toEqual({});
+    }),
+  );
+
   it.effect("lets a plan turn write the CLI's plan file with no verdict", () =>
     Effect.gen(function* () {
       const { toolGate, setSettings } = yield* ladder(() => Effect.die(new Error("asked")));
@@ -335,6 +381,20 @@ describe("canUseTool", () => {
         ["request.opened", opened.requestId],
         ["request.resolved", opened.requestId],
       ]);
+    }),
+  );
+});
+
+describe("canUseTool for the CLI's no-permission tools", () => {
+  it.effect("allows one with its input, without a card or the ladder", () =>
+    Effect.gen(function* () {
+      const { toolGate, events } = yield* ladder(() => Effect.die(new Error("asked")));
+      const input = { description: "look around", prompt: "list the files" };
+      const answer = yield* Effect.promise(() =>
+        toolGate.canUseTool("Agent", input, { signal: signal() }),
+      );
+      expect(answer).toEqual({ behavior: "allow", updatedInput: input });
+      expect(events).toEqual([]);
     }),
   );
 });

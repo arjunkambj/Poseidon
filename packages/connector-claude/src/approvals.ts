@@ -22,6 +22,38 @@ export const ASK_USER_QUESTION = "AskUserQuestion";
 /** The tool a plan turn hands its plan over with. */
 export const EXIT_PLAN_MODE = "ExitPlanMode";
 
+/**
+ * The CLI's own bookkeeping tools, which CLI 2.1.280 never asks permission
+ * for: they define no permission check of their own, so the CLI allows them
+ * in every mode, and none runs a command, touches a file or leaves the
+ * working directory. Read from the CLI's bundle:
+ *
+ * - Agent (Task is its older name) delegates to a subagent. The subagent's
+ *   own calls still reach the hook one by one. The CLI asks about a
+ *   delegation only under its auto mode's classifier, which Poseidon never
+ *   selects;
+ * - TodoWrite and TaskCreate, TaskGet, TaskUpdate, TaskList keep the model's
+ *   checklist; TaskStop stops a background task the model started;
+ * - ToolSearch loads the schemas of deferred tools;
+ * - EnterPlanMode moves the CLI into plan mode, which only narrows what runs.
+ *
+ * Skill is not one: the CLI asks before running a skill no rule allows. Nor
+ * are Monitor, the worktree, cron and remote-trigger tools, which run commands
+ * or change the working directory.
+ */
+export const NO_PERMISSION_TOOLS: ReadonlySet<string> = new Set([
+  "Agent",
+  "Task",
+  "TodoWrite",
+  "TaskCreate",
+  "TaskGet",
+  "TaskUpdate",
+  "TaskList",
+  "TaskStop",
+  "ToolSearch",
+  "EnterPlanMode",
+]);
+
 const SHELL_TOOLS = new Set(["Bash"]);
 const WRITE_TOOLS = new Set(["Edit", "MultiEdit", "Write", "NotebookEdit"]);
 const READ_TOOLS = new Set(["Read", "Glob", "Grep", "LS"]);

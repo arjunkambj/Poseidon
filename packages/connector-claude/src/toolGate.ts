@@ -28,6 +28,14 @@
  * write of the CLI's own plan file passes too, and the CLI's plan mode
  * decides it (`plans.ts`).
  *
+ * The CLI's no-permission tools pass the hook with no verdict as well
+ * (`NO_PERMISSION_TOOLS` in `approvals.ts`): delegating to a subagent,
+ * keeping the checklist, loading deferred tools. The ladder reads each as
+ * `other`, which would open a card in the ask modes and refuse it in every
+ * plan turn, for calls that neither act on the machine nor ask the CLI for
+ * permission. A subagent's own calls still reach the hook and are gated one
+ * by one. Should `canUseTool` ever be asked about one, it allows it.
+ *
  * Both fail closed. A hook that cannot reach a verdict answers `ask`, and a
  * `canUseTool` that cannot answers `deny`; a missing verdict never reads as
  * allow.
@@ -56,7 +64,12 @@ import type { ThreadId } from "@poseidon/contracts/ids";
 import type { ThreadSettings } from "@poseidon/contracts/orchestration";
 import * as Effect from "effect/Effect";
 
-import { approvalRequestFor, ASK_USER_QUESTION, EXIT_PLAN_MODE } from "./approvals";
+import {
+  approvalRequestFor,
+  ASK_USER_QUESTION,
+  EXIT_PLAN_MODE,
+  NO_PERMISSION_TOOLS,
+} from "./approvals";
 import type { Interactions } from "./interactions";
 import { isPlanFileWrite } from "./plans";
 
@@ -152,7 +165,7 @@ export const makeToolGate = (options: {
     if (record.hook_event_name !== "PreToolUse") return {};
     sightings += 1;
     const toolName = typeof record.tool_name === "string" ? record.tool_name : "";
-    if (UNGATED_BY_HOOK.has(toolName)) return {};
+    if (UNGATED_BY_HOOK.has(toolName) || NO_PERMISSION_TOOLS.has(toolName)) return {};
     const planning =
       options.settings().interactionMode === "plan" || record.permission_mode === "plan";
     if (planning && isPlanFileWrite(toolName, record.tool_input, options.plansDir)) return {};
@@ -190,6 +203,7 @@ export const makeToolGate = (options: {
       if (toolName === EXIT_PLAN_MODE) {
         return await options.run(options.interactions.proposePlan(input, toolUseID));
       }
+      if (NO_PERMISSION_TOOLS.has(toolName)) return { behavior: "allow", updatedInput: input };
       const verdict = await options.run(
         options.gate.decide({
           request: approvalRequestFor(toolName, input),

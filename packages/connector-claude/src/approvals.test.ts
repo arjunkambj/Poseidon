@@ -15,6 +15,7 @@ import {
   descriptionFor,
   ladderInputFor,
   mcpToolFor,
+  NO_PERMISSION_TOOLS,
   patternSuggestionFor,
 } from "./approvals";
 
@@ -93,6 +94,28 @@ describe("the approval mapping", () => {
     ["Skill", { skill: "pdf" }, "Use Skill"],
   ] as const)("describes %s %j as %j", (tool, input, line) => {
     expect(descriptionFor(tool, input)).toBe(line);
+  });
+
+  it("names only the CLI's no-permission tools as passing the hook", () => {
+    for (const tool of ["Agent", "Task", "TodoWrite", "ToolSearch", "EnterPlanMode", "TaskStop"]) {
+      expect(NO_PERMISSION_TOOLS.has(tool)).toBe(true);
+    }
+    // Skill asks before running a skill no rule allows; the rest run commands
+    // or change the working directory.
+    for (const tool of [
+      "Skill",
+      "Bash",
+      "Edit",
+      "Monitor",
+      "EnterWorktree",
+      "ExitWorktree",
+      "CronCreate",
+      "RemoteTrigger",
+      "AskUserQuestion",
+      "ExitPlanMode",
+    ]) {
+      expect(NO_PERMISSION_TOOLS.has(tool)).toBe(false);
+    }
   });
 
   it("keeps a long command to one short line", () => {
