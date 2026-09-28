@@ -6,7 +6,7 @@
  * content that is its own surface: theme previews, lists of cards, prose.
  */
 
-import type * as React from "react";
+import * as React from "react";
 
 import { Card, CardContent } from "@poseidon/ui/components/card";
 
@@ -37,7 +37,8 @@ export function SettingsPageHeader({
 
 /**
  * A titled group of settings. Direct children are the rows: inside the card
- * each one is separated from the next by a hairline.
+ * each one is separated from the next by a hairline. A titled section is a
+ * region named by its title.
  */
 export function SettingsSection({
   title,
@@ -50,11 +51,19 @@ export function SettingsSection({
   readonly card?: boolean;
   readonly children?: React.ReactNode;
 }) {
+  const titleId = React.useId();
   return (
-    <section className="flex flex-col gap-2">
+    <section
+      className="flex flex-col gap-2"
+      aria-labelledby={title === undefined ? undefined : titleId}
+    >
       {title === undefined && description === undefined ? null : (
         <div>
-          {title === undefined ? null : <h2 className="text-sm font-medium">{title}</h2>}
+          {title === undefined ? null : (
+            <h2 id={titleId} className="text-sm font-medium">
+              {title}
+            </h2>
+          )}
           {description === undefined ? null : (
             <div className="mt-0.5 text-sm text-muted-foreground">{description}</div>
           )}

@@ -56,6 +56,18 @@ describe("SettingsSection", () => {
       </SettingsSection>,
     );
     expect(markup).not.toContain("<h2");
+    expect(markup).not.toContain("aria-labelledby");
+  });
+
+  it("names the section by its title", () => {
+    const markup = renderToStaticMarkup(
+      <SettingsSection title="Navigation">
+        <ul />
+      </SettingsSection>,
+    );
+    const labelledBy = /<section[^>]*aria-labelledby="([^"]+)"/u.exec(markup)?.[1];
+    expect(labelledBy).toBeDefined();
+    expect(markup).toContain(`<h2 id="${labelledBy}"`);
   });
 });
 
