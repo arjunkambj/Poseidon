@@ -1,6 +1,6 @@
 /**
- * The Models page: `defaults` (model, effort, runtime mode) — what a new
- * thread starts with — rendered by `StructForm` off the schema's
+ * The Models page: `defaults` (model, effort, runtime mode, workspace) — what
+ * a new thread starts with — rendered by `StructForm` off the schema's
  * `settingsForm` annotations; effort and runtime mode take their options from
  * their contract enums, each shown by its readable label.
  *
@@ -73,7 +73,8 @@ export function ModelsPanel() {
         <StructForm
           schema={SettingsDefaults}
           skip={["model"]}
-          value={settings.defaults as unknown as Record<string, unknown>}
+          // An absent workspace is Local, and the select says so.
+          value={{ ...settings.defaults, workspace: settings.defaults.workspace ?? "local" }}
           onFieldChange={(key, value) => void setDefault(key, value)}
           optionsFor={(key) => {
             switch (key) {
@@ -84,6 +85,11 @@ export function ModelsPanel() {
                   value,
                   label: RUNTIME_MODE_LABELS[value],
                 }));
+              case "workspace":
+                return [
+                  { value: "local", label: "Local" },
+                  { value: "worktree", label: "New worktree" },
+                ];
               default:
                 return [];
             }

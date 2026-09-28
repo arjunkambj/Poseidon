@@ -19,6 +19,7 @@ import {
   withDockMemory,
   withPullRequestLink,
   withWorkspaceMode,
+  workspaceModeFor,
   type ComposerDraft,
 } from "./ui";
 
@@ -152,11 +153,14 @@ describe("parseCollapsedProjects", () => {
 });
 
 describe("workspace mode memory", () => {
-  it("reads each project's remembered mode back", () => {
-    expect(parseWorkspaceModes('{"p1":"worktree"}')).toEqual({ p1: "worktree" });
+  it("reads each project's remembered mode back, an explicit local included", () => {
+    expect(parseWorkspaceModes('{"p1":"worktree","p2":"local"}')).toEqual({
+      p1: "worktree",
+      p2: "local",
+    });
   });
 
-  it("is local everywhere when nothing was stored or storage is foreign", () => {
+  it("holds no entry when nothing was stored or storage is foreign", () => {
     expect(parseWorkspaceModes(null)).toEqual({});
     expect(parseWorkspaceModes("not json")).toEqual({});
     expect(parseWorkspaceModes('["worktree"]')).toEqual({});
@@ -170,16 +174,26 @@ describe("workspace mode memory", () => {
     expect(one).toEqual({ p1: "worktree" });
   });
 
-  it("drops a project that goes back to local, and round-trips through storage", () => {
+  it("stores a pick of local, and round-trips it through storage", () => {
     const modes = withWorkspaceMode({ p1: "worktree", p2: "worktree" }, "p1", "local");
-    expect(modes).toEqual({ p2: "worktree" });
+    expect(modes).toEqual({ p1: "local", p2: "worktree" });
     expect(parseWorkspaceModes(JSON.stringify(modes))).toEqual(modes);
+    expect(withWorkspaceMode({}, "p3", "local")).toEqual({ p3: "local" });
   });
 
   it("returns the same map when nothing changes, so nothing is written", () => {
-    const modes = { p1: "worktree" as const };
+    const modes = { p1: "worktree" as const, p2: "local" as const };
     expect(withWorkspaceMode(modes, "p1", "worktree")).toBe(modes);
     expect(withWorkspaceMode(modes, "p2", "local")).toBe(modes);
+  });
+
+  it("opens a project never picked for on the Default workspace setting", () => {
+    const modes = { p1: "local" as const, p2: "worktree" as const };
+    expect(workspaceModeFor(modes, "p3", "worktree")).toBe("worktree");
+    expect(workspaceModeFor(modes, "p3", "local")).toBe("local");
+    // A remembered pick wins over the default either way.
+    expect(workspaceModeFor(modes, "p1", "worktree")).toBe("local");
+    expect(workspaceModeFor(modes, "p2", "local")).toBe("worktree");
   });
 });
 

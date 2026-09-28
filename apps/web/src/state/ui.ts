@@ -488,7 +488,7 @@ export type WorkspaceMode = "local" | "worktree";
 
 const WORKSPACE_MODES_KEY = "poseidon:workspace-modes";
 
-/** Absent, unparseable or foreign-shaped storage all mean "local everywhere". */
+/** Unparseable or foreign storage holds no entry; a project with none follows the default. */
 export const parseWorkspaceModes = (
   raw: string | null | undefined,
 ): Readonly<Record<string, WorkspaceMode>> => {
@@ -502,7 +502,7 @@ export const parseWorkspaceModes = (
     }
     const modes: Record<string, WorkspaceMode> = {};
     for (const [projectId, mode] of Object.entries(parsed)) {
-      if (mode === "worktree") {
+      if (mode === "worktree" || mode === "local") {
         modes[projectId] = mode;
       }
     }
@@ -513,25 +513,15 @@ export const parseWorkspaceModes = (
 };
 
 /**
- * The map with one project's mode set. Local is the default, so it is stored
- * as the key's absence and a project that goes back to local drops out.
+ * The map with one project's mode set. Local is stored too: absence follows
+ * the Default workspace setting, and a Local pick must outlast a Worktree one.
  */
 export const withWorkspaceMode = (
   modes: Readonly<Record<string, WorkspaceMode>>,
   projectId: string,
   mode: WorkspaceMode,
-): Readonly<Record<string, WorkspaceMode>> => {
-  if ((modes[projectId] ?? "local") === mode) {
-    return modes;
-  }
-  const next = { ...modes };
-  if (mode === "local") {
-    delete next[projectId];
-  } else {
-    next[projectId] = mode;
-  }
-  return next;
-};
+): Readonly<Record<string, WorkspaceMode>> =>
+  modes[projectId] === mode ? modes : { ...modes, [projectId]: mode };
 
 const readWorkspaceModes = (): Readonly<Record<string, WorkspaceMode>> => {
   try {
@@ -549,13 +539,21 @@ const readWorkspaceModes = (): Readonly<Record<string, WorkspaceMode>> => {
 const workspaceModesAtom =
   rememberedAtom<Readonly<Record<string, WorkspaceMode>>>(readWorkspaceModes());
 
-/** `[mode, setMode]` for one project on the start screen. */
-export const useWorkspaceMode = (projectId: string) => {
+/** A project's remembered mode, else `fallback`: the Default workspace setting. */
+export const workspaceModeFor = (
+  modes: Readonly<Record<string, WorkspaceMode>>,
+  projectId: string,
+  fallback: WorkspaceMode,
+): WorkspaceMode => modes[projectId] ?? fallback;
+
+/** `[mode, setMode]` for one project on the start screen (`workspaceModeFor`). */
+export const useWorkspaceMode = (projectId: string, fallback: WorkspaceMode = "local") => {
   const mode = useAtomValue(
     workspaceModesAtom,
     React.useCallback(
-      (modes: Readonly<Record<string, WorkspaceMode>>) => modes[projectId] ?? "local",
-      [projectId],
+      (modes: Readonly<Record<string, WorkspaceMode>>) =>
+        workspaceModeFor(modes, projectId, fallback),
+      [projectId, fallback],
     ),
   );
   const setModes = useAtomSet(workspaceModesAtom);

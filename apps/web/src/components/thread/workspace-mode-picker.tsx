@@ -4,7 +4,8 @@
  * or a **New worktree**, a branch and directory of its own cut from a base
  * branch (`start-in-worktree.ts` runs that sequence).
  *
- * The choice is remembered per project (`useWorkspaceMode`). A project that is
+ * The choice is remembered per project (`useWorkspaceMode`); a project never
+ * picked for opens on Settings → Models' Default workspace. A project that is
  * not a git repository cannot have worktrees, so the option is disabled and
  * the picker says why; a remembered "worktree" then reads as local. The base
  * list is `git.branches` of the project's own checkout: local branches first,
@@ -29,6 +30,7 @@ import type { GitBranchList } from "@poseidon/contracts/git";
 import type { ProjectId } from "@poseidon/contracts/ids";
 
 import { useGitAtoms } from "@/components/panes/changes/git-atoms";
+import { useAppAtoms } from "@/lib/app-runtime";
 import { useWorkspaceMode, type WorkspaceMode } from "@/state/ui";
 import { Computer, GitBranch, GitFork } from "@honeyicons/react";
 
@@ -60,7 +62,9 @@ export const useWorkspaceChoice = (projectId: ProjectId): WorkspaceChoice => {
     AsyncResult.isSuccess(result) && result.value._tag === "ok" ? result.value.value : null;
   const worktreeAllowed = branches === null || branches.isRepository;
 
-  const [remembered, setMode] = useWorkspaceMode(projectId);
+  const settings = useAtomValue(useAppAtoms().settingsAtom);
+  const fallback = AsyncResult.isSuccess(settings) ? settings.value?.defaults.workspace : undefined;
+  const [remembered, setMode] = useWorkspaceMode(projectId, fallback ?? "local");
   // The pick belongs to the project it was made for; another project opens on
   // its own default branch.
   const [picked, setPicked] = React.useState<{ projectId: ProjectId; branch: string } | null>(null);
