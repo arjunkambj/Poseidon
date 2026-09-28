@@ -2,6 +2,7 @@
  * The per-thread menu. It opens from the row's overflow button or a
  * right-click anywhere on the row, and both draw one item list
  * (`./thread-menu-items`): rename, pin, mark unread, copy, open a terminal,
+ * open the pull request (when the branch has one),
  * start a thread beside it, archive, delete. Rename edits the title in the row
  * itself (`./thread-title-input`); this module's `RenameThreadDialog` is the
  * other path, for `thread.rename` on the open thread, answered from

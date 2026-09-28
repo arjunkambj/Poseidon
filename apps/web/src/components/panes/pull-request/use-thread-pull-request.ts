@@ -2,7 +2,8 @@
  * Whether a thread's branch has a pull request, from the project's marks
  * (`git.pullRequest.marks`) — one listing shared by everything that asks, so
  * the dock's launcher offering the Pull request tab costs no gh call of its
- * own. Outside a thread (the New task page) nothing is read.
+ * own; the sidebar's glyph on each thread row (`@/components/sidebar/thread-pr-mark`)
+ * reads the same one. Outside a thread (the New task page) nothing is read.
  */
 
 import { useAtomValue } from "@effect/atom-react";
@@ -21,7 +22,7 @@ type MarksResult = AsyncResult.AsyncResult<GitQuery<PullRequestMarks>, unknown>;
 const NO_MARKS: Atom.Atom<MarksResult> = Atom.make<MarksResult>(AsyncResult.initial());
 
 /** The thread's mark, or `null` when its branch has none (or the marks are not in yet). */
-const useThreadPullRequestMark = (
+export const useThreadPullRequestMark = (
   projectId: ProjectId,
   threadId: ThreadId | null,
 ): PullRequestMark | null => {

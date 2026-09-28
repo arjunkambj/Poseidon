@@ -3,7 +3,7 @@
  *
  * Left to right: a fixed status slot, the title, a terminal mark while the
  * thread's own terminals run a shell (`../terminal/thread-terminals-mark`), a
- * fork mark when the thread works in its own worktree, and how long ago the
+ * pull request glyph when its branch has one (`./thread-pr-mark`), a fork mark when the thread works in its own worktree, and how long ago the
  * thread last moved. The slot holds the status mark from `./thread-status` —
  * needs you, plan ready, running, error — and, only when there is none, the
  * unread dot; a thread that is running or waiting says so louder than
@@ -35,6 +35,7 @@ import { SidebarMenuButton, SidebarMenuItem } from "@poseidon/ui/components/side
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { ThreadContextMenu, ThreadRowMenu } from "@/components/sidebar/thread-menu";
+import { ThreadPrMark, useThreadPrMark } from "@/components/sidebar/thread-pr-mark";
 import { useRenamingThread } from "@/components/sidebar/thread-rename";
 import { isUnread, useThreadSeen } from "@/components/sidebar/thread-seen";
 import { selectGestureOf, type SelectGesture } from "@/components/sidebar/thread-selection";
@@ -100,10 +101,17 @@ export function ThreadRow({
   // "1h 4m" is wider than "3h", so the title keeps further from the corner.
   const clearTime = working === null ? "mr-6" : "mr-12";
   const terminals = useThreadRunningTerminals(threadId);
+  const prMark = useThreadPrMark(thread);
   // The last inline piece keeps clear of the corner: the fork mark, else the
-  // terminal mark, else the title.
+  // pull request glyph, else the terminal mark, else the title.
   const lastPiece =
-    thread.worktree !== undefined ? "fork" : terminals.length > 0 ? "terminals" : "title";
+    thread.worktree !== undefined
+      ? "fork"
+      : prMark !== null
+        ? "pr"
+        : terminals.length > 0
+          ? "terminals"
+          : "title";
   const [renamingId, startRename, stopRename] = useRenamingThread();
 
   if (renamingId === threadId) {
@@ -179,6 +187,11 @@ export function ThreadRow({
         <ThreadTerminalsMark
           terminals={terminals}
           className={lastPiece === "terminals" ? clearTime : undefined}
+        />
+        <ThreadPrMark
+          threadId={threadId}
+          mark={prMark}
+          className={lastPiece === "pr" ? clearTime : undefined}
         />
         {thread.worktree === undefined ? null : (
           <span

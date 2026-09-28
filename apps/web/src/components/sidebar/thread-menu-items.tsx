@@ -7,7 +7,9 @@
  * 2. Pin / Unpin, then Mark unread (`./use-sidebar-actions`, undoable).
  * 3. Copy ▸ the workspace path, the branch and the thread ID
  *    (`./thread-copy-targets` says which apply).
- * 4. Open terminal here — opens the thread with its terminal drawer open.
+ * 4. Open terminal here — opens the thread with its terminal drawer open;
+ *    Open pull request — opens it on its Pull request tab, only while its
+ *    branch has one (the row's glyph, `./thread-pr-mark`, for the keyboard).
  * 5. New thread in this project — in the same worktree for a worktree
  *    thread: the server lets several threads share one.
  * 6. Archive or Unarchive, then Delete, each after a separator.
@@ -36,9 +38,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { makeThreadId } from "@poseidon/contracts/ids";
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
+import { useThreadPullRequestMark } from "@/components/panes/pull-request/use-thread-pull-request";
 import { threadCommandBase, useThreadCommand } from "@/components/sidebar/thread-actions";
 import { threadCopyTargets } from "@/components/sidebar/thread-copy-targets";
 import { useThreadPins } from "@/components/sidebar/thread-pins";
+import { useOpenPullRequestTab } from "@/components/sidebar/thread-pr-mark";
 import { useRenamingThread } from "@/components/sidebar/thread-rename";
 import { useThreadSeen } from "@/components/sidebar/thread-seen";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
@@ -54,6 +58,7 @@ import {
   Copy,
   Edit,
   Email,
+  GitPullRequest,
   Pin,
   PinOff,
   Terminal,
@@ -114,6 +119,8 @@ export function ThreadMenuItems({
   const connection = useConnectionState();
   const project = useProjects().find((each) => each.projectId === thread.projectId);
   const pinned = pins.includes(thread.threadId);
+  const pullRequest = useThreadPullRequestMark(thread.projectId, thread.threadId);
+  const openPullRequest = useOpenPullRequestTab(thread.threadId);
   // `""` is the stamp "Mark unread" leaves until the thread is opened again.
   const markedUnread = seen[thread.threadId] === "";
   const base = () => threadCommandBase(thread.threadId);
@@ -172,6 +179,12 @@ export function ThreadMenuItems({
         <Terminal variant="bold" />
         Open terminal here
       </Item>
+      {pullRequest === null ? null : (
+        <Item onClick={openPullRequest}>
+          <GitPullRequest variant="bold" />
+          Open pull request
+        </Item>
+      )}
       <Item
         disabled={project === undefined || pending || connection.status !== "connected"}
         onClick={newThread}
