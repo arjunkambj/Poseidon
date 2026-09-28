@@ -2240,6 +2240,30 @@ preferring an open pull request, then the newest. When no thread is on a
 branch of its own, gh is not asked at all; gh missing, signed out or failing
 is an empty list.
 
+Writing to one lives in `apps/server/src/git/PullRequestActions.ts`.
+`git.pullRequest.action` asks `pullRequestBlocker` first (`unavailable` with
+gh's fix), then runs one gh command on the pull request's number in the
+workspace: `gh pr ready`, `gh pr ready --undo` for back to draft,
+`gh pr merge --merge|--squash|--rebase`, `gh pr close` or `gh pr reopen`. A
+merge given the head commit the pane showed adds `--match-head-commit`, so it
+cannot land a commit the user never saw; it never passes `--delete-branch`
+(gh would switch and delete local branches under a worktree), `--auto` or
+`--admin`. A refusal is `conflict` in gh's words; otherwise the view is read
+again and returned. Neither this nor the fix context touches the working tree,
+so a running turn does not block them. `git.pullRequest.fixContext` reads the
+view again, refusing with `conflict` when the branch's pull request is no
+longer the number asked about, and answers what a thread fixing it starts
+from. For `checks`: every failing check, with the tail of
+`gh run view --job <id> --log-failed` for the first three that are Actions
+jobs — gh's job, step and timestamp columns dropped, cut after the last
+`##[error]` line (what follows is the runner's cleanup), at most 60 lines and
+4 KB — and `null` for the rest or when the read fails. For `conflicts`: the
+files `git merge-tree --write-tree --name-only` reports between HEAD and
+`<remote>/<base>`, the remote picked as a push picks it. Nothing is fetched,
+so the list is as of the last fetch; a clean merge, a base the remote-tracking
+refs lack or a git older than 2.38 is an empty list. Review comments need no
+call: the view already carries them.
+
 The thread header's git actions control
 (`apps/web/src/components/git/git-actions-control.tsx`) is the client of these
 — and the New task page's header carries it too, before any thread exists,

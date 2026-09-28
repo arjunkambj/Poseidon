@@ -378,8 +378,11 @@ not-authenticated paths, and no test ever opens a real pull request
 (`fakeGh.ts` holds the fake and gh's captured answers). The pull request reads
 (`PullRequests.ts`, `pullRequestJson.ts`) are tested against JSON captured
 read-only from gh 2.92.0 on public repositories — `gh pr view --json`,
-`gh pr list --json` and the review-thread `gh api graphql` read — trimmed,
-with human logins replaced, under `apps/server/src/git/fixtures/`. Capture new
+`gh pr list --json`, the review-thread `gh api graphql` read and a
+`gh run view --log-failed` job log — trimmed, with human logins replaced,
+under `apps/server/src/git/fixtures/`. The pull request writes
+(`PullRequestActions.ts`) are tested by their argv and by refusals worded as
+gh's source words them. Capture new
 ones the same way, read-only, and never run a pull request write against a
 real repository.
 
