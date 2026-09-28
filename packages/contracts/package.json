@@ -48,6 +48,10 @@
       "types": "./src/harnessCommands.ts",
       "import": "./src/harnessCommands.ts"
     },
+    "./plugins": {
+      "types": "./src/plugins.ts",
+      "import": "./src/plugins.ts"
+    },
     "./git": {
       "types": "./src/git.ts",
       "import": "./src/git.ts"

@@ -41,6 +41,11 @@ const toRpcError = (error: unknown): PoseidonRpcError =>
         // learns that something failed.
         new PoseidonRpcError({ code: "internal", message: "internal error" });
 
+const pluginsUnavailable = new PoseidonRpcError({
+  code: "unavailable",
+  message: "the plugin registry is not available",
+});
+
 /** The RPC handler layer — every method in the group, one implementation each. */
 export const handlersLayer = PoseidonRpcGroup.toLayer(
   Effect.gen(function* () {
@@ -161,6 +166,11 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
         extensions.mcpAdd(instanceId, projectId, server),
       "connectors.mcp.remove": ({ instanceId, projectId, scope, name }) =>
         extensions.mcpRemove(instanceId, projectId, scope, name),
+
+      // Answered `unavailable` until the plugin registry lands behind them.
+      "plugins.list": () => Effect.fail(pluginsUnavailable),
+      "plugins.setEnabled": () => Effect.fail(pluginsUnavailable),
+      "plugins.openFolder": () => Effect.fail(pluginsUnavailable),
 
       "keybindings.get": () => Effect.map(settings.get, (doc) => doc.keybindings),
       "keybindings.update": ({ keybindings }) =>

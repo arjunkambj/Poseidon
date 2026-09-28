@@ -45,6 +45,7 @@ import type * as Scope from "effect/Scope";
 import * as Schema from "effect/Schema";
 
 import type { ConnectorExtensions } from "./extensions";
+import type { SessionPlugin } from "./plugins";
 import type { SessionHandle } from "./sessionHandle";
 
 // ── Errors ─────────────────────────────────────────────────────
@@ -216,6 +217,13 @@ export interface ConnectorServices {
     handler: (body: unknown) => Effect.Effect<unknown>,
   ) => Effect.Effect<void>;
   readonly unregisterHookHandler?: (threadId: ThreadId) => Effect.Effect<void>;
+  /**
+   * The Poseidon plugins enabled for a thread's session, read when the
+   * session starts, so switching a plugin affects new sessions only. Optional:
+   * a services implementation without a plugin registry (tests, fakes) leaves
+   * it out, and a connector that ignores it simply loads no plugins.
+   */
+  readonly sessionPlugins?: (threadId: ThreadId) => Effect.Effect<ReadonlyArray<SessionPlugin>>;
   readonly permissions: ConnectorPermissions;
   readonly attachmentsDir: string;
   readonly logger: ConnectorLogger;

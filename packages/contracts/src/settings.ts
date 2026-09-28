@@ -420,6 +420,15 @@ export const Settings = Schema.Struct({
   preferredEditor: Schema.optional(Schema.String).pipe(
     settingsForm({ label: "Preferred editor", control: "hidden" }),
   ),
+  // Per-plugin on/off overrides, keyed by plugin id (`builtin:<name>`,
+  // `global:<dir>`). Only a plugin the user switched has an entry; every other
+  // plugin keeps its own default (built-in Browser on, global plugins on), so
+  // a default changed later still reaches this install. Defaulted on decode
+  // like `browser`: rows written before it existed still decode.
+  plugins: Schema.Record(Schema.String, Schema.Boolean).pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed({})),
+    settingsForm({ label: "Plugins", control: "hidden" }),
+  ),
 });
 export type Settings = typeof Settings.Type;
 
@@ -438,6 +447,7 @@ export const SettingsPatch = Schema.Struct({
   browser: Schema.optional(BrowserSettings),
   notifications: Schema.optional(NotificationSettings),
   preferredEditor: Schema.optional(Schema.String),
+  plugins: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
 });
 export type SettingsPatch = typeof SettingsPatch.Type;
 
@@ -460,4 +470,5 @@ export const defaultSettings = (): Settings => ({
   projectSettings: {},
   browser: DEFAULT_BROWSER_SETTINGS,
   notifications: DEFAULT_NOTIFICATION_SETTINGS,
+  plugins: {},
 });

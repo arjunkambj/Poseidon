@@ -67,5 +67,6 @@
     "sound": false,
     "dockBadge": true,
     "keepAwake": true
-  }
+  },
+  "plugins": { "builtin:browser": false }
 }

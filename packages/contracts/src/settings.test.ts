@@ -128,6 +128,7 @@ describe("settingsForm annotations", () => {
         "mainFontSize",
         "notifications",
         "permissions",
+        "plugins",
         "projectSettings",
         "sidebarFontSize",
         "theme",
@@ -316,6 +317,50 @@ describe("browser settings", () => {
     Effect.gen(function* () {
       const exit = yield* Effect.exit(
         Schema.decodeUnknownEffect(SettingsPatch)({ browser: { openPaneOnAgentUse: "yes" } }),
+      );
+      expect(exit._tag).toBe("Failure");
+    }),
+  );
+});
+
+describe("plugin overrides", () => {
+  it.effect("override no plugin on a fresh install", () =>
+    Effect.gen(function* () {
+      const settings = yield* Effect.sync(defaultSettings);
+      expect(settings.plugins).toEqual({});
+    }),
+  );
+
+  it.effect("decode a stored document that predates them as no overrides", () =>
+    Effect.gen(function* () {
+      const { plugins: _plugins, ...older } = Schema.encodeUnknownSync(Settings)(
+        defaultSettings(),
+      ) as Record<string, unknown>;
+      const decoded = yield* Schema.decodeUnknownEffect(Settings)(older);
+      expect(decoded.plugins).toEqual({});
+    }),
+  );
+
+  it.effect("round-trip through a patch", () =>
+    Effect.gen(function* () {
+      const patch = { plugins: { "builtin:browser": false, "global:notes": true } };
+      const encoded = yield* Schema.encodeUnknownEffect(SettingsPatch)(patch);
+      const decoded = yield* Schema.decodeUnknownEffect(SettingsPatch)(
+        JSON.parse(JSON.stringify(encoded)),
+      );
+      expect(decoded).toEqual(patch);
+      const applied = yield* Schema.decodeUnknownEffect(Settings)({
+        ...(Schema.encodeUnknownSync(Settings)(defaultSettings()) as object),
+        ...decoded,
+      });
+      expect(applied.plugins).toEqual(patch.plugins);
+    }),
+  );
+
+  it.effect("reject an override that is not a boolean", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(
+        Schema.decodeUnknownEffect(SettingsPatch)({ plugins: { "builtin:browser": "off" } }),
       );
       expect(exit._tag).toBe("Failure");
     }),

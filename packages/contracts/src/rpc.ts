@@ -58,6 +58,12 @@ import {
   ThreadSummary,
 } from "./orchestration";
 import { FileChangeKind } from "./runtime";
+import {
+  PLUGIN_RPC_METHODS,
+  PluginsListRpc,
+  PluginsOpenFolderRpc,
+  PluginsSetEnabledRpc,
+} from "./plugins";
 import { PoseidonRpcError } from "./rpcError";
 import { SCRIPT_RPC_METHODS, ScriptsDetectRpc } from "./scripts";
 import { Keybinding, Settings, SettingsPatch } from "./settings";
@@ -233,6 +239,7 @@ export const RPC_METHODS = {
   ...GIT_RPC_METHODS,
   ...EDITOR_RPC_METHODS,
   ...SCRIPT_RPC_METHODS,
+  ...PLUGIN_RPC_METHODS,
   checkpointsList: "checkpoints.list",
   browserSubscribe: "browser.subscribe",
   browserHumanInput: "browser.humanInput",
@@ -751,6 +758,9 @@ export const PoseidonRpcGroup = RpcGroup.make(
   ConnectorsMcpListRpc,
   ConnectorsMcpAddRpc,
   ConnectorsMcpRemoveRpc,
+  PluginsListRpc,
+  PluginsSetEnabledRpc,
+  PluginsOpenFolderRpc,
   KeybindingsGetRpc,
   KeybindingsUpdateRpc,
   TerminalOpenRpc,

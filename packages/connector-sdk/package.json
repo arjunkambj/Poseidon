@@ -20,6 +20,10 @@
       "types": "./src/extensions.ts",
       "import": "./src/extensions.ts"
     },
+    "./plugins": {
+      "types": "./src/plugins.ts",
+      "import": "./src/plugins.ts"
+    },
     "./registry": {
       "types": "./src/registry.ts",
       "import": "./src/registry.ts"
