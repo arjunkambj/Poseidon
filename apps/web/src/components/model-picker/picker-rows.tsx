@@ -13,6 +13,7 @@ import { cn } from "@poseidon/ui/lib/utils";
 import type * as React from "react";
 
 import { HarnessAvatar } from "@/components/harness-avatar";
+import { ProviderMark } from "@/components/ui/icons/provider-mark";
 import type { HarnessRailEntry, HarnessRailItem } from "@/lib/harness-picker";
 import { Check } from "@honeyicons/react";
 
@@ -96,10 +97,12 @@ export function HarnessRailColumn({
 /**
  * One model: its label, its effort ladder in muted text, and a check when it
  * is the current pick. Its tagline (or, without one, its family) is the native
- * hover tooltip: a second line would break the 28px row. In search results
- * the harness's avatar (logo, else monogram) leads it. In compare mode
- * (`checked` given) a checkbox leads it instead of the check: the row is what
- * a click lands on, so the checkbox only shows the state.
+ * hover tooltip: a second line would break the 28px row. Under a harness whose
+ * models span providers, the provider's mark (or an empty box the same size)
+ * sits before the label. In search results the harness's avatar (logo, else
+ * monogram) leads it. In compare mode (`checked` given) a checkbox leads it
+ * instead of the check: the row is what a click lands on, so the checkbox only
+ * shows the state.
  */
 export function PickerRow({
   id,
@@ -145,6 +148,7 @@ export function PickerRow({
       {harness === undefined ? null : (
         <HarnessAvatar monogram={harness.monogram} iconKey={harness.iconKey} />
       )}
+      {item.provider === undefined ? null : <ProviderMark providerKey={item.provider} />}
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {item.efforts === undefined ? null : (
         <span className="shrink-0 text-xs text-muted-foreground">{item.efforts}</span>

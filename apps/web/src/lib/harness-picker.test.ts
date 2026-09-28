@@ -462,3 +462,48 @@ describe("pickerKey", () => {
     expect(pickerKey("Tab")).toBeNull();
   });
 });
+
+describe("harnessRail providers", () => {
+  const mixed = group("m", "Mixed", [
+    model("deepseek/deepseek-v4-pro", "Renamed Anything", "Open Source"),
+    model("poolside/laguna-s-2.1-free", "Laguna", "Open Source"),
+    model("gpt-5.5", "GPT-5.5", "OpenAI"),
+  ]);
+  const single = group("s", "Single", [
+    model("gpt-5.5", "GPT-5.5", "OpenAI"),
+    model("gpt-5.4-mini", "Mini", "OpenAI"),
+  ]);
+  const cat = [mixed, single];
+  const [mixedEntry, singleEntry] = harnessRail(
+    modelPickerGroups(cat, { instanceId: null, locked: false }),
+    null,
+    cat,
+  );
+
+  it("keys each model of a multi-provider harness by its id prefix, else its family", () => {
+    expect(mixedEntry?.items.map((item) => item.provider)).toEqual([
+      "deepseek",
+      "poolside",
+      "openai",
+    ]);
+  });
+
+  it("leaves a single-provider harness's models unkeyed", () => {
+    expect(singleEntry?.items.every((item) => item.provider === undefined)).toBe(true);
+  });
+
+  it("decides on the whole catalog, not only the models the picker lists", () => {
+    // The picker lists one model (the other is switched off); the catalog has both.
+    const listed = group("h", "Filtered", [model("gpt-5.5", "GPT-5.5", "OpenAI")]);
+    const whole = {
+      ...listed,
+      models: [...listed.models, model("deepseek/deepseek-v4-pro", "V4 Pro", "Open Source")],
+    };
+    const [entry] = harnessRail(
+      modelPickerGroups([listed], { instanceId: null, locked: false }),
+      null,
+      [whole],
+    );
+    expect(entry?.items.map((item) => item.provider)).toEqual(["openai"]);
+  });
+});

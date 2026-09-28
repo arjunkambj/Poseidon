@@ -1,3 +1,4 @@
+import { Deepseek, Openai } from "@honeyicons/react";
 import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 import type { ModelOption } from "@poseidon/contracts/connectors";
 import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
@@ -211,6 +212,56 @@ describe("HarnessPickerView", () => {
   it("shows a current model no harness lists verbatim", () => {
     const html = render(railFor(), initialPickerState(railFor(), current), "old-model");
     expect(html).toContain("Current · old-model");
+  });
+});
+
+describe("HarnessPickerView provider marks", () => {
+  const firstPath = (html: string) => / d="([^"]*)"/.exec(html)?.[1] ?? "";
+  const deepseek = firstPath(renderToStaticMarkup(<Deepseek variant="bold" />));
+  const openai = firstPath(renderToStaticMarkup(<Openai variant="bold" />));
+  const mixed = [
+    group("m", "Mixed", [
+      { id: "deepseek/deepseek-v4-pro", label: "V4 Pro", family: "Open Source", efforts: [] },
+      { id: "poolside/laguna-s-2.1-free", label: "Laguna", family: "Open Source", efforts: [] },
+      { id: "gpt-5.5", label: "GPT-5.5", family: "OpenAI", efforts: [] },
+    ]),
+    group("s", "Single", [
+      { id: "gpt-5.5", label: "GPT-5.5", family: "OpenAI", efforts: [] },
+      { id: "gpt-5.4-mini", label: "GPT-5.4 Mini", family: "OpenAI", efforts: [] },
+    ]),
+  ];
+  const onMixed: ModelPick = { connectorInstanceId: id("m"), model: "gpt-5.5" };
+  const rail = harnessRail(
+    modelPickerGroups(mixed, { instanceId: id("m"), locked: false }),
+    onMixed,
+    mixed,
+  );
+  /** Each option's markup, from its opening tag up to the next option. */
+  const options = (html: string, prefix: string) => html.split(`id="${prefix}`).slice(1);
+
+  it("leads a multi-provider harness's rows with marks, and a box where none exists", () => {
+    const html = render(rail, initialPickerState(rail, onMixed));
+    const rows = options(html, "p-model-0-");
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toContain(` d="${deepseek}"`);
+    expect(rows[1]).toContain('<span aria-hidden="true" data-slot="provider-mark"');
+    expect(rows[1]).not.toContain("<svg");
+    expect(rows[2]).toContain(` d="${openai}"`);
+  });
+
+  it("draws no marks for a harness whose models share one provider", () => {
+    const state = { ...initialPickerState(rail, onMixed), harness: 1, zone: "rail" as const };
+    const html = render(rail, state);
+    expect(options(html, "p-model-1-")).toHaveLength(2);
+    for (const row of options(html, "p-model-1-")) {
+      expect(row).not.toContain('data-slot="provider-mark"');
+    }
+  });
+
+  it("keeps the marks in search results", () => {
+    const html = render(rail, { ...initialPickerState(rail, onMixed), query: "v4" });
+    const [row] = options(html, "p-result-");
+    expect(row).toContain(` d="${deepseek}"`);
   });
 });
 

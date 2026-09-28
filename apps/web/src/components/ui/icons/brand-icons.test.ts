@@ -31,6 +31,7 @@ import {
   harnessLogoFor,
   providerKey,
   providerMarkFor,
+  spansProviders,
 } from "./brand-icons";
 
 describe("connectorIconFor", () => {
@@ -146,5 +147,47 @@ describe("providerMarkFor", () => {
   it("leaves a missing or inherited key unmarked", () => {
     expect(providerMarkFor(undefined)).toBeUndefined();
     expect(providerMarkFor("constructor")).toBeUndefined();
+  });
+});
+
+describe("spansProviders", () => {
+  const models = (...pairs: ReadonlyArray<readonly [string, string]>) =>
+    pairs.map(([id, family]) => ({ id, family }));
+
+  it("is true for a list mixing providers, by id prefix or by family", () => {
+    // Command Code's shape: 'Open Source' holds several makers by prefix,
+    // and the named sections are a maker each.
+    expect(
+      spansProviders(
+        models(
+          ["deepseek/deepseek-v4-pro", "Open Source"],
+          ["qwen/qwen3.8-max", "Open Source"],
+          ["claude-sonnet-5", "Anthropic"],
+          ["gpt-5.5", "OpenAI"],
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      spansProviders(
+        models(["deepseek/deepseek-v4-pro", "Open Source"], ["qwen/qwen3.8-max", "Open Source"]),
+      ),
+    ).toBe(true);
+    expect(spansProviders(models(["claude-sonnet-5", "Anthropic"], ["gpt-5.5", "OpenAI"]))).toBe(
+      true,
+    );
+  });
+
+  it("is false for a harness whose models share one family or one prefix", () => {
+    expect(spansProviders(models(["gpt-5.5", "Codex"], ["gpt-5.3-codex", "Codex"]))).toBe(false);
+    expect(
+      spansProviders(models(["claude-opus-5", "Claude"], ["claude-haiku-4-5", "Claude"])),
+    ).toBe(false);
+    expect(
+      spansProviders(
+        models(["google/gemini-3.8-flash", "Google"], ["google/gemini-3.7-flash", "Google"]),
+      ),
+    ).toBe(false);
+    expect(spansProviders(models(["gpt-5.5", "OpenAI"]))).toBe(false);
+    expect(spansProviders([])).toBe(false);
   });
 });

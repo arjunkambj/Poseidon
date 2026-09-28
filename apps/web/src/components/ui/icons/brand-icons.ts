@@ -114,6 +114,15 @@ export const providerKey = (modelId: string, family: string): string => {
 };
 
 /**
+ * Whether a harness's models come from more than one provider, by their
+ * `providerKey`s. Only then does a model row lead with its provider's mark: a
+ * harness whose every model shares one family (one maker) needs no marks.
+ */
+export const spansProviders = (
+  models: ReadonlyArray<{ readonly id: string; readonly family: string }>,
+): boolean => new Set(models.map((model) => providerKey(model.id, model.family))).size > 1;
+
+/**
  * Provider keys → their mark. The keys are the id prefixes and family headers
  * the recorded model lists carry (normalised as `providerKey` does), with the
  * spellings one provider goes by folded together.

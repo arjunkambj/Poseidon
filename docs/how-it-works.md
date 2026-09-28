@@ -600,15 +600,21 @@ pick's harness is ringed. Hovering an avatar, or arrowing onto it, opens its
 flyout beside the column: that instance's models, each a single 28px row with
 its name, its effort ladder in a few characters ("low–high") and a check on the
 current one, and its tagline (`ModelOption.description`, or the family when the
-connector gives none) as the row's native hover tooltip. The trigger shows the
-name alone. Typing swaps the column for one list of matches across every
-harness, each led by its harness's avatar (logo, else monogram): a match on the
-name or id ranks first, then a word of the family, tagline or harness name.
-Focus stays in the search input, which names the highlighted option with
-`aria-activedescendant`: Up and Down move along the column or the flyout, Right
-or Enter goes into a flyout, Enter picks, Left goes back to the column, and
-Escape clears the query, then leaves the flyout, then closes the picker. Choose
-model (`Mod+Shift+M`) opens it. The keyboard and
+connector gives none) as the row's native hover tooltip. When a harness's
+catalog spans more than one provider (`spansProviders`: the model ids'
+prefixes, such as `qwen/…`, else their families, never their labels), each of
+its rows leads with the provider's monochrome mark (`ProviderMark` in
+`components/ui/icons/provider-mark.tsx`), or an empty box the same size for a
+provider Honeyicons has no logo for, so the names stay aligned; a harness whose
+models share one family shows none. The trigger shows the name alone. Typing
+swaps the column for one list of matches across every harness, each led by its
+harness's avatar (logo, else monogram): a match on the name or id ranks first,
+then a word of the family, tagline or harness name. Focus stays in the search
+input, which names the highlighted option with `aria-activedescendant`: Up and
+Down move along the column or the flyout, Right or Enter goes into a flyout,
+Enter picks, Left goes back to the column, and Escape clears the query, then
+leaves the flyout, then closes the picker. Choose model (`Mod+Shift+M`) opens
+it. The keyboard and
 search model is `apps/web/src/lib/harness-picker.ts`, the popup
 `apps/web/src/components/model-picker/`. It lists only the harnesses and models switched on in Settings → Models
 (`visibleCatalog` in `apps/web/src/lib/model-visibility.ts`), and always the
@@ -3889,7 +3895,8 @@ off), its name and connector kind, and a "Show in model pickers"
 switch; under it is a 28px row per model with its label, then one muted,
 truncated line of its tagline (when the connector gives one), id and family
 (`modelDetail`, in full as a hover title), its effort ladder (lowest first, "No
-effort levels" when it has none) and its own switch. The label keeps up to two
+effort levels" when it has none) and its own switch, led by its provider's mark
+as in the picker when the harness spans providers. The label keeps up to two
 thirds of the row, so a long tagline is cut before the name.
 Rows under a harness that is off are shown with their switches disabled, and
 the switch that would leave the pickers with no model is disabled with a

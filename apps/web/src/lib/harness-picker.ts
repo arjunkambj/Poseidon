@@ -21,6 +21,7 @@ import type { ConnectorSummary } from "@poseidon/contracts/connectors";
 import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
 import { EFFORT_ORDER, type Effort } from "@poseidon/contracts/enums";
 
+import { providerKey, spansProviders } from "@/components/ui/icons/brand-icons";
 import { orderEfforts } from "@/lib/efforts";
 import { catalogMonograms, harnessMonograms } from "@/lib/harness-monogram";
 import { decodeModelPick, type ModelPick, type ModelPickerGroup } from "@/lib/model-picks";
@@ -36,6 +37,11 @@ export interface HarnessRailItem {
   readonly description?: string;
   /** The effort ladder in a few characters ("low–high"); absent without rungs. */
   readonly efforts?: string;
+  /**
+   * The model's `providerKey`, set only when its harness's models span
+   * providers (`spansProviders`), so the row leads with the provider's mark.
+   */
+  readonly provider?: string;
   readonly disabled: boolean;
   /** The pick the thread (or new task) is on. */
   readonly current: boolean;
@@ -88,7 +94,9 @@ export const effortSummary = (efforts: ReadonlyArray<Effort> | undefined): strin
  * catalog, so a harness's monogram is the same on every surface whatever is
  * switched off (`catalogMonograms`). `iconKeys` maps a connector kind to its
  * `metadata.iconKey` (`useConnectorIconKeys`), so the avatar can draw the
- * harness's logo; a kind missing from it keeps the monogram.
+ * harness's logo; a kind missing from it keeps the monogram. A model's
+ * provider is read from its id and its family in the catalog, never its label,
+ * and only a harness whose catalog spans providers marks its models.
  */
 export const harnessRail = (
   groups: ReadonlyArray<ModelPickerGroup>,
@@ -102,6 +110,8 @@ export const harnessRail = (
     const isCurrent = current !== null && current.connectorInstanceId === instanceId;
     const listed = catalog.find((entry) => entry.connector.connectorInstanceId === instanceId);
     const iconKey = iconKeys.get(group.connector.kind);
+    const families = new Map(listed?.models.map((model) => [model.id, model.family]));
+    const marked = listed !== undefined && spansProviders(listed.models);
     return {
       connector: group.connector,
       instanceId,
@@ -118,6 +128,9 @@ export const harnessRail = (
           return [];
         }
         const efforts = effortSummary(item.efforts);
+        const provider = marked
+          ? providerKey(pick.model, families.get(pick.model) ?? "")
+          : undefined;
         return [
           {
             value: item.value,
@@ -126,6 +139,7 @@ export const harnessRail = (
             family: item.family,
             ...(item.description === undefined ? {} : { description: item.description }),
             ...(efforts === undefined ? {} : { efforts }),
+            ...(provider === undefined ? {} : { provider }),
             disabled: item.disabled,
             current: isCurrent && current.model === pick.model,
           },

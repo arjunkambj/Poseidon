@@ -3,7 +3,8 @@
  * and connector kind, a switch that says whether the model pickers offer it,
  * and a dense row per model: its name, a muted line with its tagline (when
  * the connector gives one), id and family, its effort ladder and its own
- * switch.
+ * switch. A harness whose models span providers leads each row with the
+ * provider's mark (`ProviderMark`).
  *
  * The switches filter the pickers only (`@/lib/model-visibility`): a thread
  * already on a harness or model that is switched off keeps it and keeps
@@ -29,6 +30,8 @@ import { cn } from "@poseidon/ui/lib/utils";
 import type * as React from "react";
 
 import { HarnessAvatar } from "@/components/harness-avatar";
+import { providerKey, spansProviders } from "@/components/ui/icons/brand-icons";
+import { ProviderMark } from "@/components/ui/icons/provider-mark";
 import { orderEfforts } from "@/lib/efforts";
 import {
   harnessOn,
@@ -75,12 +78,15 @@ function GuardedSwitch({
 
 function ModelRow({
   model,
+  marked,
   on,
   harnessIsOn,
   last,
   onToggle,
 }: {
   readonly model: ModelOption;
+  /** Lead with the model's provider mark: its harness spans providers. */
+  readonly marked: boolean;
   readonly on: boolean;
   readonly harnessIsOn: boolean;
   readonly last: boolean;
@@ -94,6 +100,7 @@ function ModelRow({
       className="flex min-h-7 items-center gap-3 px-2 py-0.5"
       aria-disabled={muted || undefined}
     >
+      {marked ? <ProviderMark providerKey={providerKey(model.id, model.family)} /> : null}
       <div className="flex min-w-0 flex-1 items-baseline gap-2">
         <span
           className={cn("max-w-2/3 shrink-0 truncate", muted && "text-muted-foreground")}
@@ -140,6 +147,7 @@ export function HarnessCard({
   const instanceId = connector.connectorInstanceId;
   const on = harnessOn(prefs, instanceId);
   const lastHarness = on && isLastVisibleHarness(catalog, prefs, instanceId);
+  const marked = spansProviders(models);
 
   return (
     <Card size="sm" data-slot="harness-card">
@@ -176,6 +184,7 @@ export function HarnessCard({
               <ModelRow
                 key={model.id}
                 model={model}
+                marked={marked}
                 on={modelOn(prefs, instanceId, model)}
                 harnessIsOn={on}
                 last={isLastVisible(catalog, prefs, instanceId, model.id)}

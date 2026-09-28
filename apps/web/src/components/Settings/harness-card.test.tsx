@@ -1,3 +1,4 @@
+import { Deepseek } from "@honeyicons/react";
 import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 import type { ModelOption } from "@poseidon/contracts/connectors";
 import type { Effort } from "@poseidon/contracts/enums";
@@ -154,5 +155,24 @@ describe("HarnessCard", () => {
 
   it("says when a harness lists no models", () => {
     expect(render(group("c", []), none, [...catalog, group("c", [])])).toContain("lists no models");
+  });
+});
+
+describe("HarnessCard provider marks", () => {
+  const mixed = group("m", [
+    { id: "deepseek/deepseek-v4-pro", label: "V4 Pro", family: "Open Source", efforts: [] },
+    { id: "poolside/laguna-s-2.1-free", label: "Laguna", family: "Open Source", efforts: [] },
+  ]);
+  const rows = (html: string) => html.split('data-slot="harness-model-row"').slice(1);
+
+  it("leads each row with its provider's mark, or a box the same size", () => {
+    const deepseek = / d="([^"]*)"/.exec(renderToStaticMarkup(<Deepseek variant="bold" />))?.[1];
+    const [first, second] = rows(render(mixed, none, [mixed]));
+    expect(first).toContain(` d="${deepseek}"`);
+    expect(second).toContain('<span aria-hidden="true" data-slot="provider-mark"');
+  });
+
+  it("draws no marks for a single-provider harness", () => {
+    expect(render(a, none)).not.toContain('data-slot="provider-mark"');
   });
 });
