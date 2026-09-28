@@ -20,8 +20,9 @@
  * Checkpoints behave as the server's do, without git: a completed turn
  * records one (`thread.checkpoint.created`), `checkpoints.list` answers the
  * document's list, and an accepted `thread.checkpoint.restore` is followed a
- * moment later by `thread.checkpoint.restored`, so the timeline's restore
- * controls go through their blocked and settled states.
+ * moment later by `thread.checkpoint.restored` (and, for an edit and resend,
+ * the edited message's turn), so the timeline's restore controls go through
+ * their blocked and settled states.
  *
  * The other RPC answers — files, models, skills, plugins, attachments,
  * keybindings — live in `fixture-rpc.ts`; this module lends it the thread
@@ -428,8 +429,22 @@ export const makeFixtureClient = (): FixtureClient => {
         }
         return {
           events: () => {
-            next("thread.checkpoint.restore.requested", { checkpoint }, command.commandId);
-            setTimeout(() => next("thread.checkpoint.restored", { checkpoint }), RESTORE_PAUSE_MS);
+            const { resend } = command;
+            next(
+              "thread.checkpoint.restore.requested",
+              { checkpoint, ...(resend === undefined ? {} : { resend }) },
+              command.commandId,
+            );
+            setTimeout(() => {
+              next("thread.checkpoint.restored", { checkpoint });
+              // As the checkpoint reactor: an edited message goes out once
+              // the restore has landed, as a plain turn.
+              if (resend !== undefined) {
+                const { commandId, createdAt } = command;
+                const start = { commandId, createdAt, threadId, ...resend, queued: false };
+                decide({ ...start, type: "thread.turn.start" }).events();
+              }
+            }, RESTORE_PAUSE_MS);
           },
         };
       }

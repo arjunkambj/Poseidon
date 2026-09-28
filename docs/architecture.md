@@ -790,6 +790,11 @@ its rules in pure modules with unit tests and its rows in thin components:
 | Scroll and navigation | `send-anchor.ts`, `turn-rail.ts`, `list-hold.ts` (scroll holds), `reading-position.ts`    | `use-send-anchor.ts`, `use-reading-position.ts`, `jump-to-latest.tsx`, `turn-rail-view.tsx`                |
 | Context for every row | —                                                                                         | `thread-context.tsx`, filled by `use-timeline-thread.ts`                                                   |
 
+A user message's "Edit and resend" (`edit-message-button.tsx`) records the
+edit, with the restore point it resends from, in `state/message-edit.ts`; the
+composer's `use-edit-resend.ts` sends it as a restore carrying `resend`, and
+its settle rules and wording are pure (`composer/edit-resend.ts`).
+
 Row state that must outlive a recycled container — disclosures, turn folds,
 "Show more" — lives in the row disclosure map (`state/ui.ts`,
 `state/turn-folds.ts`), and stateful subtrees are keyed by item id. The

@@ -239,6 +239,47 @@ describe("the user message footer's fork", () => {
   });
 });
 
+describe("the user message footer's edit", () => {
+  const [t1, t2] = [makeTurnId(), makeTurnId()];
+  const thread = (fields: Partial<TimelineThread> = {}): TimelineThread => ({
+    threadId: makeThreadId(),
+    projectId: makeProjectId(),
+    checkpoints: [],
+    restores: [],
+    restoreBlockedReason: null,
+    turnOrder: [t1, t2],
+    workspaceRevision: "0",
+    ...fields,
+  });
+  const inThread = (value: TimelineThread, fields: Partial<ItemSnapshot> = {}) =>
+    renderToStaticMarkup(
+      <ClientRuntimeProvider layer={makeFixtureClient().layer}>
+        <TimelineThreadProvider value={value}>
+          <UserMessageRow item={row({ turnId: t2, ...fields })} />
+        </TimelineThreadProvider>
+      </ClientRuntimeProvider>,
+    );
+  const editButton = (markup: string) =>
+    /<button[^>]*aria-label="Edit and resend this message"[^>]*>/.exec(markup)?.[0];
+
+  it("is left out outside a timeline and for a message with no text", () => {
+    expect(editButton(render({ turnId: t2 }))).toBeUndefined();
+    expect(editButton(inThread(thread(), { text: "" }))).toBeUndefined();
+  });
+
+  it("is offered with or without a restore point before the message", () => {
+    const button = editButton(inThread(thread()));
+    expect(button).toBeDefined();
+    expect(button).not.toContain('aria-disabled="true"');
+  });
+
+  it("is disabled whenever a restore could not start, saying why", () => {
+    const markup = inThread(thread({ restoreBlockedReason: "A restore is already running." }));
+    expect(editButton(markup)).toContain('aria-disabled="true"');
+    expect(markup).toContain('class="sr-only">A restore is already running.</span>');
+  });
+});
+
 describe("AssistantMessageRow", () => {
   const answer = (fields: Partial<ItemSnapshot>): ItemSnapshot =>
     row({

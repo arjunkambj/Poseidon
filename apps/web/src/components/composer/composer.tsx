@@ -31,6 +31,7 @@ import { composerPlaceholder } from "@/components/composer/composer-placeholder"
 import { ComposerChips } from "@/components/composer/composer-chips";
 import { composerEnter, keymapChord, menuMove } from "@/components/composer/composer-keys";
 import { ComposerToolbar } from "@/components/composer/composer-toolbar";
+import { EditBanner } from "@/components/composer/edit-banner";
 import { canSteer, sendMode } from "@/components/composer/send-mode";
 import { canCompact } from "@/components/composer/compact-now";
 import { PendingCard } from "@/components/composer/pending-card";
@@ -45,6 +46,7 @@ import { useComposerTrigger } from "@/components/composer/use-composer-trigger";
 import { useMentionMenus } from "@/components/composer/use-mention-menus";
 import { usePromptRecall } from "@/components/composer/use-prompt-recall";
 import { useInterrupt } from "@/components/composer/use-interrupt";
+import { useEditResend } from "@/components/composer/use-edit-resend";
 import { useSendDraft } from "@/components/composer/use-send-draft";
 import { useSlashAction } from "@/components/composer/use-slash-action";
 import { useClientRuntime } from "@/lib/client-runtime";
@@ -121,7 +123,8 @@ export function Composer({
     setMentions([]);
     setReferences([]);
   };
-  const { sending, send: sendDraft } = useSendDraft(threadId, attachments, setError, clearTokens);
+  const edit = useEditResend({ threadId, doc, attachments, setError, setText, clearTokens });
+  const { sending, send: sendDraft } = useSendDraft(threadId, attachments, setError, edit.onSent);
   // The bound session's, like `steerable`: `capabilities` are the instance's.
   const compactable = canCompact(doc?.session?.capabilities);
   const compactNow = useCompactNow(threadId);
@@ -209,8 +212,15 @@ export function Composer({
   /** The draft is the composer's; the upload and the dispatch are the hook's. */
   const send = (queueChord: boolean) => {
     if (canSend) {
-      const mode = sendMode({ running, steerable, queueChord });
-      sendDraft({ text: text.trim(), mentions, references, mode });
+      const draft = {
+        text: text.trim(),
+        mentions,
+        references,
+        mode: sendMode({ running, steerable, queueChord }),
+      };
+      if (!edit.intercept(draft)) {
+        sendDraft(draft);
+      }
     }
   };
 
@@ -309,6 +319,7 @@ export function Composer({
         <QueueStrip threadId={threadId} queue={doc.queue} steerable={steerable && !interrupting} />
       )}
       {doc === null ? null : <AgentsStrip threadId={threadId} doc={doc} />}
+      <EditBanner editResend={edit} />
       <ComposerSurface
         dragging={attachments.dragging}
         context={

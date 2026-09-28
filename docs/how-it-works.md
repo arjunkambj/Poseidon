@@ -969,8 +969,10 @@ returning focus to the thumbnail.
 Under the bubble, right-aligned, is the message's footer
 (`timeline/message-footer.tsx`): the time it was sent, read from the item's
 UUIDv7 id ("14:05", the full date in the tooltip), a Copy button that copies
-the text exactly as typed, "Restore to here" (§8), and "Fork from here",
-which opens the fork dialog (§8, "Forking a thread"). The footer appears
+the text exactly as typed, "Edit and resend", which puts the text back in the
+composer to change and send again from before it (§8, "Edit and resend"),
+"Restore to here" (§8), and "Fork from here", which opens the fork dialog
+(§8, "Forking a thread"). The footer appears
 while the pointer is over the row or focus is inside it, and always on a
 coarse pointer such as touch, where there is no hover. Only its opacity
 changes; it always takes its height, so revealing it never reflows a row the
@@ -2239,6 +2241,38 @@ confirms, dispatches `thread.checkpoint.restore` and reports a rejected
 receipt or an unreachable server inside the dialog. A turn that starts while
 it is open disables its Restore and says why. The conversation is left as it
 is; only the files move.
+
+#### Edit and resend
+
+"Edit and resend" in a user message's footer
+(`timeline/edit-message-button.tsx`) puts the message's text, and its skill
+and plugin references, in the composer and opens an edit
+(`state/message-edit.ts`); a draft already there is replaced only after
+"Replace your draft?". The button is disabled by the same rules as Restore.
+The edit's restore point is worked out on the click, from the same
+checkpoints: it is the point "Restore to here" goes to for that message. A
+banner above the composer (`composer/edit-banner.tsx`) says what sending does:
+the workspace goes back to how it was before the message (before the turn it
+joined, for a steered one), which undoes the file changes of every later turn,
+and the text is sent as a new turn. The conversation above stays, and the
+agent still remembers it: nothing is cut from the timeline or from the
+harness's session. With no restore point (the first turn, or no git) it says
+the files stay as they are. Cancel ends the edit and leaves the text. The
+original message's attachments are not carried over; attach them again.
+
+A plain send of the edit (Enter or Send, no turn running) opens a
+confirmation with the same wording, plus the skipped-turn caveat when it
+applies (`composer/edit-resend-dialog.tsx`). Confirming uploads any
+attachments and dispatches `thread.checkpoint.restore` with the draft as its
+`resend` (`composer/use-edit-resend.ts`). The server restores through the
+usual work order and starts the turn only after `restored` is in the log, at
+most once, even across a restart (see architecture). Meanwhile the composer
+is cleared and the banner reads "Restoring the workspace…". When the restore
+lands the edit ends; when it fails nothing was sent, so the text comes back
+to the composer with an error line and the edit stays open to try again.
+With no restore point the draft goes out as an ordinary send, and a steer or
+a queued message is always an ordinary send; one that goes through ends the
+edit.
 
 ### Branches
 
