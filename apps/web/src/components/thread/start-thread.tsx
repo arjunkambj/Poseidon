@@ -62,7 +62,6 @@ import { makeThreadId, type ProjectId, type ThreadId } from "@poseidon/contracts
 import type { ProjectSummary, ThreadSettingsPatch } from "@poseidon/contracts/orchestration";
 
 import { ComposerChips } from "@/components/composer/composer-chips";
-import { composerEnter, keymapChord, menuMove } from "@/components/composer/composer-keys";
 import { detectComposerTrigger } from "@poseidon/client-runtime/composerTrigger";
 import { useComposerTrigger } from "@/components/composer/use-composer-trigger";
 import { useMentionMenus } from "@/components/composer/use-mention-menus";
@@ -71,6 +70,7 @@ import { useComposerCommands } from "@/components/composer/use-composer-commands
 import { useSendDraft } from "@/components/composer/use-send-draft";
 import { HarnessHealthBanner } from "@/components/thread/harness-health-banner";
 import { ProjectPicker } from "@/components/thread/project-picker";
+import { startComposerKeyDown } from "@/components/thread/start-composer-keys";
 import { worktreeName } from "@/components/thread/start-in-worktree";
 import { useStartInWorktree } from "@/components/thread/use-start-in-worktree";
 import { useStartSend } from "@/components/thread/use-start-send";
@@ -208,42 +208,12 @@ function StartComposer({
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const keymapAnswers = useKeymapAnswers();
-  // The same keys as a thread's composer (`composer-keys`): an open menu with
-  // rows takes Enter and the arrows, Escape closes it, and Enter otherwise sends.
-  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const moved = menus.open
-      ? menuMove(event.key, event.shiftKey, triggers.activeIndex, menus.itemCount)
-      : null;
-    if (moved !== null || (menus.open && event.key === "Escape")) {
-      event.preventDefault();
-      if (moved === null) {
-        triggers.close();
-      } else {
-        triggers.setActiveIndex(moved);
-      }
-      return;
-    }
-    if (event.key !== "Enter") {
-      return;
-    }
-    const action = composerEnter({
-      triggerOpen: menus.open,
-      menuItemCount: menus.itemCount,
-      shiftKey: event.shiftKey,
-      keymapChord: keymapChord(event, () => keymapAnswers(event.nativeEvent)),
-      composing: event.nativeEvent.isComposing,
-    });
-    if (action === "insert" || action === "keymap") {
-      return;
-    }
-    event.preventDefault();
-    if (action === "pick") {
-      menus.pickAt(Math.min(triggers.activeIndex, menus.itemCount - 1));
-      return;
-    }
-    triggers.close();
-    void send();
-  };
+  const onKeyDown = startComposerKeyDown({
+    menus,
+    triggers,
+    keymapAnswers,
+    onSend: () => void send(),
+  });
   useComposerCommands({
     textareaRef,
     fileInputRef,
