@@ -2909,7 +2909,11 @@ on screen. `git.commit` is the Commit button
 and `git.push` is Commit & push, which pushes straight away when there is
 nothing to commit (`git-actions-control.tsx`); `git.branchPicker` opens the
 branch popover (`branch-picker.tsx`). Each does nothing from its key while its
-control is disabled, and none is answered outside a repository.
+control is disabled, and none is answered outside a repository. `git.commit`
+and `git.push` also do nothing while the commit or pull request dialog is up
+(`gitStartOf` in `apps/web/src/lib/git-actions.ts`): they fire from inside the
+dialog's message box, and reopening it would drop the typed message and the
+unticked files.
 
 `Mod+Z` is reserved for undo and redo, and the sidebar takes it over only
 under the `sidebar.undo` clause, where no text is focused. In the composer,
