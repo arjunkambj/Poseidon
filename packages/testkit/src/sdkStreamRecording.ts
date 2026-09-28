@@ -160,11 +160,12 @@ const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Keys whose string value names the account, wherever they appear — and the
- * installation's own id, which names the machine as surely.
+ * Keys whose string value names the account, wherever they appear — among
+ * them the ChatGPT account id an app-server's `account/read` routes by — and
+ * the installation's own id, which names the machine as surely.
  */
 const IDENTITY_KEY =
-  /^(e-?mail(_?address)?|user_?email|(org|organi[sz]ation)(_?(name|id|uuid))?|(account|user)_?(name|id|uuid)|installation_?id)$/i;
+  /^(e-?mail(_?address)?|user_?email|(org|organi[sz]ation)(_?(name|id|uuid))?|(chatgpt_?)?(account|user)_?(name|id|uuid)|installation_?id)$/i;
 /** Objects whose identifying members name the account… */
 const ACCOUNT_SCOPE = /^(account|org|organi[sz]ation|user)$/i;
 /** …and those members. */

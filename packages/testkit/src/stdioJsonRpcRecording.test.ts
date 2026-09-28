@@ -129,6 +129,7 @@ describe("finalizeStdioJsonRpcRecording", () => {
       method: "initialize",
       params: {
         account: { email: "someone@example.org", accountId: "acct-private-0001" },
+        workspaceRouting: { chatgptAccountId: "5ee21f34-0000-4001-87af-000000000001" },
         headers: { Authorization: `Bearer ${bearer}`, access_token: "short" },
         mcpServers: { "private-server": { command: `${home}/bin/private-server` } },
         text: `someone@example.org on ${hostname} reads ${home}/notes and ${tmp}/scratch-file`,
@@ -169,6 +170,7 @@ describe("finalizeStdioJsonRpcRecording", () => {
       bearer,
       "someone@example.org",
       "acct-private-0001",
+      "5ee21f34-0000-4001-87af-000000000001",
       "private-server",
       `${home}/`,
       `${tmp}/`,
@@ -209,6 +211,7 @@ describe("finalizeStdioJsonRpcRecording", () => {
         tmp: "<TMPDIR>",
         params: {
           account: { email: "user@example.com", accountId: "<ACCOUNT>" },
+          workspaceRouting: { chatgptAccountId: "00000000-0000-0000-0000-000000000000" },
           headers: { Authorization: "<REDACTED>", access_token: "<REDACTED>" },
           mcpServers: { "user-skill-1": { command: "<HOME>/bin/user-skill-1" } },
           text: "user@example.com on <HOST> reads <HOME>/notes and <TMPDIR>/scratch-file",
