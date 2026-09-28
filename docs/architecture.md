@@ -343,9 +343,10 @@ more than one runs and a tooltip naming them
 (`apps/web/src/components/terminal/thread-terminals-mark.tsx`); every row reads
 one `terminal.listRunning` listing, so a long sidebar costs one call per
 refetch rather than one per row. On hover the time gives
-way to two actions: archive, and the overflow menu (rename, pin or unpin, archive or
-unarchive, delete). An archived row, listed only while it is open, offers the
-menu alone. Pinned threads leave their project for a
+way to two actions: archive, and the overflow menu (pin or unpin, mark
+unread, archive or unarchive, delete). An archived row, listed only while it is
+open, offers the menu alone. "Mark unread" lights the dot and the bold title
+until the thread is opened again. Pinned threads leave their project for a
 "Pinned" group above Projects (`apps/web/src/components/sidebar/pinned-threads.tsx`),
 newest pin first, whether or not their project is folded.
 
@@ -575,7 +576,7 @@ not (`use-history-recorder.ts`); the web renderer's pane records the headless
 browser's page.
 There is no `unread` flag on the wire: whether this window has looked at a
 thread is not the server's business, and a thread with no stamp is deliberately
-not unread.
+not unread. "Mark unread" stores an empty stamp, older than any `updatedAt`.
 Pins are the same kind of state — how one person arranges one sidebar — so a
 second client keeps its own.
 

@@ -8,7 +8,8 @@
  *
  * A row also carries the unread dot: the open thread stamps its `updatedAt`
  * into `thread-seen`, and any other thread that has moved past its own stamp
- * is marked. That is renderer state by design — see `./thread-seen`.
+ * — or was marked unread from its menu — is marked. That is renderer state by
+ * design — see `./thread-seen`.
  *
  * Pinned threads leave their project for a "Pinned" group above the tree
  * (`./pinned-threads`), first in the order the thread keys walk too. Pins are

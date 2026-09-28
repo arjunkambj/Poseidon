@@ -10,6 +10,11 @@
  * had this open", so a fresh install restoring twenty old threads does not
  * light every one of them up.
  *
+ * "Mark unread" stores the empty stamp `""`: every ISO `updatedAt` sorts after
+ * it, so the row shows the dot and the bold title until the thread is opened
+ * again and the open row stamps it afresh. That works for a thread that was
+ * never stamped too.
+ *
  * The map lives in localStorage like the dock's width and per-thread tab: it is
  * presentation state, it never reaches the server, and losing it costs nothing.
  */
@@ -74,10 +79,42 @@ export const markSeen = (seen: SeenMap, threadId: string, updatedAt: string): Se
   if (keys.length <= SEEN_LIMIT) {
     return next;
   }
-  // Drop the oldest stamps first; the thread just marked is the newest by
-  // construction, so it always survives.
-  const kept = keys.sort((a, b) => next[b]!.localeCompare(next[a]!)).slice(0, SEEN_LIMIT);
-  return Object.fromEntries(kept.map((key) => [key, next[key]!]));
+  // Drop the oldest stamps first, but never the one just written: a "mark
+  // unread" stamp (`""`) sorts oldest of all. Older "mark unread" stamps do go
+  // first, which only loses a dot the user asked for.
+  const kept = keys
+    .filter((key) => key !== threadId)
+    .sort((a, b) => next[b]!.localeCompare(next[a]!))
+    .slice(0, SEEN_LIMIT - 1);
+  return Object.fromEntries([...kept, threadId].map((key) => [key, next[key]!]));
+};
+
+/**
+ * The map after "mark unread": the empty stamp, older than any `updatedAt`, so
+ * the thread reads as unread until it is opened again. The same map when the
+ * thread is already marked.
+ */
+export const markUnread = (seen: SeenMap, threadId: string): SeenMap =>
+  markSeen(seen, threadId, "");
+
+/**
+ * The map with `threadId`'s stamp put back to `stamp` — for undoing a "mark
+ * unread" — or dropped when it had none. The same map when nothing changed.
+ */
+export const restoreSeen = (
+  seen: SeenMap,
+  threadId: string,
+  stamp: string | undefined,
+): SeenMap => {
+  if (stamp !== undefined) {
+    return markSeen(seen, threadId, stamp);
+  }
+  if (seen[threadId] === undefined) {
+    return seen;
+  }
+  const rest: Record<string, string> = { ...seen };
+  delete rest[threadId];
+  return rest;
 };
 
 const readSeen = (): SeenMap => {
@@ -91,14 +128,18 @@ const readSeen = (): SeenMap => {
 
 const seenAtom = Atom.make<SeenMap>(readSeen());
 
-/** `[seen, remember]` — read the map, and stamp a thread the user is looking at. */
+/**
+ * `[seen, remember, controls]` — read the map, stamp a thread the user is
+ * looking at, and `controls.markUnread` / `controls.restore` for the sidebar's
+ * "Mark unread" and its undo. Every setter is stable.
+ */
 export const useThreadSeen = () => {
   const seen = useAtomValue(seenAtom);
   const setSeen = useAtomSet(seenAtom);
-  const remember = React.useCallback(
-    (threadId: string, updatedAt: string) => {
+  const update = React.useCallback(
+    (step: (current: SeenMap) => SeenMap) => {
       setSeen((current) => {
-        const next = markSeen(current, threadId, updatedAt);
+        const next = step(current);
         if (next === current) {
           return current;
         }
@@ -112,5 +153,18 @@ export const useThreadSeen = () => {
     },
     [setSeen],
   );
-  return [seen, remember] as const;
+  const remember = React.useCallback(
+    (threadId: string, updatedAt: string) =>
+      update((current) => markSeen(current, threadId, updatedAt)),
+    [update],
+  );
+  const controls = React.useMemo(
+    () => ({
+      markUnread: (threadId: string) => update((current) => markUnread(current, threadId)),
+      restore: (threadId: string, stamp: string | undefined) =>
+        update((current) => restoreSeen(current, threadId, stamp)),
+    }),
+    [update],
+  );
+  return [seen, remember, controls] as const;
 };
