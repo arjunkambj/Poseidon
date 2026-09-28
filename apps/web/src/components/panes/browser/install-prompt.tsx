@@ -7,8 +7,6 @@
  * This replaces the error string being squeezed into the toolbar chip — the
  * one failure the user can actually fix deserves the whole surface.
  */
-import * as React from "react";
-
 import type { BrowserState } from "@poseidon/contracts/rpc";
 import { Button } from "@poseidon/ui/components/button";
 import {
@@ -19,51 +17,18 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@poseidon/ui/components/empty";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
+
+import { CopyCommand } from "@/components/copy-command";
 
 import { installCommands } from "./install";
-import { Check, Copy as CopyIcon, Globe } from "@honeyicons/react";
+import { Globe } from "@honeyicons/react";
 
+/** One install command, copied through the same control Settings → Browser uses. */
 function CommandRow({ command, note }: { command: string; note: string }) {
-  const [copied, setCopied] = React.useState(false);
-
-  // The "copied" tick resets itself; clearing on unmount keeps the timer from
-  // setting state on a pane the user has already closed.
-  React.useEffect(() => {
-    if (!copied) return;
-    const timer = window.setTimeout(() => setCopied(false), 1500);
-    return () => window.clearTimeout(timer);
-  }, [copied]);
-
-  const copy = () => {
-    void navigator.clipboard?.writeText(command).then(
-      () => setCopied(true),
-      () => setCopied(false),
-    );
-  };
-
   return (
-    <div className="flex items-center gap-2">
-      <code className="min-w-0 flex-1 truncate rounded-md bg-hover px-2 py-1.5 font-mono text-xs">
-        {command}
-      </code>
+    <div className="flex items-center justify-between gap-2">
+      <CopyCommand command={command} />
       <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">{note}</span>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={copy}
-              aria-label={`Copy ${command}`}
-            />
-          }
-        >
-          {copied ? <Check variant="bold" /> : <CopyIcon variant="bold" />}
-        </TooltipTrigger>
-        <TooltipContent>{copied ? "Copied" : "Copy command"}</TooltipContent>
-      </Tooltip>
     </div>
   );
 }
