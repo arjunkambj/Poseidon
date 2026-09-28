@@ -5,15 +5,17 @@
  * with the owner's workspace as its working directory. The owner is a thread —
  * its workspace is its worktree when it has one, its project's folder
  * otherwise — or, before any thread exists (the New task page), a project,
- * whose workspace is its folder (`TerminalOwner`). The client mints the
- * `TerminalId`, so `terminal.open` is idempotent and a client that comes back
- * to a thread reattaches to the same shell by id.
+ * whose workspace is its folder, or, before any project exists (first-run
+ * setup), home, whose workspace is the user's home folder (`TerminalOwner`).
+ * The client mints the `TerminalId`, so `terminal.open` is idempotent and a
+ * client that comes back to a thread reattaches to the same shell by id.
  *
  * A thread terminal's payloads and summary carry `threadId`, as they always
- * have; a project terminal's carry `projectId` in its place. When the New
- * task page starts a local thread — one working in the project's folder —
- * `terminal.adopt` hands the project's terminals to it, so a shell started
- * there carries on in the thread.
+ * have; a project terminal's carry `projectId` in its place, and a home
+ * terminal's `home: true`. When the New task page starts a local thread — one
+ * working in the project's folder — `terminal.adopt` hands the project's
+ * terminals to it, so a shell started there carries on in the thread. Home's
+ * terminals are never handed over.
  *
  * A terminal can instead run one named script — a project script, or one
  * detected in a `package.json` — as its own process: the user's login shell
@@ -53,8 +55,8 @@ export const TERMINAL_STREAM_BUDGET_BYTES = 4 * 1024 * 1024;
 export const TERMINAL_STREAM_BUDGET_ITEMS = 4096;
 
 /**
- * Open terminals one owner — a thread, or a project — may hold, so a runaway
- * client cannot fork shells without end.
+ * Open terminals one owner — a thread, a project or home — may hold, so a
+ * runaway client cannot fork shells without end.
  */
 export const TERMINALS_PER_OWNER = 8;
 
@@ -67,52 +69,97 @@ export const TERMINAL_SCRIPT_COMMAND_MAX_CHARS = 8 * 1024;
 // ── Owner ──────────────────────────────────────────────────────
 
 /**
- * The owner's half of every terminal shape: exactly one of `threadId` and
- * `projectId`. Each variant rules the other id out (`optional(Never)`), so a
- * value naming both — no client sends one — matches neither and is refused,
- * rather than read as whichever variant happens to come first.
+ * The owner's half of every terminal shape: exactly one of `threadId`,
+ * `projectId` and `home`. Each variant rules the others' fields out
+ * (`optional(Never)`), so a value naming two — no client sends one — matches
+ * none and is refused, rather than read as whichever variant happens to come
+ * first.
  */
-const byThread = { threadId: ThreadId, projectId: Schema.optional(Schema.Never) };
-const byProject = { projectId: ProjectId, threadId: Schema.optional(Schema.Never) };
+const byThread = {
+  threadId: ThreadId,
+  projectId: Schema.optional(Schema.Never),
+  home: Schema.optional(Schema.Never),
+};
+const byProject = {
+  projectId: ProjectId,
+  threadId: Schema.optional(Schema.Never),
+  home: Schema.optional(Schema.Never),
+};
+const byHome = {
+  home: Schema.Literal(true),
+  threadId: Schema.optional(Schema.Never),
+  projectId: Schema.optional(Schema.Never),
+};
 
 /**
- * Who a terminal belongs to: a thread, or a project with no thread yet. The
- * two are kept apart on purpose — a draft's thread id is never a project
- * terminal's owner, because the thread it becomes may run in a new worktree.
+ * Who a terminal belongs to: a thread, a project with no thread yet, or no
+ * project at all (`{ home: true }`, started in the user's home folder — the
+ * first-run setup's terminal, before any project exists). They are kept apart
+ * on purpose — a draft's thread id is never a project terminal's owner,
+ * because the thread it becomes may run in a new worktree.
  */
-export const TerminalOwner = Schema.Union([Schema.Struct(byThread), Schema.Struct(byProject)]);
+export const TerminalOwner = Schema.Union([
+  Schema.Struct(byThread),
+  Schema.Struct(byProject),
+  Schema.Struct(byHome),
+]);
 export type TerminalOwner = typeof TerminalOwner.Type;
 
-/** `fields` owned by a thread or by a project: the shape of every terminal payload. */
+/** `fields` owned by a thread, a project or home: the shape of every terminal payload. */
 export const terminalOwned = <const Fields extends Schema.Struct.Fields>(fields: Fields) =>
   Schema.Union([
     Schema.Struct({ ...byThread, ...fields }),
     Schema.Struct({ ...byProject, ...fields }),
+    Schema.Struct({ ...byHome, ...fields }),
   ]);
 
-/** Whether an owner is a thread; the other kind is a project. */
+/** Whether an owner is a thread. */
 export const isThreadOwner = (
   owner: TerminalOwner,
 ): owner is Extract<TerminalOwner, { readonly threadId: ThreadId }> => owner.threadId !== undefined;
 
+/** Whether an owner is a project with no thread yet. */
+export const isProjectOwner = (
+  owner: TerminalOwner,
+): owner is Extract<TerminalOwner, { readonly projectId: ProjectId }> =>
+  owner.projectId !== undefined;
+
+/** Whether an owner is home: no thread and no project. */
+export const isHomeOwner = (
+  owner: TerminalOwner,
+): owner is Extract<TerminalOwner, { readonly home: true }> => owner.home === true;
+
 /** The owner a payload or summary names, and nothing else of it. */
 export const terminalOwnerOf = (value: TerminalOwner): TerminalOwner =>
-  isThreadOwner(value) ? { threadId: value.threadId } : { projectId: value.projectId };
+  isThreadOwner(value)
+    ? { threadId: value.threadId }
+    : isProjectOwner(value)
+      ? { projectId: value.projectId }
+      : { home: true };
 
 const PROJECT_KEY_PREFIX = "project:";
 
+/** Home's key. Thread ids are UUIDs and a project's key has a prefix, so it meets neither. */
+export const HOME_TERMINAL_OWNER_KEY = "home";
+
 /**
  * An owner as one string, for maps and atom families: a thread is its bare id
- * — the key the client's per-thread state has always used — and a project is
- * `project:<id>`. Ids are UUIDs, so the two can never meet.
+ * — the key the client's per-thread state has always used — a project is
+ * `project:<id>`, and home is `home`. Ids are UUIDs, so none can meet another.
  */
 export const terminalOwnerKey = (owner: TerminalOwner): string =>
-  isThreadOwner(owner) ? owner.threadId : `${PROJECT_KEY_PREFIX}${owner.projectId}`;
+  isThreadOwner(owner)
+    ? owner.threadId
+    : isProjectOwner(owner)
+      ? `${PROJECT_KEY_PREFIX}${owner.projectId}`
+      : HOME_TERMINAL_OWNER_KEY;
 
 export const decodeTerminalOwnerKey = (key: string): TerminalOwner =>
-  key.startsWith(PROJECT_KEY_PREFIX)
-    ? { projectId: key.slice(PROJECT_KEY_PREFIX.length) as ProjectId }
-    : { threadId: key as ThreadId };
+  key === HOME_TERMINAL_OWNER_KEY
+    ? { home: true }
+    : key.startsWith(PROJECT_KEY_PREFIX)
+      ? { projectId: key.slice(PROJECT_KEY_PREFIX.length) as ProjectId }
+      : { threadId: key as ThreadId };
 
 // ── Shapes ─────────────────────────────────────────────────────
 
@@ -158,6 +205,7 @@ const terminalSummaryFields = {
 export const TerminalSummary = Schema.Union([
   Schema.Struct({ terminalId: TerminalId, ...byThread, ...terminalSummaryFields }),
   Schema.Struct({ terminalId: TerminalId, ...byProject, ...terminalSummaryFields }),
+  Schema.Struct({ terminalId: TerminalId, ...byHome, ...terminalSummaryFields }),
 ]);
 export type TerminalSummary = typeof TerminalSummary.Type;
 

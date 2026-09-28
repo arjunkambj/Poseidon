@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
-import { makeProjectId, makeTerminalId, makeThreadId } from "./ids";
+import { TerminalId as TerminalIdSchema, makeProjectId, makeTerminalId, makeThreadId } from "./ids";
 import { PoseidonRpcGroup, RPC_METHODS } from "./rpc";
 import {
   TERMINAL_BATCH_CHARS,
@@ -15,7 +15,12 @@ import {
   TERMINALS_PER_OWNER,
   TerminalSize,
   TerminalSummary,
+  TerminalOwner,
   decodeTerminalOwnerKey,
+  isHomeOwner,
+  isProjectOwner,
+  isThreadOwner,
+  terminalOwned,
   terminalOwnerKey,
   terminalOwnerOf,
 } from "./terminal";
@@ -171,24 +176,78 @@ describe("the terminal owner", () => {
       const tags = yield* Effect.sync(() => [
         decode({ ...summary, threadId })._tag,
         decode({ ...summary, projectId })._tag,
+        decode({ ...summary, home: true })._tag,
         decode({ ...summary, threadId, projectId })._tag,
+        decode({ ...summary, threadId, home: true })._tag,
+        decode({ ...summary, projectId, home: true })._tag,
+        decode({ ...summary, home: false })._tag,
+        decode(summary)._tag,
       ]);
-      expect(tags).toEqual(["Success", "Success", "Failure"]);
+      expect(tags).toEqual([
+        "Success",
+        "Success",
+        "Success",
+        "Failure",
+        "Failure",
+        "Failure",
+        "Failure",
+        "Failure",
+      ]);
     }),
   );
 
-  it.effect("keys a thread by its bare id and a project apart from it, both ways", () =>
+  it.effect("keys a thread by its bare id and a project and home apart from it, both ways", () =>
     Effect.gen(function* () {
       const threadId = makeThreadId();
       const projectId = makeProjectId();
       const keys = yield* Effect.succeed({
         thread: terminalOwnerKey({ threadId }),
         project: terminalOwnerKey({ projectId }),
+        home: terminalOwnerKey({ home: true }),
       });
       expect(keys.thread).toBe(threadId);
       expect(keys.project).toBe(`project:${projectId}`);
+      expect(keys.home).toBe("home");
       expect(decodeTerminalOwnerKey(keys.thread)).toEqual({ threadId });
       expect(decodeTerminalOwnerKey(keys.project)).toEqual({ projectId });
+      expect(decodeTerminalOwnerKey(keys.home)).toEqual({ home: true });
+    }),
+  );
+
+  it.effect("decodes each owner and tells them apart", () =>
+    Effect.gen(function* () {
+      const decode = Schema.decodeUnknownSync(TerminalOwner);
+      const threadId = makeThreadId();
+      const projectId = makeProjectId();
+      const owners = yield* Effect.sync(() => [
+        decode({ threadId }),
+        decode({ projectId }),
+        decode({ home: true }),
+      ]);
+      expect(
+        owners.map((owner) => [isThreadOwner(owner), isProjectOwner(owner), isHomeOwner(owner)]),
+      ).toEqual([
+        [true, false, false],
+        [false, true, false],
+        [false, false, true],
+      ]);
+    }),
+  );
+
+  it.effect("refuses a payload that names two owners, or none", () =>
+    Effect.gen(function* () {
+      const decode = Schema.decodeUnknownExit(terminalOwned({ terminalId: TerminalIdSchema }));
+      const terminalId = makeTerminalId();
+      const threadId = makeThreadId();
+      const projectId = makeProjectId();
+      const tags = yield* Effect.sync(() => [
+        decode({ terminalId, home: true })._tag,
+        decode({ terminalId, threadId, home: true })._tag,
+        decode({ terminalId, projectId, home: true })._tag,
+        decode({ terminalId, threadId, projectId })._tag,
+        decode({ terminalId })._tag,
+      ]);
+      expect(tags).toEqual(["Success", "Failure", "Failure", "Failure", "Failure"]);
     }),
   );
 
@@ -199,11 +258,13 @@ describe("the terminal owner", () => {
       const terminalId = makeTerminalId();
       const byThread = { threadId, terminalId, cols: 80, rows: 24 };
       const byProject = { projectId, terminalId, data: "ls\n" };
+      const byHome = { home: true as const, terminalId, data: "ls\n" };
       const owners = yield* Effect.sync(() => [
         terminalOwnerOf(byThread),
         terminalOwnerOf(byProject),
+        terminalOwnerOf(byHome),
       ]);
-      expect(owners).toEqual([{ threadId }, { projectId }]);
+      expect(owners).toEqual([{ threadId }, { projectId }, { home: true }]);
     }),
   );
 });
