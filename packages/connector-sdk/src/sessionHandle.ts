@@ -11,7 +11,7 @@
  */
 
 import type { ApprovalDecision } from "@poseidon/contracts/enums";
-import type { RequestId, TurnId } from "@poseidon/contracts/ids";
+import type { ItemId, RequestId, TurnId } from "@poseidon/contracts/ids";
 import type { PlanResponseAction, ThreadSettingsPatch } from "@poseidon/contracts/orchestration";
 import type { RuntimeEvent, UserQuestionAnswer } from "@poseidon/contracts/runtime";
 import type * as Cause from "effect/Cause";
@@ -50,6 +50,12 @@ export interface SessionHandle {
    */
   readonly steer?: (turn: TurnInput) => Effect.Effect<void, ConnectorError>;
   readonly interrupt: () => Effect.Effect<void, ConnectorError>;
+  /**
+   * Stops one running subagent — the task row `itemId` — and leaves its turn
+   * going; the harness then settles that row as it settles any task. Present
+   * only when the connector's `capabilities.stopTask` is true.
+   */
+  readonly stopTask?: (itemId: ItemId) => Effect.Effect<void, ConnectorError>;
   readonly respondToRequest: (
     requestId: RequestId,
     decision: ApprovalDecision,

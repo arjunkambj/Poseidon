@@ -375,6 +375,27 @@ export const decide = (
       return accepted([emit("thread.turn.interrupted", { turnId: thread.currentTurn.turnId })]);
     }
 
+    case "thread.task.stop": {
+      if (thread === null || thread.deleted) {
+        return rejected(`thread ${command.threadId} does not exist`);
+      }
+      if (thread.session?.capabilities?.stopTask !== true) {
+        return rejected(`thread ${command.threadId}'s harness cannot stop a subagent`);
+      }
+      // Only a task of the running turn is still running: one an ended turn
+      // left open has nothing behind it to stop.
+      const task = thread.items.find((item) => item.itemId === command.itemId);
+      if (
+        task?.kind !== "task" ||
+        task.status !== "in_progress" ||
+        thread.currentTurn === null ||
+        (task.turnId !== undefined && task.turnId !== thread.currentTurn.turnId)
+      ) {
+        return rejected(`${command.itemId} is not a running subagent`);
+      }
+      return accepted([emit("thread.task.stopRequested", { itemId: command.itemId })]);
+    }
+
     case "thread.settings.update": {
       if (thread === null || thread.deleted) {
         return rejected(`thread ${command.threadId} does not exist`);

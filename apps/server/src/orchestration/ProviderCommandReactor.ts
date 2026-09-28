@@ -11,6 +11,8 @@
  * - `turn.interrupted` → `handle.interrupt(turnId)`; the turn stays in flight
  *   until the connector settles it, and this fiber settles it itself when
  *   there is no live session left to do so.
+ * - `task.stopRequested` → `handle.stopTask(itemId)`; the harness settles the
+ *   task row, and the turn goes on.
  * - `approval.resolved` / `userInput.resolved` / `plan.responded` → the
  *   matching `respond*` on the live handle, plus the plan follow-up commands.
  * - `settings.updated` → `handle.updateSettings` so mode/model changes reach
@@ -26,7 +28,7 @@
  */
 
 import { makeCommandId, makeEventId, makeItemId } from "@poseidon/contracts/ids";
-import type { ProjectId, RequestId, ThreadId, TurnId } from "@poseidon/contracts/ids";
+import type { ItemId, ProjectId, RequestId, ThreadId, TurnId } from "@poseidon/contracts/ids";
 import type { ApprovalDecision } from "@poseidon/contracts/enums";
 import type {
   Attachment,
@@ -332,6 +334,16 @@ export const ProviderCommandReactor = Layer.effectDiscard(
                   ),
                 ])
                 .pipe(Effect.catch((error) => Effect.logWarning("interrupt settle failed", error)));
+            }
+            return;
+          }
+
+          case "thread.task.stopRequested": {
+            const handle = yield* sessions.handleFor(threadId);
+            if (handle?.stopTask !== undefined) {
+              yield* handle
+                .stopTask(payload.itemId as ItemId)
+                .pipe(Effect.catch((error) => Effect.logWarning("task stop failed", error)));
             }
             return;
           }
