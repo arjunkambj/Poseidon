@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
@@ -36,5 +39,30 @@ describe("DialogBody", () => {
     const markup = renderToStaticMarkup(<DialogBody className="max-h-96">x</DialogBody>);
     expect(markup).toContain("max-h-96");
     expect(markup).not.toContain("max-h-[60vh]");
+  });
+});
+
+describe("dialogs with a scrolling body", () => {
+  const components = fileURLToPath(new URL(".", import.meta.url));
+  const sources = (dir: string): ReadonlyArray<string> =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return sources(path);
+      return entry.name.endsWith(".tsx") && !entry.name.endsWith(".test.tsx") ? [path] : [];
+    });
+
+  it("cap the popup to the viewport and scroll it whole, so a short window never clips the footer", () => {
+    const users = sources(components).filter(
+      (path) =>
+        !path.endsWith("dialog-body.tsx") && readFileSync(path, "utf8").includes("<DialogBody"),
+    );
+    expect(users.length).toBeGreaterThan(0);
+    const uncapped = users.filter(
+      (path) =>
+        !/<DialogContent[^>]*className="[^"]*max-h-\[calc\(100dvh-2rem\)\] overflow-y-auto/.test(
+          readFileSync(path, "utf8"),
+        ),
+    );
+    expect(uncapped).toEqual([]);
   });
 });

@@ -36,7 +36,7 @@ export function ShortcutsDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
         <ShortcutsSheet onClose={() => setOpen(false)} />
       </DialogContent>
     </Dialog>

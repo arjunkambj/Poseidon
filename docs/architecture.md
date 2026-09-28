@@ -379,7 +379,9 @@ titled sections whose card holds rows — title and description on the left, a
 compact control on the right, hairlines between rows. Dialogs put a long body in
 `DialogBody` (`dialog-body.tsx`), which scrolls while the header stays put, and
 their buttons in `DialogActions` (`dialog-actions.tsx`), a tonal footer under
-one hairline.
+one hairline. Such a dialog also caps its `DialogContent` to the viewport
+(`max-h-[calc(100dvh-2rem)] overflow-y-auto`), so in a window too short for all three the whole
+popup scrolls and the footer buttons stay reachable.
 
 A thread row is built on the stock sidebar menu parts
 (`apps/web/src/components/sidebar/thread-row.tsx`). A fixed status slot sits

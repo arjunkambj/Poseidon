@@ -159,7 +159,7 @@ export function FolderPickerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* One track no wider than the panel: an auto track grows to the
           breadcrumb's full width on a deep path and spills out of it. */}
-      <DialogContent className="grid-cols-1">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto grid-cols-1">
         <DialogHeader>
           <DialogTitle>Choose a folder</DialogTitle>
           <DialogDescription>

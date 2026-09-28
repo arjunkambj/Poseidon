@@ -111,7 +111,7 @@ export function CommitDialogView({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-xl"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl"
         initialFocus={primary}
         onKeyDown={(event) => {
           if (isSubmitChord(event, detectModKey())) {
