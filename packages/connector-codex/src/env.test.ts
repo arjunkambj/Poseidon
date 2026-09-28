@@ -94,7 +94,10 @@ describe("childEnv", () => {
       child.stdout.on("data", (chunk: string) => {
         printed += chunk;
       });
-      yield* Effect.promise(() => child.exited);
+      // `exited` follows the exit event, which can come before stdout has
+      // drained; the output is whole only once the stream ends.
+      const drained = new Promise<void>((resolve) => child.stdout.once("end", () => resolve()));
+      yield* Effect.promise(() => Promise.all([child.exited, drained]));
       yield* group.stop;
       const seen = JSON.parse(printed) as Record<string, string>;
       // macOS's CoreFoundation gives every process its text encoding; nothing else is added.
