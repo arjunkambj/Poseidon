@@ -27,6 +27,12 @@
  *   (`dockArrivalTarget`); closing the dock forgets that, so arriving can
  *   never reopen what was just closed. The last tab used is kept apart from
  *   it (`lastTab`) so the toggle can still go back to it after a close.
+ * - Each thread keeps the tabs opened in it this session, in opening order
+ *   (`openTabs`): any way a tab comes up — a chord, a link, the browser
+ *   opening itself — adds it once. The strip shows those (`dockStripTabs`),
+ *   and closing one (`closeDockTab`) moves to its right neighbour, else its
+ *   left, else the launcher; the dock itself stays open. `lastTab` is always
+ *   one of the open tabs or nothing, so the toggle never reopens a closed tab.
  */
 
 const DOCK_TABS = ["changes", "browser", "files"] as const;
@@ -65,12 +71,23 @@ export const dockTabTarget = (open: DockPane | undefined, tab: DockTab): DockTab
 
 /**
  * One thread's dock this session. `shown` is what the user left it on, and is
- * gone once they close it; `lastTab` is the last tab shown at all, and stays.
+ * gone once they close it; `lastTab` is the last tab shown at all, and stays
+ * while that tab is open; `openTabs` are the tabs opened, in opening order.
  */
 export interface DockMemory {
   readonly shown?: DockPane | undefined;
   readonly lastTab?: DockTab | undefined;
+  readonly openTabs?: ReadonlyArray<DockTab> | undefined;
 }
+
+const NO_TABS: ReadonlyArray<DockTab> = [];
+
+/** `open` with `pane` added at the end when it is a tab not in it yet; else `open` itself. */
+const withOpenTab = (
+  open: ReadonlyArray<DockTab> | undefined,
+  pane: DockPane | null | undefined,
+): ReadonlyArray<DockTab> | undefined =>
+  isDockTab(pane) && !(open ?? NO_TABS).includes(pane) ? [...(open ?? NO_TABS), pane] : open;
 
 /** The user moved the dock to `pane` (`null` closes it). */
 export const rememberDockMove = (
@@ -79,18 +96,69 @@ export const rememberDockMove = (
 ): DockMemory => ({
   shown: pane ?? undefined,
   lastTab: isDockTab(pane) ? pane : memory?.lastTab,
+  openTabs: withOpenTab(memory?.openTabs, pane),
 });
 
 /**
  * The dock is showing `pane`, whoever put it there — a link to a turn's
- * changes, the browser opening itself for the agent. Only the last tab is
- * noted: reopening on arrival is for what the user chose.
+ * changes, the browser opening itself for the agent. The tab joins the open
+ * tabs and becomes the last tab; reopening on arrival is only for what the
+ * user chose. Returns `memory` itself when nothing changes.
  */
 export const noteDockShown = (
   memory: DockMemory | undefined,
   pane: DockPane | undefined,
-): DockMemory | undefined =>
-  isDockTab(pane) && memory?.lastTab !== pane ? { ...memory, lastTab: pane } : memory;
+): DockMemory | undefined => {
+  if (!isDockTab(pane)) {
+    return memory;
+  }
+  const openTabs = withOpenTab(memory?.openTabs, pane);
+  return memory?.lastTab === pane && openTabs === memory.openTabs
+    ? memory
+    : { ...memory, lastTab: pane, openTabs };
+};
+
+/**
+ * The tabs the strip shows: the open tabs, and `pane` after them when it is a
+ * tab the memory has not caught up with yet (the memory is written after the
+ * render that shows it).
+ */
+export const dockStripTabs = (
+  memory: DockMemory | undefined,
+  pane: DockPane | undefined,
+): ReadonlyArray<DockTab> => withOpenTab(memory?.openTabs, pane) ?? NO_TABS;
+
+/** The kinds in `offered` that are not in `open`, in `offered`'s order. */
+export const unopenedDockTabs = (
+  offered: ReadonlyArray<DockTab>,
+  open: ReadonlyArray<DockTab>,
+): ReadonlyArray<DockTab> => offered.filter((tab) => !open.includes(tab));
+
+/**
+ * Closes `tab` in a dock showing `pane`. Closing the tab on show moves to its
+ * right neighbour, else its left, else the launcher; closing another tab
+ * leaves the pane alone. `lastTab` becomes the tab now shown, else stays when
+ * still open, else falls to the last open tab or nothing.
+ */
+export const closeDockTab = (
+  memory: DockMemory | undefined,
+  tab: DockTab,
+  pane: DockPane,
+): { readonly memory: DockMemory; readonly pane: DockPane } => {
+  const open = dockStripTabs(memory, pane);
+  const index = open.indexOf(tab);
+  if (index === -1) {
+    return { memory: memory ?? {}, pane };
+  }
+  const openTabs = open.filter((each) => each !== tab);
+  const next = pane === tab ? (open[index + 1] ?? open[index - 1] ?? DOCK_HOME) : pane;
+  const lastTab = isDockTab(next)
+    ? next
+    : memory?.lastTab !== undefined && openTabs.includes(memory.lastTab)
+      ? memory.lastTab
+      : openTabs.at(-1);
+  return { memory: { shown: next, lastTab, openTabs }, pane: next };
+};
 
 /** Where arriving at a thread with no `?pane=` puts its dock; `undefined` leaves it shut. */
 export const dockArrivalTarget = (memory: DockMemory | undefined): DockPane | undefined =>

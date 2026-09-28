@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   adjacentDockTab,
+  closeDockTab,
   dockArrivalTarget,
+  dockStripTabs,
   dockTabTarget,
   dockToggleTarget,
   isDockPane,
@@ -11,6 +13,9 @@ import {
   noteDockShown,
   projectDockTabs,
   rememberDockMove,
+  unopenedDockTabs,
+  type DockMemory,
+  type DockPane,
 } from "./dock-toggle";
 
 describe("isDockPane", () => {
@@ -74,7 +79,7 @@ describe("dock memory", () => {
 
   it("does not let the launcher replace the last tab", () => {
     const back = rememberDockMove(rememberDockMove(undefined, "browser"), "home");
-    expect(back).toEqual({ shown: "home", lastTab: "browser" });
+    expect(back).toEqual({ shown: "home", lastTab: "browser", openTabs: ["browser"] });
   });
 
   it("notes a tab someone else opened without reopening it on arrival", () => {
@@ -88,6 +93,149 @@ describe("dock memory", () => {
     expect(noteDockShown(memory, "files")).toBe(memory);
     expect(noteDockShown(memory, "home")).toBe(memory);
     expect(noteDockShown(memory, undefined)).toBe(memory);
+  });
+});
+
+describe("open tabs", () => {
+  const moves = (...panes: ReadonlyArray<DockPane | null>): DockMemory =>
+    panes.reduce<DockMemory>((memory, pane) => rememberDockMove(memory, pane), {});
+
+  it("adds a tab the user moves to", () => {
+    expect(rememberDockMove(undefined, "files").openTabs).toEqual(["files"]);
+  });
+
+  it("leaves the tabs alone for the launcher and a close", () => {
+    expect(rememberDockMove(undefined, "home").openTabs ?? []).toEqual([]);
+    expect(moves("files", "home", null).openTabs).toEqual(["files"]);
+  });
+
+  it("keeps opening order and never duplicates or reorders", () => {
+    expect(moves("files", "changes", "browser").openTabs).toEqual(["files", "changes", "browser"]);
+    expect(moves("files", "changes", "files", "changes").openTabs).toEqual(["files", "changes"]);
+  });
+
+  it("adds a tab a link or the browser opened", () => {
+    const noted = noteDockShown(rememberDockMove(undefined, "files"), "browser");
+    expect(noted?.openTabs).toEqual(["files", "browser"]);
+    expect(noted?.lastTab).toBe("browser");
+    expect(noteDockShown(undefined, "changes")?.openTabs).toEqual(["changes"]);
+  });
+
+  it("returns the same memory when the shown tab is already open and last", () => {
+    const memory = moves("files", "changes");
+    expect(noteDockShown(memory, "changes")).toBe(memory);
+    const reopened = moves("files", "changes", "files");
+    expect(noteDockShown(reopened, "files")).toBe(reopened);
+  });
+
+  it("notes a tab that is open but not last without re-adding it", () => {
+    const memory = moves("files", "changes");
+    const noted = noteDockShown(memory, "files");
+    expect(noted).not.toBe(memory);
+    expect(noted?.openTabs).toBe(memory.openTabs);
+    expect(noted?.lastTab).toBe("files");
+  });
+});
+
+describe("dockStripTabs", () => {
+  it("shows the open tabs", () => {
+    const memory = rememberDockMove(rememberDockMove(undefined, "files"), "changes");
+    expect(dockStripTabs(memory, "changes")).toBe(memory.openTabs);
+    expect(dockStripTabs(memory, "home")).toEqual(["files", "changes"]);
+  });
+
+  it("adds the current tab before the memory has caught up", () => {
+    const memory = rememberDockMove(undefined, "files");
+    expect(dockStripTabs(memory, "browser")).toEqual(["files", "browser"]);
+    expect(dockStripTabs(undefined, "changes")).toEqual(["changes"]);
+  });
+
+  it("is empty for a dock that never opened a tab", () => {
+    expect(dockStripTabs(undefined, "home")).toEqual([]);
+    expect(dockStripTabs(undefined, undefined)).toEqual([]);
+  });
+});
+
+describe("unopenedDockTabs", () => {
+  it("lists the offered kinds not open, in offered order", () => {
+    expect(unopenedDockTabs(["changes", "browser", "files"], ["files"])).toEqual([
+      "changes",
+      "browser",
+    ]);
+    expect(unopenedDockTabs(projectDockTabs, ["files", "changes"])).toEqual([]);
+    expect(unopenedDockTabs(projectDockTabs, [])).toEqual(["changes", "files"]);
+  });
+});
+
+describe("closeDockTab", () => {
+  const memory: DockMemory = {
+    shown: "browser",
+    lastTab: "browser",
+    openTabs: ["files", "browser", "changes"],
+  };
+
+  it("moves to the right neighbour when closing the tab on show", () => {
+    const closed = closeDockTab(memory, "browser", "browser");
+    expect(closed.pane).toBe("changes");
+    expect(closed.memory).toEqual({
+      shown: "changes",
+      lastTab: "changes",
+      openTabs: ["files", "changes"],
+    });
+  });
+
+  it("moves to the left neighbour when closing the rightmost", () => {
+    const closed = closeDockTab(
+      { ...memory, shown: "changes", lastTab: "changes" },
+      "changes",
+      "changes",
+    );
+    expect(closed.pane).toBe("browser");
+    expect(closed.memory.openTabs).toEqual(["files", "browser"]);
+    expect(closed.memory.lastTab).toBe("browser");
+  });
+
+  it("keeps the pane when closing a tab not on show", () => {
+    const closed = closeDockTab(memory, "files", "browser");
+    expect(closed.pane).toBe("browser");
+    expect(closed.memory).toEqual({
+      shown: "browser",
+      lastTab: "browser",
+      openTabs: ["browser", "changes"],
+    });
+  });
+
+  it("falls back to the last open tab when the launcher shows and the last tab closes", () => {
+    const closed = closeDockTab({ ...memory, shown: "home" }, "browser", "home");
+    expect(closed.pane).toBe("home");
+    expect(closed.memory.lastTab).toBe("changes");
+  });
+
+  it("shows the launcher and forgets the last tab after the last close", () => {
+    const closed = closeDockTab(rememberDockMove(undefined, "files"), "files", "files");
+    expect(closed.pane).toBe("home");
+    expect(closed.memory.openTabs).toEqual([]);
+    expect(closed.memory.lastTab).toBeUndefined();
+    const shut = rememberDockMove(closed.memory, null);
+    expect(dockToggleTarget(undefined, shut.lastTab)).toBe("home");
+  });
+
+  it("closes a tab the memory has not caught up with", () => {
+    const closed = closeDockTab(rememberDockMove(undefined, "files"), "browser", "browser");
+    expect(closed.pane).toBe("files");
+    expect(closed.memory.openTabs).toEqual(["files"]);
+  });
+
+  it("reopens on the remaining active tab after the dock is closed", () => {
+    const closed = closeDockTab(memory, "browser", "browser");
+    const shut = rememberDockMove(closed.memory, null);
+    expect(dockToggleTarget(undefined, shut.lastTab)).toBe("changes");
+    expect(dockStripTabs(shut, "changes")).toEqual(["files", "changes"]);
+  });
+
+  it("leaves everything alone for a tab that is not open", () => {
+    const closed = closeDockTab(memory, "files", "browser");
+    expect(closeDockTab(closed.memory, "files", "browser").memory).toBe(closed.memory);
   });
 });
 

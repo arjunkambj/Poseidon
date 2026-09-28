@@ -320,7 +320,12 @@ export const withDockMemory = (
   if (memory === memories[threadId]) {
     return memories;
   }
-  if (memory === undefined || (memory.shown === undefined && memory.lastTab === undefined)) {
+  if (
+    memory === undefined ||
+    (memory.shown === undefined &&
+      memory.lastTab === undefined &&
+      (memory.openTabs ?? []).length === 0)
+  ) {
     if (!(threadId in memories)) {
       return memories;
     }

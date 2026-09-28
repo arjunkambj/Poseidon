@@ -52,6 +52,21 @@ describe("withDockMemory", () => {
     expect(withDockMemory(memories, thread, memory)).toBe(memories);
     expect(withDockMemory({}, thread, undefined)).toEqual({});
   });
+
+  it("keeps a memory that only has open tabs", () => {
+    const memory = { openTabs: ["files" as const] };
+    expect(withDockMemory({}, thread, memory)).toEqual({ [thread]: memory });
+    expect(withDockMemory({ [thread]: memory }, thread, { openTabs: [] })).toEqual({});
+  });
+
+  it("keeps each thread's open tabs apart", () => {
+    const other = "0199c0de-0002-7000-8000-000000000002";
+    const first = withDockMemory({}, thread, { openTabs: ["files"] });
+    const both = withDockMemory(first, other, { openTabs: ["browser", "changes"] });
+    expect(both[thread]?.openTabs).toEqual(["files"]);
+    expect(both[other]?.openTabs).toEqual(["browser", "changes"]);
+    expect(withDockMemory(both, other, undefined)).toEqual({ [thread]: { openTabs: ["files"] } });
+  });
 });
 
 describe("withComposerDraft", () => {
