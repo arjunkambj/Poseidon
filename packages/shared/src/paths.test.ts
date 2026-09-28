@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   binDir,
+  builtinPluginsDir,
   configDir,
   configPath,
   databasePath,
   devConnectionPath,
+  pluginsDir,
   worktreesDir,
 } from "./paths";
 
@@ -36,5 +38,7 @@ describe("well-known paths", () => {
     expect(binDir(env)).toBe(NodePath.join(configDir(env), "bin"));
     expect(worktreesDir(env)).toBe(NodePath.join(configDir(env), "worktrees"));
     expect(devConnectionPath(env)).toBe(NodePath.join(configDir(env), "dev", "connection.json"));
+    expect(pluginsDir(env)).toBe(NodePath.join(configDir(env), "plugins"));
+    expect(builtinPluginsDir(env)).toBe(NodePath.join(configDir(env), "builtin-plugins"));
   });
 });

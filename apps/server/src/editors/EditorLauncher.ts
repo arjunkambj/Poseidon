@@ -63,6 +63,24 @@ const start = (launch: Launch, label: string) =>
     );
   });
 
+/**
+ * Opens a folder the server owns (not one inside a workspace) in the
+ * platform's file manager, through the same detected recipe and detached
+ * launch as `editors.open`. `folder` must be absolute.
+ */
+export const openInFileManager = (folder: string) =>
+  Effect.gen(function* () {
+    const recipe = detect().find((candidate) => candidate.kind === "file-manager");
+    const launch =
+      recipe === undefined
+        ? null
+        : buildLaunch({ platform: process.platform, recipe, target: folder, isDirectory: true });
+    if (recipe === undefined || launch === null) {
+      return yield* failure("unavailable", "no file manager is available");
+    }
+    yield* start(launch, recipe.label);
+  });
+
 export const layer = Layer.effect(
   EditorLauncher,
   Effect.gen(function* () {

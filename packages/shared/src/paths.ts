@@ -44,3 +44,16 @@ export const worktreesDir = (env: Env = defaultEnv()): string => configPath(["wo
 /** Dev-mode connection descriptor written by `apps/server` in dev mode. */
 export const devConnectionPath = (env: Env = defaultEnv()): string =>
   configPath(["dev", "connection.json"], env);
+
+/**
+ * Global Poseidon plugins, one directory each in the Claude Code plugin layout:
+ * `<pluginsDir>/<name>/.claude-plugin/plugin.json`, `skills/`, `.mcp.json`, ….
+ */
+export const pluginsDir = (env: Env = defaultEnv()): string => configPath(["plugins"], env);
+
+/**
+ * Where the server writes the plugins that ship with the app when it boots, so
+ * a harness that loads a plugin directory can be handed one on disk.
+ */
+export const builtinPluginsDir = (env: Env = defaultEnv()): string =>
+  configPath(["builtin-plugins"], env);
