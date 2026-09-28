@@ -28,6 +28,10 @@
       "types": "./src/registry.ts",
       "import": "./src/registry.ts"
     },
+    "./sessionFiles": {
+      "types": "./src/sessionFiles.ts",
+      "import": "./src/sessionFiles.ts"
+    },
     "./sessionHandle": {
       "types": "./src/sessionHandle.ts",
       "import": "./src/sessionHandle.ts"

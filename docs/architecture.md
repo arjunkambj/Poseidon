@@ -935,7 +935,9 @@ re-exports them, rather than as modules of their own.
 and plan, which the thread read models in `orchestration` carry. `connectors`
 holds what the renderer learns about a connector — models, probe, configured
 instances, metadata and config form, and the skills, plugins and MCP servers
-its extensions list. `terminal` holds the integrated terminal's summary, its
+its extensions list. `sessionImport` holds `ImportableSession`, one session
+a harness recorded on its own, as a `sessions` extension lists it for an
+import. `terminal` holds the integrated terminal's summary, its
 output stream frames and the limits both ends share. `rpc` holds the methods
 that carry them.
 
@@ -1019,7 +1021,10 @@ What a connector is, and the promises it must keep.
 - `sessionHandle.ts` — `SessionHandle` and the bounded event queue.
 - `turnScopedHandle.ts` — the turn correlation wrapper.
 - `extensions.ts` — the optional per-instance extensions (skills, plugins, MCP
-  servers, the harness's own slash commands).
+  servers, the harness's own slash commands, its session files).
+- `sessionFiles.ts` — what a `sessions` extension reads with: JSON Lines a
+  line at a time, files newest first, a title from a prompt, a transcript
+  within its caps.
 - `approvalGate.ts` — the shared approval flow: ask the permission ladder, and
   on prompt open a request and park until the user answers.
 - `registry.ts` — definitions by kind, live instances by id.
@@ -1998,11 +2003,19 @@ plugins a harness that has them has installed (`list` only — each a
 harness's own words, and `enabled`); `mcpServers` lists, adds (an upsert) and
 removes servers in the harness's own config; `commands` lists the harness's own
 slash commands (`list` only — each a `HarnessCommand`: `name` without the `/`,
-optional `description` and `argumentHint`). Command Code carries `skills` and
+optional `description` and `argumentHint`); `sessions` lists the sessions the
+harness recorded on its own (`list`, newest first — each an
+`ImportableSession` from `contracts/sessionImport.ts`: `sourceId`, `cwd`,
+`title`, `startedAt`, `updatedAt`, and `messageCount` when the list read the
+whole file) and reads one back (`read` — an `ImportedTranscript`: the session,
+its newest user and assistant messages as text, and a `sessionRef` the
+connector's own `resumeSession` accepts), opening the harness's files
+read-only; it takes no `ExtensionScope`. Command Code carries `skills` and
 `mcpServers` but no `plugins`, since it has none, and no `commands`, since
 nothing lists which of its slash commands a headless run executes. Claude Code
 carries `commands`, read from the CLI's initialize handshake, and `plugins`,
-read from the CLI's own config files (`connector-claude/src/plugins.ts`). Every extension takes an
+read from the CLI's own config files (`connector-claude/src/plugins.ts`).
+Every other extension takes an
 `ExtensionScope` — `{ workspaceRoot: string | null }`, the user scope plus one
 project — and fails with `ConnectorExtensionFailed { code, message }`, never an
 RPC error: the server (`settings/ConnectorExtensions.ts`) resolves the

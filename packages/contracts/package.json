@@ -48,6 +48,10 @@
       "types": "./src/harnessCommands.ts",
       "import": "./src/harnessCommands.ts"
     },
+    "./sessionImport": {
+      "types": "./src/sessionImport.ts",
+      "import": "./src/sessionImport.ts"
+    },
     "./plugins": {
       "types": "./src/plugins.ts",
       "import": "./src/plugins.ts"
