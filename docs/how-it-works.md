@@ -1476,7 +1476,9 @@ in three icon buttons (`approvals/plan-actions.tsx`), each with a tooltip:
   model, out of plan mode — and sends "Implement this plan:" followed by the
   plan as its first message. From the pending card it then answers the plan
   `handoff`, so the card closes (its record reads "Plan handed to a new
-  thread") and nothing runs in this thread.
+  thread") and nothing runs in this thread. If that first message is refused
+  or the server cannot be reached, the new thread still opens, with the
+  message in its composer to send again and a toast saying why.
 - **Save as .md** asks for a path relative to the thread's workspace, prefilled
   with a slug of that heading (else `plan.md`), and writes a new file through
   `files.create`. It never replaces a file: a taken name is shown under the

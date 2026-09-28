@@ -1,6 +1,7 @@
 import type { ThreadWorktree } from "@poseidon/contracts/git";
 import { makeItemId, makeThreadId, makeTurnId } from "@poseidon/contracts/ids";
 import type { ThreadSettings } from "@poseidon/contracts/orchestration";
+import * as Exit from "effect/Exit";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -10,6 +11,7 @@ import {
   threadForkBlockedReason,
   forkTitle,
   inNewWorktree,
+  sendFirstMessage,
   type BranchOffActions,
 } from "./branch-off";
 import { startInWorktree } from "./start-in-worktree";
@@ -146,5 +148,38 @@ describe("what the new thread is created with", () => {
     expect(branchOffCreateFields(request, settings)).toEqual({
       settings: { ...settings, interactionMode: "default" },
     });
+  });
+});
+
+describe("a branch-off's first message", () => {
+  const receipt = (status: "accepted" | "rejected", reason?: string) =>
+    Exit.succeed({ status, ...(reason === undefined ? {} : { reason }), lastSequence: 0 } as never);
+
+  it("leaves the composer alone when the message goes through", async () => {
+    const kept: Array<string> = [];
+    const reported: Array<string> = [];
+    await expect(
+      sendFirstMessage(
+        async () => receipt("accepted"),
+        "1. Write the test",
+        (text) => kept.push(text),
+        (message) => reported.push(message),
+      ),
+    ).resolves.toBe(true);
+    expect(kept).toEqual([]);
+    expect(reported).toEqual([]);
+  });
+
+  it("keeps a refused or unsent plan in the composer and says why", async () => {
+    const kept: Array<string> = [];
+    const reported: Array<string> = [];
+    const keep = (text: string) => kept.push(text);
+    const report = (message: string) => reported.push(message);
+    await expect(
+      sendFirstMessage(async () => receipt("rejected", "thread is archived"), "plan", keep, report),
+    ).resolves.toBe(false);
+    await sendFirstMessage(async () => Exit.fail("socket closed"), "plan", keep, report);
+    expect(kept).toEqual(["plan", "plan"]);
+    expect(reported).toEqual(["thread is archived", "Could not reach the server"]);
   });
 });

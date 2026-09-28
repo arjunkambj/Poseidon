@@ -10,7 +10,8 @@
  * so a retried create is the same thread; `thread.create` with the fork —
  * or, for a plan, with the source's settings out of plan mode, and then the
  * source's pending plan answered `handoff`; the first message, when the
- * caller has one; then the thread opened with its composer focused. The new-worktree path is the start screen's
+ * caller has one — put back in the new thread's composer, with a toast, if
+ * it is refused; then the thread opened with its composer focused. The new-worktree path is the start screen's
  * (`useStartInWorktree`), with the same create, send and open.
  */
 
@@ -29,6 +30,7 @@ import {
   branchOffCreateFields,
   branchOffHere,
   inNewWorktree,
+  sendFirstMessage,
   type BranchOffActions,
   type BranchOffRequest,
 } from "@/components/thread/branch-off";
@@ -37,6 +39,7 @@ import { useStartInWorktree } from "@/components/thread/use-start-in-worktree";
 import { requestComposerFocus } from "@/lib/composer-focus";
 import { isAccepted, rejectionMessage } from "@/lib/dispatch-outcome";
 import { useDispatchCommand } from "@/state/hooks";
+import { useComposerDraft } from "@/state/ui";
 
 const branchOffRequestAtom = Atom.keepAlive(Atom.make<BranchOffRequest | null>(null));
 
@@ -70,6 +73,10 @@ export const useBranchOff = (
   // The steps run across renders; they read the title as it is when they do.
   const optionsRef = React.useRef(options);
   optionsRef.current = options;
+  // Where a refused first message goes back to: the new thread's composer.
+  const { setText } = useComposerDraft(threadId);
+  const keepDraftRef = React.useRef(setText);
+  keepDraftRef.current = setText;
 
   const actions = React.useMemo((): BranchOffActions => {
     const plan = request.plan;
@@ -115,16 +122,25 @@ export const useBranchOff = (
         ? {}
         : {
             sendFirst: () =>
-              void dispatch({
-                commandId: makeCommandId(),
-                createdAt: new Date().toISOString(),
-                type: "thread.turn.start",
-                threadId,
-                text: firstMessage,
-                attachments: [],
-                mentions: [],
-                queued: false,
-              }),
+              void sendFirstMessage(
+                () =>
+                  dispatch({
+                    commandId: makeCommandId(),
+                    createdAt: new Date().toISOString(),
+                    type: "thread.turn.start",
+                    threadId,
+                    text: firstMessage,
+                    attachments: [],
+                    mentions: [],
+                    queued: false,
+                  }),
+                firstMessage,
+                (text) => keepDraftRef.current(text),
+                (message) =>
+                  toast.error(message, {
+                    description: "It is in the new thread's composer to send again.",
+                  }),
+              ),
           }),
       open: () => {
         requestComposerFocus(threadId);

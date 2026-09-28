@@ -23,6 +23,7 @@ import type { Command, ThreadSettings } from "@poseidon/contracts/orchestration"
 type ThreadCreate = Extract<Command, { readonly type: "thread.create" }>;
 
 import type { WorktreeThreadStart } from "@/components/thread/use-start-in-worktree";
+import { isAccepted, rejectionMessage, type DispatchExit } from "@/lib/dispatch-outcome";
 
 /**
  * A plan to implement in a new thread, from a plan's card. The thread is not a
@@ -85,6 +86,26 @@ export interface BranchOffActions {
   /** Navigates to the thread and asks its composer for the focus. */
   readonly open: () => void;
 }
+
+/**
+ * Sends a branch-off's first message (a plan to implement) and, when it does
+ * not go through, keeps it: the new thread exists and opens either way, so
+ * `keep` puts the text in its composer to send again and `report` says why.
+ */
+export const sendFirstMessage = async (
+  send: () => Promise<DispatchExit>,
+  text: string,
+  keep: (text: string) => void,
+  report: (message: string) => void,
+): Promise<boolean> => {
+  const exit = await send();
+  if (isAccepted(exit)) {
+    return true;
+  }
+  keep(text);
+  report(rejectionMessage(exit, "The plan was not sent"));
+  return false;
+};
 
 const finish = (actions: BranchOffActions): void => {
   actions.sendFirst?.();
