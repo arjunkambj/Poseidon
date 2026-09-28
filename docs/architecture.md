@@ -2218,7 +2218,11 @@ the client's version when it is one the gateway speaks (`2025-06-18`,
 `browser_scroll`, `browser_wait`, `browser_get`, `browser_screenshot`,
 `browser_eval`, `browser_tabs`. Each entry carries its JSON Schema,
 annotations, the agent-browser argv the call maps to, and whether the call can
-move the page.
+move the page. agent-browser reads its global flags anywhere in argv, even
+after `--`, so a free-form value (selector, text, key, tab, wait pattern,
+script) that starts with `--`, or `-` and a letter, is refused rather than
+passed on, where it would become a flag such as `--auto-connect` or
+`--session`.
 
 The catalogue belongs to the built-in Browser plugin. Each bearer records
 whether that plugin was on when it was minted (`PluginRegistry.browserEnabled`,

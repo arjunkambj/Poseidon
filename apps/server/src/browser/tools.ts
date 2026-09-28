@@ -141,9 +141,43 @@ const makeTool = (name: BrowserToolName, options: MakeOptions): BrowserToolSpec 
   },
 });
 
+/**
+ * agent-browser (0.38.1) picks its global flags out of argv wherever they
+ * sit, `--` included, so an agent value such as `--auto-connect` or
+ * `--session other` in a selector, tab or text would reach the CLI as a flag —
+ * the very knobs `./agentBrowser` keeps out of the child's environment
+ * because they redirect or loosen it. Every free-form value that lands in
+ * argv is refused when it could read as a flag: a leading `--`, or `-` and a
+ * letter. `-5`, `-` and ` --x` still pass.
+ */
+const LOOKS_LIKE_FLAG = /^(?:--|-[A-Za-z])/;
+
+const notAFlag = (value: string, key: string): string | { error: string } =>
+  LOOKS_LIKE_FLAG.test(value)
+    ? {
+        error: `${key} may not start with "--" or "-" and a letter: agent-browser reads it as a flag`,
+      }
+    : value;
+
+/** An optional free-form value: `null` when absent, refused when not a plain string. */
+const optionalText = (
+  args: Record<string, unknown>,
+  key: string,
+): string | null | { error: string } =>
+  args[key] === undefined
+    ? null
+    : typeof args[key] === "string"
+      ? notAFlag(args[key] as string, key)
+      : { error: `${key} must be a string` };
+
+const requiredText = (args: Record<string, unknown>, key: string): string | { error: string } => {
+  const value = optionalText(args, key);
+  return value === null ? { error: `${key} must be a string` } : value;
+};
+
 const requiredString = (args: Record<string, unknown>, key: string): string | { error: string } =>
   typeof args[key] === "string" && args[key] !== ""
-    ? (args[key] as string)
+    ? notAFlag(args[key] as string, key)
     : { error: `${key} must be a non-empty string` };
 
 const optionalNumber = (
@@ -233,10 +267,8 @@ export const BROWSER_TOOLS: ReadonlyArray<BrowserToolSpec> = [
     toArgv: (args) => {
       const selector = requiredString(args, "selector");
       if (isError(selector)) return selector;
-      const text = args.text;
-      return typeof text === "string"
-        ? ["fill", selector, text]
-        : { error: "text must be a string" };
+      const text = requiredText(args, "text");
+      return isError(text) ? text : ["fill", selector, text];
     },
   }),
 
@@ -245,10 +277,8 @@ export const BROWSER_TOOLS: ReadonlyArray<BrowserToolSpec> = [
     inputSchema: objectSchema({ text: { ...string } }, ["text"]),
     input: true,
     toArgv: (args) => {
-      const text = args.text;
-      return typeof text === "string"
-        ? ["keyboard", "type", text]
-        : { error: "text must be a string" };
+      const text = requiredText(args, "text");
+      return isError(text) ? text : ["keyboard", "type", text];
     },
   }),
 
@@ -281,12 +311,13 @@ export const BROWSER_TOOLS: ReadonlyArray<BrowserToolSpec> = [
       }
       const px = optionalNumber(args, "px");
       if (isError(px)) return px;
-      const selector = args.selector;
+      const selector = optionalText(args, "selector");
+      if (isError(selector)) return selector;
       return [
         "scroll",
         direction,
         ...(px === null ? [] : [String(px)]),
-        ...(typeof selector === "string" ? ["--selector", selector] : []),
+        ...(selector === null ? [] : ["--selector", selector]),
       ];
     },
   }),
@@ -319,11 +350,21 @@ export const BROWSER_TOOLS: ReadonlyArray<BrowserToolSpec> = [
       typeof args.text !== "string" &&
       typeof args.fn === "string",
     toArgv: (args) => {
-      if (typeof args.selector === "string") return ["wait", args.selector];
-      if (typeof args.load === "string") return ["wait", "--load", args.load];
-      if (typeof args.url === "string") return ["wait", "--url", args.url];
-      if (typeof args.text === "string") return ["wait", "--text", args.text];
-      if (typeof args.fn === "string") return ["wait", "--fn", args.fn];
+      if (typeof args.selector === "string") {
+        const selector = requiredText(args, "selector");
+        return isError(selector) ? selector : ["wait", selector];
+      }
+      if (typeof args.load === "string") {
+        return ["load", "domcontentloaded", "networkidle"].includes(args.load)
+          ? ["wait", "--load", args.load]
+          : { error: "load must be load|domcontentloaded|networkidle" };
+      }
+      for (const key of ["url", "text", "fn"]) {
+        if (typeof args[key] === "string") {
+          const value = requiredText(args, key);
+          return isError(value) ? value : ["wait", `--${key}`, value];
+        }
+      }
       const ms = optionalNumber(args, "ms");
       if (isError(ms)) return ms;
       if (ms !== null) return ["wait", String(Math.min(Math.max(0, ms), 25_000))];
@@ -405,8 +446,11 @@ export const BROWSER_TOOLS: ReadonlyArray<BrowserToolSpec> = [
           const tab = requiredString(args, "tab");
           return isError(tab) ? tab : ["tab", tab];
         }
-        case "close":
-          return ["tab", "close", ...(typeof args.tab === "string" ? [args.tab] : [])];
+        case "close": {
+          const tab = optionalText(args, "tab");
+          if (isError(tab)) return tab;
+          return ["tab", "close", ...(tab === null ? [] : [tab])];
+        }
         default:
           return { error: "action must be list|new|switch|close" };
       }
