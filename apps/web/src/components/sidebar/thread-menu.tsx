@@ -1,8 +1,8 @@
 /**
  * The per-thread menu. It opens from the row's overflow button or a
  * right-click anywhere on the row, and both draw one item list
- * (`./thread-menu-items`): rename, pin, mark unread, copy, open a terminal,
- * open the pull request (when the branch has one),
+ * (`./thread-menu-items`): rename, pin, mark unread, mark done, copy, open a
+ * terminal, open the pull request (when the branch has one),
  * start a thread beside it, archive, delete. Rename edits the title in the row
  * itself (`./thread-title-input`); this module's `RenameThreadDialog` is the
  * other path, for `thread.rename` on the open thread, answered from
@@ -26,7 +26,7 @@
  * each can be undone — Archive from its toast, all four with `sidebar.undo`.
  *
  * The open thread's menu names the keys that do the same from anywhere —
- * `thread.rename`, `thread.pin` (`./triage-shortcuts`), `thread.archive` and
+ * `thread.rename`, `thread.pin` and `thread.done` (`./triage-shortcuts`), `thread.archive` and
  * `thread.delete` (`@/components/thread/thread-shortcuts`) while a thread is
  * open.
  *

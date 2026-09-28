@@ -1,7 +1,7 @@
 /**
  * The sidebar's undo stack.
  *
- * Archive, pin and unpin, mark unread and rename each push one entry that
+ * Archive, pin and unpin, mark unread, mark done or active, and rename each push one entry that
  * puts things back (`./use-sidebar-actions`). Two things take entries off it:
  * the "Undo" button on an archive toast, which undoes that one entry, and
  * `sidebar.undo` (`Mod+Z` outside text fields, the terminal and the browser),
@@ -67,6 +67,24 @@ const undoAtom = Atom.keepAlive(Atom.make<UndoStack>([]));
 let nextId = 0;
 /** A fresh entry id, unique within this window. */
 export const makeUndoId = (): string => `undo-${++nextId}`;
+
+/**
+ * The undo for marking `threadIds` done (`done`) or active: the inverse mark
+ * for each, through `send`, which dispatches `thread.done.mark` for `true`
+ * and `thread.done.clear` for `false`.
+ */
+export const doneUndoEntry = <Id extends string>(
+  threadIds: ReadonlyArray<Id>,
+  done: boolean,
+  send: (threadId: Id, done: boolean) => Promise<boolean>,
+  id: string = makeUndoId(),
+): UndoEntry => ({
+  id,
+  label: done ? "Mark done" : "Mark active",
+  run: async () => {
+    await Promise.all(threadIds.map((threadId) => send(threadId, !done)));
+  },
+});
 
 /** `{ push, undo(id), undoLatest, canUndo }` over the one stack. */
 export const useSidebarUndo = () => {

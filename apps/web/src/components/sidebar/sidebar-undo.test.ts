@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   archiveUndoPlan,
+  doneUndoEntry,
   makeUndoId,
   pushUndo,
   takeById,
@@ -77,5 +78,37 @@ describe("archiveUndoPlan", () => {
     expect(archiveUndoPlan(["a", "b"], [], "b").reopen).toBe("b");
     expect(archiveUndoPlan(["a", "b"], [], "z").reopen).toBeNull();
     expect(archiveUndoPlan(["a"], [], null).reopen).toBeNull();
+  });
+});
+
+describe("doneUndoEntry", () => {
+  const recorder = () => {
+    const sent: Array<readonly [string, boolean]> = [];
+    const send = (threadId: string, done: boolean) => {
+      sent.push([threadId, done]);
+      return Promise.resolve(true);
+    };
+    return { sent, send };
+  };
+
+  it("marks threads active again to undo marking them done", async () => {
+    const { sent, send } = recorder();
+    const entry = doneUndoEntry(["a", "b"], true, send, "undo-x");
+    expect(entry.id).toBe("undo-x");
+    expect(entry.label).toBe("Mark done");
+    expect(sent).toEqual([]);
+    await entry.run();
+    expect(sent).toEqual([
+      ["a", false],
+      ["b", false],
+    ]);
+  });
+
+  it("marks threads done again to undo marking them active", async () => {
+    const { sent, send } = recorder();
+    const entry = doneUndoEntry(["a"], false, send);
+    expect(entry.label).toBe("Mark active");
+    await entry.run();
+    expect(sent).toEqual([["a", true]]);
   });
 });

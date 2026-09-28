@@ -8,6 +8,10 @@
  *   screen was among them — opens it again.
  * - `setPinned`, `markUnread` and `rename` do what they say; `markUnread`
  *   leaves the open thread out.
+ * - `setDone` marks threads done (`thread.done.mark`) or active again
+ *   (`thread.done.clear`), skipping the ones already there and the ones the
+ *   Done section never holds (`./thread-done`), and toasts with an Undo that
+ *   sends the inverse, as archive does.
  *
  * Each pushes one entry on the undo stack (`./sidebar-undo`), so `Mod+Z`
  * takes back whichever came last. Dispatch and refusal toasts go through
@@ -21,10 +25,21 @@ import { toast } from "sonner";
 
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
-import { archiveUndoPlan, makeUndoId, useSidebarUndo } from "@/components/sidebar/sidebar-undo";
-import { threadCommandBase, useThreadCommand } from "@/components/sidebar/thread-actions";
+import {
+  archiveUndoPlan,
+  doneUndoEntry,
+  makeUndoId,
+  useSidebarUndo,
+} from "@/components/sidebar/sidebar-undo";
+import {
+  threadCommandBase,
+  threadDoneCommand,
+  useThreadCommand,
+} from "@/components/sidebar/thread-actions";
+import { canMarkDone } from "@/components/sidebar/thread-done";
 import { useThreadPins } from "@/components/sidebar/thread-pins";
 import { useThreadSeen } from "@/components/sidebar/thread-seen";
+import { useThreadIsDone } from "@/components/sidebar/use-thread-done";
 
 export const useSidebarActions = () => {
   const send = useThreadCommand();
@@ -34,6 +49,7 @@ export const useSidebarActions = () => {
   const [pins, pin] = useThreadPins();
   const [seen, , seenControls] = useThreadSeen();
   const { push, undo } = useSidebarUndo();
+  const isDone = useThreadIsDone();
 
   const archive = async (threads: ReadonlyArray<ThreadSummary>): Promise<void> => {
     const targets = threads.filter((thread) => thread.status !== "archived");
@@ -139,6 +155,40 @@ export const useSidebarActions = () => {
     return ok;
   };
 
+  const setDone = async (threads: ReadonlyArray<ThreadSummary>, done: boolean): Promise<void> => {
+    const targets = threads.filter((thread) =>
+      done
+        ? canMarkDone(thread, pins.includes(thread.threadId)) && !isDone(thread)
+        : isDone(thread),
+    );
+    if (targets.length === 0) {
+      return;
+    }
+    const mark = (threadId: ThreadSummary["threadId"], next: boolean) =>
+      send(
+        threadDoneCommand(threadId, next),
+        next ? "Thread was not marked done" : "Thread was not marked active",
+      );
+    const accepted = await Promise.all(targets.map((thread) => mark(thread.threadId, done)));
+    const moved = targets.filter((_, index) => accepted[index]);
+    if (moved.length === 0) {
+      return;
+    }
+    const entry = doneUndoEntry(
+      moved.map((thread) => thread.threadId),
+      done,
+      mark,
+    );
+    push(entry);
+    const what = done ? "done" : "active";
+    toast.success(
+      moved.length === 1 ? `Marked ${what}` : `Marked ${moved.length} threads ${what}`,
+      {
+        action: { label: "Undo", onClick: () => undo(entry.id) },
+      },
+    );
+  };
+
   // A fresh object per render: callers call into it from event handlers only.
-  return { archive, setPinned, markUnread, rename };
+  return { archive, setPinned, markUnread, rename, setDone };
 };

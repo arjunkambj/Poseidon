@@ -4,7 +4,8 @@
  * the same things in the same order:
  *
  * 1. Rename — starts the inline rename in the row (`./thread-rename`).
- * 2. Pin / Unpin, then Mark unread (`./use-sidebar-actions`, undoable).
+ * 2. Pin / Unpin, Mark unread, then Mark done / Mark active
+ *    (`./use-sidebar-actions`, undoable; `./thread-done` for the split).
  * 3. Copy ▸ the workspace path, the branch and the thread ID
  *    (`./thread-copy-targets` says which apply).
  * 4. Open terminal here — opens the thread with its terminal drawer open;
@@ -41,11 +42,13 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 import { useThreadPullRequestMark } from "@/components/panes/pull-request/use-thread-pull-request";
 import { threadCommandBase, useThreadCommand } from "@/components/sidebar/thread-actions";
 import { threadCopyTargets } from "@/components/sidebar/thread-copy-targets";
+import { canMarkDone } from "@/components/sidebar/thread-done";
 import { useThreadPins } from "@/components/sidebar/thread-pins";
 import { useOpenPullRequestTab } from "@/components/sidebar/thread-pr-mark";
 import { useRenamingThread } from "@/components/sidebar/thread-rename";
 import { useThreadSeen } from "@/components/sidebar/thread-seen";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
+import { useThreadIsDone } from "@/components/sidebar/use-thread-done";
 import { copyText } from "@/lib/copy-path";
 import { CommandKbd } from "@/lib/shortcuts";
 import { useCreateThread } from "@/lib/use-create-thread";
@@ -55,10 +58,12 @@ import {
   Add,
   Archive as ArchiveIcon,
   ArchiveUp,
+  CheckDouble,
   Copy,
   Edit,
   Email,
   GitPullRequest,
+  Inbox,
   Pin,
   PinOff,
   Terminal,
@@ -121,6 +126,7 @@ export function ThreadMenuItems({
   const pinned = pins.includes(thread.threadId);
   const pullRequest = useThreadPullRequestMark(thread.projectId, thread.threadId);
   const openPullRequest = useOpenPullRequestTab(thread.threadId);
+  const done = useThreadIsDone()(thread);
   // `""` is the stamp "Mark unread" leaves until the thread is opened again.
   const markedUnread = seen[thread.threadId] === "";
   const base = () => threadCommandBase(thread.threadId);
@@ -161,6 +167,15 @@ export function ThreadMenuItems({
       <Item disabled={markedUnread || active} onClick={() => actions.markUnread([thread])}>
         <Email variant="bold" />
         Mark unread
+      </Item>
+      {/* A pinned, archived or busy thread never shows under Done. */}
+      <Item
+        disabled={!done && !canMarkDone(thread, pinned)}
+        onClick={() => void actions.setDone([thread], !done)}
+      >
+        {done ? <Inbox variant="bold" /> : <CheckDouble variant="bold" />}
+        {done ? "Mark active" : "Mark done"}
+        {keys("thread.done")}
       </Item>
       <Sub>
         <SubTrigger>

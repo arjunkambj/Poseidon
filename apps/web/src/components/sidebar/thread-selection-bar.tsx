@@ -1,6 +1,7 @@
 /**
  * What the sidebar offers for several picked threads at once: archive them,
- * mark them unread, delete them, or let go of the selection. It shows under the tree while
+ * mark them unread, mark them done (or active, when every one of them is
+ * done already), delete them, or let go of the selection. It shows under the tree while
  * anything is picked — see `./thread-selection` for how rows get picked. It
  * stays mounted when nothing is, so the delete confirmation outlives the
  * selection it was opened for.
@@ -33,8 +34,9 @@ import { worktreeRemovers } from "@/components/sidebar/delete-thread";
 import { THREAD_DELETE_DESCRIPTION } from "@/components/sidebar/thread-actions";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
+import { useThreadIsDone } from "@/components/sidebar/use-thread-done";
 import { useThreadList } from "@/state/hooks";
-import { Archive, Close, Email, Trash } from "@honeyicons/react";
+import { Archive, CheckDouble, Close, Email, Inbox, Trash } from "@honeyicons/react";
 
 /** `THREAD_DELETE_DESCRIPTION`, for many. */
 const THREADS_DELETE_DESCRIPTION =
@@ -164,6 +166,8 @@ export function ThreadSelectionBar({
 }) {
   const actions = useSidebarActions();
   const remove = useDeleteThread();
+  const isDone = useThreadIsDone();
+  const allDone = threads.length > 0 && threads.every(isDone);
   // The dialog keeps the threads it was opened for: the selection can change
   // under it (Escape clears it) and the copy must not.
   const [deleting, setDeleting] = React.useState<ReadonlyArray<ThreadSummary> | null>(null);
@@ -176,6 +180,12 @@ export function ThreadSelectionBar({
     const targets = threads;
     onClear();
     void actions.archive(targets);
+  };
+
+  const setDone = () => {
+    const targets = threads;
+    onClear();
+    void actions.setDone(targets, !allDone);
   };
 
   const markUnread = () => {
@@ -197,6 +207,9 @@ export function ThreadSelectionBar({
           </BarAction>
           <BarAction label="Mark unread" onClick={markUnread}>
             <Email variant="bold" />
+          </BarAction>
+          <BarAction label={allDone ? "Mark active" : "Mark done"} onClick={setDone}>
+            {allDone ? <Inbox variant="bold" /> : <CheckDouble variant="bold" />}
           </BarAction>
           <BarAction label="Delete" onClick={() => setDeleting(threads)}>
             <Trash variant="bold" />

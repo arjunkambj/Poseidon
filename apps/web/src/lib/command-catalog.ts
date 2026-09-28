@@ -30,6 +30,7 @@ import {
   Bot,
   Brain,
   Check,
+  CheckDouble,
   CloudUpload,
   ChevronDown,
   ChevronsDown,
@@ -160,6 +161,9 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
     description: "Asks before deleting",
   }),
   command("Threads", "thread.pin", "Pin thread", Pin, { description: "Unpins a pinned thread" }),
+  command("Threads", "thread.done", "Mark thread done", CheckDouble, {
+    description: "Marks a done thread active",
+  }),
   command("Threads", "nav.back", "Go back", ArrowLeft),
   command("Threads", "nav.forward", "Go forward", ArrowRight),
 

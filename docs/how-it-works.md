@@ -3602,6 +3602,7 @@ fields entirely.
 | Threads  | `thread.archive`                                      | `Mod+Shift+A`                 | `threadOpen`                                                                           |
 | Threads  | `thread.delete`                                       | `Mod+Alt+Backspace`           | `threadOpen`                                                                           |
 | Threads  | `thread.pin`                                          | `Mod+Shift+P`                 | `threadOpen`                                                                           |
+| Threads  | `thread.done`                                         | `Mod+Alt+K`                   | `threadOpen`                                                                           |
 | Threads  | `nav.back` / `nav.forward`                            | `Mod+[` / `Mod+]`             | `!browserFocus`                                                                        |
 | Composer | `composer.planMode.toggle`                            | `Shift+Tab`                   | `composerFocus`                                                                        |
 | Composer | `composer.runtimeMode.cycle`                          | `Mod+Shift+L`                 |                                                                                        |
@@ -3697,12 +3698,13 @@ detected an editor.
 under the `sidebar.undo` clause, where no text is focused. In the composer,
 any other text field, the terminal and the browser pane, `Mod+Z` still undoes
 typing. Outside them it undoes the latest sidebar action: archive, pin or
-unpin, mark unread, or rename. The listener's `preventDefault` keeps the
+unpin, mark unread, mark done or active, or rename. The listener's `preventDefault` keeps the
 Electron default Edit menu from taking the key first. The undo stack holds
 the newest 20 entries, in memory only (`components/sidebar/sidebar-undo.ts`).
 An archive toast's Undo takes its own entry off the same stack, so the toast
-and the key never undo one action twice. `sidebar.undo` and `thread.pin`
-(which pins or unpins the open thread) are answered by
+and the key never undo one action twice. `sidebar.undo`, `thread.pin`
+(which pins or unpins the open thread) and `thread.done` (which marks the open
+thread done, or active when it is done) are answered by
 `components/sidebar/triage-shortcuts.tsx`, and each is claimed only while it
 can act.
 
@@ -4085,6 +4087,29 @@ Skills tab's instance sections use too); they are read-only cards whose disabled
 Code". The palette's Navigation group offers Plugins (`plugins.open`, no
 default chord). The standard itself, and what each harness loads, is in
 [plugins.md](plugins.md).
+
+### Done threads
+
+The sidebar splits each project's threads into its active rows and a "Done ·
+N" section under them, collapsed by default and remembered per project in
+localStorage (`apps/web/src/components/sidebar/done-threads.tsx`). A thread is
+done while its `doneAt` is at least as new as its `lastActivityAt` (the
+summary's `updatedAt` stands in for a summary without one), or, with
+`autoDoneAfterDays` set, once it has been idle that many days — a rule the
+client reads from the clock and never stores
+(`apps/web/src/components/sidebar/thread-done.ts`). A pinned, archived,
+running or waiting thread is never done. **Mark done** in a row's menu, the
+selection bar's button and `thread.done` (`Mod+Alt+K`) send `thread.done.mark`;
+on a done thread they read **Mark active** and send `thread.done.clear`. Each
+is one undo entry that sends the inverse, and the toast offers Undo, as an
+archive's does. A collapsed section still lists the open thread, and the
+thread keys walk a section's rows only while it is expanded.
+
+A done thread comes back to the active list on any new activity — a turn, a
+steer, a queued message, a finished turn, an unarchive — and when it is
+opened: when the open thread changes to a done one, the client sends
+`thread.done.clear` once. It does so only on a change of thread, so marking
+the open thread done sticks until it is opened again.
 
 ### Attention
 

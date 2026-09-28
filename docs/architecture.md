@@ -434,19 +434,22 @@ shows a glyph tinted by its state (open, draft, merged, closed, checks failing;
 its Pull request tab. On hover the time gives
 way to the overflow menu, which a right-click on the row opens too
 (`apps/web/src/components/sidebar/thread-menu-items.tsx`):
-rename, pin or unpin, mark unread, a Copy submenu (the workspace path, the
+rename, pin or unpin, mark unread, mark done or active, a Copy submenu (the workspace path, the
 branch of a worktree thread, the thread ID), open terminal here (the thread
 with its terminal drawer open), open pull request (only while the branch has
 one), new thread in this project (in the same
 worktree for a worktree thread), then archive or unarchive and delete. An
 archived row, listed only while it is open, offers the menu alone. The
-selection bar under the tree archives, marks unread or deletes every picked
-thread. "Mark unread" lights the dot and the bold title
+selection bar under the tree archives, marks unread, marks done (or active,
+when every picked thread is done) or deletes every picked thread. "Mark unread" lights the dot and the bold title
 until the thread is opened again. The open thread is being read, so its menu
 disables the item and the selection bar skips it. Pinned threads leave their project for a
 "Pinned" group above Projects (`apps/web/src/components/sidebar/pinned-threads.tsx`),
-newest pin first, whether or not their project is folded. Archive, pin and
-unpin, mark unread and rename can be undone
+newest pin first, whether or not their project is folded. Done threads move
+to a collapsed "Done · N" section under their project's active rows
+(`apps/web/src/components/sidebar/done-threads.tsx`; how-it-works §12, "Done
+threads"). Archive, pin and unpin, mark unread, mark done or active and rename
+can be undone
 (`apps/web/src/components/sidebar/use-sidebar-actions.ts`). The archive
 toast offers Undo, and `Mod+Z` outside text fields, the terminal and the
 browser pane undoes the latest of them. Archiving unpins a thread; undoing
@@ -455,7 +458,8 @@ opens it again. The sidebar's thread commands go out one at a time
 (`apps/web/src/components/sidebar/thread-actions.ts`): they share the one
 dispatch atom, so sending a bulk archive or its undo all at once would
 interrupt all but the last command and hand every caller its receipt.
-`Mod+Shift+P` pins or unpins the open thread. A
+`Mod+Shift+P` pins or unpins the open thread, and `Mod+Alt+K` marks it done or
+active. A
 double-click on any row's title, or Rename in its menu, swaps it for a title field, prefilled and
 selected (`apps/web/src/components/sidebar/thread-title-input.tsx`, with
 `thread-rename.ts` naming the one row being renamed): Enter sends
@@ -463,7 +467,8 @@ selected (`apps/web/src/components/sidebar/thread-title-input.tsx`, with
 click away keeps the old one.
 
 The sidebar's order is also a keyboard order. Pinned threads come first, then
-projects in their listed order, each with its threads in list order; a folded project contributes only
+projects in their listed order, each with its threads in list order and then,
+while its Done section is expanded, its done threads; a folded project contributes only
 the open thread, and threads whose project is gone come last
 (`apps/web/src/components/sidebar/thread-order.ts`, which the tree draws from
 too, so the two cannot drift). A folded project's header shows the most

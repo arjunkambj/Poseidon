@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { makeThreadId } from "@poseidon/contracts/ids";
 
-import { makeTurnQueue, threadCommandBase } from "./thread-actions";
+import { makeTurnQueue, threadCommandBase, threadDoneCommand } from "./thread-actions";
 
 describe("threadCommandBase", () => {
   it("addresses the thread it was given", () => {
@@ -20,6 +20,17 @@ describe("threadCommandBase", () => {
   it("stamps an ISO creation time", () => {
     const { createdAt } = threadCommandBase(makeThreadId());
     expect(new Date(createdAt).toISOString()).toBe(createdAt);
+  });
+});
+
+describe("threadDoneCommand", () => {
+  it("marks done, or clears the mark", () => {
+    const threadId = makeThreadId();
+    expect(threadDoneCommand(threadId, true)).toMatchObject({ type: "thread.done.mark", threadId });
+    expect(threadDoneCommand(threadId, false)).toMatchObject({
+      type: "thread.done.clear",
+      threadId,
+    });
   });
 });
 

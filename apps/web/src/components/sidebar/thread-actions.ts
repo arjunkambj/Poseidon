@@ -36,6 +36,12 @@ export const threadCommandBase = (threadId: ThreadId) => ({
   threadId,
 });
 
+/** `thread.done.mark` for `done`, `thread.done.clear` to make it active again. */
+export const threadDoneCommand = (threadId: ThreadId, done: boolean): Command => ({
+  ...threadCommandBase(threadId),
+  type: done ? "thread.done.mark" : "thread.done.clear",
+});
+
 /**
  * A queue that runs each task only once the one before it has settled, and
  * resolves each caller with its own task's result. A failed task does not
