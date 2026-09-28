@@ -1517,6 +1517,11 @@ is renamed or deleted; the summary and snapshot carry only
 `forkedFrom: { threadId, title }`. `fork` and `forkedFrom` are optional, so
 events and documents written before forks decode unchanged.
 
+A plan's "Implement in new thread" goes through the same dialog but is not a
+fork: the renderer sends `thread.create` with the source's settings out of plan
+mode and no `fork`, sends the plan as the first turn, and, from the pending
+card, answers the source's plan `handoff` (`branch-off.ts`, `use-branch-off.ts`).
+
 `thread.turn.steer` is how a message reaches a turn that is already running.
 The decider decides it from the thread's bound session: `thread.session.bound`
 carries the `ConnectorCapabilities` the session announced, and only a session

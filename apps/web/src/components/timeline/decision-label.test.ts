@@ -68,6 +68,9 @@ describe("decisionLabel", () => {
       "Plan accepted with auto-edits",
     );
     expect(decisionLabel(decision({ ...plan, outcome: "revise" }))).toBe("Revision requested");
+    expect(decisionLabel(decision({ ...plan, outcome: "handoff" }))).toBe(
+      "Plan handed to a new thread",
+    );
   });
 
   it("keeps an outcome it does not know readable", () => {

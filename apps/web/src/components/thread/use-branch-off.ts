@@ -7,9 +7,10 @@
  * away, and a sidebar menu closes as the dialog opens.
  *
  * `useBranchOff` binds the steps to the server: one thread id per opening,
- * so a retried create is the same thread; `thread.create` with the fork;
- * the first message, when the caller has one; then the thread opened with
- * its composer focused. The new-worktree path is the start screen's
+ * so a retried create is the same thread; `thread.create` with the fork —
+ * or, for a plan, with the source's settings out of plan mode, and then the
+ * source's pending plan answered `handoff`; the first message, when the
+ * caller has one; then the thread opened with its composer focused. The new-worktree path is the start screen's
  * (`useStartInWorktree`), with the same create, send and open.
  */
 
@@ -25,6 +26,7 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 import { uuidV7 } from "@poseidon/shared/ids";
 
 import {
+  branchOffCreateFields,
   branchOffHere,
   inNewWorktree,
   type BranchOffActions,
@@ -70,6 +72,7 @@ export const useBranchOff = (
   optionsRef.current = options;
 
   const actions = React.useMemo((): BranchOffActions => {
+    const plan = request.plan;
     const createThread = async (worktree: ThreadWorktree | undefined) => {
       const title = optionsRef.current.title.trim();
       const exit = await dispatch({
@@ -80,16 +83,30 @@ export const useBranchOff = (
         projectId: source.projectId,
         ...(title === "" ? {} : { title }),
         ...(worktree === undefined ? {} : { worktree }),
-        fork: {
-          threadId: request.threadId,
-          ...(request.throughItemId === undefined ? {} : { throughItemId: request.throughItemId }),
-        },
+        ...branchOffCreateFields(request, source.settings),
       });
-      if (isAccepted(exit)) {
-        return true;
+      if (!isAccepted(exit)) {
+        toast.error(
+          rejectionMessage(
+            exit,
+            plan === undefined ? "The fork was not created" : "The thread was not created",
+          ),
+        );
+        return false;
       }
-      toast.error(rejectionMessage(exit, "The fork was not created"));
-      return false;
+      if (plan?.handoffTurnId !== undefined) {
+        // Closes the source's card. A refusal means the plan was answered
+        // meanwhile, which leaves nothing to close.
+        void dispatch({
+          commandId: makeCommandId(),
+          createdAt: new Date().toISOString(),
+          type: "thread.plan.respond",
+          threadId: request.threadId,
+          turnId: plan.handoffTurnId,
+          action: "handoff",
+        });
+      }
+      return true;
     };
     const firstMessage = optionsRef.current.firstMessage;
     return {
@@ -115,7 +132,7 @@ export const useBranchOff = (
         optionsRef.current.onOpened();
       },
     };
-  }, [dispatch, navigate, request, source.projectId, threadId]);
+  }, [dispatch, navigate, request, source.projectId, source.settings, threadId]);
 
   const worktree = useStartInWorktree(source.projectId, inNewWorktree(actions));
   const [creating, setCreating] = React.useState(false);

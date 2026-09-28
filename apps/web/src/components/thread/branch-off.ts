@@ -12,23 +12,66 @@
  *   anyway or Discard.
  *
  * The server builds a fork's context from the source; the renderer only
- * names the source and the message.
+ * names the source and the message. A plan's "Implement in new thread" runs
+ * the same steps without a fork: the new thread's first message is the plan.
  */
 
 import type { ThreadWorktree } from "@poseidon/contracts/git";
 import type { ItemId, ThreadId, TurnId } from "@poseidon/contracts/ids";
+import type { Command, ThreadSettings } from "@poseidon/contracts/orchestration";
+
+type ThreadCreate = Extract<Command, { readonly type: "thread.create" }>;
 
 import type { WorktreeThreadStart } from "@/components/thread/use-start-in-worktree";
 
-/** One request to open the branch-off dialog, from a message's footer or a thread's menu. */
+/**
+ * A plan to implement in a new thread, from a plan's card. The thread is not a
+ * fork: it starts clean, in the source's project, with the plan as its first
+ * message.
+ */
+export interface BranchOffPlan {
+  readonly markdown: string;
+  /**
+   * The source's pending plan, answered `handoff` once the new thread exists
+   * so its card closes without running the plan there. Absent from the
+   * timeline's record of a plan, which has nothing left to answer.
+   */
+  readonly handoffTurnId?: TurnId;
+}
+
+/**
+ * One request to open the branch-off dialog: a fork, from a message's footer
+ * or a thread's menu, or a plan to implement, from a plan's card.
+ */
 export interface BranchOffRequest {
   /** Fresh per request, so each opening starts clean. */
   readonly key: string;
-  /** The thread to fork. */
+  /** The thread to fork, or the one the plan came from. */
   readonly threadId: ThreadId;
   /** The user message to fork from; absent forks the whole thread. */
   readonly throughItemId?: ItemId;
+  /** Set for "Implement in new thread": no fork, the plan is the first message. */
+  readonly plan?: BranchOffPlan;
 }
+
+/**
+ * What `thread.create` carries besides the id, project, title and worktree: a
+ * fork names its source and message, and the server copies the source's
+ * settings; a plan's thread takes the source's harness and model itself, out
+ * of plan mode, since it is there to implement.
+ */
+export const branchOffCreateFields = (
+  request: BranchOffRequest,
+  sourceSettings: ThreadSettings,
+): Pick<ThreadCreate, "fork"> | Pick<ThreadCreate, "settings"> =>
+  request.plan === undefined
+    ? {
+        fork: {
+          threadId: request.threadId,
+          ...(request.throughItemId === undefined ? {} : { throughItemId: request.throughItemId }),
+        },
+      }
+    : { settings: { ...sourceSettings, interactionMode: "default" } };
 
 /** The title a fork opens with. */
 export const forkTitle = (title: string): string => `${title} (fork)`;

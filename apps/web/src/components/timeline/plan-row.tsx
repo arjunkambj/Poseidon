@@ -1,7 +1,8 @@
 /**
  * `plan` — a proposed plan card. The accept/revise actions live on the
  * composer slot's interaction card; this row is the in-timeline record and
- * renders the markdown open by default.
+ * renders the markdown open by default, with Implement in new thread, Copy
+ * and Save as .md under it (`@/components/approvals/plan-actions`).
  */
 
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
@@ -12,12 +13,16 @@ import {
   CollapsibleTrigger,
 } from "@poseidon/ui/components/collapsible";
 
+import { PlanActions } from "@/components/approvals/plan-actions";
 import { MarkdownBody } from "@/components/timeline/markdown";
+import { useTimelineThreadId } from "@/components/timeline/thread-context";
 import { useRowDisclosure } from "@/state/ui";
 import { BookOpen, ChevronRight } from "@honeyicons/react";
 
 export function PlanRow({ item }: { item: ItemSnapshot }) {
   const [open, setOpen] = useRowDisclosure(item.itemId, true);
+  const threadId = useTimelineThreadId();
+  const markdown = item.plan?.markdown ?? item.text ?? "";
   return (
     <Collapsible open={open} onOpenChange={setOpen} variant="card">
       <CollapsibleTrigger variant="card">
@@ -29,7 +34,8 @@ export function PlanRow({ item }: { item: ItemSnapshot }) {
         />
       </CollapsibleTrigger>
       <CollapsibleContent keepMounted variant="card">
-        <MarkdownBody text={item.plan?.markdown ?? item.text ?? ""} id={item.itemId} />
+        <MarkdownBody text={markdown} id={item.itemId} />
+        <PlanActions threadId={threadId} markdown={markdown} className="justify-end" />
       </CollapsibleContent>
     </Collapsible>
   );

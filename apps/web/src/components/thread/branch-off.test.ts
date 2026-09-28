@@ -1,8 +1,10 @@
 import type { ThreadWorktree } from "@poseidon/contracts/git";
-import { makeTurnId } from "@poseidon/contracts/ids";
+import { makeItemId, makeThreadId, makeTurnId } from "@poseidon/contracts/ids";
+import type { ThreadSettings } from "@poseidon/contracts/orchestration";
 import { describe, expect, it } from "vitest";
 
 import {
+  branchOffCreateFields,
   branchOffHere,
   forkBlockedReason,
   forkTitle,
@@ -107,5 +109,35 @@ describe("the fork's title and when a message can be forked from", () => {
     expect(forkBlockedReason({ connected: false, runningTurnId: null, turnId: settled })).toBe(
       "Not connected to the server.",
     );
+  });
+});
+
+describe("what the new thread is created with", () => {
+  const settings: ThreadSettings = {
+    model: "poolside/laguna-s-2.1-free",
+    runtimeMode: "auto-accept-edits",
+    interactionMode: "plan",
+  };
+  const threadId = makeThreadId();
+
+  it("names a fork's source and message, and leaves the settings to the server", () => {
+    const throughItemId = makeItemId();
+    expect(branchOffCreateFields({ key: "k", threadId, throughItemId }, settings)).toEqual({
+      fork: { threadId, throughItemId },
+    });
+    expect(branchOffCreateFields({ key: "k", threadId }, settings)).toEqual({
+      fork: { threadId },
+    });
+  });
+
+  it("starts a plan's thread clean, on the source's harness and model, out of plan mode", () => {
+    const request = {
+      key: "k",
+      threadId,
+      plan: { markdown: "# Plan", handoffTurnId: makeTurnId() },
+    };
+    expect(branchOffCreateFields(request, settings)).toEqual({
+      settings: { ...settings, interactionMode: "default" },
+    });
   });
 });

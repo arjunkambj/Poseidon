@@ -1,6 +1,9 @@
 /**
  * The fork dialog, mounted once above the routes (`BranchOffHost`) and opened
- * by `useRequestBranchOff` from a user message's footer or a thread's menu.
+ * by `useRequestBranchOff` from a user message's footer or a thread's menu —
+ * and, as "Implement in new thread", from a plan's card: the same title and
+ * workspace choice, titled from the plan's heading, with the plan as the new
+ * thread's first message instead of a fork.
  *
  * It asks for the new thread's title, prefilled "<title> (fork)", and where
  * it works: **This workspace** — the source's own worktree, or the project's
@@ -37,6 +40,7 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { DialogActions } from "@/components/dialog-actions";
 import { useGitAtoms } from "@/components/panes/changes/git-atoms";
+import { implementPlanMessage, planThreadTitle } from "@/components/approvals/plan-export";
 import { forkTitle, type BranchOffRequest } from "@/components/thread/branch-off";
 import { useBranchOff, useBranchOffRequest } from "@/components/thread/use-branch-off";
 import { WorktreeSetupPanel } from "@/components/thread/worktree-setup-panel";
@@ -109,11 +113,15 @@ function BranchOffDialog({
   readonly source: ThreadSummary;
   readonly onClose: () => void;
 }) {
-  const [title, setTitle] = React.useState(() => forkTitle(source.title));
+  const plan = request.plan;
+  const [title, setTitle] = React.useState(() =>
+    plan === undefined ? forkTitle(source.title) : planThreadTitle(plan.markdown, source.title),
+  );
   const [workspace, setWorkspace] = React.useState<Workspace>("here");
   const worktreeAllowed = useWorktreeAllowed(source.projectId);
   const { here, inWorktree, creating, worktree } = useBranchOff(request, source, {
     title,
+    ...(plan === undefined ? {} : { firstMessage: implementPlanMessage(plan.markdown) }),
     onOpened: onClose,
   });
   const flow = worktree.state;
@@ -135,12 +143,15 @@ function BranchOffDialog({
     <Dialog open onOpenChange={(open) => (open ? undefined : onClose())}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Fork thread</DialogTitle>
+          <DialogTitle>
+            {plan === undefined ? "Fork thread" : "Implement in new thread"}
+          </DialogTitle>
           <DialogDescription>
-            {request.throughItemId === undefined
-              ? "A new thread starts with this thread's whole conversation as context."
-              : "A new thread starts with this thread's conversation up to and including this message's turn as context."}{" "}
-            The original thread is not changed.
+            {plan !== undefined
+              ? `A new thread in this project starts by implementing the plan.${plan.handoffTurnId === undefined ? "" : " This thread's plan card closes without running it here."}`
+              : request.throughItemId === undefined
+                ? "A new thread starts with this thread's whole conversation as context. The original thread is not changed."
+                : "A new thread starts with this thread's conversation up to and including this message's turn as context. The original thread is not changed."}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -195,7 +206,7 @@ function BranchOffDialog({
             </Button>
             <Button type="submit" disabled={!canSubmit}>
               {working ? <Spinner variant="bold" /> : null}
-              Fork
+              {plan === undefined ? "Fork" : "Implement"}
             </Button>
           </DialogActions>
         </form>

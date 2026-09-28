@@ -380,7 +380,7 @@ export const makeFixtureClient = (): FixtureClient => {
         return pending === null || pending.turnId !== command.turnId
           ? { events: () => {}, reason: "no pending plan" }
           : {
-              events: () =>
+              events: () => {
                 next(
                   "thread.plan.responded",
                   {
@@ -389,7 +389,12 @@ export const makeFixtureClient = (): FixtureClient => {
                     ...(command.feedback === undefined ? {} : { feedback: command.feedback }),
                   },
                   command.commandId,
-                ),
+                );
+                // As the server's reactor does: a handed-off plan leaves plan mode, no turn.
+                if (command.action === "handoff") {
+                  next("thread.settings.updated", { interactionMode: "default" });
+                }
+              },
             };
       }
       case "thread.queue.remove": {

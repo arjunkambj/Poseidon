@@ -1465,6 +1465,26 @@ accepting.
 The answer is recorded in the thread's `decisions` as §5 describes: kind
 `plan`, the turn id, the action, and the plan file's name as its subject.
 
+The card and the timeline's record of the plan (`timeline/plan-row.tsx`) end
+in three icon buttons (`approvals/plan-actions.tsx`), each with a tooltip:
+
+- **Copy plan** puts the plan's Markdown on the clipboard.
+- **Implement in new thread** opens the same dialog as forking (§8, "Forking a thread"), titled
+  from the plan's first Markdown heading, else "<title> (plan)", with the same
+  choice of this workspace or a new worktree. On confirm it creates a thread in
+  the same project — not a fork: it starts clean, on the source's harness and
+  model, out of plan mode — and sends "Implement this plan:" followed by the
+  plan as its first message. From the pending card it then answers the plan
+  `handoff`, so the card closes (its record reads "Plan handed to a new
+  thread") and nothing runs in this thread.
+- **Save as .md** asks for a path relative to the thread's workspace, prefilled
+  with a slug of that heading (else `plan.md`), and writes a new file through
+  `files.create`. It never replaces a file: a taken name is shown under the
+  field for another choice. A saved file toasts "Saved <path>"; the dock stays
+  as it was.
+
+Implement and Save are disabled while the server is out of reach.
+
 ### Plan mode, on Claude Code
 
 A plan turn runs the Claude Code CLI in its own `plan` permission mode, set

@@ -2,7 +2,8 @@
  * The proposed-plan card. `accept` and `accept-auto` dispatch
  * `thread.plan.respond` directly; `revise` opens the feedback field and sends
  * it with the response. The card closes when `thread.plan.responded` clears
- * `doc.pendingPlan` — nothing here closes it optimistically.
+ * `doc.pendingPlan` — nothing here closes it optimistically. Implement in new
+ * thread, Copy and Save as .md sit at the end of the row (`./plan-actions`).
  *
  * Keys, by default: `1` accept, `2` accept and run, `3` open the feedback
  * field. They are the `plan.*` rows of the keybinding table, live while
@@ -23,6 +24,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { CardShell } from "@/components/approvals/card-shell";
+import { PlanActions } from "@/components/approvals/plan-actions";
 import { useClientRuntime } from "@/lib/client-runtime";
 import { DISPATCH_UNREACHABLE, receiptError } from "@/lib/dispatch-outcome";
 import { CommandKbd, useKeybindingCommand } from "@/lib/shortcuts";
@@ -166,6 +168,11 @@ export function PlanCard({
           >
             Revise <CommandKbd command="plan.revise" />
           </Button>
+          <PlanActions
+            threadId={threadId}
+            markdown={plan.planMarkdown}
+            handoffTurnId={plan.turnId}
+          />
         </>
       }
     >

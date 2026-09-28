@@ -22,6 +22,7 @@ const PLAN_LABEL: Readonly<Record<string, string>> = {
   accept: "Plan accepted",
   "accept-auto": "Plan accepted with auto-edits",
   revise: "Revision requested",
+  handoff: "Plan handed to a new thread",
 };
 
 /** An outcome this build does not know yet, readable rather than raw: "allow-x" → "Allow x". */
