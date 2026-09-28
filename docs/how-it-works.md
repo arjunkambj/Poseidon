@@ -405,6 +405,32 @@ minted by the caller, which is what makes a retry idempotent. The decider
 workspace root another project already owns. The Add project dialog keeps a
 rejected path in the field so it can be corrected.
 
+### Importing sessions
+
+Settings → Import (`apps/web/src/routes/settings/import.tsx`, also in the
+palette's Settings group) brings in sessions Claude Code and Codex recorded on
+their own. Opening the page calls `sessions.importable`; nothing else does, so
+the harnesses' session files are read only then. The answer is grouped by the
+folder each session ran in, the group with the newest session first, each
+group saying whether a project is already open on that folder or one will be
+added (`groupSessions` in `apps/web/src/lib/session-import.ts`). A row shows
+the title, the harness's avatar and name, the message count when the list
+knows it, and how long ago the session was last written.
+
+Import selected runs the ticked rows down the page one at a time
+(`runImports`), each a `sessions.import` call: queued, importing, then
+imported or failed. A failed row keeps the server's message and a Retry, and
+the run goes on to the next row. Stop lets the row in flight finish and puts
+the queued ones back; leaving the page stops the run the same way. The import
+atom (`importSessionAtom` in `apps/web/src/lib/app-runtime.ts`) reloads
+`projectsAtom` after every import, because projects have no subscription and
+an import into a new folder adds a project; the new threads arrive through the
+thread list subscription. The list itself reloads once a run or a Retry ends,
+so a group's project note catches up. A row whose session a thread already holds — an
+earlier import, or a thread of Poseidon's own running it — shows Open instead
+of a checkbox. What the server does with an import is under `SessionImporter`
+in [architecture.md](architecture.md).
+
 ---
 
 ## 4. A turn, end to end

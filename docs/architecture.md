@@ -337,14 +337,14 @@ only; must never import the server, the connector packages or the renderer.
 The renderer. TanStack Router routes under `apps/web/src/routes`, state through
 `@effect/atom-react`, components under `apps/web/src/components`.
 
-| Route                             | What it is                                                                                        |
-| --------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `_home/index`                     | the New task page: start a thread, pick a project; `?pane=` carries the project dock's tab        |
-| `_home/t/$threadId`               | the thread view; `?pane=` carries the dock tab                                                    |
-| `_home/customize/*`               | skills, MCP servers and plugins: what extends the agent, one tab per kind                         |
-| `settings`, eight pages           | general, models, connectors, keybindings, permissions, git & worktrees, browser, archived threads |
-| `browser.$threadId`               | the browser pane on its own, against a real `browser.subscribe`                                   |
-| `dev/{timeline,composer,changes}` | fixture pages, DEV only                                                                           |
+| Route                             | What it is                                                                                                |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `_home/index`                     | the New task page: start a thread, pick a project; `?pane=` carries the project dock's tab                |
+| `_home/t/$threadId`               | the thread view; `?pane=` carries the dock tab                                                            |
+| `_home/customize/*`               | skills, MCP servers and plugins: what extends the agent, one tab per kind                                 |
+| `settings`, nine pages            | general, models, connectors, keybindings, permissions, git & worktrees, browser, archived threads, import |
+| `browser.$threadId`               | the browser pane on its own, against a real `browser.subscribe`                                           |
+| `dev/{timeline,composer,changes}` | fixture pages, DEV only                                                                                   |
 
 The shell is a left sidebar (projects → threads), the thread column (the
 timeline, then the composer with any open approval, question or plan card
@@ -398,7 +398,11 @@ Changes (the folder's uncommitted work, or its branch against the default
 branch) and Files — no Browser, which is a thread's — answering the same keys
 but `browserPane.toggle`.
 Archived threads leave the sidebar tree for the archived threads settings page,
-which unarchives or deletes them. The keybindings settings page
+which unarchives or deletes them. The import settings page
+(`apps/web/src/components/import/`) lists the sessions `sessions.importable`
+answers, grouped by folder, and imports a selection one row at a time
+(`apps/web/src/lib/session-import.ts`); its list atom is not kept alive, so
+the harnesses' session files are read only while the page is open. The keybindings settings page
 (`apps/web/src/components/keybindings/keybindings-editor.tsx`) lists every
 catalog command by area, each with its chords and `when` clauses, and warns
 when a chord collides with another binding in a context that can overlap, when
