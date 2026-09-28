@@ -671,7 +671,8 @@ next number `n` and writes two files:
   synchronously, so a SIGKILL loses nothing already seen. A frame is
   `{ dir: "to-harness" | "from-harness", channel: "stdin" | "stdout" | "stderr", at, data }`,
   where `data` is the parsed JSON line, or the raw string when a line is not
-  JSON.
+  JSON or is only a JSON string — a pretty-printed array element, say, which
+  parsed would lose its quotes and indentation when replayed.
 - `invocation-<n>.json`: argv and cwd, plus the exit code and signal once the
   harness exits.
 

@@ -8,6 +8,7 @@
  * die in that temp directory.
  */
 
+import { execFileSync } from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
@@ -100,6 +101,35 @@ describe("the stdio tee under JSON-RPC", () => {
       "to-harness stdin response 0",
       "from-harness stdout notification answered",
     ]);
+  });
+});
+
+describe("the stdio tee under a one-shot command", () => {
+  it("keeps every line of pretty-printed JSON as it was printed", () => {
+    // A command that prints a JSON document over several lines, as a CLI's
+    // `--json` listing does: an array element alone on its line is itself a
+    // JSON string, and must come back with its quotes and indentation.
+    const printed = `${JSON.stringify([{ args: ["server.js", "--flag"], on: true, n: 1 }], null, 2)}\n`;
+    const printer = NodePath.join(ROOT, "bin", "printer.mjs");
+    NodeFS.writeFileSync(
+      printer,
+      `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(printed)});\n`,
+      { mode: 0o755 },
+    );
+    const rawDir = NodePath.join(ROOT, "raw-printed");
+    const launcher = makeTeeLauncher({ realBinary: printer, rawDir });
+    expect(execFileSync(launcher, ["mcp", "list", "--json"], { encoding: "utf8" })).toBe(printed);
+
+    const frames = NodeFS.readFileSync(NodePath.join(rawDir, "invocation-1.ndjson"), "utf8")
+      .split("\n")
+      .filter((line) => line.length > 0)
+      .map((line) => JSON.parse(line) as RecordedFrame);
+    expect(frames.map((frame) => frame.data)).toContain('      "--flag"');
+    // What a replay prints: a string frame as it stands, anything else as JSON.
+    const replayed = frames
+      .map((frame) => (typeof frame.data === "string" ? frame.data : JSON.stringify(frame.data)))
+      .join("\n");
+    expect(`${replayed}\n`).toBe(printed);
   });
 });
 

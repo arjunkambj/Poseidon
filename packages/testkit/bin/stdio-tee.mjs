@@ -24,7 +24,8 @@
  *     { "dir": "to-harness" | "from-harness",
  *       "channel": "stdin" | "stdout" | "stderr",
  *       "at": <ms since the tee started>,
- *       "data": <the parsed JSON line, or the raw string when it is not JSON> }
+ *       "data": <the parsed JSON line, or the raw string when it is not JSON
+ *                or is a JSON string alone> }
  *
  * Each frame is appended synchronously, so a SIGKILL of the process group loses
  * nothing already seen. `invocation-<n>.json` holds the argv and cwd from the
@@ -78,7 +79,11 @@ const metaFile = path.join(config.rawDir, `invocation-${invocation}.json`);
 const record = (dir, channel, line) => {
   let data = line;
   try {
-    data = JSON.parse(line);
+    const parsed = JSON.parse(line);
+    // A line that is only a JSON string — an array element of pretty-printed
+    // output, say — stays the raw line: parsed, it would lose its quotes and
+    // indentation, and a replay prints a string frame as it stands.
+    if (typeof parsed !== "string") data = parsed;
   } catch {
     // Not JSON: kept as the raw line.
   }
