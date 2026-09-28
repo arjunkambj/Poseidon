@@ -94,41 +94,38 @@ export function ThemeCards() {
   const selected = mounted ? theme : undefined;
 
   return (
-    <div>
-      <h2 className="mb-2 text-sm font-medium">Theme</h2>
-      <div role="radiogroup" aria-label="Theme" className="grid max-w-3xl grid-cols-3 gap-4">
-        {themes.map((item) => {
-          const isSelected = selected === item.value;
+    <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-4">
+      {themes.map((item) => {
+        const isSelected = selected === item.value;
 
-          return (
-            <button
-              key={item.value}
-              type="button"
-              role="radio"
-              aria-checked={isSelected}
-              onClick={() => pick(item.value)}
-              className="flex flex-col items-center gap-2 rounded-xl outline-none"
+        return (
+          <button
+            key={item.value}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            onClick={() => pick(item.value)}
+            className="flex flex-col items-center gap-2 rounded-xl outline-none"
+          >
+            <div
+              className={cn(
+                // padding-ok: the preview's even frame
+                "aspect-[16/10] w-full rounded-xl p-0.5",
+                isSelected && "ring-2 ring-foreground",
+              )}
             >
-              <div
-                className={cn(
-                  // padding-ok: the preview's even frame
-                  "aspect-[16/10] w-full rounded-xl p-0.5",
-                  isSelected && "ring-2 ring-foreground",
-                )}
-              >
-                <div className="h-full overflow-hidden rounded-nested">
-                  <ThemePreview value={item.value} />
-                </div>
+              <div className="h-full overflow-hidden rounded-nested">
+                <ThemePreview value={item.value} />
               </div>
-              <span
-                className={cn("text-sm", isSelected ? "text-foreground" : "text-muted-foreground")}
-              >
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+            </div>
+            <span
+              className={cn("text-sm", isSelected ? "text-foreground" : "text-muted-foreground")}
+            >
+              {item.label}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

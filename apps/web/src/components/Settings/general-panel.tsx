@@ -16,6 +16,7 @@ import { useResetLayoutWidths } from "@/state/ui";
 
 import { ChatWidthToggle } from "./chat-width-toggle";
 import { FontSizeSteppers } from "./font-size-steppers";
+import { SettingsPageHeader, SettingsRow, SettingsSection } from "./settings-section";
 import { ThemeCards } from "./theme-cards";
 
 function ResetAppearance() {
@@ -37,27 +38,26 @@ function ResetAppearance() {
   };
 
   return (
-    <div>
-      <h2 className="mb-1 text-sm font-medium">Reset appearance</h2>
-      <p className="mb-2 text-sm text-muted-foreground">
-        Theme, font sizes, chat width, and the sidebar and dock widths go back to their defaults.
-      </p>
-      <Button variant="outline" onClick={reset}>
-        Reset to defaults
-      </Button>
-    </div>
+    <SettingsSection title="Reset">
+      <SettingsRow
+        title="Reset appearance"
+        description="Theme, font sizes, chat width, and the sidebar and dock widths go back to their defaults."
+      >
+        <Button variant="outline" size="sm" onClick={reset}>
+          Reset to defaults
+        </Button>
+      </SettingsRow>
+    </SettingsSection>
   );
 }
 
 export function GeneralPanel() {
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-medium">General</h1>
-        <p className="mt-1 text-sm text-muted-foreground">How the app looks.</p>
-      </div>
-
-      <ThemeCards />
+      <SettingsPageHeader title="General" description="How the app looks." />
+      <SettingsSection title="Theme" card={false}>
+        <ThemeCards />
+      </SettingsSection>
       <FontSizeSteppers />
       <ChatWidthToggle />
       <ResetAppearance />

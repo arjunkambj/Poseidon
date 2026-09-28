@@ -16,7 +16,6 @@ import {
 } from "@poseidon/contracts/settings";
 import { Button } from "@poseidon/ui/components/button";
 import { Checkbox } from "@poseidon/ui/components/checkbox";
-import { Label } from "@poseidon/ui/components/label";
 import { AsyncResult } from "effect/unstable/reactivity";
 
 import { keepAwakeHoldingAtom, keepAwakeNote } from "@/components/attention/keep-awake-state";
@@ -27,25 +26,7 @@ import {
   webNotificationPermission,
 } from "@/lib/desktop-attention";
 
-function Section({
-  title,
-  description,
-  children,
-}: {
-  readonly title: string;
-  readonly description?: React.ReactNode;
-  readonly children?: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium">{title}</h2>
-      {description === undefined ? null : (
-        <div className="text-sm text-muted-foreground">{description}</div>
-      )}
-      {children}
-    </section>
-  );
-}
+import { SettingsPageHeader, SettingsRow, SettingsSection } from "./settings-section";
 
 /** The saved notification settings and a setter for one of them. */
 function useNotificationSettings() {
@@ -72,18 +53,14 @@ function Toggle({
   const { settings, set } = useNotificationSettings();
   const id = `notifications-${field}`;
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id={id}
-          checked={settings?.[field] ?? DEFAULT_NOTIFICATION_SETTINGS[field]}
-          disabled={settings === null}
-          onCheckedChange={(next) => set(field, next === true)}
-        />
-        <Label htmlFor={id}>{label}</Label>
-      </div>
-      {note === undefined ? null : <p className="pl-6 text-xs text-muted-foreground">{note}</p>}
-    </div>
+    <SettingsRow title={label} description={note} htmlFor={id}>
+      <Checkbox
+        id={id}
+        checked={settings?.[field] ?? DEFAULT_NOTIFICATION_SETTINGS[field]}
+        disabled={settings === null}
+        onCheckedChange={(next) => set(field, next === true)}
+      />
+    </SettingsRow>
   );
 }
 
@@ -93,13 +70,17 @@ function BrowserPermission() {
   if (hasDesktopAttention() || permission === null || permission === "granted") return null;
   if (permission === "denied") {
     return (
-      <p className="text-xs text-muted-foreground">
-        This browser blocks notifications from Poseidon. Allow them in the site settings.
-      </p>
+      <SettingsRow
+        title="Browser notifications"
+        description="This browser blocks notifications from Poseidon. Allow them in the site settings."
+      />
     );
   }
   return (
-    <div>
+    <SettingsRow
+      title="Browser notifications"
+      description="The browser asks once; Poseidon never prompts on its own."
+    >
       <Button
         type="button"
         variant="outline"
@@ -108,13 +89,13 @@ function BrowserPermission() {
       >
         Allow browser notifications
       </Button>
-    </div>
+    </SettingsRow>
   );
 }
 
 function Alerts() {
   return (
-    <Section
+    <SettingsSection
       title="Alerts"
       description="A system notification when a thread you are not looking at changes. Clicking it opens the thread. The thread open in a focused window never notifies."
     >
@@ -123,19 +104,19 @@ function Alerts() {
       <Toggle field="needsYou" label="When a thread needs you (approval, question, plan ready)" />
       <Toggle field="sound" label="Play a sound" />
       <BrowserPermission />
-    </Section>
+    </SettingsSection>
   );
 }
 
 function DockBadge() {
   return (
-    <Section title="Dock badge">
+    <SettingsSection title="Dock badge">
       <Toggle
         field="dockBadge"
         label="Show a badge on the Dock icon"
         note={hasDesktopAttention() ? "Counts the threads that need you." : "Desktop app only."}
       />
-    </Section>
+    </SettingsSection>
   );
 }
 
@@ -144,25 +125,23 @@ function KeepAwake() {
   const { settings } = useNotificationSettings();
   const enabled = settings?.keepAwake ?? DEFAULT_NOTIFICATION_SETTINGS.keepAwake;
   return (
-    <Section title="Keep awake">
+    <SettingsSection title="Keep awake">
       <Toggle
         field="keepAwake"
         label="Keep the Mac awake while agents run"
         note={keepAwakeNote(hasDesktopAttention(), enabled, holding)}
       />
-    </Section>
+    </SettingsSection>
   );
 }
 
 export function NotificationsPanel() {
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-medium">Notifications</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          How Poseidon tells you a thread finished, failed or is waiting on you.
-        </p>
-      </div>
+      <SettingsPageHeader
+        title="Notifications"
+        description="How Poseidon tells you a thread finished, failed or is waiting on you."
+      />
       <Alerts />
       <DockBadge />
       <KeepAwake />

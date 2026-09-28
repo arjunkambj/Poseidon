@@ -4,8 +4,10 @@ import type { ChatWidth } from "@poseidon/contracts/settings";
 import { CHAT_WIDTHS } from "@/lib/chat-width";
 import { useChatWidth } from "@/lib/use-chat-width";
 
+import { SettingsRow, SettingsSection } from "./settings-section";
+
 /**
- * The toggle itself, given the width and what to do with a new one. Pressing
+ * The chat width row, given the width and what to do with a new one. Pressing
  * the item that is already on would leave nothing pressed; that deselect is
  * ignored, so one width is always picked.
  */
@@ -17,19 +19,12 @@ export function ChatWidthPicker({
   readonly onChange: (next: ChatWidth) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div>
-        <div className="text-sm">Chat width</div>
-        <div className="text-sm text-muted-foreground">
-          How wide the thread and the composer grow.
-        </div>
-      </div>
+    <SettingsRow title="Chat width" description="How wide the thread and the composer grow.">
       <ToggleGroup
         aria-label="Chat width"
         variant="outline"
         size="sm"
         spacing={0}
-        className="shrink-0"
         value={[width]}
         onValueChange={(value) => {
           const next = CHAT_WIDTHS.find((entry) => entry.value === value[0]);
@@ -44,20 +39,19 @@ export function ChatWidthPicker({
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
-    </div>
+    </SettingsRow>
   );
 }
 
 /**
- * The chat width row on the General page. The `chatWidth.cycle` command steps
+ * The Layout section on the General page. The `chatWidth.cycle` command steps
  * the same setting through `useChatWidth`, so the toggle follows it at once.
  */
 export function ChatWidthToggle() {
   const { width, setWidth } = useChatWidth();
   return (
-    <div className="max-w-3xl">
-      <h2 className="mb-2 text-sm font-medium">Layout</h2>
+    <SettingsSection title="Layout">
       <ChatWidthPicker width={width} onChange={setWidth} />
-    </div>
+    </SettingsSection>
   );
 }

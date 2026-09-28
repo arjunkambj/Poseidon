@@ -11,7 +11,6 @@
  */
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
-import { Card, CardContent } from "@poseidon/ui/components/card";
 import { Effort, RuntimeMode } from "@poseidon/contracts/enums";
 import { SettingsDefaults, type Settings as SettingsDoc } from "@poseidon/contracts/settings";
 import * as Exit from "effect/Exit";
@@ -22,6 +21,7 @@ import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
 import { RUNTIME_MODE_LABELS } from "@/lib/runtime-modes";
 
 import { StructForm, type SelectOption } from "./schema-form";
+import { SettingsPageHeader, SettingsSection } from "./settings-section";
 
 const enumOptions = (literals: ReadonlyArray<string>): ReadonlyArray<SelectOption> =>
   literals.map((value) => ({ value, label: value }));
@@ -74,35 +74,30 @@ export function ModelsPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-medium">Models</h1>
-        <p className="mt-1 text-sm text-muted-foreground">What new threads start with.</p>
-      </div>
+      <SettingsPageHeader title="Models" description="What new threads start with." />
 
-      <Card size="sm">
-        <CardContent>
-          <StructForm
-            schema={SettingsDefaults}
-            value={shown as unknown as Record<string, unknown>}
-            onFieldChange={(key, value) => void setDefault(key, value)}
-            optionsFor={(key) => {
-              switch (key) {
-                case "model":
-                  return modelOptions;
-                case "effort":
-                  return enumOptions(Effort.literals);
-                case "runtimeMode":
-                  return RuntimeMode.literals.map((value) => ({
-                    value,
-                    label: RUNTIME_MODE_LABELS[value],
-                  }));
-                default:
-                  return [];
-              }
-            }}
-          />
-        </CardContent>
-      </Card>
+      <SettingsSection>
+        <StructForm
+          schema={SettingsDefaults}
+          value={shown as unknown as Record<string, unknown>}
+          onFieldChange={(key, value) => void setDefault(key, value)}
+          optionsFor={(key) => {
+            switch (key) {
+              case "model":
+                return modelOptions;
+              case "effort":
+                return enumOptions(Effort.literals);
+              case "runtimeMode":
+                return RuntimeMode.literals.map((value) => ({
+                  value,
+                  label: RUNTIME_MODE_LABELS[value],
+                }));
+              default:
+                return [];
+            }
+          }}
+        />
+      </SettingsSection>
     </div>
   );
 }

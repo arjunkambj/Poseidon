@@ -11,64 +11,55 @@ import {
 import { useFontSizes } from "@/lib/use-font-sizes";
 import { Add, Minus } from "@honeyicons/react";
 
+import { SettingsRow, SettingsSection } from "./settings-section";
+
+/** The − / size / + control; `name` is the size's name in the button labels. */
 function PxStepper({
-  label,
-  description,
+  name,
   value,
   onChange,
 }: {
-  readonly label: string;
-  readonly description: string;
+  readonly name: string;
   readonly value: FontSize;
   readonly onChange: (next: FontSize) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div>
-        <div className="text-sm">{label}</div>
-        <div className="text-sm text-muted-foreground">{description}</div>
-      </div>
-      <div
-        role="group"
-        aria-label={`${label} font size`}
-        className="flex shrink-0 items-center gap-1"
-      >
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="outline"
-                size="icon-sm"
-                aria-label={`Decrease ${label.toLowerCase()} font size`}
-                disabled={value <= MIN_FONT_SIZE}
-                onClick={() => onChange(value - FONT_SIZE_STEP)}
-              />
-            }
-          >
-            <Minus variant="bold" />
-          </TooltipTrigger>
-          <TooltipContent>Smaller</TooltipContent>
-        </Tooltip>
-        <span aria-live="polite" className="w-16 text-center text-sm tabular-nums">
-          {value} px
-        </span>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="outline"
-                size="icon-sm"
-                aria-label={`Increase ${label.toLowerCase()} font size`}
-                disabled={value >= MAX_FONT_SIZE}
-                onClick={() => onChange(value + FONT_SIZE_STEP)}
-              />
-            }
-          >
-            <Add variant="bold" />
-          </TooltipTrigger>
-          <TooltipContent>Larger</TooltipContent>
-        </Tooltip>
-      </div>
+    <div role="group" aria-label={`${name} font size`} className="flex items-center gap-1">
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="outline"
+              size="icon-sm"
+              aria-label={`Decrease ${name} font size`}
+              disabled={value <= MIN_FONT_SIZE}
+              onClick={() => onChange(value - FONT_SIZE_STEP)}
+            />
+          }
+        >
+          <Minus variant="bold" />
+        </TooltipTrigger>
+        <TooltipContent>Smaller</TooltipContent>
+      </Tooltip>
+      <span aria-live="polite" className="w-16 text-center text-sm tabular-nums">
+        {value} px
+      </span>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="outline"
+              size="icon-sm"
+              aria-label={`Increase ${name} font size`}
+              disabled={value >= MAX_FONT_SIZE}
+              onClick={() => onChange(value + FONT_SIZE_STEP)}
+            />
+          }
+        >
+          <Add variant="bold" />
+        </TooltipTrigger>
+        <TooltipContent>Larger</TooltipContent>
+      </Tooltip>
     </div>
   );
 }
@@ -84,22 +75,21 @@ export function FontSizeSteppers() {
   const sidebar = sizes?.sidebar ?? DEFAULT_FONT_SIZE;
 
   return (
-    <div className="max-w-3xl">
-      <h2 className="mb-2 text-sm font-medium">Font size</h2>
-      <div className="flex flex-col gap-4">
+    <SettingsSection title="Font size">
+      <SettingsRow title="Main text" description="The thread and everything outside the sidebars.">
         <PxStepper
-          label="Main"
-          description="The thread and everything outside the sidebars."
+          name="main"
           value={main}
           onChange={(next) => setSizes({ main: next, sidebar })}
         />
+      </SettingsRow>
+      <SettingsRow title="Sidebar" description="The left sidebar and the right dock.">
         <PxStepper
-          label="Sidebar"
-          description="The left sidebar and the right dock."
+          name="sidebar"
           value={sidebar}
           onChange={(next) => setSizes({ main, sidebar: next })}
         />
-      </div>
-    </div>
+      </SettingsRow>
+    </SettingsSection>
   );
 }
