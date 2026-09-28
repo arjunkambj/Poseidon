@@ -3,7 +3,7 @@
  * half of the dock, tested without a DOM.
  *
  * The dock is either closed (`?pane=` absent), open on one of its tab kinds
- * (`DOCK_TABS`: `changes | browser | files` today), or open with no tab
+ * (`DOCK_TABS`: `changes | browser | files | agents` today), or open with no tab
  * chosen yet: the launcher, `?pane=home`, a short list of the kinds and their
  * keys.
  * `DockPane` is that open state; `DockTab` is only the tabs.
@@ -11,7 +11,7 @@
  * A thread's dock offers every kind. The New task page's dock, for a project
  * with no thread yet, has `projectDockTabs`: Changes (the project folder's
  * working tree and branch) and Files. The Browser tab is a thread's browser,
- * so there is none to show before the thread exists.
+ * and the Agents tab its subagents, so neither exists before the thread does.
  *
  * The dock starts closed. Nothing about it survives a relaunch: a thread
  * reached with no `?pane=` (a sidebar link, a fresh start) opens with the
@@ -21,9 +21,9 @@
  * - `dock.toggle` (and the header's dock button) closes an open dock, and
  *   opens a closed one on the last tab used in this thread this session,
  *   else on the launcher (`dockToggleTarget`).
- * - `dock.changes`, `dock.files` and `browserPane.toggle` open their tab,
- *   from a closed dock, the launcher or another tab, or close the dock when
- *   it is already showing that tab (`dockTabTarget`).
+ * - `dock.changes`, `dock.files`, `dock.agents` and `browserPane.toggle` open
+ *   their tab, from a closed dock, the launcher or another tab, or close the
+ *   dock when it is already showing that tab (`dockTabTarget`).
  * - A thread the user left with its dock open reopens on what it showed
  *   (`dockArrivalTarget`); closing the dock forgets that, so arriving can
  *   never reopen what was just closed. The last tab used is kept apart from
@@ -36,7 +36,7 @@
  *   one of the open tabs or nothing, so the toggle never reopens a closed tab.
  */
 
-const DOCK_TABS = ["changes", "browser", "files"] as const;
+const DOCK_TABS = ["changes", "browser", "files", "agents"] as const;
 export type DockTab = (typeof DOCK_TABS)[number];
 
 /** The tab kinds, in registry order: the launcher's rows and the "+" menu. */

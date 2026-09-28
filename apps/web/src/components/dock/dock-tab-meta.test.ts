@@ -12,6 +12,7 @@ vi.mock("@/components/panes/changes/project-changes-pane", () => ({
   ProjectChangesPane: () => null,
 }));
 vi.mock("@/components/panes/files/files-pane", () => ({ FilesPane: () => null }));
+vi.mock("@/components/panes/agents/agents-pane", () => ({ AgentsPane: () => null }));
 
 describe("the dock tab kind registry", () => {
   it("has meta and a pane renderer for every tab", () => {
@@ -27,11 +28,13 @@ describe("the dock tab kind registry", () => {
 
   it("offers a thread's dock every kind, in strip order", () => {
     expect(dockTabsFor("thread")).toEqual(dockTabs);
+    expect(dockTabsFor("thread")).toContain("agents");
   });
 
-  it("offers a project's dock the project tabs, without the browser", () => {
+  it("offers a project's dock the project tabs, without the browser or agents", () => {
     expect(dockTabsFor("project")).toEqual(projectDockTabs);
     expect(dockTabsFor("project")).not.toContain("browser");
+    expect(dockTabsFor("project")).not.toContain("agents");
     for (const tab of dockTabs) {
       expect(isProjectDockPane(tab)).toBe(dockTabsFor("project").includes(tab));
     }

@@ -23,7 +23,7 @@
  * registry test instead. The strip, launcher and dock need no change.
  */
 
-import { type HoneyIcon, Folder, GitDiff, Globe } from "@honeyicons/react";
+import { type HoneyIcon, Bot, Folder, GitDiff, Globe } from "@honeyicons/react";
 
 import type { DockScopeKind } from "./dock-scope";
 import { dockTabs, type DockTab } from "./dock-toggle";
@@ -49,6 +49,13 @@ export const DOCK_TAB_META: Record<DockTab, DockTabMeta> = {
     available: (scope) => scope === "thread",
   },
   files: { icon: Folder, label: "Files", command: "dock.files", available: always },
+  // A thread's subagents, from its snapshot's task rows.
+  agents: {
+    icon: Bot,
+    label: "Agents",
+    command: "dock.agents",
+    available: (scope) => scope === "thread",
+  },
 };
 
 /** The tab kinds a dock beside this kind of scope offers, in registry order. */

@@ -100,11 +100,15 @@ describe("DockAddTabMenu", () => {
 
   it("offers to open a tab while some kind is not open", () => {
     expect(menu(dockTabsFor("thread"), ["changes"])).toContain('aria-label="Open a tab"');
-    expect(unopenedDockTabs(dockTabsFor("thread"), ["changes"])).toEqual(["browser", "files"]);
+    expect(unopenedDockTabs(dockTabsFor("thread"), ["changes"])).toEqual([
+      "browser",
+      "files",
+      "agents",
+    ]);
   });
 
   it("is gone once every offered kind is open", () => {
-    expect(menu(dockTabsFor("thread"), ["files", "changes", "browser"])).toBe("");
+    expect(menu(dockTabsFor("thread"), ["files", "changes", "browser", "agents"])).toBe("");
     expect(menu(dockTabsFor("project"), ["changes", "files"])).toBe("");
   });
 

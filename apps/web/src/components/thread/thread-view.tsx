@@ -26,6 +26,7 @@
  * This view publishes `threadOpen` while it is mounted and `dockOpen` while
  * the right dock is, and mounts `ThreadShortcuts` — rename, archive and delete
  * for this thread — once the snapshot is in.
+ * `AgentsTabShortcut` answers `dock.agents` here too, beside the other dock keys.
  */
 
 import { useNavigate } from "@tanstack/react-router";
@@ -47,6 +48,7 @@ import { cn } from "@poseidon/ui/lib/utils";
 import type * as RpcClientError from "effect/unstable/rpc/RpcClientError";
 
 import { Composer } from "@/components/composer/composer";
+import { AgentsTabShortcut } from "@/components/dock/agents-tab-shortcut";
 import type { DockPane } from "@/components/dock/dock-toggle";
 import { RightDock } from "@/components/dock/right-dock";
 import { useDockState } from "@/components/dock/use-dock-state";
@@ -237,6 +239,7 @@ export function ThreadView({
             <ThreadShortcuts threadId={threadId} title={snapshot.title} status={snapshot.status} />
             <DockShortcuts dockTab={dockTab} onToggle={dock.toggleDock} onShow={dock.showDockTab} />
             <BrowserPaneShortcut dockTab={dockTab} onShow={dock.showDockTab} />
+            <AgentsTabShortcut dockTab={dockTab} onShow={dock.showDockTab} />
           </>
         ) : null}
         {snapshot !== null ? (

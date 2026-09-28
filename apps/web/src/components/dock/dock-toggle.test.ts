@@ -263,13 +263,14 @@ describe("closeDockTab", () => {
 describe("adjacentDockTab", () => {
   it("steps along the strip and wraps", () => {
     expect(adjacentDockTab("changes", 1)).toBe("browser");
-    expect(adjacentDockTab("files", 1)).toBe("changes");
-    expect(adjacentDockTab("changes", -1)).toBe("files");
+    expect(adjacentDockTab("files", 1)).toBe("agents");
+    expect(adjacentDockTab("agents", 1)).toBe("changes");
+    expect(adjacentDockTab("changes", -1)).toBe("agents");
   });
 
   it("steps from the launcher's tab stop, the first tab", () => {
     expect(adjacentDockTab("home", 1)).toBe("browser");
-    expect(adjacentDockTab("home", -1)).toBe("files");
+    expect(adjacentDockTab("home", -1)).toBe("agents");
     expect(adjacentDockTab("home", 1)).toBe(adjacentDockTab("changes", 1));
   });
 });

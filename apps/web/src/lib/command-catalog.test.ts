@@ -47,6 +47,13 @@ describe("COMMAND_CATALOG", () => {
     expect(DEFAULT_KEYBINDINGS.filter((row) => row.command === "chatWidth.cycle")).toEqual([]);
   });
 
+  it("offers the Agents tab in the palette with no default chord", () => {
+    const entry = COMMAND_CATALOG.find((c) => c.id === "dock.agents");
+    expect(entry?.palette).toBe(true);
+    expect(entry?.area).toBe("View");
+    expect(DEFAULT_KEYBINDINGS.filter((row) => row.command === "dock.agents")).toEqual([]);
+  });
+
   it("files find in thread under Timeline", () => {
     const find = COMMAND_CATALOG.find((entry) => entry.id === "timeline.find");
     expect(find?.area).toBe("Timeline");

@@ -27,6 +27,7 @@ import {
   ArrowUp,
   AppWindow,
   Bell,
+  Bot,
   Brain,
   Check,
   CloudUpload,
@@ -181,6 +182,7 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   command("View", "dock.toggle", "Toggle right dock", LayoutAlignRight),
   command("View", "dock.changes", "Show changes", GitDiff),
   command("View", "dock.files", "Show files", FileCode),
+  command("View", "dock.agents", "Show agents", Bot),
   command("View", "browserPane.toggle", "Toggle browser", AppWindow),
   command("View", "terminal.toggle", "Toggle terminal", LayoutAlignBottom),
   // The browser pane's keys answer only while focus is in the pane, which the

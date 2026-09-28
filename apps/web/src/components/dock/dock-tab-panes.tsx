@@ -9,6 +9,7 @@ import type * as React from "react";
 import type { ProjectId } from "@poseidon/contracts/ids";
 import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
 
+import { AgentsPane } from "@/components/panes/agents/agents-pane";
 import { BrowserPane } from "@/components/panes/browser/browser-pane";
 import { ChangesPane } from "@/components/panes/changes/changes-pane";
 import { ProjectChangesPane } from "@/components/panes/changes/project-changes-pane";
@@ -55,4 +56,5 @@ export const DOCK_TAB_PANES: Record<DockTab, (ctx: DockPaneContext) => React.Rea
       onSearchFocused={ctx.onFilesSearchFocused}
     />
   ),
+  agents: (ctx) => (ctx.snapshot !== null ? <AgentsPane snapshot={ctx.snapshot} /> : null),
 };
