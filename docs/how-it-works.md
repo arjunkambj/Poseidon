@@ -591,17 +591,18 @@ connector does, in the words its harness understands ([The spawn](#the-spawn)).
 
 The model picker, on the start screen and in the thread header, opens on a
 search input over a column of round harness avatars, one per enabled connector
-instance (`modelCatalogAtom`) in the connectors page's order, each the
-harness's colour logo when its connector's `metadata.iconKey` names one
-(`harnessLogoFor` in `apps/web/src/components/ui/icons/brand-icons.ts`, the
-kind → key map from `useConnectorIconKeys`), else a monogram
-(`harnessMonograms`), with the instance's name as its tooltip; the current
-pick's harness is ringed. Hovering an avatar, or arrowing onto it, opens its
-flyout beside the column: that instance's models, each a single 28px row with
-its name, its effort ladder in a few characters ("low–high") and a check on the
-current one, and its tagline (`ModelOption.description`, or the family when the
-connector gives none) as the row's native hover tooltip. When a harness's
-catalog spans more than one provider (`spansProviders`: the model ids'
+instance (`modelCatalogAtom`) in the connectors page's order, each the harness's
+colour logo when its connector's `metadata.iconKey` names one (`harnessLogoFor`
+in `apps/web/src/components/ui/icons/brand-icons.ts`, the kind → key map from
+`useConnectorIconKeys`), else a monogram (`harnessMonograms`), with the
+instance's name as its tooltip; the current pick's harness is ringed. Hovering
+an avatar, or arrowing onto it, opens its flyout beside the column: a heading
+with the harness's monochrome mark (`connectorIconFor`, a generic glyph for a
+key with no logo) and its name, then that instance's models, each a single 28px
+row with its name, its effort ladder in a few characters ("low–high") and a
+check on the current one, and its tagline (`ModelOption.description`, or the
+family when the connector gives none) as the row's native hover tooltip. When a
+harness's catalog spans more than one provider (`spansProviders`: the model ids'
 prefixes, such as `qwen/…`, else their families, never their labels), each of
 its rows leads with the provider's monochrome mark (`ProviderMark` in
 `components/ui/icons/provider-mark.tsx`), or an empty box the same size for a
@@ -609,36 +610,37 @@ provider Honeyicons has no logo for, so the names stay aligned; a harness whose
 models share one family shows none. The trigger shows the name alone. Typing
 swaps the column for one list of matches across every harness, each led by its
 harness's avatar (logo, else monogram): a match on the name or id ranks first,
-then a word of the family, tagline or harness name. Focus stays in the search
-input, which names the highlighted option with `aria-activedescendant`: Up and
-Down move along the column or the flyout, Right or Enter goes into a flyout,
-Enter picks, Left goes back to the column, and Escape clears the query, then
-leaves the flyout, then closes the picker. Choose model (`Mod+Shift+M`) opens
-it. The keyboard and
-search model is `apps/web/src/lib/harness-picker.ts`, the popup
-`apps/web/src/components/model-picker/`. It lists only the harnesses and models switched on in Settings → Models
-(`visibleCatalog` in `apps/web/src/lib/model-visibility.ts`), and always the
-thread's current pick: a thread on a harness or model switched off keeps
-showing it, keeps it as current and keeps working. A picker with no harness to
-show says why (`emptyPickerText`): still loading, the catalog failed, no
-connector enabled, no harness listed a model, or all switched off in Settings →
-Models; a kept harness with no model left says whether its models are switched
-off or it listed none. Picking a model picks its
-instance too: the start screen sends both on `thread.create`, the header on
-`thread.settings.update`. Until the user picks, a new thread shows the saved
-default model under the first instance the pickers offer it from (under a
-switched-off instance only when no other lists it), else the first model the
-pickers offer (`newTaskModelPick`), so a switched-off harness is never the
-implicit seed. A thread created without a model — the sidebar's "+", the
-palette, the new-thread key — is sent that same seed (`threadCreateSeed`, via
-`useCreateThread`); only while no instance lists it is the choice left to the
-server's seed rule. Once the thread has run
-anything (`threadLocksConnector`), the other instances' avatars stay listed but
-disabled, with a tooltip saying to start a new thread, and a pick in the
-thread's own flyout sends the model alone. The instance a thread runs on, or
-would, is `threadConnectorInstanceId` (`apps/web/src/lib/connector-routing.ts`):
-the bound session's, else the thread's chosen one while it is enabled, else the
-first enabled one.
+then a word of the family, tagline or harness name. When any match has a
+provider mark, every match keeps the slot (an empty box where it has none), so
+the names line up. Focus stays in the search input, which names the highlighted
+option with `aria-activedescendant`: Up and Down move along the column or the
+flyout, Right or Enter goes into a flyout, Enter picks, Left goes back to the
+column, and Escape clears the query, then leaves the flyout, then closes the
+picker. Choose model (`Mod+Shift+M`) opens it. The keyboard and search model is
+`apps/web/src/lib/harness-picker.ts`, the popup
+`apps/web/src/components/model-picker/`. It lists only the harnesses and models
+switched on in Settings → Models (`visibleCatalog` in
+`apps/web/src/lib/model-visibility.ts`), and always the thread's current pick: a
+thread on a harness or model switched off keeps showing it, keeps it as current
+and keeps working. A picker with no harness to show says why
+(`emptyPickerText`): still loading, the catalog failed, no connector enabled, no
+harness listed a model, or all switched off in Settings → Models; a kept harness
+with no model left says whether its models are switched off or it listed none.
+Picking a model picks its instance too: the start screen sends both on
+`thread.create`, the header on `thread.settings.update`. Until the user picks, a
+new thread shows the saved default model under the first instance the pickers
+offer it from (under a switched-off instance only when no other lists it), else
+the first model the pickers offer (`newTaskModelPick`), so a switched-off
+harness is never the implicit seed. A thread created without a model — the
+sidebar's "+", the palette, the new-thread key — is sent that same seed
+(`threadCreateSeed`, via `useCreateThread`); only while no instance lists it is
+the choice left to the server's seed rule. Once the thread has run anything
+(`threadLocksConnector`), the other instances' avatars stay listed but disabled,
+with a tooltip saying to start a new thread, and a pick in the thread's own
+flyout sends the model alone. The instance a thread runs on, or would, is
+`threadConnectorInstanceId` (`apps/web/src/lib/connector-routing.ts`): the bound
+session's, else the thread's chosen one while it is enabled, else the first
+enabled one.
 
 `/effort` and `/mode` offer what the header pickers offer. Efforts are the
 current model's `efforts`, or the whole ladder when it states none, always
@@ -2520,26 +2522,24 @@ terminal enables it on return to the window. Until it answers (or from a
 server without it) Create PR is offered, and a `gh` that cannot open one fails
 with the server's message in its toast. Beside it a chevron
 opens a menu with Commit, Commit & push, and Commit & create PR, and View pull
-request (GitHub's mark again) when a link is known. An action is a stack of steps, planned from the
-root's status and branch list (`planGitAction` in
-`apps/web/src/lib/git-actions.ts`): a commit only when something changed; a
-push after a commit, and otherwise only when the branch has no upstream yet
-(the push then sets it, `-u`) or is ahead of it; the pull request last.
-Pushing and the pull request need a remote. Each action that cannot run says
-why — in the button's tooltip, or as a second line under its menu item: no
-changes and nothing to push, a turn running (every action is disabled while
-this thread's turn runs, or while a git run is going; View PR, which runs
-nothing, stays), not a repository, a detached HEAD, no remote, the branch
-behind its upstream, a pull request from the default branch, or one `gh`
-cannot open. An enabled
-button's tooltip says what it does instead: `Push 2 commits to origin/<branch>`,
-`Create a pull request for <branch>`. Files also change outside a turn, in an
-editor or a terminal, so the control rereads every git read of the project
-when the user comes back to the window — focus, or the page turning visible,
-counted once when both fire (`useWindowReturn` in
-`apps/web/src/lib/window-return.ts`) — and the status when its menu opens. A
-Commit disabled as "no changes" would otherwise stay so with no click of its
-own to refresh it.
+request (GitHub's mark again) when a link is known. An action is a stack of
+steps, planned from the root's status and branch list (`planGitAction` in
+`apps/web/src/lib/git-actions.ts`): a commit only when something changed; a push
+after a commit, and otherwise only when the branch has no upstream yet (the push
+then sets it, `-u`) or is ahead of it; the pull request last. Pushing and the
+pull request need a remote. Each action that cannot run says why — in the
+button's tooltip, or as a second line under its menu item: no changes and
+nothing to push, a turn running (every action is disabled while this thread's
+turn runs, or while a git run is going; View PR, which runs nothing, stays), not
+a repository, a detached HEAD, no remote, the branch behind its upstream, a pull
+request from the default branch, or one `gh` cannot open. An enabled button's
+tooltip says what it does instead: `Push 2 commits to origin/<branch>`, `Create
+a pull request for <branch>`. Files also change outside a turn, in an editor or
+a terminal, so the control rereads every git read of the project when the user
+comes back to the window — focus, or the page turning visible, counted once when
+both fire (`useWindowReturn` in `apps/web/src/lib/window-return.ts`) — and the
+status when its menu opens. A Commit disabled as "no changes" would otherwise
+stay so with no click of its own to refresh it.
 
 Any action that commits opens the commit dialog first
 (`apps/web/src/components/git/commit-dialog.tsx`, its pure half in
@@ -3888,22 +3888,22 @@ automatically". Then one card per enabled connector
 instance (`harness-models-section.tsx`, `harness-card.tsx`), in
 `modelCatalogAtom`'s order. A card's header is the instance's avatar, the
 same as the picker's: its colour logo when the connector's `iconKey` names
-one, else its monogram (`harnessMonograms` in `apps/web/src/lib/harness-monogram.ts`: the initials of
-the first two words, stepping down to other letters of the first word when two
-names collide, settled over the whole catalog by `catalogMonograms` so a
-harness keeps its letters in Settings and every picker whatever is switched
-off), its name and connector kind, and a "Show in model pickers"
-switch; under it is a 28px row per model with its label, then one muted,
-truncated line of its tagline (when the connector gives one), id and family
-(`modelDetail`, in full as a hover title), its effort ladder (lowest first, "No
-effort levels" when it has none) and its own switch, led by its provider's mark
-as in the picker when the harness spans providers. The label keeps up to two
-thirds of the row, so a long tagline is cut before the name.
-Rows under a harness that is off are shown with their switches disabled, and
-the switch that would leave the pickers with no model is disabled with a
-tooltip. "Enable all" stores every harness and model on, a model its connector
-marks `hidden` included; "Reset to defaults" stores no switch at all, so every
-harness is on and every model is on unless its connector hides it. The
+one, else its monogram (`harnessMonograms` in
+`apps/web/src/lib/harness-monogram.ts`: the initials of the first two words,
+stepping down to other letters of the first word when two names collide, settled
+over the whole catalog by `catalogMonograms` so a harness keeps its letters in
+Settings and every picker whatever is switched off), its name and connector
+kind, and a "Show in model pickers" switch; under it is a 28px row per model
+with its label, then one muted, truncated line of its tagline (when the
+connector gives one), id and family (`modelDetail`, in full as a hover title),
+its effort ladder (lowest first, "No effort levels" when it has none) and its
+own switch, led by its provider's mark as in the picker when the harness spans
+providers. The label keeps up to two thirds of the row, so a long tagline is cut
+before the name. Rows under a harness that is off are shown with their switches
+disabled, and the switch that would leave the pickers with no model is disabled
+with a tooltip. "Enable all" stores every harness and model on, a model its
+connector marks `hidden` included; "Reset to defaults" stores no switch at all,
+so every harness is on and every model is on unless its connector hides it. The
 switches are `modelPicker`, keyed by connector instance id, and filter the
 pickers only: they are not the Connectors page's `enabled`, which stops an
 instance and takes it out of `modelCatalogAtom` — such instances get no card,
