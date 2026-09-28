@@ -62,6 +62,25 @@ describe("makeClearThread", () => {
   });
 });
 
+describe("makeClearThread's disconnect", () => {
+  it("cuts the thread's bridge connections, with or without a partition on disk", async () => {
+    const cut: Array<string> = [];
+    const options = {
+      fromPartition: () => ({
+        clearStorageData: async () => undefined,
+        clearCache: async () => undefined,
+      }),
+      disconnect: (threadId: string) => cut.push(threadId),
+    };
+    await makeClearThread({ ...options, partitionExists: () => true })(THREAD);
+    await makeClearThread({ ...options, partitionExists: () => false })(THREAD);
+    await expect(
+      makeClearThread({ ...options, partitionExists: () => true })("../x"),
+    ).rejects.toThrow();
+    expect(cut).toEqual([THREAD, THREAD]);
+  });
+});
+
 describe("makeClearAll", () => {
   const OTHER = "019a1b2c-3d4e-7f00-8a9b-0c1d2e3f4a5c";
 

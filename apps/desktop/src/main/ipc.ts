@@ -20,7 +20,8 @@
  *   when the bridge is running.
  * The window answers tab requests (`./browser/tabsChannel.ts`) on its own
  * channel, asks for a deleted thread's partition to be cleared
- * (`./browser/clearThread.ts`), and asks for a PNG of a pane tab.
+ * (`./browser/clearThread.ts`, which first cuts the thread's bridge
+ * connections), and asks for a PNG of a pane tab.
  */
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -56,6 +57,8 @@ import { registerServerStateBridge } from "./serverStateBridge";
 export interface PaneGuests {
   readonly guests: GuestRegistry;
   readonly tabs: TabsChannel;
+  /** Drops a thread's browser-bridge connections; a no-op while the bridge is off. */
+  readonly disconnect: (threadId: string) => void;
 }
 
 export function registerIpc(supervisor: ServerSupervisor, pane: PaneGuests) {
@@ -93,7 +96,7 @@ export function registerIpc(supervisor: ServerSupervisor, pane: PaneGuests) {
     partitionExists: (threadId: string) => existsSync(join(partitions(), `thread-${threadId}`)),
     fromPartition: (partition: string) => session.fromPartition(partition),
   };
-  const clearThread = makeClearThread(partitionOptions);
+  const clearThread = makeClearThread({ ...partitionOptions, disconnect: pane.disconnect });
   ipcMain.handle(CLEAR_THREAD_CHANNEL, async (_event, threadId: unknown) => {
     await clearThread(threadId);
   });

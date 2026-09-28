@@ -1,6 +1,7 @@
 /**
  * Wipes a deleted thread's browsing data: the cookies, storage and cache of
- * its `persist:thread-<id>` partition.
+ * its `persist:thread-<id>` partition, after cutting the thread's
+ * browser-bridge connections.
  *
  * The window asks, once the thread has left its list and its pane tabs are
  * gone (`CLEAR_THREAD_CHANNEL`, in `./tabsChannel`). The id comes from the renderer, so it
@@ -28,6 +29,11 @@ export interface ClearThreadOptions {
   readonly partitionExists: (threadId: string) => boolean;
   /** `session.fromPartition`. */
   readonly fromPartition: (partition: string) => ClearableSession;
+  /**
+   * Cuts the thread's browser-bridge connections first, for a thread that was
+   * deleted: nothing may go on driving it while its data goes.
+   */
+  readonly disconnect?: (threadId: string) => void;
 }
 
 /** Resolves `true` when a partition was cleared, `false` when there was none. */
@@ -37,6 +43,7 @@ export const makeClearThread =
     if (typeof threadId !== "string" || !BRIDGE_THREAD_ID.test(threadId)) {
       throw new Error("not a thread id");
     }
+    options.disconnect?.(threadId);
     if (!options.partitionExists(threadId)) return false;
     const session = options.fromPartition(`persist:thread-${threadId}`);
     await session.clearStorageData();

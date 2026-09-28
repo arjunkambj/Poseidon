@@ -278,8 +278,9 @@ Owns the operating system. Nothing about orchestration lives here.
   It also answers `poseidon:browser-clear-thread` (`browser/clearThread.ts`):
   the window asks it to clear a deleted thread's `persist:thread-<id>`
   partition (storage and cache), and main checks the id against the bridge's
-  thread-id pattern before it names a partition, and leaves alone a partition
-  that was never written to disk. `poseidon:browser-clear-all` is the Browser
+  thread-id pattern before it names a partition, drops the thread's
+  browser-bridge connections, and leaves alone a partition that was never
+  written to disk. `poseidon:browser-clear-all` is the Browser
   settings page's "Clear browsing data": every `thread-<id>` directory under
   `Partitions`, cleared the same way. `poseidon:browser-capture` answers a PNG
   of a pane tab by its guest's `webContents` id, for "screenshot to chat";

@@ -13,6 +13,7 @@ import { registerAttentionIpc, showWindow } from "./attentionIpc";
 import { QUIT_REQUEST_CHANNEL } from "./attention";
 import { makePointerRelay, POINTER_CHANNEL } from "./browser/agentPointer";
 import { createGuestRegistry } from "./browser/guests";
+import type { BridgeServer } from "./browser/server";
 import { startPaneBridge } from "./browser/start";
 import { makeTabsChannel } from "./browser/tabsChannel";
 import { registerIpc } from "./ipc";
@@ -61,7 +62,7 @@ if (!app.requestSingleInstanceLock()) {
   }
   /** What the server is told on every (re)spawn; set before the first one. */
   let bridge: BridgeForServer = { kind: "disabled" };
-  let closeBridge: () => Promise<void> = async () => undefined;
+  let bridgeServer: BridgeServer | null = null;
 
   const windowContents = () =>
     BrowserWindow.getAllWindows().find((win) => !win.isDestroyed())?.webContents ?? null;
@@ -100,7 +101,11 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(async () => {
     applyDevDockIcon();
     registerAppProtocol();
-    registerIpc(supervisor, { guests, tabs });
+    registerIpc(supervisor, {
+      guests,
+      tabs,
+      disconnect: (threadId) => bridgeServer?.disconnect(threadId),
+    });
     busyCount = registerAttentionIpc({
       windowContents,
       onQuitAnswer: quitGuard.answer,
@@ -108,7 +113,7 @@ if (!app.requestSingleInstanceLock()) {
     if (bridgeSetting.kind === "enabled") {
       const started = await startPaneBridge(guests.port, pointer);
       bridge = started.forServer;
-      if (started.server !== null) closeBridge = started.server.close;
+      bridgeServer = started.server;
     }
     supervisor.start();
     checkForUpdates();
@@ -120,7 +125,7 @@ if (!app.requestSingleInstanceLock()) {
       }
     });
   });
-  app.on("will-quit", () => void closeBridge());
+  app.on("will-quit", () => void bridgeServer?.close());
 
   const serverQuit = makeQuitHandler({
     stopServer: () => supervisor.stop(),
