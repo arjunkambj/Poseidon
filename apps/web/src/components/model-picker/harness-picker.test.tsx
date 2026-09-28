@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { HarnessPickerView } from "@/components/model-picker/harness-picker";
 import { activeOptionId, keyStep } from "@/components/model-picker/picker-keys";
+import { connectorIconFor } from "@/components/ui/icons/brand-icons";
 import { LOGO_ICON, LOGO_ICON_KEY } from "@/components/ui/icons/test-logo";
 import { harnessRail, initialPickerState, type PickerState } from "@/lib/harness-picker";
 import { encodeModelPick, modelPickerGroups, type ModelPick } from "@/lib/model-picks";
@@ -55,8 +56,10 @@ const railFor = (locked = false, iconKeys?: ReadonlyMap<string, string>) =>
     iconKeys,
   );
 
-/** The first path the logo draws, which its gradient ids do not touch. */
-const logoPath = / d="([^"]*)"/.exec(renderToStaticMarkup(<LOGO_ICON />))?.[1] ?? "";
+/** The first `<path>` tag an icon draws, fill included: a colour logo and its
+ * monochrome mark can share a shape and differ only in fill. */
+const firstPathTag = (html: string) => /<path [^>]*>/.exec(html)?.[0] ?? "";
+const logoPath = firstPathTag(renderToStaticMarkup(<LOGO_ICON />));
 
 const render = (
   rail: ReturnType<typeof railFor>,
@@ -107,7 +110,7 @@ describe("HarnessPickerView", () => {
     expect(rail.map((entry) => entry.iconKey)).toEqual([LOGO_ICON_KEY, LOGO_ICON_KEY]);
     const html = render(rail, initialPickerState(rail, current));
     expect(logoPath).not.toBe("");
-    expect(html.split(` d="${logoPath}"`)).toHaveLength(3);
+    expect(html.split(logoPath)).toHaveLength(3);
     expect(html).not.toContain(">Co<");
     // The tooltip and label still name the harness.
     expect(tagsWith(html, 'id="p-harness-0"')[0]).toContain('aria-label="Comet Cloud"');
@@ -121,6 +124,25 @@ describe("HarnessPickerView", () => {
       expect(html).toContain(">Co<");
       expect(html).toContain(">Ce<");
     }
+  });
+
+  it("heads each flyout with its harness's monochrome mark before the name", () => {
+    const heading = (html: string) =>
+      (html.split('aria-label="Comet Cloud models"')[1] ?? "").split('id="p-model-')[0] ?? "";
+    const markOf = (key: string | undefined) => {
+      const Icon = connectorIconFor(key);
+      return firstPathTag(renderToStaticMarkup(<Icon variant="bold" />));
+    };
+    const logo = railFor(false, new Map([["harness", LOGO_ICON_KEY]]));
+    const withLogo = heading(render(logo, initialPickerState(logo, current)));
+    expect(withLogo).toContain('data-slot="flyout-mark"');
+    expect(withLogo.indexOf(markOf(LOGO_ICON_KEY))).toBeGreaterThan(-1);
+    expect(withLogo.indexOf(markOf(LOGO_ICON_KEY))).toBeLessThan(withLogo.indexOf(">Comet Cloud<"));
+    // Monochrome: the colour logo is kept for avatars.
+    expect(withLogo).not.toContain(logoPath);
+    // No key (descriptors loading): the generic glyph, never a blank.
+    const plain = heading(render(railFor(), initialPickerState(railFor(), current)));
+    expect(plain).toContain(markOf(undefined));
   });
 
   it("marks the current harness and model and highlights the current row", () => {
@@ -163,7 +185,7 @@ describe("HarnessPickerView", () => {
     const rail = railFor(false, new Map([["harness", LOGO_ICON_KEY]]));
     const html = render(rail, { ...initialPickerState(rail, current), query: "swift" });
     // Two rail avatars and two result rows.
-    expect(html.split(` d="${logoPath}"`)).toHaveLength(5);
+    expect(html.split(logoPath)).toHaveLength(5);
   });
 
   it("draws a checkbox on every row in compare mode, flyouts and search results alike", () => {

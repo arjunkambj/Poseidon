@@ -1,8 +1,9 @@
 /**
  * The harness picker's popup body: a search input on top, then a column of
  * round harness avatars (the rail) with the highlighted harness's models in a
- * flyout beside it. Typing swaps the flyout for one flat list of matches
- * across every harness on the rail, each led by its harness's monogram.
+ * flyout beside it, headed by the harness's mark and name. Typing swaps the
+ * flyout for one flat list of matches across every harness on the rail, each
+ * led by its harness's avatar.
  *
  * DOM focus never leaves the input. Every key goes through `pickerReduce`
  * (`@/lib/harness-picker`) and the input's `aria-activedescendant` names the
@@ -30,6 +31,7 @@ import {
 } from "@/lib/harness-picker";
 import type { EmptyText } from "@/lib/model-catalog-state";
 import type { ModelPick } from "@/lib/model-picks";
+import { connectorIconFor } from "@/components/ui/icons/brand-icons";
 import { Search } from "@honeyicons/react";
 
 import { activeOptionId, keyStep, modelOptionId, resultOptionId } from "./picker-keys";
@@ -72,6 +74,7 @@ function Flyout({
   readonly dispatch: (event: PickerEvent) => void;
   readonly onChoose: (pick: ModelPick) => void;
 }) {
+  const Mark = connectorIconFor(entry.iconKey);
   return (
     <div
       role="listbox"
@@ -82,7 +85,8 @@ function Flyout({
         !shown && "invisible",
       )}
     >
-      <div className="flex shrink-0 items-center gap-1 px-2 py-1 text-xs text-muted-foreground">
+      <div className="flex shrink-0 items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground">
+        <Mark variant="bold" aria-hidden data-slot="flyout-mark" className="size-3.5 shrink-0" />
         <span className="truncate font-medium">{entry.label}</span>
         {entry.locked ? <span className="truncate">· {SWITCH_CONNECTOR_TOOLTIP}</span> : null}
       </div>
