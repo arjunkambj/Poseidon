@@ -22,6 +22,7 @@ import {
 } from "@poseidon/ui/components/dialog";
 
 import { DialogActions } from "@/components/dialog-actions";
+import { DialogBody } from "@/components/dialog-body";
 import { ThemeCards } from "@/components/Settings/theme-cards";
 import { useAddProjectForm } from "@/components/sidebar/add-project-form";
 import { useAppAtoms } from "@/lib/app-runtime";
@@ -96,7 +97,11 @@ export function OnboardingDialog({ onDone }: { readonly onDone: () => void }) {
           {step === "harnesses" ? <HarnessStep /> : null}
           {step === "theme" ? <ThemeCards /> : null}
           {step === "project" ? <ProjectStep form={form} added={added} /> : null}
-          {step === "import" ? <ImportStep onDone={onDone} /> : null}
+          {step === "import" ? (
+            <DialogBody className="max-h-80">
+              <ImportStep onDone={onDone} />
+            </DialogBody>
+          ) : null}
           <DialogActions>
             <Button
               type="button"

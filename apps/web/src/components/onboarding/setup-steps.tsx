@@ -3,8 +3,9 @@
  * (`@/components/sidebar/add-project-form`), whose state the dialog holds so
  * the folder picker can mount beside it; each project it adds is named above
  * the form, which clears for another. The import step is Settings → Import's
- * panel in a short scrolling box; opening an imported thread from it ends
- * setup (`onDone`), so the thread is not left behind the dialog.
+ * panel, which the dialog puts in a short `DialogBody`; opening an imported
+ * thread from it ends setup (`onDone`), so the thread is not left behind the
+ * dialog.
  */
 
 import { Button } from "@poseidon/ui/components/button";
@@ -39,9 +40,5 @@ export function ProjectStep({
 }
 
 export function ImportStep({ onDone }: { readonly onDone: () => void }) {
-  return (
-    <div className="-mx-4 max-h-80 overflow-y-auto px-4">
-      <SessionImportPanel onOpenThread={onDone} />
-    </div>
-  );
+  return <SessionImportPanel onOpenThread={onDone} />;
 }
