@@ -42,12 +42,6 @@ import type {
 } from "@poseidon/contracts/git";
 import type { GitBlame } from "@poseidon/contracts/git-review";
 import type { DetectedEditor, EditorId } from "@poseidon/contracts/editors";
-import type {
-  PullRequestAction,
-  PullRequestFixContext,
-  PullRequestMarks,
-  PullRequestView,
-} from "@poseidon/contracts/pullRequest";
 import type { CheckpointSummary } from "@poseidon/contracts/orchestration";
 import type { MessageSearchHit } from "@poseidon/contracts/search";
 import { migrateLegacyKeybindingTable } from "@poseidon/contracts/keybindings";
@@ -74,6 +68,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { PERMISSION_RULES_KEY, readRules, writeRules } from "../permissions/PermissionService";
 import { layer as migrationsLayer } from "../persistence/Migrations";
 import type { BrowserCallOutcome } from "../browser/tools";
+import type { PullRequestMethods } from "./pullRequestService";
 
 // ── Server identity ────────────────────────────────────────────
 
@@ -244,28 +239,6 @@ export class GitService extends Context.Service<
     readonly pullRequestReadiness: (
       scope: WorkspaceScope,
     ) => Effect.Effect<GitPullRequestReadiness, PoseidonRpcError>;
-    /** The pull request of the workspace's current branch, read through the GitHub CLI. */
-    readonly viewPullRequest: (
-      scope: WorkspaceScope,
-    ) => Effect.Effect<PullRequestView, PoseidonRpcError>;
-    /** The pull request marks of the project's live threads; empty when gh cannot answer. */
-    readonly pullRequestMarks: (
-      projectId: ProjectId,
-    ) => Effect.Effect<PullRequestMarks, PoseidonRpcError>;
-    /** Runs one gh write on the workspace's pull request and answers the view afterwards. */
-    readonly pullRequestAction: (
-      scope: WorkspaceScope,
-      request: {
-        readonly number: number;
-        readonly headRefOid?: string | undefined;
-        readonly action: PullRequestAction;
-      },
-    ) => Effect.Effect<PullRequestView, PoseidonRpcError>;
-    /** The failing-check logs or conflicting files a thread fixing the pull request starts from. */
-    readonly pullRequestFixContext: (
-      scope: WorkspaceScope,
-      request: { readonly number: number; readonly kind: "checks" | "conflicts" },
-    ) => Effect.Effect<PullRequestFixContext, PoseidonRpcError>;
     /**
      * Cuts a worktree for a new thread under the Poseidon home, on a branch
      * named from the settings' prefix and `name`, from `baseBranch` or the
@@ -296,7 +269,7 @@ export class GitService extends Context.Service<
       projectId: ProjectId,
       threadId: ThreadId,
     ) => Effect.Effect<ReadonlyArray<CheckpointSummary>, PoseidonRpcError>;
-  }
+  } & PullRequestMethods
 >()("server/rpc/GitService") {
   static readonly empty = Layer.succeed(
     GitService,
