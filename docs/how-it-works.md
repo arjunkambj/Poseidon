@@ -2532,7 +2532,7 @@ agent opened is open, and the pane is not on screen. Settings → Browser →
 agent activity; closing it while the agent is active keeps it closed for that
 thread until you open it yourself, and an auto-open is not remembered as the
 thread's dock tab. Other surfaces — the terminal's links, the Run menu's
-dev-server items — call
+dev-server items and the terminal drawer's "Open in browser" — call
 `openInThreadBrowser(threadId, url, { reveal })`, which accepts only http(s),
 opens or selects the thread's tab on it and shows the pane.
 
@@ -3113,8 +3113,9 @@ rescans its scrollback. While the tab in front is a running script with a
 dev server, the drawer's toolbar shows a button labelled with its
 `host:port` ("Open in browser"), and the Run menu has an "Open
 <host:port> in browser" item under each running script for each of its
-dev servers. In a thread it opens in the thread's in-app browser pane; on
-the New task page, which has no browser pane, in the system browser.
+dev servers. In a thread both open it the same way, through
+`openInThreadBrowser`: a tab of the thread's in-app browser pane opened or
+selected on it, and the pane shown; on the New task page, which has no browser pane, in the system browser.
 Nothing opens until one is clicked.
 
 ---

@@ -2,8 +2,9 @@
  * The drawer toolbar's "Open in browser" button: shown while the tab in front
  * is a running script that has printed a dev server (`./dev-servers`), and
  * labelled with its `host:port`. It opens the first one the script printed
- * through the drawer's `onOpenLink` — the thread's browser pane, or on the
- * New task page the system browser. Nothing opens until it is clicked.
+ * through `onOpen` — a new tab of the thread's in-app browser pane, as the
+ * Run menu does, or on the New task page the system browser. Nothing opens
+ * until it is clicked.
  */
 
 import { Button } from "@poseidon/ui/components/button";
@@ -16,11 +17,11 @@ import { Globe } from "@honeyicons/react";
 
 export function DevServerButton({
   tab,
-  onOpenLink,
+  onOpen,
 }: {
   /** The tab in front, if any. */
   tab: TerminalTab | undefined;
-  onOpenLink: (url: string) => void;
+  onOpen: (url: string) => void;
 }) {
   const urls = useDevServerUrls(tab?.terminalId ?? null);
   const url = urls[0];
@@ -38,7 +39,7 @@ export function DevServerButton({
             size="xs"
             className="shrink-0"
             aria-label={`Open ${devServerLabel(url)} in browser`}
-            onClick={() => onOpenLink(url)}
+            onClick={() => onOpen(url)}
           />
         }
       >

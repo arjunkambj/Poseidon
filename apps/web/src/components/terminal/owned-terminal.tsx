@@ -13,7 +13,9 @@
  * `terminalOwnerKey`), and the strip with its show button (`./terminal-bar`)
  * while it is not. A mod-clicked link opens in the thread's browser pane
  * (`./use-open-link`); the New task page has no browser pane, so there it
- * opens in the system browser.
+ * opens in the system browser. A dev server a script printed opens the way
+ * the Run menu opens one: a tab of the thread's in-app browser
+ * (`openInThreadBrowser`), or on the New task page the system browser.
  *
  * A printed `path:line[:col]` the owner's root holds is a link too
  * (`./use-file-links`): a plain click shows it in the thread's Files tab, a
@@ -26,6 +28,7 @@ import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import { decodeTerminalOwnerKey, terminalOwnerKey } from "@poseidon/contracts/terminal";
 import * as React from "react";
 
+import { openInThreadBrowser } from "@/components/panes/browser/open-in-browser";
 import { useTerminalAtoms } from "@/components/terminal/terminal-atoms";
 import { TerminalBar } from "@/components/terminal/terminal-bar";
 import { TerminalDrawer } from "@/components/terminal/terminal-drawer";
@@ -47,6 +50,7 @@ function OwnedTerminal({
   threadId,
   draftId,
   onOpenLink,
+  onOpenDevServer,
 }: {
   ownerKey: string;
   /** The root file links resolve in: the thread's workspace, else the project's folder. */
@@ -54,6 +58,7 @@ function OwnedTerminal({
   threadId?: ThreadId;
   draftId: ThreadId;
   onOpenLink: (url: string) => void;
+  onOpenDevServer: (url: string) => void;
 }) {
   const fileLinks = useFileLinks({ projectId, threadId });
   const [open, setOpen] = useTerminalOpen(ownerKey);
@@ -83,6 +88,7 @@ function OwnedTerminal({
       onHide={() => setOpen(false)}
       onClose={(terminalId) => closeTerminal({ ...decodeTerminalOwnerKey(ownerKey), terminalId })}
       onOpenLink={onOpenLink}
+      onOpenDevServer={onOpenDevServer}
       fileLinks={fileLinks}
     />
   );
@@ -110,6 +116,7 @@ export function ThreadTerminal({
       threadId={threadId}
       draftId={threadId}
       onOpenLink={openLink}
+      onOpenDevServer={(url) => void openInThreadBrowser(threadId, url)}
     />
   );
 }
@@ -132,6 +139,7 @@ export function ProjectTerminal({
       projectId={projectId}
       draftId={draftId}
       onOpenLink={openExternal}
+      onOpenDevServer={openExternal}
     />
   );
 }

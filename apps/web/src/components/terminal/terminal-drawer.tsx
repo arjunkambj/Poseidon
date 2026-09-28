@@ -11,7 +11,7 @@
  * output. A mod-clicked link goes to `onOpenLink`, a printed file reference
  * to `fileLinks`. While the tab in front is a running script that printed a
  * dev server, "Open in browser" (`./dev-server-button`) opens it through
- * `onOpenLink` too.
+ * `onOpenDevServer`.
  *
  * Which terminals exist is the server's to say: the drawer folds each
  * `terminal.list` into its tab state (`./drawer-state`). Opening a drawer that
@@ -110,6 +110,7 @@ export function TerminalDrawer({
   onHide,
   onClose,
   onOpenLink,
+  onOpenDevServer,
   fileLinks,
 }: {
   /** The owner, a thread or a project, by `terminalOwnerKey`. */
@@ -121,6 +122,8 @@ export function TerminalDrawer({
   onHide: () => void;
   onClose: (terminalId: TerminalId) => void;
   onOpenLink: (url: string) => void;
+  /** Opens a dev server a running script printed, in a browser tab of its own. */
+  onOpenDevServer: (url: string) => void;
   fileLinks: FileLinkHandlers;
 }) {
   const atoms = useTerminalAtoms();
@@ -336,7 +339,7 @@ export function TerminalDrawer({
         ) : null}
         <DevServerButton
           tab={state.tabs.find((tab) => tab.terminalId === state.activeId)}
-          onOpenLink={onOpenLink}
+          onOpen={onOpenDevServer}
         />
         <IconButton
           label="Find"
