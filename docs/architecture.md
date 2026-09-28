@@ -333,7 +333,9 @@ The renderer. TanStack Router routes under `apps/web/src/routes`, state through
 
 The shell is a left sidebar (projects → threads), the thread column (the
 timeline, then the composer with any open approval, question or plan card
-docked above its input, then the terminal drawer — a strip with a show button
+docked above its input, and while subagents run an "N agents working" strip
+there too, whose View opens the dock's agents tab on the newest one (a request
+in `state/agents-reveal.ts` the thread view answers), then the terminal drawer — a strip with a show button
 while closed — whose toolbar finds text and quotes a selection into the
 composer draft, and whose mod-clicked http(s) links open on the dock's browser
 tab) and a right dock whose strip holds only the tabs opened in that thread
