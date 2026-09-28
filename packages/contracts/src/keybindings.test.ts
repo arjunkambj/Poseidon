@@ -98,7 +98,7 @@ describe("DEFAULT_KEYBINDINGS", () => {
       expect(row("timeline.previousMessage")).toBe("Alt+Shift+ArrowUp|threadOpen && !inputFocus");
       expect(row("timeline.nextMessage")).toBe("Alt+Shift+ArrowDown|threadOpen && !inputFocus");
       expect(row("timeline.find")).toBe(
-        "Mod+F|threadOpen && !terminalFocus && !browserFocus && !filesFocus",
+        "Mod+F|threadOpen && !terminalFocus && !browserFocus && !filesFocus && !dialogOpen",
       );
       expect(row("changes.nextFile")).toBe(
         "Alt+ArrowDown|changesOpen && !inputFocus && !dialogOpen",

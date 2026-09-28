@@ -1060,8 +1060,9 @@ the keys hand the scroll to the reader before they move it, the same event a
 wheel sends, so a held send anchor lets go rather than pulling the list back.
 The scroll is instant under reduced motion.
 
-`timeline.find` (Mod+F, with the thread open and the focus outside the
-terminal, the browser and the Files pane, which keep their own find) opens a
+`timeline.find` (Mod+F, with the thread open, no dialog or menu open, and the
+focus outside the terminal, the browser and the Files pane, which keep their
+own find) opens a
 find bar over the timeline's top-right corner (`timeline/thread-find-bar.tsx`,
 state in `use-thread-find.ts`). The list is virtualized and a settled turn's
 work is not in it until its fold opens, so the bar searches the thread
@@ -2783,7 +2784,7 @@ fields entirely.
 | Timeline | `timeline.jumpToLatest`                               | `Mod+Shift+J`                 | `threadOpen`                                                                           |
 | Timeline | `timeline.collapseAll` / `expandAll`                  | `Mod+Alt+[` / `Mod+Alt+]`     | `threadOpen`                                                                           |
 | Timeline | `timeline.previousMessage` / `nextMessage`            | `Alt+Shift+ArrowUp` / `Down`  | `threadOpen && !inputFocus`                                                            |
-| Timeline | `timeline.find`                                       | `Mod+F`                       | `threadOpen && !terminalFocus && !browserFocus && !filesFocus`                         |
+| Timeline | `timeline.find`                                       | `Mod+F`                       | `threadOpen && !terminalFocus && !browserFocus && !filesFocus && !dialogOpen`          |
 | Git      | `git.commit`                                          | `Mod+Alt+C`                   |                                                                                        |
 | Git      | `git.push`                                            | `Mod+Alt+P`                   |                                                                                        |
 | Git      | `git.branchPicker`                                    | `Mod+Shift+G`                 |                                                                                        |

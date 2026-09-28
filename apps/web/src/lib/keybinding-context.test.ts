@@ -133,6 +133,29 @@ describe("surfaceOf", () => {
     expect(context("composerFocus")).toBe(false);
   });
 
+  it("gives Mod+F to the thread's find but not over a dialog or inside the Files pane", () => {
+    const threadOpen = (name: string) => (name === "threadOpen" ? true : undefined);
+    const press = {
+      key: "f",
+      code: "KeyF",
+      metaKey: true,
+      ctrlKey: false,
+      altKey: false,
+      shiftKey: false,
+    };
+    const resolve = (focus: FocusSnapshot) =>
+      resolveKeybinding(
+        DEFAULT_KEYBINDINGS,
+        press,
+        keybindingContext(focus, threadOpen, true),
+        "meta",
+      )?.command;
+    expect(resolve(snapshot({ editable: true, surface: "composer" }))).toBe("timeline.find");
+    expect(resolve(snapshot())).toBe("timeline.find");
+    expect(resolve(snapshot({ editable: true, overlayOpen: true }))).toBeUndefined();
+    expect(resolve(snapshot({ editable: true, surface: "files" }))).toBeUndefined();
+  });
+
   it("gives Mod+L, Mod+[ and Mod+] to the browser pane inside it and to the app elsewhere", () => {
     const pane = element({ "data-context": FOCUS_SURFACE.browser });
     const addressBar = element({}, pane);

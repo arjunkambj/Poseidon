@@ -61,9 +61,10 @@ const OUTSIDE_BROWSER = "!browserFocus";
 const TIMELINE_KEYS = "threadOpen && !inputFocus";
 /**
  * Find in thread: anywhere beside a thread but the terminal, the browser pane
- * and the Files tab, which each keep their own find.
+ * and the Files tab, which each keep their own find, and not over a dialog or
+ * menu, which the bar behind it would pull the focus out of.
  */
-const THREAD_FIND = "threadOpen && !terminalFocus && !browserFocus && !filesFocus";
+const THREAD_FIND = "threadOpen && !terminalFocus && !browserFocus && !filesFocus && !dialogOpen";
 
 /**
  * The Changes pane's file keys: live only while the pane is the dock's tab,
