@@ -228,3 +228,13 @@ describe("scripts.detect", () => {
     expect(decode({ ...script, packageManager: "deno" })._tag).toBe("Failure");
   });
 });
+
+describe("git.diff", () => {
+  it("takes ignoreWhitespace", () => {
+    const rpc = PoseidonRpcGroup.requests.get(RPC_METHODS.gitDiff);
+    const decode = Schema.decodeUnknownExit(rpc!.payloadSchema);
+    const projectId = "0190aaaa-0000-7000-8000-000000000001";
+    expect(decode({ projectId, ignoreWhitespace: true })._tag).toBe("Success");
+    expect(decode({ projectId, ignoreWhitespace: "yes" })._tag).toBe("Failure");
+  });
+});

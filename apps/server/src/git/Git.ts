@@ -184,9 +184,10 @@ const parseNumstat = (stdout: string): Map<string, { added: number; deleted: num
  * `--intent-to-add` in a throwaway index so they appear as new-file diffs.
  * Ref→ref diffs skip this — every file is already tracked.
  */
-const worktreeDiff = (cwd: string, base: string, path?: string) =>
+const worktreeDiff = (cwd: string, base: string, path?: string, ignoreWhitespace = false) =>
   Effect.gen(function* () {
     const pathspec = path === undefined ? [] : ["--", path];
+    const ws = ignoreWhitespace ? ["-w"] : [];
     const tempDir = mkdtempSync(nodePath.join(tmpdir(), "poseidon-index-"));
     const tempIndex = nodePath.join(tempDir, "index");
     const env = { GIT_INDEX_FILE: tempIndex };
@@ -218,12 +219,21 @@ const worktreeDiff = (cwd: string, base: string, path?: string) =>
       }
       const patch = yield* run(
         cwd,
-        ["diff", "--patch", "--no-color", "--no-ext-diff", "--find-renames", base, ...pathspec],
+        [
+          "diff",
+          "--patch",
+          "--no-color",
+          "--no-ext-diff",
+          "--find-renames",
+          ...ws,
+          base,
+          ...pathspec,
+        ],
         { env },
       );
       const numstat = yield* run(
         cwd,
-        ["diff", "--numstat", "-z", "--find-renames", base, ...pathspec],
+        ["diff", "--numstat", "-z", "--find-renames", ...ws, base, ...pathspec],
         { env },
       );
       return { patch: patch.stdout, numstat: numstat.stdout };
@@ -232,16 +242,24 @@ const worktreeDiff = (cwd: string, base: string, path?: string) =>
     }
   });
 
-const refDiff = (cwd: string, from: string, to: string | undefined, path?: string) =>
+const refDiff = (
+  cwd: string,
+  from: string,
+  to: string | undefined,
+  path?: string,
+  ignoreWhitespace = false,
+) =>
   Effect.gen(function* () {
     const range = to === undefined ? [from] : [from, to];
     const pathspec = path === undefined ? [] : ["--", path];
+    const ws = ignoreWhitespace ? ["-w"] : [];
     const patch = yield* run(cwd, [
       "diff",
       "--patch",
       "--no-color",
       "--no-ext-diff",
       "--find-renames",
+      ...ws,
       ...range,
       ...pathspec,
     ]);
@@ -250,21 +268,36 @@ const refDiff = (cwd: string, from: string, to: string | undefined, path?: strin
       "--numstat",
       "-z",
       "--find-renames",
+      ...ws,
       ...range,
       ...pathspec,
     ]);
     return { patch: patch.stdout, numstat: numstat.stdout };
   });
 
-const toDiffFiles = (patch: string, numstat: string): Array<GitDiffFile> => {
+/**
+ * Under `-w` some git versions still print a whitespace-only edit's header with
+ * no hunk. Such a plain edit keeps its row but no patch, so the pane lists it
+ * without offering to open raw headers; a mode change or binary edit keeps its.
+ */
+const headerOnly = (chunk: string) => !/^(@@|Binary files |old mode )/m.test(chunk);
+
+const toDiffFiles = (
+  patch: string,
+  numstat: string,
+  ignoreWhitespace = false,
+): Array<GitDiffFile> => {
   const counts = parseNumstat(numstat);
   return splitPatch(patch).map(({ path, oldPath, chunk }) => {
     const count = counts.get(path) ?? { added: 0, deleted: 0 };
+    const renamed = oldPath !== undefined && oldPath !== path;
+    const kind = kindOf(chunk);
+    const empty = ignoreWhitespace && kind === "edit" && !renamed && headerOnly(chunk);
     return {
       path,
-      ...(oldPath !== undefined && oldPath !== path ? { oldPath } : {}),
-      kind: kindOf(chunk),
-      diff: chunk,
+      ...(renamed ? { oldPath } : {}),
+      kind,
+      diff: empty ? "" : chunk,
       additions: count.added,
       deletions: count.deleted,
     };
@@ -418,8 +451,8 @@ export const layer = Layer.effect(
             options.mergeBase === undefined ? from : yield* mergeBaseOf(root, options.mergeBase);
           const { patch, numstat } =
             to === undefined
-              ? yield* worktreeDiff(root, base, options.path)
-              : yield* refDiff(root, from, to, options.path);
+              ? yield* worktreeDiff(root, base, options.path, options.ignoreWhitespace)
+              : yield* refDiff(root, from, to, options.path, options.ignoreWhitespace);
           // The paths are the top level's; a project in a subfolder of its
           // repository needs this to find them under its own root.
           const prefix = yield* run(root, ["rev-parse", "--show-prefix"]);
@@ -428,7 +461,7 @@ export const layer = Layer.effect(
             to: options.to ?? null,
             isRepository: true,
             prefix: prefix.stdout.replace(/\n$/, ""),
-            files: toDiffFiles(patch, numstat),
+            files: toDiffFiles(patch, numstat, options.ignoreWhitespace),
           };
         }).pipe(Effect.mapError(asRpcError)),
 

@@ -180,6 +180,8 @@ export class GitService extends Context.Service<
         readonly path?: string;
         /** Diff the working tree against `git merge-base HEAD <mergeBase>`. */
         readonly mergeBase?: string;
+        /** Diff with `-w`, so whitespace-only changes drop out. */
+        readonly ignoreWhitespace?: boolean;
       },
     ) => Effect.Effect<GitDiff, PoseidonRpcError>;
     readonly branches: (scope: WorkspaceScope) => Effect.Effect<GitBranchList, PoseidonRpcError>;

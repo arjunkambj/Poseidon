@@ -403,6 +403,44 @@ describe("w8 git", () => {
     ),
   );
 
+  it.live("ignoreWhitespace drops a whitespace-only change and keeps real ones", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        writeFileSync(nodePath.join(root, "b.txt"), "beta\ngamma\n");
+        git(root, "add", "-A");
+        git(root, "commit", "-qm", "add b");
+        const { projectId, git: gitService } = yield* stack(root);
+        // a.txt: trailing and leading whitespace only; b.txt: a real edit.
+        writeFileSync(nodePath.join(root, "a.txt"), "  one \n");
+        writeFileSync(nodePath.join(root, "b.txt"), "beta \ndelta\n");
+
+        const plain = yield* gitService.diff({ projectId }, {});
+        expect(plain.files.map((f) => f.path).sort()).toEqual(["a.txt", "b.txt"]);
+
+        const ignoring = yield* gitService.diff({ projectId }, { ignoreWhitespace: true });
+        const byPath = new Map(ignoring.files.map((f) => [f.path, f]));
+        const a = byPath.get("a.txt");
+        // Gone, or listed with no patch and no counts: never a hunk to open.
+        expect(a === undefined || (a.diff === "" && a.additions + a.deletions === 0)).toBe(true);
+        const b = byPath.get("b.txt");
+        expect(b?.additions).toBe(1);
+        expect(b?.deletions).toBe(1);
+        expect(b?.diff).toContain("+delta");
+        expect(b?.diff).not.toContain("+beta ");
+
+        // Between refs too.
+        git(root, "add", "-A");
+        git(root, "commit", "-qm", "whitespace and delta");
+        const between = yield* gitService.diff(
+          { projectId },
+          { from: git(root, "rev-parse", "HEAD^").trim(), to: "HEAD", ignoreWhitespace: true },
+        );
+        expect(between.files.filter((f) => f.diff !== "").map((f) => f.path)).toEqual(["b.txt"]);
+      }),
+    ),
+  );
+
   it.live("a diff says where a subfolder project sits in its repository", () =>
     Effect.scoped(
       Effect.gen(function* () {

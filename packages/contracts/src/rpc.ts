@@ -444,6 +444,8 @@ const GitStatusRpc = Rpc.make(RPC_METHODS.gitStatus, {
  * tree, uncommitted and untracked work included, against `git merge-base HEAD
  * <mergeBase>`, so the base's own later commits never show as reverted. It
  * takes the place of `from` and cannot be combined with `to`.
+ * `ignoreWhitespace` diffs with `-w`: a file whose change is whitespace alone
+ * drops out, or stays listed with an empty `diff` and no counts.
  */
 const GitDiffRpc = Rpc.make(RPC_METHODS.gitDiff, {
   payload: Schema.Struct({
@@ -453,6 +455,7 @@ const GitDiffRpc = Rpc.make(RPC_METHODS.gitDiff, {
     to: Schema.optional(NonEmptyString),
     mergeBase: Schema.optional(NonEmptyString),
     path: Schema.optional(NonEmptyString),
+    ignoreWhitespace: Schema.optional(Schema.Boolean),
   }),
   success: GitDiff,
   error: PoseidonRpcError,
