@@ -29,7 +29,8 @@ import { ReadModelStore } from "../persistence/ReadModels";
 import { testLayer as sqliteTestLayer } from "../persistence/Sqlite";
 import { GitService, SettingsStore } from "../rpc/services";
 import { layer as gitLayer } from "./Git";
-import { createPullRequest, GhMissing, GhRunner, type GhOutput } from "./GitHubCli";
+import { fakeGh, GH_AUTHENTICATED, GH_NOT_AUTHENTICATED, GH_VERSION } from "./fakeGh";
+import { createPullRequest, GhRunner, type GhOutput } from "./GitHubCli";
 import { WorktreesRoot } from "./Worktrees";
 
 const git = (cwd: string, ...args: Array<string>) =>
@@ -95,49 +96,6 @@ const createdEvent = (
   }) as OrchestrationEvent;
 
 // ── A fake gh ──────────────────────────────────────────────────
-
-/** What gh 2.92 prints, captured from the real binary (the token masked as gh masks it). */
-const GH_VERSION: GhOutput = {
-  stdout: "gh version 2.92.0 (2026-04-28)\nhttps://github.com/cli/cli/releases/tag/v2.92.0\n",
-  stderr: "",
-  exitCode: 0,
-};
-const GH_AUTHENTICATED: GhOutput = {
-  stdout: [
-    "github.com",
-    "  ✓ Logged in to github.com account octo (keyring)",
-    "  - Active account: true",
-    "  - Git operations protocol: https",
-    "  - Token: gho_************************************",
-    "  - Token scopes: 'gist', 'read:org', 'repo', 'workflow'",
-    "",
-  ].join("\n"),
-  stderr: "",
-  exitCode: 0,
-};
-const GH_NOT_AUTHENTICATED: GhOutput = {
-  stdout: "",
-  stderr: "You are not logged into any GitHub hosts. To log in, run: gh auth login\n",
-  exitCode: 1,
-};
-
-type GhScript = (args: ReadonlyArray<string>) => GhOutput | "missing";
-
-/** A runner that answers from `script` and records every argv it was handed. */
-const fakeGh = (script: GhScript) => {
-  const calls: Array<ReadonlyArray<string>> = [];
-  const runner = GhRunner.of({
-    run: (args) =>
-      Effect.suspend(() => {
-        calls.push(args);
-        const answer = script(args);
-        return answer === "missing"
-          ? Effect.fail(new GhMissing({ message: "spawn gh ENOENT" }))
-          : Effect.succeed(answer);
-      }),
-  });
-  return { runner, calls };
-};
 
 /** gh signed in, answering `pr create` (and `pr view`) as given. */
 const signedInGh = (prCreate: GhOutput, prView?: GhOutput) =>
