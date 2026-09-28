@@ -107,6 +107,8 @@ describe("DEFAULT_KEYBINDINGS", () => {
       expect(row("changes.previousFile")).toBe(
         "Alt+ArrowUp|changesOpen && !inputFocus && !dialogOpen",
       );
+      expect(row("changes.nextChange")).toBe("Alt+]|changesOpen && !inputFocus && !dialogOpen");
+      expect(row("changes.previousChange")).toBe("Alt+[|changesOpen && !inputFocus && !dialogOpen");
       expect(row("changes.nextUnviewed")).toBe("Alt+U|changesOpen && !inputFocus && !dialogOpen");
       expect(row("terminal.toggle")).toBe("Mod+J|");
       expect(row("git.commit")).toBe("Mod+Alt+C|");

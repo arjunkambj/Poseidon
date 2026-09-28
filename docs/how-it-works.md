@@ -1888,6 +1888,21 @@ current one that is not viewed as its patch is now, wrapping round to the top
 (`nextUnviewed` in `review.ts`); the button is disabled once every file is
 viewed.
 
+`Alt+]` / `Alt+[` (`changes.nextChange` / `previousChange`), and the up and
+down chevrons beside the eye, step through the list's changes in scroll order
+(`use-change-navigation.ts`, rules in `change-blocks.ts`). An open file stops
+at each block of changed lines, scrolled to just under its sticky row; a
+closed file with a patch is one stop of its own, which opens it and scrolls
+its header to the top the way `Alt+ArrowDown` does, and the press after that
+lands on its first change. Going back into a closed file opens it and lands
+on its last change once the patch has rendered. Nothing wraps round, and near
+the end of the list, where a stop cannot reach the top, the keys still walk
+the stops one by one. The pane reads the blocks off the rendered patches
+(`diff-dom.ts`): `@pierre/diffs` draws each one inside a `diffs-container`
+element's shadow root, where a changed line is a `[data-line]` row typed
+`change-addition` or `change-deletion`, and touching rows make one block — in
+split view the two columns fold together by height.
+
 Beside the files sits a tree of them (`file-tree.ts` for the rules,
 `file-tree-view.tsx` for the tree): folders with chains of single folders
 shown as one row (`apps/web/src`), folders before files, each by name. A file
@@ -3329,6 +3344,7 @@ fields entirely.
 | View     | `chatWidth.cycle`                                     | unbound                       |                                                                                        |
 | View     | `editor.openFavorite`                                 | `Mod+O`                       | `threadOpen`                                                                           |
 | View     | `changes.nextFile` / `previousFile`                   | `Alt+ArrowDown` / `Up`        | `changesOpen && !inputFocus && !dialogOpen`                                            |
+| View     | `changes.nextChange` / `previousChange`               | `Alt+]` / `Alt+[`             | the same                                                                               |
 | View     | `changes.nextUnviewed`                                | `Alt+U`                       | the same                                                                               |
 | Timeline | `timeline.jumpToLatest`                               | `Mod+Shift+J`                 | `threadOpen`                                                                           |
 | Timeline | `timeline.collapseAll` / `expandAll`                  | `Mod+Alt+[` / `Mod+Alt+]`     | `threadOpen`                                                                           |
@@ -3537,7 +3553,10 @@ chords, and on macOS the Cocoa `Ctrl+letter` editing keys — and
 chords the app takes over on purpose: `Mod+R` under `browserFocus` reloads
 the pane's page, not the window, and `Alt+ArrowUp`/`Down` — caret moves that
 mean nothing outside a text field — step through the Changes pane's files
-under `changesOpen && !inputFocus && !dialogOpen` (`CHANGES_PANE_KEYS`).
+under `changesOpen && !inputFocus && !dialogOpen` (`CHANGES_PANE_KEYS`). The
+pane's other keys, `Alt+]`, `Alt+[` and `Alt+U`, sit under the same clause:
+on macOS those chords type a character or start a dead key only in a text
+field, and the matcher finds them through `event.code` whatever they type.
 
 The context for each press is built by `apps/web/src/lib/keybinding-context.ts`:
 `focusSnapshot` reads whether the focused element is a text field, its closest

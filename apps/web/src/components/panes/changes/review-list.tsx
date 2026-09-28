@@ -19,7 +19,9 @@
  *
  * "Next unviewed" (`changes.nextUnviewed`, and its button in the summary line)
  * reveals the first file after the cursor that is not viewed as it is now,
- * wrapping round (`nextUnviewed`).
+ * wrapping round (`nextUnviewed`). The change keys and their buttons move
+ * between blocks of changed lines (`useChangeNavigation`), over the list as
+ * last laid out (`useReviewLayout`).
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
@@ -47,7 +49,9 @@ import {
 } from "./review";
 import { ReviewNav } from "./review-nav";
 import { ReviewSummary, TreeToggle } from "./review-summary";
+import { useChangeNavigation } from "./use-change-navigation";
 import { useElementWidth } from "./use-element-width";
+import { useReviewLayout } from "./use-review-layout";
 
 export function ReviewList({
   threadId,
@@ -78,6 +82,7 @@ export function ReviewList({
   // tree. By path, so a refresh that reorders or drops files cannot point it
   // at another one. A ref for the keys, state for the tree's highlight.
   const scrollerRef = React.useRef<HTMLDivElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
   const cursor = React.useRef<string | null>(null);
   const [selected, setSelected] = React.useState<string | null>(null);
   const moveCursor = (path: string) => {
@@ -87,7 +92,7 @@ export function ReviewList({
 
   // Opens the file when it has a patch and scrolls its header to the top;
   // only the list moves, never the dock around it (`scrollWithin`). One
-  // `<section>` per file, in file order.
+  // `<section>` per file, in file order, in the scroller's content.
   const revealFile = (path: string) => {
     const index = files.findIndex((file) => file.path === path);
     const file = files[index];
@@ -100,7 +105,7 @@ export function ReviewList({
     }
     const scroller = scrollerRef.current;
     if (scroller !== null) {
-      scrollWithin(scroller, scroller.children[index]);
+      scrollWithin(scroller, contentRef.current?.children[index]);
     }
   };
   const revealRef = React.useRef(revealFile);
@@ -108,12 +113,13 @@ export function ReviewList({
 
   const step = (direction: 1 | -1) => {
     const scroller = scrollerRef.current;
-    if (scroller === null) {
+    const content = contentRef.current;
+    if (scroller === null || content === null) {
       return;
     }
     const top = scroller.getBoundingClientRect().top;
     const target = stepFile(
-      [...scroller.children].map((section) => section.getBoundingClientRect().top - top),
+      [...content.children].map((section) => section.getBoundingClientRect().top - top),
       scroller.clientHeight,
       files.findIndex((file) => file.path === cursor.current),
       direction,
@@ -138,6 +144,17 @@ export function ReviewList({
     }
   };
   useKeybindingCommand("changes.nextUnviewed", revealUnviewed);
+
+  const reviewLayout = useReviewLayout(scrollerRef, contentRef, review.open);
+  const changes = useChangeNavigation({
+    scrollerRef,
+    contentRef,
+    files,
+    isOpen: (path) => isOpen(review, path),
+    sections: reviewLayout.sections,
+    revealFile,
+    moveCursor,
+  });
 
   // A file this comparison does not have is dropped all the same: the link has
   // been answered, and a later comparison that has it must not jump to it.
@@ -184,6 +201,8 @@ export function ReviewList({
         }
         nav={
           <ReviewNav
+            canStepChange={files.some((file) => file.diff !== "")}
+            onStepChange={changes.step}
             allViewed={viewedPaths.size === files.length}
             onNextUnviewed={revealUnviewed}
           />
@@ -200,25 +219,27 @@ export function ReviewList({
         {layout === "aside" ? (
           <FileTree {...treeProps} className="w-56 shrink-0 border-r border-border" />
         ) : null}
-        <div ref={scrollerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
-          {hashed.map(({ file, hash }) => (
-            <FileSection
-              key={file.path}
-              threadId={threadId}
-              file={file}
-              prefix={prefix}
-              open={isOpen(review, file.path)}
-              onOpenChange={(open) => {
-                moveCursor(file.path);
-                setOpen([file.path], open);
-              }}
-              viewed={viewedPaths.has(file.path)}
-              onViewedChange={(viewed) =>
-                updateReview((current) => withViewed(current, file.path, viewed ? hash : null))
-              }
-              diffStyle={diffStyle}
-            />
-          ))}
+        <div ref={scrollerRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+          <div ref={contentRef}>
+            {hashed.map(({ file, hash }) => (
+              <FileSection
+                key={file.path}
+                threadId={threadId}
+                file={file}
+                prefix={prefix}
+                open={isOpen(review, file.path)}
+                onOpenChange={(open) => {
+                  moveCursor(file.path);
+                  setOpen([file.path], open);
+                }}
+                viewed={viewedPaths.has(file.path)}
+                onViewedChange={(viewed) =>
+                  updateReview((current) => withViewed(current, file.path, viewed ? hash : null))
+                }
+                diffStyle={diffStyle}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

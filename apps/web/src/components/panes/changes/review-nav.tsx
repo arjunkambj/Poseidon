@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components
 
 import { CommandKbd } from "@/lib/shortcuts";
 
-import { type HoneyIcon, Eye } from "@honeyicons/react";
+import { type HoneyIcon, ChevronDown, ChevronUp, Eye } from "@honeyicons/react";
 
 function NavButton({
   label,
@@ -48,20 +48,41 @@ function NavButton({
 }
 
 export function ReviewNav({
+  canStepChange,
+  onStepChange,
   allViewed,
   onNextUnviewed,
 }: {
+  /** Some file has a patch, so there are changes to step through. */
+  canStepChange: boolean;
+  onStepChange: (direction: 1 | -1) => void;
   /** Every file is viewed, so there is no unviewed file to go to. */
   allViewed: boolean;
   onNextUnviewed: () => void;
 }) {
   return (
-    <NavButton
-      label="Next unviewed file"
-      command="changes.nextUnviewed"
-      icon={Eye}
-      disabled={allViewed}
-      onClick={onNextUnviewed}
-    />
+    <>
+      <NavButton
+        label="Previous change"
+        command="changes.previousChange"
+        icon={ChevronUp}
+        disabled={!canStepChange}
+        onClick={() => onStepChange(-1)}
+      />
+      <NavButton
+        label="Next change"
+        command="changes.nextChange"
+        icon={ChevronDown}
+        disabled={!canStepChange}
+        onClick={() => onStepChange(1)}
+      />
+      <NavButton
+        label="Next unviewed file"
+        command="changes.nextUnviewed"
+        icon={Eye}
+        disabled={allViewed}
+        onClick={onNextUnviewed}
+      />
+    </>
   );
 }

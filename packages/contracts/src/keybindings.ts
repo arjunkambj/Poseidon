@@ -162,6 +162,8 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<Keybinding> = [
   // Changes
   { command: "changes.nextFile", shortcut: "Alt+ArrowDown", when: CHANGES_PANE_KEYS },
   { command: "changes.previousFile", shortcut: "Alt+ArrowUp", when: CHANGES_PANE_KEYS },
+  { command: "changes.nextChange", shortcut: "Alt+]", when: CHANGES_PANE_KEYS },
+  { command: "changes.previousChange", shortcut: "Alt+[", when: CHANGES_PANE_KEYS },
   { command: "changes.nextUnviewed", shortcut: "Alt+U", when: CHANGES_PANE_KEYS },
   // Git, answered by the thread header while a thread is open, and by the
   // New task page's header for the picked project's folder

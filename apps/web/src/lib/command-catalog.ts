@@ -219,6 +219,12 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   // Changes — answered while the Changes pane lists files.
   command("View", "changes.nextFile", "Next changed file", ArrowDown),
   command("View", "changes.previousFile", "Previous changed file", ArrowUp),
+  command("View", "changes.nextChange", "Next change", ChevronDown, {
+    description: "Scrolls to the next block of changed lines",
+  }),
+  command("View", "changes.previousChange", "Previous change", ChevronUp, {
+    description: "Scrolls to the previous block of changed lines",
+  }),
   command("View", "changes.nextUnviewed", "Next unviewed file", Eye, {
     description: "Opens the next changed file you have not marked viewed",
   }),
