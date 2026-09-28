@@ -341,7 +341,11 @@ The sidebar's order is also a keyboard order. Projects come in their listed
 order, each with its threads in list order; a folded project contributes only
 the open thread, and threads whose project is gone come last
 (`apps/web/src/components/sidebar/thread-order.ts`, which the tree draws from
-too, so the two cannot drift). `Mod+1`…`Mod+9` open the Nth thread in that
+too, so the two cannot drift). A folded project's header shows the most
+urgent status among the threads it hides — Needs you, then Plan ready, then
+working, then an error — with the row's icon and tone and a tooltip counting
+the threads in that state (`apps/web/src/components/sidebar/project-status.ts`).
+`Mod+1`…`Mod+9` open the Nth thread in that
 order, and `Mod+Shift+[` / `Mod+Shift+]` step to the previous or next one,
 wrapping at the ends. `Mod+Shift+N` starts a thread in the open thread's
 project, else the last project used, else the first. Every create that opens

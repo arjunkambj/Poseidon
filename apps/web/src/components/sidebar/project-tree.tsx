@@ -16,7 +16,9 @@
  * A project row folds its threads away on click; the folded set persists
  * through `useProjectCollapsed`. It also counts the shells still running in
  * the project's own folder, when there are any (`ProjectTerminalsBadge`). The open thread stays listed under a folded
- * project, so the sidebar never loses track of where you are.
+ * project, so the sidebar never loses track of where you are. A folded header
+ * shows the most urgent status among the threads it hides — see
+ * `./project-status`.
  *
  * Archived threads are not listed: they live on Settings → Archived threads.
  * The one exception is the thread that is open, which stays in place and looks
@@ -58,6 +60,8 @@ import type { ProjectSummary, ThreadSummary } from "@poseidon/contracts/orchestr
 import { AddProjectDialog } from "@/components/sidebar/add-project-dialog";
 import { ProjectTerminalsBadge } from "@/components/terminal/project-terminals-badge";
 import { ProjectRowMenu } from "@/components/sidebar/project-menu";
+import { projectStatusRollup, type ProjectStatusRollup } from "@/components/sidebar/project-status";
+import { ProjectStatusMark } from "@/components/sidebar/project-status-mark";
 import { ThreadRow } from "@/components/sidebar/thread-row";
 import { sidebarThreadGroups } from "@/components/sidebar/thread-order";
 import { selectedRows } from "@/components/sidebar/thread-selection";
@@ -140,6 +144,13 @@ export function ProjectTree() {
     [projects, threadsByProject, orphanThreads],
   );
   const selection = useThreadSelection(order, openThreadId);
+  // What each project would show folded, over all its threads, not the listed ones.
+  const rollups = React.useMemo(() => {
+    const byProject = Map.groupBy(threads, (thread) => thread.projectId);
+    return new Map(
+      [...byProject].map(([id, list]) => [id, projectStatusRollup(list, openThreadId)]),
+    );
+  }, [threads, openThreadId]);
   // Removing a project deletes its archived threads too, so the removal copy
   // counts every thread, not only the listed ones — and the worktrees among
   // them, which it leaves on disk.
@@ -186,6 +197,7 @@ export function ProjectTree() {
               project={project}
               threads={threadsByProject.get(project.projectId) ?? []}
               counts={threadCounts.get(project.projectId) ?? NO_THREADS}
+              rollup={rollups.get(project.projectId) ?? null}
               now={now}
               selection={selection}
             />
@@ -243,6 +255,7 @@ function ProjectSection({
   project,
   threads,
   counts,
+  rollup,
   now,
   selection,
 }: {
@@ -250,6 +263,7 @@ function ProjectSection({
   /** The listed threads, folding already applied: the open one only, when folded. */
   threads: ReadonlyArray<ThreadSummary>;
   counts: ThreadCounts;
+  rollup: ProjectStatusRollup | null;
   now: number;
   selection: ThreadSelectionControls;
 }) {
@@ -287,6 +301,7 @@ function ProjectSection({
           </span>
           <span className="ml-1.5 min-w-0 flex-1 truncate">{project.name}</span>
         </button>
+        {collapsed && rollup !== null ? <ProjectStatusMark rollup={rollup} /> : null}
         <ProjectTerminalsBadge projectId={project.projectId} />
         <span className="flex items-center opacity-0 transition-opacity duration-150 ease-out group-hover/project:opacity-100 group-focus-within/project:opacity-100 [&:has([data-popup-open])]:opacity-100">
           <ProjectRowMenu
