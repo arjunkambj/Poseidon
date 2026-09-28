@@ -1903,6 +1903,36 @@ refetches when `currentTurnId` falls back to null. A refresh — those two and
 the refresh button — rereads every git read of the project, the same
 per-project revision a branch switch bumps, so the header follows along.
 
+The server also answers three review calls the pane does not offer yet.
+`git.diff` takes `ignoreWhitespace`, which adds `-w` to both the patch and
+the counts: a whitespace-only change drops out, and a plain edit git still
+prints as a bare header comes back listed with an empty `diff` rather than a
+patch of raw headers; the client's range key includes the flag, so toggling it
+fetches a new comparison instead of showing the cached one. `git.discard`
+(`apps/server/src/git/Review.ts`) throws away the change to the named paths:
+each path the base has is restored from it (`git restore --source`, and the
+index too when the base is `HEAD`), a path it lacks is deleted from disk when
+git lists it as untracked and not ignored, or removed with `git rm -f` when
+tracked; an ignored file is refused, never deleted. The base is the payload's
+`source` (the turn scope's `from` checkpoint), the fork point for a
+`mergeBase` (the branch scope), else `HEAD`; a rename is discarded by naming
+both of its paths. Without `paths` it discards everything uncommitted —
+tracked and staged work back to `HEAD`, and exactly the files `ls-files
+--others --exclude-standard` lists deleted — and only in the uncommitted
+scope. `git.blame` runs `git blame --porcelain` on the working file, folds
+consecutive lines of one commit into entries (commit, author, time, summary),
+marks lines not yet committed as such, answers `untracked` for a file with no
+history, and blames at most 5000 lines per call. Both take the diff's
+top-level paths and run from the repository's top level
+(`rev-parse --show-toplevel`), not the workspace root. Every path is checked
+before git sees it — relative, in git's normal form, no `..` segment, no
+leading `-`, no backslash, nothing under `.git`, inside the top level — and
+reaches git as a `:(literal)` pathspec after `--`; a discard is refused with
+`conflict` while a turn or a restore runs in that workspace, like a commit.
+In the client runtime, `makeGitReview` (`gitReview.ts`) wraps `git.discard`
+as a one-shot call that refetches the project's git reads, and `git.blame` as
+an atom per file and line range.
+
 The pane's turn selector lists the checkpoints the thread's fold of
 `thread.checkpoint.created` holds. That fold still names a ref removed outside
 the app — a prune, a re-clone — so `checkpoints.list` answers the refs that
