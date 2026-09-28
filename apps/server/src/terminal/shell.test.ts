@@ -55,13 +55,20 @@ describe("resolveShell", () => {
 describe("scriptShellCommand", () => {
   const command = "pnpm run dev";
 
-  it("hands a POSIX shell the command with -c, keeping -l on a login shell", () => {
+  it("starts zsh and bash as interactive login shells, so their rc file sets PATH", () => {
     expect(scriptShellCommand({ file: "/bin/zsh", args: ["-l"] }, command, "darwin")).toEqual({
       file: "/bin/zsh",
-      args: ["-l", "-c", command],
+      args: ["-i", "-l", "-c", command],
     });
     expect(scriptShellCommand({ file: "/usr/bin/bash", args: ["-l"] }, command, "linux")).toEqual({
       file: "/usr/bin/bash",
+      args: ["-i", "-l", "-c", command],
+    });
+  });
+
+  it("hands another POSIX shell the command with -c, keeping -l on a login shell", () => {
+    expect(scriptShellCommand({ file: "/usr/bin/fish", args: ["-l"] }, command, "linux")).toEqual({
+      file: "/usr/bin/fish",
       args: ["-l", "-c", command],
     });
     expect(scriptShellCommand({ file: "/bin/sh", args: [] }, command, "linux")).toEqual({

@@ -2883,7 +2883,11 @@ A terminal can also run one named script as its own process. A
 and a command of at most `TERMINAL_SCRIPT_COMMAND_MAX_CHARS`, 8K chars) starts
 the same shell with the command handed over instead of an interactive prompt
 (`scriptShellCommand` in `shell.ts`): `-c <command>` after the shell's own
-args, so a login shell runs it as `-l -c` with the user's profile read; on
+args, so a login shell runs it as `-l -c` with the user's profile read. zsh
+and bash also get `-i` (`-i -l -c`), because they read `.zshrc` or `.bashrc`
+only when interactive, and that is where nvm, fnm and `pnpm setup` put their
+`PATH` lines: without it an app started from the Dock would fail
+`pnpm run dev` with "command not found" where a terminal tab succeeds. On
 Windows `cmd.exe /d /s /c` or PowerShell's `-Command`. The terminal ends when
 the script does, so its `running` and `exited` are the script's and the exit
 code is the script's own. The tab is titled with the script's name unless the

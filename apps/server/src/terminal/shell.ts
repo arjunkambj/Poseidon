@@ -52,12 +52,21 @@ const COMMAND_PROMPT = /^cmd(\.exe)?$/i;
 const POWERSHELL = /^(powershell|pwsh)(\.exe)?$/i;
 
 /**
+ * Shells that read their rc file (`.zshrc`, `.bashrc`) only when interactive.
+ * nvm, fnm and `pnpm setup` put their PATH lines there, so a script run
+ * through one of these gets `-i` as well as `-l`, the way editors resolve the
+ * user's shell environment. fish reads `config.fish` either way.
+ */
+const RC_WHEN_INTERACTIVE = new Set(["zsh", "bash"]);
+
+/**
  * The shell that runs one script as its own process and ends with it: the
- * terminal's shell handed the command to run instead of started interactive.
- * A POSIX shell keeps its own args, so a login shell stays one (`-l -c`) and
- * the script sees the PATH the user's profile sets. On Windows, `cmd.exe`
- * takes `/d /s /c` (no AutoRun, the rest of the line as the command) and
- * PowerShell `-Command`.
+ * terminal's shell handed the command to run. A POSIX shell keeps its own
+ * args, so a login shell stays one, and zsh and bash also start interactive
+ * (`-i -l -c`): the script then sees the PATH the user's profile and rc file
+ * set, the same one a command typed in a terminal tab sees. On Windows,
+ * `cmd.exe` takes `/d /s /c` (no AutoRun, the rest of the line as the
+ * command) and PowerShell `-Command`.
  */
 export const scriptShellCommand = (
   shell: ShellCommand,
@@ -67,7 +76,8 @@ export const scriptShellCommand = (
   const name = (platform === "win32" ? nodePath.win32 : nodePath.posix).basename(shell.file);
   if (COMMAND_PROMPT.test(name)) return { file: shell.file, args: ["/d", "/s", "/c", command] };
   if (POWERSHELL.test(name)) return { file: shell.file, args: ["-NoLogo", "-Command", command] };
-  return { file: shell.file, args: [...shell.args, "-c", command] };
+  const interactive = RC_WHEN_INTERACTIVE.has(name) && !shell.args.includes("-i") ? ["-i"] : [];
+  return { file: shell.file, args: [...interactive, ...shell.args, "-c", command] };
 };
 
 /** Set by the AppImage runtime; meaningless, and misleading, to a program started from the terminal. */
