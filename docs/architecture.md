@@ -652,7 +652,10 @@ registry. The host re-sends the chords whenever the table changes.
 picker in the page through the webview's `executeJavaScript`: it outlines the
 element under the pointer, swallows the click that picks it and resolves with
 a CSS path, the tag, its text (200 characters) and the start of its HTML
-(2,000); Escape, a second press or a tab switch cancels it. The answer is the
+(2,000). Picking focuses the page, so its own Escape handler hears the key;
+Escape anywhere else in the window, a second press, a tab switch or the page
+navigating away cancels it too, and a pick the pane ended that way never
+lands in the draft if it settles late. The answer is the
 page's own data, so it is checked and cut again here and appended to the
 thread's composer draft (`@/state/ui`), where the person reads it before
 sending. Screenshot to chat asks the shell for a PNG of the tab

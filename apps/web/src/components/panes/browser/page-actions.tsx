@@ -26,6 +26,12 @@ import {
   screenshotFile,
 } from "./page-to-chat";
 
+/** Ends the picker running in a tab's page, if it still is. */
+const cancelIn = (tabId: string): void =>
+  void getTabView(tabId)
+    ?.executeJavaScript(CANCEL_PICK_SCRIPT)
+    .catch(() => undefined);
+
 export interface PageActionsProps {
   readonly threadId: string;
   readonly tab: BrowserTab | null;
@@ -37,38 +43,70 @@ export function PageActions({ threadId, tab }: PageActionsProps) {
   const capture = window.poseidon?.browserPane?.capture;
   const ready = tab !== null && tab.wcId !== null;
 
-  // A tab switch or close ends a pick in the old tab.
+  // The tab a pick runs in, and which pick is current: a pick the pane ended
+  // itself may never settle (its page navigated away), so only the current
+  // one's result counts.
   const pickingIn = React.useRef<string | null>(null);
+  const pickToken = React.useRef(0);
+  const endPick = React.useCallback(() => {
+    pickToken.current += 1;
+    pickingIn.current = null;
+    setPicking(false);
+  }, []);
+  // A tab switch or close ends a pick in the old tab.
   React.useEffect(() => {
     const previous = pickingIn.current;
     if (previous !== null && previous !== tab?.tabId) {
-      void getTabView(previous)
-        ?.executeJavaScript(CANCEL_PICK_SCRIPT)
-        .catch(() => undefined);
+      cancelIn(previous);
+      endPick();
     }
-  }, [tab?.tabId]);
+  }, [tab?.tabId, endPick]);
+
+  // So does a navigation: the page running the picker is gone.
+  React.useEffect(() => {
+    if (pickingIn.current !== null) endPick();
+  }, [tab?.url, tab?.wcId, endPick]);
+
+  // The page's own Escape handler only hears keys while the page has focus;
+  // Escape anywhere else in the window cancels too.
+  React.useEffect(() => {
+    if (!picking) return;
+    const onKey = (event: KeyboardEvent) => {
+      const tabId = pickingIn.current;
+      if (event.key !== "Escape" || tabId === null) return;
+      event.preventDefault();
+      event.stopPropagation();
+      cancelIn(tabId);
+      endPick();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [picking, endPick]);
 
   const pick = async () => {
     if (tab === null) return;
     const view = getTabView(tab.tabId);
     if (view === null) return;
     if (picking) {
-      void view.executeJavaScript(CANCEL_PICK_SCRIPT).catch(() => undefined);
+      cancelIn(tab.tabId);
+      endPick();
       return;
     }
+    const token = ++pickToken.current;
     setPicking(true);
     pickingIn.current = tab.tabId;
+    // The picker listens for Escape in the page, which hears keys only with focus.
+    view.focus();
     try {
       const picked = parsePicked(await view.executeJavaScript(PICK_SCRIPT));
-      if (picked !== null) {
+      if (picked !== null && pickToken.current === token) {
         draft.setText((current) => appendToDraft(current, pickedElementText(picked, tab.url)));
         toast.success("Added the element to your message");
       }
     } catch {
-      toast.error("Could not pick an element on this page");
+      if (pickToken.current === token) toast.error("Could not pick an element on this page");
     } finally {
-      pickingIn.current = null;
-      setPicking(false);
+      if (pickToken.current === token) endPick();
     }
   };
 
