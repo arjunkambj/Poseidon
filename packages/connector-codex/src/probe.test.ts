@@ -18,6 +18,7 @@ import { isPidGone, replay } from "../test/replay";
 import { childEnv } from "./env";
 import { CODEX_KIND } from "./kind";
 import {
+  INSTALL_COMMAND,
   OLDEST_TESTED_VERSION,
   PROBE_SERVER_ARGS,
   describeAccount,
@@ -158,9 +159,11 @@ describe("probe", () => {
       expect(result).toMatchObject({
         status: "not-installed",
         installed: false,
+        installCommand: INSTALL_COMMAND,
         auth: "unknown",
         models: [],
       });
+      expect(result.loginCommand).toBeUndefined();
     }),
   );
 

@@ -139,6 +139,11 @@ path does not exist"), and the probe says so (below).
 under the environment a session would get, from the system temp directory.
 `fixtures/codex/probe/` is the probe recorded.
 
+When no `codex` resolves, the probe asks nothing and reports `not-installed`
+with `installCommand`, `npm install -g @openai/codex` (`INSTALL_COMMAND`), the
+package the CLI ships as. That is the line the connectors page and the harness
+banner offer to copy or run.
+
 1. `codex --version` → `codex-cli 0.156.1`. A non-zero exit, or output with no
    version in it, is status `error`.
    If the instance names a `codexHome` that is not a directory, the probe

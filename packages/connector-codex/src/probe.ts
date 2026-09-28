@@ -53,6 +53,9 @@ export const OLDEST_TESTED_VERSION = "0.156.1";
 /** How a signed-out CLI is signed in, as its own `--help` lists it. */
 export const LOGIN_ARGS: ReadonlyArray<string> = ["login"];
 
+/** How a machine without the CLI gets it: the npm package it ships as. */
+export const INSTALL_COMMAND = "npm install -g @openai/codex";
+
 /**
  * The probe's app-server launch. `--stdio` is the CLI's own spelling of the
  * transport it uses by default, so it changes nothing about the run; it is
@@ -246,6 +249,7 @@ export const probe = (
         probedAt,
         installed: false,
         message: NOT_FOUND,
+        installCommand: INSTALL_COMMAND,
         auth: "unknown" as const,
         models: [],
         warnings: [],
