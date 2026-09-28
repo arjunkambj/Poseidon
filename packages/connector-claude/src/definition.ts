@@ -31,6 +31,7 @@ import { LOGIN_ARGS, probe as probeBinary, readInitialization, type Initializati
 import { makeClaudePlugins } from "./plugins";
 import type { SessionLimits } from "./queryOptions";
 import { makeClaudeSession } from "./session";
+import { makeClaudeSessionFiles } from "./sessionFiles";
 import { parseSessionRef, type ClaudeSessionRef } from "./sessionRef";
 
 /**
@@ -176,6 +177,7 @@ export const makeClaudeConnectorDefinition = (
         extensions: {
           commands,
           plugins: makeClaudePlugins({ env: childEnv(process.env, config) }),
+          sessions: makeClaudeSessionFiles({ env: childEnv(process.env, config) }),
         },
       };
     }),

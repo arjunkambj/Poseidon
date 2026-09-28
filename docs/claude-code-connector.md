@@ -61,6 +61,7 @@ routes new threads to Command Code until the user picks this instance.
 | `references.ts`           | skill and plugin references as prompt lines                               |
 | `pluginOptions.ts`        | Poseidon's enabled plugins as SDK `plugins` and `mcpServers` entries      |
 | `plugins.ts`              | the `plugins` extension: Claude Code's own installed plugins, read-only   |
+| `sessionFiles.ts`         | the `sessions` extension: the CLI's own transcripts, read for an import   |
 | `attachments.ts`          | images as content blocks, other files by path                             |
 | `session.ts`              | one long-lived CLI process per thread: send, steer, interrupt, close      |
 | `sessionRef.ts`           | the persisted session reference                                           |
@@ -161,6 +162,39 @@ signed out, and it never writes: installing, enabling and removing stay with
 The tests read `packages/testkit/fixtures/claude/plugins/`, the files the real
 CLI wrote when it installed two plugins into a scratch config (its README says
 how).
+
+## Session files
+
+The instance carries the `sessions` extension (`sessionFiles.ts`), which
+lists the conversations the CLI recorded on its own and reads one back so it
+can be imported as a thread. It opens the transcripts read-only and writes
+nothing, beside them or anywhere.
+
+- Transcripts are `<config>/projects/<directory>/<session id>.jsonl`, with
+  `<config>` the instance's `CLAUDE_CONFIG_DIR`, else `~/.claude` — where a
+  `--resume` looks, so an imported thread carries the conversation on. The
+  directories beside them (a session's subagents) are not read.
+- `list` takes the newest files by last write, at most 200, and reads only the
+  first 256 KB of each for its directory, first prompt and message count, plus
+  the last 64 KB for a title set late. The title is the last `custom-title`
+  (the user's), else the last `ai-title`, else the first prompt cut to 80
+  characters. A file longer than the head is listed without a count rather
+  than with a short one.
+- `read` reads the whole file a line at a time. It keeps `user` prompts (a
+  string, or an array's `text` blocks) and the `text` blocks of `assistant`
+  replies, joining the records of one reply by `message.id`. It skips `isMeta`
+  and `isSidechain` records, tool results, the CLI's own wrappers
+  (`<command-name>`, `<local-command-stdout>`, task notifications, …), the
+  `<synthetic>` model's replies, every other record type, and lines that are
+  not JSON. It keeps the newest 500 messages within a million characters and
+  counts them all.
+- The session reference it returns is `{ sessionId, cwd }`, the shape
+  `sessionRef.ts` parses, so the thread's first turn resumes the conversation;
+  if the CLI no longer has it, the session starts a new one and says so.
+
+The tests read `packages/testkit/fixtures/claude/session-files/`: hand-built
+transcripts in the CLI's record shapes with made-up content (its README says
+what each holds).
 
 ## The probe
 

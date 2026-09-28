@@ -1066,7 +1066,8 @@ plan cards AskUserQuestion and ExitPlanMode open), `questions.ts` and
 `plans.ts` (their shapes), `attachments.ts` (images as content blocks, other
 files by path), `userMessage.ts`, `sessionRef.ts`, `steering.ts` (when a
 steered turn is over), `session.ts` (one long-lived CLI process per thread),
-and `translate/` (SDK messages →
+`sessionFiles.ts` (the `sessions` extension: the CLI's own transcripts under
+`<config>/projects`, read for an import), and `translate/` (SDK messages →
 `RuntimeEvent`; `tools.ts` holds the tool rows, `subagents.ts` the tasks and
 their nested rows, `compaction.ts` the compaction row). `makeClaudeConnectorDefinition`
 takes the turn and budget caps a recording puts on every session; production

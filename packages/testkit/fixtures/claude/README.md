@@ -1,8 +1,9 @@
 # Claude Code recordings
 
-**Every directory here is a real recording of the real Claude Code CLI.**
-Nothing in it is hand-written, reconstructed or synthesized. If the CLI changes,
-these are re-recorded — they are never edited by hand to make a test pass.
+**Every directory here but `plugins/` and `session-files/` is a real recording
+of the real Claude Code CLI.** Nothing in them is hand-written, reconstructed or
+synthesized. If the CLI changes, these are re-recorded — they are never edited
+by hand to make a test pass.
 
 |             |                                                            |
 | ----------- | ---------------------------------------------------------- |
@@ -73,7 +74,9 @@ suite's turns are answered ones. That recording also takes the suite's
 approval case (a file write stopped on a card and allowed once), which the
 replay runs only once the recording has it.
 
-`plugins/` is the one directory that is not a recording: it holds the config
-files the real CLI wrote while installing two plugins into a scratch config
-directory, for the connector's plugins extension. It has no manifest, so
-`recordingNames` skips it; its own README says how it was made.
+Two directories are not recordings. `plugins/` holds the config files the
+real CLI wrote while installing two plugins into a scratch config directory,
+for the connector's plugins extension. `session-files/` is hand-built: session
+transcripts in the CLI's record shapes, with made-up content, for the
+connector's sessions extension. Neither has a manifest, so `recordingNames`
+skips them; each one's own README says how it was made.
