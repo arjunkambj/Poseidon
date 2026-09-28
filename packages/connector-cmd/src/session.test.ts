@@ -68,6 +68,15 @@ if (argv[0] === "mcp") {
   else fs.writeFileSync(file, JSON.stringify({ ...config, mcpServers: servers }, null, 2) + "\\n");
   process.exit(0);
 }
+if (process.env.POSEIDON_STUB_ARGV_LOG) {
+  fs.appendFileSync(process.env.POSEIDON_STUB_ARGV_LOG, JSON.stringify(argv) + "\\n");
+}
+if (process.env.POSEIDON_STUB_EXIT_ONCE && !fs.existsSync(process.env.POSEIDON_STUB_EXIT_ONCE)) {
+  // A process that dies before it says a word — a failed login, an npx that
+  // could not start — once; the next spawn runs normally.
+  fs.writeFileSync(process.env.POSEIDON_STUB_EXIT_ONCE, "");
+  process.exit(3);
+}
 const transcript = path.join(dir, sessionId + ".jsonl");
 const emit = (event) =>
   process.stdout.write(JSON.stringify({ type: "event", event }) + "\\n");
@@ -667,6 +676,79 @@ describe("makeCmdSession against a real spawned process", () => {
       });
       // At-or-before the marker: never re-emitted.
       expect(texts).not.toContain("already emitted");
+
+      yield* handle.close();
+    }),
+  );
+
+  /**
+   * A fork's session is seeded from the source's transcript, whose header
+   * names the source. When the fork's first process dies before `run_start`,
+   * the harness never named the forked session — announcing the id the seed
+   * left behind bound the fork thread to the source's session, and a fresh
+   * attach then resumed it without `--fork-session`.
+   */
+  it.effect("a fork whose first process dies before run_start announces nothing", () =>
+    Effect.gen(function* () {
+      const f = yield* fixture();
+      withPoseidonHome(f);
+      const root = NodePath.join(f.root, "workspace");
+      const sourceId = "00000000-0000-7000-8000-57ub0cmd0002";
+      const transcriptPath = transcriptPathFor(NodeFS.realpathSync(root), sourceId, f.home);
+      NodeFS.mkdirSync(NodePath.dirname(transcriptPath), { recursive: true });
+      NodeFS.writeFileSync(
+        transcriptPath,
+        JSON.stringify({ type: "session", version: 3, id: sourceId, timestamp: "t", cwd: root }) +
+          "\n",
+      );
+      const argvLog = NodePath.join(f.root, "argv.ndjson");
+
+      const handle = yield* makeCmdSession({
+        instanceId: makeConnectorInstanceId(),
+        threadId: makeThreadId(),
+        workspaceRoot: root,
+        binaryPath: f.binary,
+        extraEnv: {
+          HOME: f.home,
+          POSEIDON_STUB_SESSION_ID: SESSION_ID,
+          POSEIDON_STUB_EXIT_ONCE: NodePath.join(f.root, "exited"),
+          POSEIDON_STUB_ARGV_LOG: argvLog,
+        },
+        home: f.home,
+        services: yield* services("allow"),
+        settings: {
+          model: "stub/model",
+          runtimeMode: "approval-required",
+          interactionMode: "default",
+        },
+        sessionRef: { sessionId: sourceId, transcriptPath, cwd: root, lastMessageId: null },
+        fork: true,
+      });
+      const collector = yield* makeStreamCollector(handle.events);
+
+      yield* handle.send({ text: "hi", attachments: [], mentions: [] });
+      yield* collector.awaitItem(isType("runtime.error"));
+      // The next send waits out the dead process's bookkeeping, then forks.
+      yield* handle.send({ text: "again", attachments: [], mentions: [] });
+      yield* collector.awaitItem(isType("turn.completed"));
+
+      const announced = (yield* collector.collected).flatMap((event) =>
+        event.type === "session.started"
+          ? [(event.payload.sessionRef as CmdSessionRef).sessionId]
+          : [],
+      );
+      expect(announced).not.toContain(sourceId);
+      expect(announced).toContain(SESSION_ID);
+      const turns = NodeFS.readFileSync(argvLog, "utf8")
+        .split("\n")
+        .filter((line) => line.length > 0)
+        .map((line) => JSON.parse(line) as ReadonlyArray<string>)
+        .filter((argv) => argv[0] === "-p");
+      expect(turns).toHaveLength(2);
+      for (const argv of turns) {
+        expect(argv).toContain("--fork-session");
+        expect(argv[argv.indexOf("--session") + 1]).toBe(sourceId);
+      }
 
       yield* handle.close();
     }),

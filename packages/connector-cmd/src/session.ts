@@ -559,7 +559,11 @@ export const makeCmdSession = (
       // flush) before teardown. A grandchild that inherited the pipe holds it
       // open forever; the timeout keeps that from wedging the pump.
       yield* Effect.raceFirst(Fiber.await(stdoutFiber), Effect.sleep("2 seconds"));
-      if (translator.sessionId !== null) {
+      // A fork whose process died before `run_start` never got a session of
+      // its own: the id the translator holds is the source's, read from the
+      // seed's transcript header. Announcing it would bind this thread to the
+      // source's session, and a later attach would resume it without forking.
+      if (translator.sessionId !== null && !(yield* Ref.get(forkPending))) {
         yield* Ref.set(sessionRef, {
           sessionId: translator.sessionId,
           transcriptPath: refs.pathOf(translator.sessionId),
