@@ -61,13 +61,14 @@ export function StartThreadHeader({
       {controls === null ? null : (
         <div className={cn("flex shrink-0 items-center gap-2", chrome && "app-region-no-drag")}>
           {/* Per project: a dialog, a draft or a run in flight for one
-              project must not carry over to the next one picked. */}
+              project must not carry over to the next one picked. Each
+              sibling needs its own key, or a switch leaves a stale one. */}
           <RunControl
-            key={controls.projectId}
+            key={`run:${controls.projectId}`}
             projectId={controls.projectId}
             ownerKey={terminalOwnerKey({ projectId: controls.projectId })}
           />
-          <GitActionsControl key={controls.projectId} projectId={controls.projectId} />
+          <GitActionsControl key={`git:${controls.projectId}`} projectId={controls.projectId} />
           <ProjectTerminalsBadge projectId={controls.projectId} />
           <HeaderToggles
             terminalKey={terminalOwnerKey({ projectId: controls.projectId })}
