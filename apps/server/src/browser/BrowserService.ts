@@ -150,6 +150,16 @@ export const makeService = (injected: {
     const mode = injected.mode;
 
     const sessions = yield* Ref.make(new Map<ThreadId, Session>());
+    /**
+     * Each thread's state ref, kept apart from its session: `browser.subscribe`
+     * binds a client to the ref, and teardown drops the session on archive, so
+     * a pane still open when the thread comes back would otherwise watch a ref
+     * nothing writes to again. The session made after an unarchive reuses it;
+     * only a deleted thread's is forgotten.
+     */
+    const states = yield* Ref.make(
+      new Map<ThreadId, SubscriptionRef.SubscriptionRef<BrowserState>>(),
+    );
 
     // The boot reap runs beside the rest of the build rather than holding it
     // up; a driver opened before it finished would be closed by it.
@@ -166,9 +176,15 @@ export const makeService = (injected: {
         Effect.gen(function* () {
           const existing = (yield* Ref.get(sessions)).get(threadId);
           if (existing !== undefined) return existing;
+          let state = (yield* Ref.get(states)).get(threadId);
+          if (state === undefined) {
+            const made = yield* SubscriptionRef.make(initialState(threadId, mode));
+            yield* Ref.update(states, (map) => new Map(map).set(threadId, made));
+            state = made;
+          }
           const session: Session = {
             threadId,
-            state: yield* SubscriptionRef.make(initialState(threadId, mode)),
+            state,
             epoch: yield* Ref.make(0),
             queue: yield* Semaphore.make(1),
             closed: yield* Ref.make(false),
@@ -564,9 +580,17 @@ export const makeService = (injected: {
         }
       });
 
-    const teardown = (threadId: ThreadId): Effect.Effect<void> =>
+    /** `forget`: the thread was deleted, so no pane will watch it again. */
+    const teardown = (threadId: ThreadId, forget = false): Effect.Effect<void> =>
       Effect.gen(function* () {
         const session = (yield* Ref.get(sessions)).get(threadId);
+        if (forget) {
+          yield* Ref.update(states, (map) => {
+            const next = new Map(map);
+            next.delete(threadId);
+            return next;
+          });
+        }
         if (session === undefined) return;
         // In the queue: a call in flight finishes before its driver closes,
         // and whatever queued behind this finds the session closed.
@@ -614,7 +638,7 @@ export const makeService = (injected: {
     const events = yield* Scope.provide(reactorScope)(engine.subscribeEvents);
     const reactor = Stream.runForEach(Stream.fromSubscription(events), (event) =>
       event.type === "thread.deleted" || event.type === "thread.archived"
-        ? teardown(event.streamId as ThreadId)
+        ? teardown(event.streamId as ThreadId, event.type === "thread.deleted")
         : Effect.void,
     ).pipe(
       Effect.catch((error) => Effect.logWarning("browser teardown reactor ended", error)),
@@ -629,7 +653,7 @@ export const makeService = (injected: {
         ),
       humanInput,
       callTool,
-      teardown,
+      teardown: (threadId) => teardown(threadId),
       status: {
         mode,
         installed: injected.cli?.installed ?? false,

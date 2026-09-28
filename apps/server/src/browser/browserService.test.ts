@@ -676,6 +676,28 @@ describe("BrowserService", () => {
     ),
   );
 
+  it.live("a subscriber from before an archive sees the session made after it", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { browser } = yield* buildStack(() => Effect.succeed(makeFakeDriver(fakePage())));
+        const seen: Array<string | null> = [];
+        // A pane that stays mounted across archive and unarchive.
+        yield* browser.subscribe(threadId).pipe(
+          Stream.runForEach((state) => Effect.sync(() => void seen.push(state.url))),
+          Effect.forkScoped,
+        );
+        yield* settle;
+        yield* browser.callTool(threadId, "browser_open", { url: "https://example.com/a" });
+        yield* settle;
+        yield* browser.teardown(threadId);
+        yield* browser.callTool(threadId, "browser_open", { url: "https://example.com/b" });
+        yield* settle;
+        expect(seen).toContain("https://example.com/a");
+        expect(seen.at(-1)).toBe("https://example.com/b");
+      }),
+    ),
+  );
+
   it.live("deleting the thread closes its browser through the engine's events", () =>
     Effect.scoped(
       Effect.gen(function* () {

@@ -3074,7 +3074,9 @@ Teardown runs off `thread.deleted` / `thread.archived`, because the engine is
 the only writer of durable thread state. It takes its turn in the thread's
 queue, so a call in flight finishes first, then closes the driver and
 publishes `stopped`; a call that queued behind it finds the thread closed and
-opens nothing.
+opens nothing. The thread's state stream outlives an archive: a pane still
+subscribed when the thread is unarchived follows the session the next call
+opens. Only a deleted thread's state is dropped.
 
 ### Daemons
 
