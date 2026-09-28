@@ -35,4 +35,8 @@ export const CMD_CAPABILITIES: ConnectorCapabilities = {
   runtimeModes: ["approval-required", "auto-accept-edits", "full-access"],
   // Any file can be staged and named by path, not only images.
   attachments: "files",
+  // `generateText`: one print-mode process with `--no-session --max-turns 1`
+  // and no `--yolo`, in a temp directory (`generateText.ts`,
+  // `fixtures/cmd/generate-text/`).
+  textGeneration: true,
 };

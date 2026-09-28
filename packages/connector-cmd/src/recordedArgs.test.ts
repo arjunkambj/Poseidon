@@ -18,7 +18,9 @@ import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "@effect/vitest";
+import type { Effort } from "@poseidon/contracts/enums";
 
+import { generateTextArgs } from "./generateText";
 import { buildArgs, TOOLS_ENABLED, type BuildArgsInput } from "./spawn";
 
 const RECORDINGS = NodePath.resolve(
@@ -57,6 +59,13 @@ const NO_YOLO: Readonly<Record<string, string>> = {
   "shell-allow": "a hook allow without --yolo: print mode refuses the call anyway",
   "shell-deny": "a hook deny without --yolo, where the CLI would have refused it regardless",
 };
+
+/**
+ * Recordings of `generateText`'s one-shot call rather than of a turn. That
+ * argv never carries `--yolo` — its absence is what keeps the call read-only —
+ * so they are held to `generateTextArgs` instead.
+ */
+const ONE_SHOT = new Set(["generate-text", "generate-text-effort"]);
 
 /**
  * Flags the connector adds to every turn that a recording is allowed to
@@ -171,12 +180,33 @@ describe("the argv every recording was made with", () => {
     const missing: Array<string> = [];
     for (const manifest of manifests()) {
       for (const turn of manifest.turns) {
-        if (!turn.connectorArgs.includes("--yolo") && NO_YOLO[manifest.scenario] === undefined) {
+        if (
+          !turn.connectorArgs.includes("--yolo") &&
+          NO_YOLO[manifest.scenario] === undefined &&
+          !ONE_SHOT.has(manifest.scenario)
+        ) {
           missing.push(`${manifest.scenario} turn ${turn.index}`);
         }
       }
     }
     expect(missing).toEqual([]);
+  });
+
+  it("holds each one-shot recording to generateTextArgs, which sends no --yolo", () => {
+    const oneShots = manifests().filter((manifest) => ONE_SHOT.has(manifest.scenario));
+    expect(oneShots.map((manifest) => manifest.scenario).sort()).toEqual([...ONE_SHOT].sort());
+    for (const manifest of oneShots) {
+      for (const turn of manifest.turns) {
+        const { input } = parse(turn.connectorArgs);
+        const rebuilt = generateTextArgs({
+          prompt: input.prompt,
+          model: input.model ?? "",
+          ...(input.effort === undefined ? {} : { effort: input.effort as Effort }),
+        });
+        expect(rebuilt, manifest.scenario).toEqual([...turn.connectorArgs]);
+        expect(rebuilt).not.toContain("--yolo");
+      }
+    }
   });
 
   it("names a --yolo counter-example that really is one", () => {

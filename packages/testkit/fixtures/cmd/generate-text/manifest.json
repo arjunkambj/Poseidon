@@ -1,0 +1,178 @@
+{
+  "scenario": "generate-text",
+  "description": "one-shot text the way generateText.ts asks for it: --no-session, --max-turns 1, no --yolo and no --tools-enable, in an empty directory of its own outside the repo, where no hook is installed",
+  "cli": "/opt/homebrew/bin/cmd",
+  "cliVersion": "1.66.0",
+  "recordedOn": "2026-09-28",
+  "model": "poolside/laguna-s-2.1-free",
+  "modelRequested": "poolside/laguna-s-2.1-free",
+  "real": true,
+  "turns": [
+    {
+      "index": 0,
+      "prompt": "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+      "connectorArgs": [
+        "-p",
+        "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--no-session",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--max-turns",
+        "1"
+      ],
+      "argv": [
+        "-p",
+        "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--no-session",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--max-turns",
+        "1"
+      ],
+      "envKeys": [
+        "HOME",
+        "PATH",
+        "POSEIDON_HOME",
+        "POSEIDON_RECORD_HOOK_LOG",
+        "POSEIDON_RECORD_HOOK_POLICY",
+        "POSEIDON_THREAD_ID",
+        "SHELL",
+        "SSH_AUTH_SOCK",
+        "TMPDIR",
+        "USER"
+      ],
+      "sessionId": "d40b57a3-2b1b-4aa9-b745-2e56a994f603",
+      "exitCode": 0,
+      "signal": null,
+      "interrupted": false,
+      "durationMs": 3092,
+      "stdoutChunks": [
+        {
+          "at": 525,
+          "chars": 97
+        },
+        {
+          "at": 560,
+          "chars": 62
+        },
+        {
+          "at": 577,
+          "chars": 50
+        },
+        {
+          "at": 577,
+          "chars": 93
+        },
+        {
+          "at": 591,
+          "chars": 93
+        },
+        {
+          "at": 2876,
+          "chars": 61
+        },
+        {
+          "at": 2876,
+          "chars": 92
+        },
+        {
+          "at": 2877,
+          "chars": 63
+        },
+        {
+          "at": 2877,
+          "chars": 97
+        },
+        {
+          "at": 2893,
+          "chars": 61
+        },
+        {
+          "at": 2894,
+          "chars": 100
+        },
+        {
+          "at": 3013,
+          "chars": 65
+        },
+        {
+          "at": 3013,
+          "chars": 107
+        },
+        {
+          "at": 3021,
+          "chars": 66
+        },
+        {
+          "at": 3021,
+          "chars": 115
+        },
+        {
+          "at": 3034,
+          "chars": 66
+        },
+        {
+          "at": 3034,
+          "chars": 123
+        },
+        {
+          "at": 3069,
+          "chars": 202
+        },
+        {
+          "at": 3069,
+          "chars": 120
+        },
+        {
+          "at": 3070,
+          "chars": 172
+        },
+        {
+          "at": 3078,
+          "chars": 1399
+        },
+        {
+          "at": 3080,
+          "chars": 271
+        }
+      ],
+      "transcriptPath": "<HOME>/.commandcode/projects/private-tmp-claude-501-volumes-main-code-poseidon-5ebb8650-5256-43ed-9841-ad29d135cf3d-scratchpad-rec-generate-text-79f2038c-generate-wxt-mos/d40b57a3-2b1b-4aa9-b745-2e56a994f603.jsonl",
+      "guessedTranscriptPath": "<HOME>/.commandcode/projects/private-tmp-claude-501--volumes-main-code-poseidon-5ebb8650-5256-43ed-9841-ad29d135cf3d-scratchpad-rec-generate-text-79f2038c-repo/d40b57a3-2b1b-4aa9-b745-2e56a994f603.jsonl",
+      "transcriptDirMatchesConnectorSlug": false,
+      "projectDirListing": [
+        "d40b57a3-2b1b-4aa9-b745-2e56a994f603.checkpoints.jsonl",
+        "d40b57a3-2b1b-4aa9-b745-2e56a994f603.meta.json"
+      ],
+      "transcriptGrowth": [],
+      "transcriptBytes": null,
+      "checkpointGrowth": [
+        {
+          "at": 526,
+          "bytes": 303,
+          "lines": 1
+        }
+      ],
+      "transcriptMeta": "{\n  \"entrypoint\": \"print\"\n}",
+      "hookCount": 0,
+      "plans": [],
+      "touchedFiles": [],
+      "files": {
+        "stdout": "stdout.ndjson",
+        "stderr": "stderr.txt",
+        "checkpoints": "checkpoints.jsonl"
+      }
+    }
+  ]
+}

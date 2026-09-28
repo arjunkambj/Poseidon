@@ -10,6 +10,27 @@
  * session id when it has to resume.
  */
 
+import * as NodeFS from "node:fs";
+import * as NodePath from "node:path";
+
+/**
+ * The one-shot scenario's two halves, joined the way
+ * `packages/connector-cmd/src/generateText.ts` joins `system` and `prompt`.
+ */
+const GENERATE_SYSTEM =
+  "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.";
+const GENERATE_REQUEST = "Changed files:\n- README.md: fixed a typo in the install section";
+
+/** A one-shot turn, in a fresh empty directory under the scratch root. */
+const generateTurn = (scratch) => ({
+  prompt: `${GENERATE_SYSTEM}\n\n${GENERATE_REQUEST}`,
+  noSession: true,
+  maxTurns: 1,
+  yolo: false,
+  toolsEnable: [],
+  cwd: NodeFS.mkdtempSync(NodePath.join(scratch, "generate-")),
+});
+
 export const SCENARIOS = {
   text: {
     description: "Text-only answer: does print mode stream deltas?",
@@ -366,6 +387,20 @@ export const SCENARIOS = {
         hookPolicy: { default: "allow" },
       },
     ],
+  },
+
+  "generate-text": {
+    description:
+      "one-shot text the way generateText.ts asks for it: --no-session, --max-turns 1, no --yolo and no --tools-enable, in an empty directory of its own outside the repo, where no hook is installed",
+    model: "poolside/laguna-s-2.1-free",
+    turns: [({ scratch }) => generateTurn(scratch)],
+  },
+
+  "generate-text-effort": {
+    description:
+      "the same one-shot with --effort low on a model that takes no effort: the CLI refuses before any request and exits 1, which is why the caller leaves effort out for such a model",
+    model: "poolside/laguna-s-2.1-free",
+    turns: [({ scratch }) => ({ ...generateTurn(scratch), effort: "low" })],
   },
 
   subagent: {

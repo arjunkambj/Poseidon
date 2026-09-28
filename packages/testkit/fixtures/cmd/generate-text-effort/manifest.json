@@ -1,0 +1,83 @@
+{
+  "scenario": "generate-text-effort",
+  "description": "the same one-shot with --effort low on a model that takes no effort: the CLI refuses before any request and exits 1, which is why the caller leaves effort out for such a model",
+  "cli": "/opt/homebrew/bin/cmd",
+  "cliVersion": "1.66.0",
+  "recordedOn": "2026-09-28",
+  "model": "poolside/laguna-s-2.1-free",
+  "modelRequested": "poolside/laguna-s-2.1-free",
+  "real": true,
+  "turns": [
+    {
+      "index": 0,
+      "prompt": "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+      "connectorArgs": [
+        "-p",
+        "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--no-session",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--effort",
+        "low",
+        "--max-turns",
+        "1"
+      ],
+      "argv": [
+        "-p",
+        "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--no-session",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--effort",
+        "low",
+        "--max-turns",
+        "1"
+      ],
+      "envKeys": [
+        "HOME",
+        "PATH",
+        "POSEIDON_HOME",
+        "POSEIDON_RECORD_HOOK_LOG",
+        "POSEIDON_RECORD_HOOK_POLICY",
+        "POSEIDON_THREAD_ID",
+        "SHELL",
+        "SSH_AUTH_SOCK",
+        "TMPDIR",
+        "USER"
+      ],
+      "sessionId": null,
+      "exitCode": 1,
+      "signal": null,
+      "interrupted": false,
+      "durationMs": 479,
+      "stdoutChunks": [],
+      "transcriptPath": null,
+      "guessedTranscriptPath": null,
+      "transcriptDirMatchesConnectorSlug": false,
+      "projectDirListing": [],
+      "transcriptGrowth": [],
+      "transcriptBytes": null,
+      "checkpointGrowth": [],
+      "transcriptMeta": null,
+      "hookCount": 0,
+      "plans": [],
+      "touchedFiles": [],
+      "files": {
+        "stdout": "stdout.ndjson",
+        "stderr": "stderr.txt"
+      }
+    }
+  ]
+}

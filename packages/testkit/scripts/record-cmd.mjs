@@ -372,7 +372,9 @@ const recordTurn = async (context, turn, index) => {
     prompt: turn.prompt,
     ...(turn.sessionId === undefined ? {} : { sessionId: turn.sessionId }),
     ...(turn.forkSession === true ? { forkSession: true } : {}),
+    ...(turn.noSession === true ? { noSession: true } : {}),
     ...(context.model === undefined ? {} : { model: context.model }),
+    ...(turn.effort === undefined ? {} : { effort: turn.effort }),
     ...(turn.permissionMode === undefined ? {} : { permissionMode: turn.permissionMode }),
     ...(turn.yolo === false ? {} : { yolo: true }),
     ...(turn.maxTurns === undefined ? {} : { maxTurns: turn.maxTurns }),
@@ -396,7 +398,7 @@ const recordTurn = async (context, turn, index) => {
 
   const started = Date.now();
   const child = spawn(context.binary.command, argv, {
-    cwd: repo,
+    cwd: turn.cwd ?? repo,
     env,
     detached: true,
     stdio: ["ignore", "pipe", "pipe"],
@@ -536,7 +538,7 @@ const recordTurn = async (context, turn, index) => {
     argv,
     connectorArgs,
     earlierSessions,
-    cwd: repo,
+    cwd: turn.cwd ?? repo,
     prompt: turn.prompt,
     envKeys: Object.keys(env).sort(),
     sessionId,

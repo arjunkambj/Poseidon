@@ -1868,7 +1868,8 @@ tool-less, read-only call in a temporary directory, with no session persisted.
 It answers the harness's final text, and the caller parses and trims it. A call
 the harness refuses or answers unusably fails with `GenerationFailed`
 (`kind`, `instanceId`, `message`), which joins the `ConnectorError` union
-beside `SpawnFailed`. No connector implements it yet.
+beside `SpawnFailed`. Command Code implements it as one print run
+([command-code-connector.md](command-code-connector.md#writing-one-piece-of-text)).
 `ConnectorCapabilities` is what the harness can do, and the renderer reads it
 instead of the kind:
 

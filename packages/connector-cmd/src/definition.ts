@@ -19,6 +19,7 @@ import { makeCmdMcpServers } from "./mcpServers";
 import { makeCmdSkills } from "./skills";
 import { probe as probeBinary } from "./probe";
 import { CMD_CAPABILITIES } from "./capabilities";
+import { makeCmdGenerateText } from "./generateText";
 import { makeCmdSession, type CmdSessionRef } from "./session";
 
 export const CMD_KIND = "cmd";
@@ -151,6 +152,11 @@ export const makeCmdConnectorDefinition = (
             ),
           ),
         extensions: cmdExtensions(options, config, writeMutex),
+        generateText: makeCmdGenerateText({
+          instanceId,
+          binary: () => resolveForSession(config, process.env),
+          ...(config.extraEnv === undefined ? {} : { extraEnv: config.extraEnv }),
+        }),
       });
     },
   };

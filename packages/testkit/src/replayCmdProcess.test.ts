@@ -72,6 +72,15 @@ const frameTypes = (stdout: string): ReadonlyArray<string> =>
       return parsed.type === "event" ? (parsed.event?.type ?? "event") : parsed.type;
     });
 
+/**
+ * Recordings the CLI refused before it wrote a single frame, and why. They
+ * carry their evidence on stderr and in the exit code, and their manifest's
+ * model is the one the recorder asked for.
+ */
+const NO_FRAMES: Readonly<Record<string, string>> = {
+  "generate-text-effort": "--effort on a model that takes none: refused on stderr, exit 1",
+};
+
 describe("loadRecording", () => {
   it("reads every recording on disk", () => {
     const names = recordingNames();
@@ -85,7 +94,12 @@ describe("loadRecording", () => {
       for (const turn of recording.turns) {
         // Every recording is a real run with real argv and real frames.
         expect(turn.connectorArgs).toContain("--output-format");
-        expect(turn.frames.length).toBeGreaterThan(0);
+        if (NO_FRAMES[name] === undefined) {
+          expect(turn.frames.length, name).toBeGreaterThan(0);
+        } else {
+          expect(turn.frames, name).toEqual([]);
+          expect(turn.stderr.trim(), name).not.toBe("");
+        }
       }
     }
   });
@@ -102,7 +116,7 @@ describe("loadRecording", () => {
    * and hides which model a fixture's wording came from.
    */
   it("names the model each recording's own frames name", () => {
-    for (const name of recordingNames()) {
+    for (const name of recordingNames().filter((name) => NO_FRAMES[name] === undefined)) {
       const recording = loadRecording(name);
       const fromFrames = new Set(
         recording.turns

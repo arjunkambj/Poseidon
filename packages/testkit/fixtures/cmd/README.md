@@ -4,13 +4,13 @@
 Nothing in it is hand-written, reconstructed or synthesized. If the CLI changes,
 these are re-recorded — they are never edited by hand to make a test pass.
 
-|             |                                                                                                   |
-| ----------- | ------------------------------------------------------------------------------------------------- |
-| CLI         | `/opt/homebrew/bin/cmd` (the operator's global install)                                           |
-| Version     | **1.55.1**; **1.56.0** for the six after it; **1.65.0** for `skill/`; **1.66.0** for `fork/`      |
-| Recorded on | **2026-09-18**, **2026-09-24** for `skill/`, **2026-09-28** for `fork/`                           |
-| Model       | `meta/muse-spark-1.3-contributor` (the account default); `poolside/laguna-s-2.1-free` for `fork/` |
-| Recorded by | `packages/testkit/scripts/record-cmd.mjs`                                                         |
+|             |                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| CLI         | `/opt/homebrew/bin/cmd` (the operator's global install)                                                                       |
+| Version     | **1.55.1**; **1.56.0** for the six after it; **1.65.0** for `skill/`; **1.66.0** for `fork/` and the two `generate-text` ones |
+| Recorded on | **2026-09-18**, **2026-09-24** for `skill/`, **2026-09-28** for `fork/` and `generate-text*/`                                 |
+| Model       | `meta/muse-spark-1.3-contributor` (the account default); `poolside/laguna-s-2.1-free` for `fork/` and `generate-text*/`       |
+| Recorded by | `packages/testkit/scripts/record-cmd.mjs`                                                                                     |
 
 Each `manifest.json` carries the model its own frames name, the CLI version it
 ran on and the day it was recorded, so a recording made on a different model or
@@ -33,6 +33,13 @@ written down in that file — the recordings that drop `--yolo`
 that say what the flag is for, and `--tools-enable ask_user_question`, which
 joined the argv after most of these were taken and un-withholds one tool without
 changing anything else they are cited for. Anything else fails the build.
+
+`generate-text/` and `generate-text-effort/` are not turns: they record the
+one-shot argv `packages/connector-cmd/src/generateText.ts` spawns for a
+commit message or a title — `--no-session --max-turns 1`, no `--yolo`, no
+`--tools-enable` — in an empty directory of their own outside the repo, where
+no hook is installed. The same test holds them to `generateTextArgs`, and
+names them as the recordings that carry no `--yolo` by design.
 
 ## Re-recording
 
@@ -70,31 +77,33 @@ Multi-turn scenarios prefix each file with `turn1.` / `turn2.`.
 
 ## The scenarios
 
-| directory           | what it proves                                                                               |
-| ------------------- | -------------------------------------------------------------------------------------------- |
-| `probe/`            | `status --json`, `--list-models`, `--version`, `--help`, bad model                           |
-| `text/`             | a text-only answer; `text_delta` streaming                                                   |
-| `shell-allow/`      | `shell_command` allowed through the hook — and still refused without `--yolo`                |
-| `shell-deny/`       | the same call denied by the hook — `tool_hook_blocked`                                       |
-| `shell-yolo/`       | the same call with `--yolo`; the hook still fires and the call runs                          |
-| `file-edit/`        | `edit_file` against a real file                                                              |
-| `plan/`             | `--permission-mode plan --yolo` writing a plan, then the accept follow-up                    |
-| `plan-no-yolo/`     | plan mode without `--yolo`: the plan file itself is refused                                  |
-| `plan-guard/`       | plan mode with `--yolo`, told to edit: the workspace stays untouched                         |
-| `plan-write/`       | the same, told to write a new file and not to plan — still untouched, and still no hook      |
-| `question/`         | `ask_user_question` with the connector's argv — the tool is withheld                         |
-| `question-tools/`   | the same with `--tools-enable ask_user_question` — it fires, and the hook sees the questions |
-| `image/`            | an image attachment staged the way the connector stages one                                  |
-| `mcp/`              | an `mcp__<server>__<tool>` call — PreToolUse fires for it                                    |
-| `subagent/`         | an `agent` delegation — one hook for the delegation, none for what the subagent then does    |
-| `skill/`            | a skill reference written the way `prepareTurn` writes it — `activate_skill` fires for it    |
-| `interrupt/`        | SIGINT mid-turn — exit 130, no `run_end`, no `result`                                        |
-| `resume/`           | a second turn resuming the first session id                                                  |
-| `fork/`             | `--session <id> --fork-session`: a new session with the history, the first left untouched    |
-| `shell-twice/`      | the same shell call twice in one session — what "allow always" has to answer                 |
-| `file-edit-twice/`  | two editing turns in one session — two checkpoints with a real diff between them             |
-| `interrupt-resume/` | a SIGINT'd turn, then a resume of it: the harness refuses, because it wrote no transcript    |
-| `max-turns/`        | `--max-turns` exhausted — exit 8, `subtype: "max_turns"`                                     |
+| directory               | what it proves                                                                                                                                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `probe/`                | `status --json`, `--list-models`, `--version`, `--help`, bad model                                                                                                                                   |
+| `text/`                 | a text-only answer; `text_delta` streaming                                                                                                                                                           |
+| `shell-allow/`          | `shell_command` allowed through the hook — and still refused without `--yolo`                                                                                                                        |
+| `shell-deny/`           | the same call denied by the hook — `tool_hook_blocked`                                                                                                                                               |
+| `shell-yolo/`           | the same call with `--yolo`; the hook still fires and the call runs                                                                                                                                  |
+| `file-edit/`            | `edit_file` against a real file                                                                                                                                                                      |
+| `plan/`                 | `--permission-mode plan --yolo` writing a plan, then the accept follow-up                                                                                                                            |
+| `plan-no-yolo/`         | plan mode without `--yolo`: the plan file itself is refused                                                                                                                                          |
+| `plan-guard/`           | plan mode with `--yolo`, told to edit: the workspace stays untouched                                                                                                                                 |
+| `plan-write/`           | the same, told to write a new file and not to plan — still untouched, and still no hook                                                                                                              |
+| `question/`             | `ask_user_question` with the connector's argv — the tool is withheld                                                                                                                                 |
+| `question-tools/`       | the same with `--tools-enable ask_user_question` — it fires, and the hook sees the questions                                                                                                         |
+| `image/`                | an image attachment staged the way the connector stages one                                                                                                                                          |
+| `mcp/`                  | an `mcp__<server>__<tool>` call — PreToolUse fires for it                                                                                                                                            |
+| `subagent/`             | an `agent` delegation — one hook for the delegation, none for what the subagent then does                                                                                                            |
+| `skill/`                | a skill reference written the way `prepareTurn` writes it — `activate_skill` fires for it                                                                                                            |
+| `interrupt/`            | SIGINT mid-turn — exit 130, no `run_end`, no `result`                                                                                                                                                |
+| `resume/`               | a second turn resuming the first session id                                                                                                                                                          |
+| `fork/`                 | `--session <id> --fork-session`: a new session with the history, the first left untouched                                                                                                            |
+| `shell-twice/`          | the same shell call twice in one session — what "allow always" has to answer                                                                                                                         |
+| `file-edit-twice/`      | two editing turns in one session — two checkpoints with a real diff between them                                                                                                                     |
+| `interrupt-resume/`     | a SIGINT'd turn, then a resume of it: the harness refuses, because it wrote no transcript                                                                                                            |
+| `max-turns/`            | `--max-turns` exhausted — exit 8, `subtype: "max_turns"`                                                                                                                                             |
+| `generate-text/`        | the one-shot `generateText` argv: one answer on the `result` line, no transcript written — but `<id>.checkpoints.jsonl` and `<id>.meta.json` still left in a project directory (`projectDirListing`) |
+| `generate-text-effort/` | the same with `--effort low` on a model that takes none: refused on stderr before any frame, exit 1                                                                                                  |
 
 ## Putting them back on the wire
 

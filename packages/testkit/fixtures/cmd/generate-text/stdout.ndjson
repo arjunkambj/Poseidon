@@ -1,0 +1,22 @@
+{"type":"event","event":{"type":"run_start","sessionId":"d40b57a3-2b1b-4aa9-b745-2e56a994f603"}}
+{"type":"event","event":{"type":"turn_start","turnNumber":1}}
+{"type":"event","event":{"type":"message_start"}}
+{"type":"event","event":{"type":"model_request_start","model":"poolside/laguna-s-2.1-free"}}
+{"type":"event","event":{"type":"model_trace","traceId":"77b9232b6a173f4c1709ec1566069036"}}
+{"type":"event","event":{"type":"text_delta","delta":"Fix"}}
+{"type":"event","event":{"type":"message_update","content":[{"type":"text","text":"Fix"}]}}
+{"type":"event","event":{"type":"text_delta","delta":" typo"}}
+{"type":"event","event":{"type":"message_update","content":[{"type":"text","text":"Fix typo"}]}}
+{"type":"event","event":{"type":"text_delta","delta":" in"}}
+{"type":"event","event":{"type":"message_update","content":[{"type":"text","text":"Fix typo in"}]}}
+{"type":"event","event":{"type":"text_delta","delta":" README"}}
+{"type":"event","event":{"type":"message_update","content":[{"type":"text","text":"Fix typo in README"}]}}
+{"type":"event","event":{"type":"text_delta","delta":" install"}}
+{"type":"event","event":{"type":"message_update","content":[{"type":"text","text":"Fix typo in README install"}]}}
+{"type":"event","event":{"type":"text_delta","delta":" section"}}
+{"type":"event","event":{"type":"message_update","content":[{"type":"text","text":"Fix typo in README install section"}]}}
+{"type":"event","event":{"type":"model_request_end","model":"poolside/laguna-s-2.1-free","usage":{"inputTokens":16438,"outputTokens":7,"cacheReadTokens":5792,"cacheWriteTokens":0},"stopReason":"stop"}}
+{"type":"event","event":{"type":"message_end","content":[{"type":"text","text":"Fix typo in README install section"}]}}
+{"type":"event","event":{"type":"turn_end","turnNumber":1,"hadToolCalls":false,"usage":{"inputTokens":16438,"outputTokens":7,"cacheReadTokens":5792,"cacheWriteTokens":0}}}
+{"type":"event","event":{"type":"run_end","result":{"finalText":"Fix typo in README install section","stopReason":"end_turn","turnCount":1,"usage":{"inputTokens":16438,"outputTokens":7,"cacheReadTokens":5792,"cacheWriteTokens":0},"systemPromptTokens":null,"nextState":{"sessionId":"d40b57a3-2b1b-4aa9-b745-2e56a994f603","messages":[{"role":"user","content":[{"type":"text","text":"You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section"}],"meta":{"source":"user","createdAt":1790580967358,"messageId":"b8f9f779-8fb8-4188-9037-3fc5527be478"}},{"role":"assistant","content":[{"type":"text","text":"Fix typo in README install section"}],"meta":{"source":"model","createdAt":1790580969909,"messageId":"d0d6c8a9-23de-4040-af04-f8fdceabbdd6"}}],"interrupted":false,"modState":{"workspace":{"cwd":"<SCRATCH>/generate-WXTMos","platform":"darwin","branch":null,"gitStatus":null,"recentCommits":[],"additionalDirectories":[]},"compaction":{"tokens":16453,"basis":{"role":"assistant","content":[{"type":"text","text":"Fix typo in README install section"}],"meta":{"source":"model","createdAt":1790580969909,"messageId":"d0d6c8a9-23de-4040-af04-f8fdceabbdd6"}}}}}}}}
+{"type":"result","subtype":"success","sessionId":"d40b57a3-2b1b-4aa9-b745-2e56a994f603","stopReason":"end_turn","usage":{"inputTokens":16438,"outputTokens":7,"cacheReadTokens":5792,"cacheWriteTokens":0},"durationMs":2613,"finalText":"Fix typo in README install section"}

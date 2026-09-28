@@ -31,6 +31,7 @@ connector in the tree.
 | `probe.ts`         | `status --json`, `--list-models`, version policy, context window   |
 | `spawn.ts`         | argv construction, the env allowlist, the process handle           |
 | `turnArgs.ts`      | one turn's prompt and argv, including the plan-mode exception      |
+| `generateText.ts`  | one piece of text outside any session: the one-shot print run      |
 | `session.ts`       | one session: sends, the pump, teardown                             |
 | `ndjson.ts`        | the stdout frame envelope and the line splitter                    |
 | `translate.ts`     | frames, transcript lines and exits → `RuntimeEvent`s               |
@@ -296,14 +297,60 @@ a real turn:
   rebuilds. Command Code has no plugin loader, so a plugin's commands, agents
   and hooks are not loaded ([plugins.md](plugins.md#what-each-harness-gets)).
 
-`--max-turns` and `--no-session` are supported by `buildArgs` but no production
-caller passes them, so a turn runs at the CLI's own default cap — `cmd --help`
-says "Cap conversation turns in -p mode (default 100; exit 8 on cap-hit)". The
-recordings set `--max-turns` because the recorder does.
+`--max-turns` and `--no-session` are passed by no turn, so a turn runs at the
+CLI's own default cap — `cmd --help` says "Cap conversation turns in -p mode
+(default 100; exit 8 on cap-hit)". The recordings set `--max-turns` because
+the recorder does. The one caller that passes both is `generateText`
+([Writing one piece of text](#writing-one-piece-of-text)).
 
 `packages/connector-cmd/src/recordedArgs.test.ts` holds this to account: it
 reads every recording's `connectorArgs` back into a `buildArgs` input, rebuilds
 it, and demands the same list.
+
+### Writing one piece of text
+
+`generateText` (`generateText.ts`) writes a commit message, a pull request's
+text or a thread title outside any session. It is one print-mode process with
+`buildArgs`'s one-shot flags:
+
+```
+cmd -p "<system>\n\n<prompt>" --output-format json --verbose -t --skip-onboarding --no-auto-update
+    --no-session --model <id> [--effort <level>] --max-turns 1
+```
+
+- **No `--yolo`**, and no `--tools-enable`, hook, MCP config or skills. Without
+  `--yolo` print mode refuses every write and shell call itself
+  (`fixtures/cmd/shell-allow/`), so the call is read-only whatever the model
+  tries.
+- **A directory of its own**: a fresh `poseidon-generate-*` under the system
+  temp directory is the working directory, removed after the call once the
+  process group is gone. The environment is the same `envAllowlist` a turn
+  uses, with the instance's `extraEnv` and no `POSEIDON_*` control plane.
+- **The system text goes in front of the prompt**, because print mode has no
+  system-prompt flag. It has no schema flag either, so `jsonSchema` is not sent
+  and the caller parses the text.
+- **Effort only when asked for.** The caller leaves it out for a model that
+  lists none: the CLI refuses the flag on such a model before any request —
+  "Laguna S 2.1 has no adjustable reasoning effort." on stderr, exit 1
+  (`fixtures/cmd/generate-text-effort/`). `minimal` goes as `low` (`cmdEffort`).
+- **The answer is `finalText` on the `result` line.** A non-zero exit (read
+  through `EXIT_MESSAGES`), a stream with no `result` line, a `result` that is
+  not `success`, or one with no text fails with `GenerationFailed`, carrying the
+  CLI's own error or the tail of its stderr. A process that will not start is
+  `SpawnFailed`.
+- **What `--no-session` still leaves is removed.** It writes no transcript, but
+  the real run left `<id>.checkpoints.jsonl` and `<id>.meta.json` in a project
+  directory named after the temp directory (`projectDirListing` in
+  `fixtures/cmd/generate-text/manifest.json`). One per generated title would
+  pile up in `~/.commandcode/projects`, so the files named after the run's
+  session id are removed, and their directory once it is empty.
+
+`fixtures/cmd/generate-text/` is a real run of exactly this argv on
+`poolside/laguna-s-2.1-free`, and `generateText.test.ts` replays it through the
+definition: the text, the argv, the temp directory and the tidy-up. The error
+path replays `generate-text-effort/` and `max-turns/`. The server wraps every
+call in its own timeout; interrupting the call closes its scope, which kills
+the process group.
 
 ### The prompt
 
@@ -1117,6 +1164,7 @@ starts one itself and sends the fork's transcript with the first message.
 | `questions`                  | `true`     | `ask_user_question`, enabled on every turn                                   |
 | `runtimeModes`               | all three  | Poseidon's permission engine decides every mode through the PreToolUse hook  |
 | `attachments`                | `files`    | any file can be staged and named, though the renderer only stages images yet |
+| `textGeneration`             | `true`     | `generateText`: one print run, no session, one turn, no `--yolo`             |
 
 Command Code's own effort ladder is `low` to `max`. The contract's `minimal`
 never appears in a model's `efforts`, because nothing recorded shows the CLI
