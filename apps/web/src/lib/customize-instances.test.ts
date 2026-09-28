@@ -36,6 +36,17 @@ describe("instancesWith", () => {
     ]);
   });
 
+  it("finds the instances with their own plugins", () => {
+    const withPlugins = instance("with-plugins", true, {
+      skills: true,
+      plugins: true,
+      mcpServers: true,
+    });
+    expect(
+      instancesWith([...connectors, withPlugins], "plugins").map((entry) => entry.displayName),
+    ).toEqual(["with-plugins"]);
+  });
+
   it("is empty when nothing manages the kind", () => {
     expect(instancesWith([connectors[3]!], "skills")).toEqual([]);
   });

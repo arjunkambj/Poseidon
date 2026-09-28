@@ -7,12 +7,18 @@
 
 import type { ConnectorSummary } from "@poseidon/contracts/connectors";
 
-/** The kinds the Customize page has a tab for; plugins are read by the composer alone. */
+/** The kinds whose Customize tab counts every instance's list. */
 export type ExtensionKind = Extract<keyof ConnectorSummary["extensions"], "skills" | "mcpServers">;
+
+/**
+ * Every per-instance extension. The Plugins tab lists each instance's own
+ * plugins too, but counts Poseidon's plugins alongside them.
+ */
+export type InstanceExtension = keyof ConnectorSummary["extensions"];
 
 export const instancesWith = (
   connectors: ReadonlyArray<ConnectorSummary>,
-  kind: ExtensionKind,
+  kind: InstanceExtension,
 ): ReadonlyArray<ConnectorSummary> =>
   connectors.filter((connector) => connector.enabled && connector.extensions[kind]);
 

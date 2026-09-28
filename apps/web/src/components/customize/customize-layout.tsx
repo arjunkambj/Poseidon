@@ -1,6 +1,6 @@
 /**
  * The Customize page: what extends the agent, one tab per kind. The tab bar
- * reads from `CUSTOMIZE_TABS`, so a new kind (plugins, rules, hooks) is one
+ * reads from `CUSTOMIZE_TABS`, so a new kind (rules, hooks) is one
  * entry plus its route — and nothing is listed before it has a route that
  * works.
  *
@@ -25,11 +25,12 @@ import { AsyncResult } from "effect/unstable/reactivity";
 
 import { scopeLabel, USER_SCOPE, USER_SCOPE_LABEL } from "@/components/Settings/select-label";
 import { useAppAtoms } from "@/lib/app-runtime";
-import { Server, Sparkles } from "@honeyicons/react";
+import { Puzzle, Server, Sparkles } from "@honeyicons/react";
 
 const CUSTOMIZE_TABS = [
   { to: "/customize/skills", label: "Skills", icon: Sparkles, count: "skills" },
   { to: "/customize/mcp", label: "MCP", icon: Server, count: "mcp" },
+  { to: "/customize/plugins", label: "Plugins", icon: Puzzle, count: "plugins" },
 ] as const;
 
 const CustomizeScopeContext = React.createContext<ProjectId | null>(null);
@@ -47,6 +48,7 @@ export function CustomizeLayout() {
   const counts = {
     skills: useAtomValue(atoms.customizeCountAtom("skills")(projectId)),
     mcp: useAtomValue(atoms.customizeCountAtom("mcpServers")(projectId)),
+    plugins: useAtomValue(atoms.pluginsCountAtom(projectId)),
   };
 
   const projects = AsyncResult.isSuccess(projectsResult) ? projectsResult.value : [];

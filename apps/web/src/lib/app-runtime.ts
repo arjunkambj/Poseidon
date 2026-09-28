@@ -64,6 +64,11 @@ const makeSettingsAtoms = (base: BaseAppAtoms) => {
     }),
   );
 
+  /** Creates the global plugins folder when it is missing and opens it in the file manager. */
+  const pluginsOpenFolderAtom = runtime.fn(() =>
+    Effect.flatMap(client, (c) => c["plugins.openFolder"]({})),
+  );
+
   /**
    * The settings page's probe button: `refresh: true` re-runs every probe
    * server-side, then the list atom reloads so the page shows the outcome.
@@ -187,10 +192,31 @@ const makeSettingsAtoms = (base: BaseAppAtoms) => {
     ),
   );
 
+  /**
+   * The Plugins tab's count: Poseidon's plugins plus every instance's own,
+   * `null` until each has answered.
+   */
+  const pluginsCountAtom = Atom.family((projectId: ProjectId | null) =>
+    Atom.make((get): number | null => {
+      const connectors = get(base.connectorsAtom);
+      if (!AsyncResult.isSuccess(connectors)) {
+        return null;
+      }
+      const poseidon = get(base.poseidonPluginsAtom);
+      return totalCount([
+        AsyncResult.isSuccess(poseidon) ? poseidon.value.plugins.length : null,
+        ...instancesWith(connectors.value, "plugins").map(({ connectorInstanceId: id }) =>
+          lengthOf(get(base.pluginsAtom(id)(projectId))),
+        ),
+      ]);
+    }),
+  );
+
   return {
     ...base,
     settingsUpdateAtom,
     pluginsSetEnabledAtom,
+    pluginsOpenFolderAtom,
     probeConnectorsAtom,
     mcpServersAtom,
     mcpUpsertAtom,
@@ -198,6 +224,7 @@ const makeSettingsAtoms = (base: BaseAppAtoms) => {
     agentSkillsAtom,
     skillsLinkAtom,
     customizeCountAtom,
+    pluginsCountAtom,
   };
 };
 

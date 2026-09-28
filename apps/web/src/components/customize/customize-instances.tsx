@@ -12,7 +12,7 @@ import { AsyncResult } from "effect/unstable/reactivity";
 
 import { useAppAtoms } from "@/lib/app-runtime";
 import { connectorIconFor } from "@/lib/connector-icon";
-import { instancesWith, type ExtensionKind } from "@/lib/customize-instances";
+import { instancesWith, type InstanceExtension } from "@/lib/customize-instances";
 
 import { CustomizeEmpty } from "./customize-list";
 
@@ -22,7 +22,7 @@ export function CustomizeInstances({
   actions,
   children,
 }: {
-  readonly kind: ExtensionKind;
+  readonly kind: InstanceExtension;
   /** Shown when no enabled instance manages this kind. */
   readonly empty: React.ReactNode;
   /** Buttons on the instance's heading row, e.g. "Add server". */
