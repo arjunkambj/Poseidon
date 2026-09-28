@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   appendToDraft,
+  onNewDocument,
   parsePicked,
   pickedElementText,
   PICK_SCRIPT,
@@ -98,5 +99,21 @@ describe("screenshotFile", () => {
 describe("PICK_SCRIPT", () => {
   it("is one expression the webview can run", () => {
     expect(() => new Function(`return ${PICK_SCRIPT}`)).not.toThrow();
+  });
+});
+
+describe("onNewDocument", () => {
+  it("ends a pick on a new document, never on an in-page navigation or title change", () => {
+    const view = new EventTarget();
+    let gone = 0;
+    const stop = onNewDocument(view, () => (gone += 1));
+    view.dispatchEvent(new Event("did-navigate-in-page"));
+    view.dispatchEvent(new Event("page-title-updated"));
+    expect(gone).toBe(0);
+    view.dispatchEvent(new Event("did-navigate"));
+    expect(gone).toBe(1);
+    stop();
+    view.dispatchEvent(new Event("did-navigate"));
+    expect(gone).toBe(1);
   });
 });

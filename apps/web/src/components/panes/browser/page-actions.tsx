@@ -20,6 +20,7 @@ import { CursorClick, Scan } from "@honeyicons/react";
 import {
   appendToDraft,
   CANCEL_PICK_SCRIPT,
+  onNewDocument,
   parsePicked,
   pickedElementText,
   PICK_SCRIPT,
@@ -62,10 +63,24 @@ export function PageActions({ threadId, tab }: PageActionsProps) {
     }
   }, [tab?.tabId, endPick]);
 
-  // So does a navigation: the page running the picker is gone.
+  // So does a new document in the tab, which takes the picker with it. An
+  // in-page navigation keeps the page and its picker, so the pick goes on.
   React.useEffect(() => {
-    if (pickingIn.current !== null) endPick();
-  }, [tab?.url, tab?.wcId, endPick]);
+    const tabId = pickingIn.current;
+    const view = picking && tabId !== null ? getTabView(tabId) : null;
+    if (view === null) return;
+    return onNewDocument(view, () => {
+      if (pickingIn.current === tabId) endPick();
+    });
+  }, [picking, endPick]);
+
+  // And a new guest behind the tab (its renderer was replaced).
+  React.useEffect(() => {
+    const tabId = pickingIn.current;
+    if (tabId === null) return;
+    cancelIn(tabId);
+    endPick();
+  }, [tab?.wcId, endPick]);
 
   // The page's own Escape handler only hears keys while the page has focus;
   // Escape anywhere else in the window cancels too.

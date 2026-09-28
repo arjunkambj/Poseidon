@@ -81,6 +81,18 @@ export const PICK_SCRIPT = `(() => new Promise((resolve) => {
 
 export const CANCEL_PICK_SCRIPT = "window.__poseidonPicker?.cancel()";
 
+/**
+ * Calls `onGone` when the tab's webview loads a new document, which takes the
+ * picker with it; returns the unsubscribe. Only `did-navigate` counts: an
+ * in-page navigation (a hash or history change, which some pages make while
+ * they scroll) keeps the document, the picker and its capture listeners, so
+ * the pick goes on.
+ */
+export const onNewDocument = (view: EventTarget, onGone: () => void): (() => void) => {
+  view.addEventListener("did-navigate", onGone);
+  return () => view.removeEventListener("did-navigate", onGone);
+};
+
 const text = (value: unknown, max: number): string | null =>
   typeof value === "string" ? value.slice(0, max) : null;
 
