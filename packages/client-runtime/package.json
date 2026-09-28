@@ -44,6 +44,10 @@
       "types": "./src/fsAtoms.ts",
       "import": "./src/fsAtoms.ts"
     },
+    "./searchAtoms": {
+      "types": "./src/searchAtoms.ts",
+      "import": "./src/searchAtoms.ts"
+    },
     "./terminalAtoms": {
       "types": "./src/terminalAtoms.ts",
       "import": "./src/terminalAtoms.ts"

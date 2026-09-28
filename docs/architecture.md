@@ -927,6 +927,11 @@ Everything a client needs that is not React.
   (`open-in/file-menu.ts`, `open-in/file-menu-items.tsx`) open single files
   through the same call, in the workspace their pane provides
   (`open-in/file-menu-scope.tsx`).
+- `searchAtoms.ts` — `messageSearchAtom(query)`, one `threads.searchMessages`
+  call per query, run once per connected epoch. A new query is a new member of
+  the family, so the old one is disposed with its last reader and its call is
+  interrupted; a failure is a value (`{ _tag: "error", message }`), and a
+  query under three characters answers no hits without asking the server.
 - `oneShot.ts` — `runOneShot`, how every git write but the setup runs: a
   fresh atom per call, held until it settles. A shared `runtime.fn` atom would
   interrupt a call still in flight when the next one starts and hand the first
