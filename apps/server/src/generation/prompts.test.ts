@@ -4,7 +4,7 @@
  * lenient parse of what a harness wrote back.
  */
 
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import * as nodePath from "node:path";
 import { describe, expect, it } from "vitest";
@@ -158,6 +158,20 @@ describe("findPullRequestTemplate", () => {
     const empty = repo();
     put(empty, ".github/pull_request_template.md", "  \n");
     expect(findPullRequestTemplate(empty)).toBeNull();
+  });
+
+  it("never reads a template that links out of the repository", () => {
+    const outside = repo();
+    put(outside, "secret.md", "secret");
+    const root = repo();
+    mkdirSync(nodePath.join(root, ".github"));
+    symlinkSync(
+      nodePath.join(outside, "secret.md"),
+      nodePath.join(root, ".github/pull_request_template.md"),
+    );
+    expect(findPullRequestTemplate(root)).toBeNull();
+    put(root, "docs/pull_request_template.md", "docs");
+    expect(findPullRequestTemplate(root)).toBe("docs");
   });
 });
 

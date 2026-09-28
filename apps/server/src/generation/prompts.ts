@@ -19,6 +19,8 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import * as nodePath from "node:path";
 import type { WritingStyle } from "@poseidon/contracts/generation";
 
+import { realPathInside } from "./insideRoot";
+
 /** The most of a diff the model reads, in characters. */
 export const PATCH_CAP = 50_000;
 /** The most of a log, a template, agent notes or a conversation, in characters. */
@@ -216,9 +218,12 @@ const isFile = (path: string): boolean => {
   }
 };
 
-const readTemplate = (path: string): string | null => {
+/** A template's text; null when it is empty, unreadable or links out of `root`. */
+const readTemplate = (root: string, path: string): string | null => {
+  const inside = realPathInside(root, path);
+  if (inside === null) return null;
   try {
-    const text = readFileSync(path, "utf8").trim();
+    const text = readFileSync(inside, "utf8").trim();
     return text === "" ? null : text;
   } catch {
     return null;
@@ -229,14 +234,15 @@ const readTemplate = (path: string): string | null => {
  * The repository's pull request template, as GitHub finds it: a
  * `pull_request_template.md` in `.github/`, the root or `docs/` (any case),
  * else the first Markdown file of `.github/PULL_REQUEST_TEMPLATE/`. Null when
- * there is none, or it is empty.
+ * there is none, or it is empty. A template that links out of the repository
+ * is never read.
  */
 export const findPullRequestTemplate = (root: string): string | null => {
   for (const dir of TEMPLATE_DIRS) {
     const base = nodePath.join(root, dir);
     const name = entriesOf(base).find((entry) => entry.toLowerCase() === TEMPLATE_FILE);
     if (name !== undefined && isFile(nodePath.join(base, name))) {
-      const text = readTemplate(nodePath.join(base, name));
+      const text = readTemplate(root, nodePath.join(base, name));
       if (text !== null) return text;
     }
   }
@@ -248,7 +254,7 @@ export const findPullRequestTemplate = (root: string): string | null => {
   const dir = nodePath.join(github, folder);
   for (const entry of entriesOf(dir)) {
     if (entry.toLowerCase().endsWith(".md") && isFile(nodePath.join(dir, entry))) {
-      const text = readTemplate(nodePath.join(dir, entry));
+      const text = readTemplate(root, nodePath.join(dir, entry));
       if (text !== null) return text;
     }
   }

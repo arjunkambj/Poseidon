@@ -9,7 +9,7 @@
  * reads plain unified diffs whatever the user's config says.
  */
 
-import { readFileSync, statSync } from "node:fs";
+import { lstatSync, readFileSync, readlinkSync } from "node:fs";
 import * as nodePath from "node:path";
 import type { GitSettings } from "@poseidon/contracts/settings";
 import { PoseidonRpcError } from "@poseidon/contracts/rpc";
@@ -17,6 +17,7 @@ import * as Effect from "effect/Effect";
 
 import { currentBranch, listBranches, validRef } from "../git/Branches";
 import { isRepository, run, type GitError } from "../git/process";
+import { realPathInside } from "./insideRoot";
 import { PATCH_CAP, SUMMARY_CAP, capText, type StyleContext } from "./prompts";
 
 const invalid = (message: string) => new PoseidonRpcError({ code: "invalid", message });
@@ -61,18 +62,28 @@ const headOrEmptyTree = (root: string) =>
     return empty.stdout.trim();
   });
 
-/** The text of an untracked file for the prompt, or null when it is binary or too large. */
-const untrackedText = (root: string, path: string): string | null => {
+/**
+ * What the prompt shows of an untracked file: its text, or a note when it is
+ * binary, too large or unreadable. A symbolic link shows as its target, as
+ * git's own diff records it — the file it points at, which may lie outside the
+ * repository, is never read.
+ */
+const untrackedBody = (root: string, path: string): string => {
+  const unreadable = "(binary or too large to show)";
   try {
     const absolute = nodePath.join(root, path);
-    const stat = statSync(absolute);
-    if (!stat.isFile() || stat.size > UNTRACKED_READ_LIMIT) {
-      return null;
+    const stat = lstatSync(absolute);
+    if (stat.isSymbolicLink()) {
+      return `(symlink -> ${readlinkSync(absolute)})`;
     }
-    const text = readFileSync(absolute, "utf8");
-    return text.includes("\0") ? null : capText(text, UNTRACKED_FILE_CAP);
+    const inside = realPathInside(root, absolute);
+    if (inside === null || !stat.isFile() || stat.size > UNTRACKED_READ_LIMIT) {
+      return unreadable;
+    }
+    const text = readFileSync(inside, "utf8");
+    return text.includes("\0") ? unreadable : capText(text, UNTRACKED_FILE_CAP);
   } catch {
-    return null;
+    return unreadable;
   }
 };
 
@@ -107,10 +118,9 @@ export const commitContext = (
     if (tracked.length === 0 && untracked.length === 0) {
       return yield* Effect.fail(invalid("There are no changes to write a message for."));
     }
-    const added = untracked.slice(0, UNTRACKED_FILES).map((path) => {
-      const text = untrackedText(root, path);
-      return `--- /dev/null\n+++ b/${path}\n${text === null ? "(binary or too large to show)" : text}`;
-    });
+    const added = untracked
+      .slice(0, UNTRACKED_FILES)
+      .map((path) => `--- /dev/null\n+++ b/${path}\n${untrackedBody(root, path)}`);
     return {
       files: [...tracked, ...untracked.map((path) => `A\t${path}`)],
       patch: capText(
@@ -184,11 +194,16 @@ export const pullRequestContext = (
 
 // ── Style ──────────────────────────────────────────────────────
 
-/** The first agent notes file at the root: AGENTS.md, then CLAUDE.md. */
+/**
+ * The first agent notes file at the root: AGENTS.md, then CLAUDE.md. One that
+ * links out of the repository is skipped.
+ */
 const agentNotes = (root: string): string | null => {
   for (const name of ["AGENTS.md", "CLAUDE.md"]) {
+    const path = realPathInside(root, nodePath.join(root, name));
+    if (path === null) continue;
     try {
-      const text = readFileSync(nodePath.join(root, name), "utf8").trim();
+      const text = readFileSync(path, "utf8").trim();
       if (text !== "") return capText(text, SUMMARY_CAP);
     } catch {
       // Not there: try the next one.

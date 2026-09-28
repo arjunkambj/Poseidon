@@ -6,7 +6,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdtempSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import * as nodePath from "node:path";
 import { describe, expect, it } from "@effect/vitest";
@@ -28,6 +28,14 @@ const emptyRepo = () => {
 const commitAll = (root: string, message: string) => {
   git(root, "add", "-A");
   git(root, "commit", "-qm", message);
+};
+
+/** A secret file outside any repository, for links that lead out of one. */
+const outsideSecret = () => {
+  const dir = mkdtempSync(nodePath.join(tmpdir(), "poseidon-gen-outside-"));
+  const path = nodePath.join(dir, "secret.txt");
+  writeFileSync(path, "TOP SECRET KEY\n");
+  return path;
 };
 
 const makeRepo = () => {
@@ -58,6 +66,19 @@ describe("commitContext", () => {
       const picked = yield* commitContext(root, ["a.txt"]);
       expect(picked.files).toEqual(["M\ta.txt"]);
       expect(picked.patch).not.toContain("staged");
+    }),
+  );
+
+  it.effect("shows an untracked symlink as its target and never reads what it points at", () =>
+    Effect.gen(function* () {
+      const root = makeRepo();
+      const secret = outsideSecret();
+      symlinkSync(secret, nodePath.join(root, "notes"));
+
+      const context = yield* commitContext(root, undefined);
+      expect(context.files).toEqual(["A\tnotes"]);
+      expect(context.patch).toContain(`+++ b/notes\n(symlink -> ${secret})`);
+      expect(context.patch).not.toContain("TOP SECRET");
     }),
   );
 
@@ -137,6 +158,20 @@ describe("styleContext", () => {
         customInstructions: " ",
       });
       expect(noHistory.recentSubjects).toEqual([]);
+    }),
+  );
+
+  it.effect("skips agent notes that link out of the repository", () =>
+    Effect.gen(function* () {
+      const root = makeRepo();
+      symlinkSync(outsideSecret(), nodePath.join(root, "AGENTS.md"));
+      writeFileSync(nodePath.join(root, "CLAUDE.md"), "Keep it short.\n");
+
+      const context = yield* styleContext(root, {
+        writingStyle: "repository",
+        customInstructions: "",
+      });
+      expect(context.agentNotes).toBe("Keep it short.");
     }),
   );
 });
