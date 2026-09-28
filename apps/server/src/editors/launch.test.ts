@@ -121,11 +121,12 @@ describe("buildLaunch for the file manager and terminal", () => {
     expect(launch({ platform: "linux", recipe: finder })).toBeNull();
   });
 
-  it("selects a file in Explorer on Windows", () => {
-    const file = "C:\\work\\app\\main.ts";
+  it("selects a file in Explorer on Windows, quoting only the path", () => {
+    const file = "C:\\work\\my app\\main.ts";
     expect(launch({ platform: "win32", recipe: finder, target: file })).toEqual({
       command: "explorer.exe",
-      args: [`/select,${file}`],
+      args: [`/select,"${file}"`],
+      verbatim: true,
     });
     expect(
       launch({ platform: "win32", recipe: finder, target: "C:\\work\\app", isDirectory: true }),

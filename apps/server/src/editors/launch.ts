@@ -26,6 +26,11 @@ export interface LaunchInput {
 export interface Launch {
   readonly command: string;
   readonly args: ReadonlyArray<string>;
+  /**
+   * Windows only: pass `args` to the child as written, without Node's
+   * quoting. Set when an argument quotes itself.
+   */
+  readonly verbatim?: true;
 }
 
 const editorArgs = (input: LaunchInput): ReadonlyArray<string> => {
@@ -44,10 +49,13 @@ const fileManager = (input: LaunchInput): Launch | null => {
     case "darwin":
       return { command: MAC_OPEN, args: selects ? ["-R", input.target] : [input.target] };
     case "win32":
-      return {
-        command: "explorer.exe",
-        args: [selects ? `/select,${input.target}` : input.target],
-      };
+      // Explorer reads `/select,` only unquoted, so Node's quoting of an
+      // argument with a space ("/select,C:\a b") would hide the switch and
+      // open a default folder. The path is quoted by hand instead; a Windows
+      // path cannot hold a quote.
+      return selects
+        ? { command: "explorer.exe", args: [`/select,"${input.target}"`], verbatim: true }
+        : { command: "explorer.exe", args: [input.target] };
     default: {
       if (input.recipe.cli === undefined) return null;
       // `xdg-open` cannot select a file, so it opens the folder holding it.

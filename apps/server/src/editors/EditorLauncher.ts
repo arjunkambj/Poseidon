@@ -52,6 +52,7 @@ const start = (launch: Launch, label: string) =>
       detached: true,
       stdio: "ignore",
       env: launchEnv(process.env),
+      windowsVerbatimArguments: launch.verbatim === true,
     });
     child.once("spawn", () => {
       child.unref();
