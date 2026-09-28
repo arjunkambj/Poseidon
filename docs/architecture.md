@@ -1384,7 +1384,9 @@ marked the thread done (`thread.done.marked`); `thread.done.cleared` and
 its own. Auto-done is the client's: it compares `lastActivityAt` with the
 `autoDoneAfterDays` setting, and the server never stores it. Both fields are
 optional on the wire; a `ThreadDoc` projected before them is read through
-`doneAtOf` and `lastActivityOf`, which falls back to `updatedAt`.
+`doneAtOf` and `lastActivityOf`, which falls back to `updatedAt`. Neither
+done event moves `updatedAt`: marking a thread done or active changes nothing
+in it, so its row time and unread dot stay where they were.
 
 `projection_state` holds one row per projector: `last_applied_sequence`,
 `updated_at` and `projector_version`. Projections are written inside the

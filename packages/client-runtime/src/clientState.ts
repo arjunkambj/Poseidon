@@ -145,9 +145,9 @@ export const applyThreadEvent = (
       };
     case "thread.done.marked":
     case "thread.done.cleared":
-      // The Active/Done split lives on the sidebar's `ThreadSummary`; the
-      // open thread's view has nothing to change but the time.
-      return { ...doc, updatedAt: event.occurredAt };
+      // The Active/Done split lives on the sidebar's `ThreadSummary`, and the
+      // server's fold leaves `updatedAt` alone too: filing is not a change.
+      return doc;
     case "thread.deleted":
       // Not the same as archived: the thread is gone from the server, so an
       // open timeline has to say so (and the route can redirect) instead of

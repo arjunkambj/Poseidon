@@ -942,6 +942,8 @@ describe("the thread's done state", () => {
     ])!;
     expect(threadSummaryOf(marked).doneAt).toBe(MARKED);
     expect(threadSummaryOf(marked).lastActivityAt).toBe(CREATED);
+    // Nothing happened in the thread: its row time and unread dot stay put.
+    expect(threadSummaryOf(marked).updatedAt).toBe(CREATED);
 
     const resumed = projectThreadEvent(marked, at(LATER, turnRequested()))!;
     const summary = threadSummaryOf(resumed);
@@ -988,6 +990,7 @@ describe("the thread's done state", () => {
     expect(doc.doneAt).toBeNull();
     expect(threadSummaryOf(doc)).not.toHaveProperty("doneAt");
     expect(threadSummaryOf(doc).lastActivityAt).toBe(LATER);
+    expect(threadSummaryOf(doc).updatedAt).toBe(CREATED);
   });
 
   it("drops the mark when an archived thread comes back", () => {

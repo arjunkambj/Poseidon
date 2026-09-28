@@ -325,10 +325,13 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
       };
     case "thread.deleted":
       return { ...next, deleted: true };
+    // Filing a thread away is not a change to it: `updatedAt` is what the
+    // sidebar's unread dot and row time read, and neither should move when
+    // the user marks a thread done or active. `lastActivityAt` carries the split.
     case "thread.done.marked":
-      return { ...next, doneAt: event.occurredAt };
+      return { ...next, updatedAt: doc.updatedAt, doneAt: event.occurredAt };
     case "thread.done.cleared":
-      return { ...next, doneAt: null };
+      return { ...next, updatedAt: doc.updatedAt, doneAt: null };
     case "thread.session.bound":
       // The capabilities ride along when the connector announced them — the
       // decider reads `steering` here. A session bound before they were
