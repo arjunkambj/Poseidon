@@ -52,7 +52,7 @@ import {
 import type { ImportableSession } from "@poseidon/contracts/sessionImport";
 import * as Effect from "effect/Effect";
 
-import type { CodexSessionRef } from "./sessionRef";
+import { parseSessionRef, type CodexSessionRef } from "./sessionRef";
 
 export interface CodexSessionFilesOptions {
   /** The instance's `CODEX_HOME`. */
@@ -264,5 +264,9 @@ export const makeCodexSessionFiles = (options: CodexSessionFilesOptions): Sessio
       return transcript;
     });
 
-  return { list, read };
+  /** The session a thread of this connector runs: the one its ref names. */
+  const sourceIdOf = (sessionRef: unknown): string | undefined =>
+    parseSessionRef(sessionRef)?.threadId;
+
+  return { list, read, sourceIdOf };
 };

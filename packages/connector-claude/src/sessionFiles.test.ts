@@ -200,6 +200,16 @@ describe("makeClaudeSessionFiles", () => {
     }),
   );
 
+  it("names the session a thread's ref points at, and none for another connector's", () => {
+    const reader = readerIn(copyFixture());
+    expect(reader.sourceIdOf?.({ sessionId: ALPHA_ID, cwd: "/code/alpha" })).toBe(ALPHA_ID);
+    expect(
+      reader.sourceIdOf?.({ sessionId: ALPHA_ID, cwd: "/code/alpha", lastAssistantUuid: "a" }),
+    ).toBe(ALPHA_ID);
+    expect(reader.sourceIdOf?.({ threadId: ALPHA_ID, cwd: "/code/alpha" })).toBeUndefined();
+    expect(reader.sourceIdOf?.(null)).toBeUndefined();
+  });
+
   it.effect("leaves every source file byte-identical with its last write unchanged", () =>
     Effect.gen(function* () {
       const config = copyFixture();

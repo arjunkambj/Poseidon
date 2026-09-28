@@ -130,6 +130,13 @@ export interface SessionsExtension {
     readonly limit: number;
   }) => Effect.Effect<ReadonlyArray<ImportableSession>, ConnectorExtensionFailed>;
   readonly read: (sourceId: string) => Effect.Effect<ImportedTranscript, ConnectorExtensionFailed>;
+  /**
+   * The `sourceId` of the session a thread's persisted `sessionRef` names, or
+   * `undefined` when it names none this reader lists. Poseidon's own threads
+   * run their sessions in the harness's usual session folders, so this is how
+   * a list tells those apart from sessions the harness ran on its own.
+   */
+  readonly sourceIdOf?: (sessionRef: unknown) => string | undefined;
 }
 
 /** Every extension an instance may carry; each one is optional. */

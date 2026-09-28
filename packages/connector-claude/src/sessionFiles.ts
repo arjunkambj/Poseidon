@@ -50,7 +50,7 @@ import type { ImportableSession } from "@poseidon/contracts/sessionImport";
 import * as Effect from "effect/Effect";
 
 import { claudeConfigDir } from "./plugins";
-import type { ClaudeSessionRef } from "./sessionRef";
+import { parseSessionRef, type ClaudeSessionRef } from "./sessionRef";
 
 export interface ClaudeSessionFilesOptions {
   /** The environment the instance's sessions run with (`childEnv`). */
@@ -255,5 +255,9 @@ export const makeClaudeSessionFiles = (options: ClaudeSessionFilesOptions): Sess
       return transcript;
     });
 
-  return { list, read };
+  /** The session a thread of this connector runs: the one its ref names. */
+  const sourceIdOf = (sessionRef: unknown): string | undefined =>
+    parseSessionRef(sessionRef)?.sessionId;
+
+  return { list, read, sourceIdOf };
 };

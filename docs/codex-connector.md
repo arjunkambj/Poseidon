@@ -667,6 +667,9 @@ opened read-only and nothing is written.
 - The session reference it returns is `{ threadId, cwd }`, the shape
   `sessionRef.ts` parses, so the thread's first turn resumes it; a thread the
   CLI no longer has starts afresh (`threadOpen.ts`).
+- `sourceIdOf` answers the `threadId` of a thread's persisted reference, so
+  the list names the sessions Poseidon's own threads run as those threads
+  rather than as sessions to import.
 
 The tests read `packages/testkit/fixtures/codex/session-files/`: hand-built
 rollouts in the CLI's record shapes with made-up content (its README says
