@@ -13,19 +13,23 @@
  * an edited message (`resend`) starts a turn with it once `restored` is in the
  * log, and only then. Work orders with no outcome recorded are replayed at
  * layer build, so a crash between the accepted command and the git work cannot
- * drop the restore, or the message riding on it. Thread deletion
+ * drop the restore, or the message riding on it; and a thread's latest
+ * `restored` order whose send never ran is sent then too, so neither can a
+ * crash between the outcome and the send. Thread deletion
  * and project removal each prune the hidden refs under the thread's prefix —
  * the project case enumerates the thread streams, because the removal's
  * transaction has already deleted the read-model rows.
  */
 
-import { makeCommandId, makeEventId } from "@poseidon/contracts/ids";
-import type { ThreadId, TurnId } from "@poseidon/contracts/ids";
+import { makeEventId } from "@poseidon/contracts/ids";
+import type { CommandId, ThreadId, TurnId } from "@poseidon/contracts/ids";
 import type {
+  CheckpointRestore,
   CheckpointSummary,
   OrchestrationEvent,
   TurnResend,
 } from "@poseidon/contracts/orchestration";
+import { latestTurnId } from "@poseidon/contracts/orchestration";
 import * as Context from "effect/Context";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
@@ -87,6 +91,10 @@ export class CheckpointHook extends Context.Service<
     }),
   );
 }
+
+/** A `thread.checkpoint.restore.requested` work order's payload. */
+const orderOf = (entry: OrchestrationEvent) =>
+  entry.payload as { readonly checkpoint: CheckpointSummary; readonly resend?: TurnResend };
 
 export const CheckpointReactor: Layer.Layer<
   never,
@@ -170,15 +178,17 @@ export const CheckpointReactor: Layer.Layer<
      * Edit and resend: the edited message goes out as an ordinary turn, once
      * the worktree is back where it was before the original. Called only
      * after `restored` is appended, so a failed restore sends nothing; and
-     * only from the run that appended it, so a settled work order — which the
-     * boot replay skips — never sends twice. A refusal lands on the thread as
-     * an error line rather than vanishing, since the composer has let go of
-     * the text by then.
+     * the run that appended it or, when the process stopped in between, from
+     * the next boot's replay (`resendIfUnsent`). The command's id is the work
+     * order's event id, so the engine's receipt says whether it went out and
+     * a second dispatch returns that receipt instead of sending twice. A
+     * refusal lands on the thread as an error line rather than vanishing,
+     * since the composer has let go of the text by then.
      */
     const sendResend = (threadId: ThreadId, resend: TurnResend, causedBy: string) =>
       engine
         .dispatch({
-          commandId: makeCommandId(),
+          commandId: causedBy as CommandId,
           createdAt: new Date().toISOString(),
           type: "thread.turn.start",
           threadId,
@@ -246,6 +256,28 @@ export const CheckpointReactor: Layer.Layer<
         }
       });
 
+    /**
+     * The send of a work order the last process restored but may have stopped
+     * before sending. Skipped when its receipt exists (it went out, or was
+     * refused and said so), and when the thread has moved on since: a turn
+     * after the restore, one running, or another restore.
+     */
+    const resendIfUnsent = (threadId: ThreadId, order: OrchestrationEvent, resend: TurnResend) =>
+      Effect.gen(function* () {
+        if ((yield* store.receipt(order.eventId as unknown as CommandId)) !== null) {
+          return;
+        }
+        const doc = yield* engine.threadDoc(threadId);
+        if (doc === null || doc.deleted || doc.currentTurn !== null || doc.restoring) {
+          return;
+        }
+        const last = ((doc.restores as ReadonlyArray<CheckpointRestore> | undefined) ?? []).at(-1);
+        if (last === undefined || latestTurnId(doc.items) !== last.afterTurnId) {
+          return;
+        }
+        yield* sendResend(threadId, resend, order.eventId);
+      });
+
     /** Work orders this process has already acted on — see `runRestore`. */
     const handled = yield* Ref.make<ReadonlySet<string>>(new Set());
 
@@ -300,29 +332,41 @@ export const CheckpointReactor: Layer.Layer<
         "thread.deleted",
       ]);
       const pending = new Map<ThreadId, OrchestrationEvent>();
+      // Each thread's latest order, when it was restored and carries a message.
+      const restored = new Map<ThreadId, OrchestrationEvent>();
       for (const entry of events) {
         const threadId = entry.streamId as ThreadId;
         if (entry.type === "thread.checkpoint.restore.requested") {
           pending.set(threadId, entry);
+          restored.delete(threadId);
+        } else if (entry.type === "thread.checkpoint.restored") {
+          const order = pending.get(threadId);
+          pending.delete(threadId);
+          if (order !== undefined && orderOf(order).resend !== undefined) {
+            restored.set(threadId, order);
+          }
         } else if (
-          entry.type === "thread.checkpoint.restored" ||
           entry.type === "thread.checkpoint.restore.failed" ||
           entry.type === "thread.deleted"
         ) {
           pending.delete(threadId);
+          restored.delete(threadId);
         }
       }
-      return [...pending.values()];
+      return { pending: [...pending.values()], restored: [...restored.values()] };
     });
 
-    const pending = yield* pendingRestores.pipe(
+    const { pending, restored } = yield* pendingRestores.pipe(
       // `catchCause`, not `catch`: this runs inside the layer build, so a
       // defect from the read — an undecodable row used to throw one — did not
       // fail the reactor, it failed `Layer.build(app)`, and the server never
       // reached its handshake.
       Effect.catchCause((cause) =>
         Effect.logWarning("checkpoint restore replay could not read the log", cause).pipe(
-          Effect.as([] as ReadonlyArray<OrchestrationEvent>),
+          Effect.as({
+            pending: [] as ReadonlyArray<OrchestrationEvent>,
+            restored: [] as ReadonlyArray<OrchestrationEvent>,
+          }),
         ),
       ),
     );
@@ -330,12 +374,17 @@ export const CheckpointReactor: Layer.Layer<
     // each thread stays `restoring` (and so unusable for turns) until its own
     // replay finishes.
     yield* Effect.forEach(pending, (entry) => {
-      const order = entry.payload as {
-        readonly checkpoint: CheckpointSummary;
-        readonly resend?: TurnResend;
-      };
+      const order = orderOf(entry);
       return runRestore(entry.streamId as ThreadId, order.checkpoint, entry.eventId, order.resend);
     }).pipe(
+      Effect.andThen(
+        Effect.forEach(restored, (entry) => {
+          const resend = orderOf(entry).resend;
+          return resend === undefined
+            ? Effect.void
+            : resendIfUnsent(entry.streamId as ThreadId, entry, resend);
+        }),
+      ),
       Effect.catch((error) => Effect.logWarning("checkpoint restore replay failed", error)),
       Effect.forkScoped,
     );

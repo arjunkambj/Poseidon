@@ -642,4 +642,51 @@ describe("CheckpointReactor", () => {
       }),
     ),
   );
+
+  it.effect("sends an edited message the last process restored but never sent, once", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const persistence = Layer.succeedContext(yield* Layer.build(persistenceLayer()));
+        const engineOnly = OrchestrationEngine.layer.pipe(Layer.provide(persistence));
+
+        // The last process restored the worktree and stopped before the send.
+        yield* Effect.gen(function* () {
+          const engine = yield* OrchestrationEngine;
+          yield* engine.dispatch(createProject);
+          yield* engine.dispatch(createThread);
+          yield* engine.appendThreadEvents(threadId, [
+            planned("thread.checkpoint.created", { checkpoint }),
+            planned("thread.checkpoint.restore.requested", { checkpoint, resend }),
+            planned("thread.checkpoint.restored", { checkpoint }),
+          ]);
+        }).pipe(Effect.provide(engineOnly));
+
+        // The next boot sends it without running git again.
+        let restores = 0;
+        const countingHook = {
+          restore: () =>
+            Effect.sync(() => {
+              restores += 1;
+            }),
+        };
+        // The replay runs on a fiber of its own; give it every chance to.
+        const settledTexts = Effect.gen(function* () {
+          const engine = yield* OrchestrationEngine;
+          for (let spin = 0; spin < 200; spin++) {
+            yield* Effect.yieldNow;
+          }
+          return userTexts(yield* engine.threadDoc(threadId));
+        });
+        expect(
+          yield* settledTexts.pipe(Effect.provide(stackOver(persistence, countingHook))),
+        ).toEqual([resend.text]);
+
+        // A third boot finds it sent: no second one.
+        expect(
+          yield* settledTexts.pipe(Effect.provide(stackOver(persistence, countingHook))),
+        ).toEqual([resend.text]);
+        expect(restores).toBe(0);
+      }),
+    ),
+  );
 });

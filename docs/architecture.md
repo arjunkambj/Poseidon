@@ -1677,9 +1677,13 @@ no checkpoint and the next turn starts from the restored one. An edit and
 resend rides on the same order: `thread.checkpoint.restore` takes an optional
 `resend` (text, attachments, mentions, references), the decider copies it onto
 `restore.requested`, and the reactor dispatches `thread.turn.start` with it
-right after appending `restored`, in the same run. A failed restore sends
-nothing, a replayed order sends on replay, and a settled order is never run
-again, so the edited message goes out at most once. Thread deletion and project removal each prune
+right after appending `restored`, in the same run. The turn's command id is
+the order's event id, so its receipt records that the send went out. A failed
+restore sends nothing, a replayed order sends on replay, and a settled order is
+never run again; a thread's latest `restored` order whose command has no
+receipt, with no turn since the restore, is sent at layer build, which covers a
+stop between `restored` and the send. No restart loses the edited message,
+and none sends it twice. Thread deletion and project removal each prune
 the hidden refs under the thread's prefix.
 
 **`SessionManager`.** Not a reactor but the thing reactors act through: one
