@@ -469,6 +469,9 @@ importers:
       '@poseidon/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@poseidon/shared':
+        specifier: workspace:*
+        version: link:../shared
       effect:
         specifier: 'catalog:'
         version: 4.0.0-rc.112

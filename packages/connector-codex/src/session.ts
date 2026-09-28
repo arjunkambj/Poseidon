@@ -1,0 +1,432 @@
+/**
+ * One Codex session for one thread, over one `codex app-server` process.
+ *
+ * The app-server serves a whole thread: one process, one JSON-RPC connection,
+ * and every turn one more `turn/start` on it. The session:
+ *
+ * 1. spawns the app-server (`launch.ts`) with the child's default-deny
+ *    environment, Poseidon's MCP server injected, and its own process group;
+ * 2. shakes hands (`initialize`, `initialized`) and opens the thread
+ *    (`threadOpen.ts`), so a CLI that cannot start — or cannot open the
+ *    thread — fails `startSession` with `SpawnFailed` instead of a thread
+ *    that never answers;
+ * 3. announces itself with `session.started`, its ref naming the CLI's thread
+ *    (`sessionRef.ts`), then translates every notification on one consumer
+ *    fiber (`translate/translator.ts`), in the order the server sent them;
+ * 4. starts each turn with `turn/start`, naming the thread's model and effort
+ *    for that turn, and its modes again when they changed (`modes.ts`);
+ * 5. answers every request the server makes of it (`serverRequests.ts`);
+ * 6. closes by ending the server's stdin — it exits on EOF — stopping the
+ *    process group and proving it gone (`spawn.ts`).
+ *
+ * The app-server stopping on its own — the connection closing while the
+ * session is open — is a crash: a fatal `runtime.error` naming the server's
+ * last stderr line, then `session.ended { reason: "crashed" }`, which the
+ * supervisor resumes from.
+ */
+
+import type {
+  ConnectorError,
+  ConnectorServices,
+  TurnInput,
+} from "@poseidon/connector-sdk/definition";
+import { SessionClosed, SpawnFailed, TurnInProgress } from "@poseidon/connector-sdk/definition";
+import { makeBoundedEventQueue, type SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
+import type { Effort, RuntimeMode } from "@poseidon/contracts/enums";
+import type { ConnectorInstanceId, ThreadId, TurnId } from "@poseidon/contracts/ids";
+import { makeEventId, makeTurnId } from "@poseidon/contracts/ids";
+import type { ThreadSettings, ThreadSettingsPatch } from "@poseidon/contracts/orchestration";
+import type { RuntimeEvent } from "@poseidon/contracts/runtime";
+import * as Deferred from "effect/Deferred";
+import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
+import * as Queue from "effect/Queue";
+import * as Ref from "effect/Ref";
+import type * as Scope from "effect/Scope";
+
+import { stageAttachments } from "./attachments";
+import type { ResolvedBinary } from "./binary";
+import { CODEX_CAPABILITIES } from "./capabilities";
+import { call, initialize } from "./handshake";
+import { CODEX_KIND } from "./kind";
+import { sessionEnv, sessionServerArgs } from "./launch";
+import { codexModelFor } from "./models";
+import { APPROVAL_POLICY, sandboxPolicyFor } from "./modes";
+import { TurnStartResponse } from "./protocol";
+import { makeRpcClient, type RpcServerRequest } from "./rpc";
+import { declineOutcome } from "./serverRequests";
+import type { CodexSessionRef } from "./sessionRef";
+import { makeProcessGroup } from "./spawn";
+import { openThread } from "./threadOpen";
+import {
+  asRecord,
+  asString,
+  type Notification,
+  type PendingRuntimeEvent,
+} from "./translate/pending";
+import { makeTranslator } from "./translate/translator";
+import { userInput } from "./userInput";
+
+export interface CodexSessionOptions {
+  readonly instanceId: ConnectorInstanceId;
+  readonly threadId: ThreadId;
+  readonly workspaceRoot: string;
+  readonly binary: ResolvedBinary;
+  /** The child's environment (`env.ts`); the session adds the MCP bearer. */
+  readonly env: Record<string, string>;
+  /** What the user types to sign the CLI in, for an error that is the sign-in. */
+  readonly loginCommand: string;
+  readonly services: ConnectorServices;
+  readonly settings: ThreadSettings;
+  /** The thread to resume; absent for a fresh one. */
+  readonly sessionRef?: CodexSessionRef;
+  /** Said once after `session.started` — why a resume became a fresh start. */
+  readonly warning?: string;
+  /**
+   * The efforts a model offers, when the instance has listed its models. An
+   * effort the model does not offer is left out of `turn/start`, so the CLI
+   * uses the model's own default rather than refusing the turn.
+   */
+  readonly effortsFor?: (model: string) => ReadonlyArray<Effort> | undefined;
+}
+
+/** How long the app-server may take to answer the handshake and open the thread. */
+const HANDSHAKE_TIMEOUT = "60 seconds";
+
+interface ActiveTurn {
+  readonly turnId: TurnId;
+  readonly interrupted: boolean;
+  /** The CLI's id for the turn, once `turn/start` answered; null when it failed. */
+  readonly codexTurnId: Deferred.Deferred<string | null>;
+}
+
+type Inbound =
+  | { readonly kind: "notification"; readonly notification: Notification }
+  | { readonly kind: "request"; readonly request: RpcServerRequest };
+
+export const makeCodexSession = (
+  options: CodexSessionOptions,
+): Effect.Effect<SessionHandle, ConnectorError, Scope.Scope> =>
+  Effect.gen(function* () {
+    const { services, threadId } = options;
+    const queue = yield* makeBoundedEventQueue();
+    const run = Effect.runPromiseWith(yield* Effect.context<never>());
+    const closedRef = yield* Ref.make(false);
+    const turnRef = yield* Ref.make<ActiveTurn | null>(null);
+    let settings = options.settings;
+    /** The mode the CLI's thread was last given, so a change is sent once. */
+    let appliedMode: RuntimeMode = settings.runtimeMode;
+
+    const emit = (pending: PendingRuntimeEvent): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        const millis = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+        yield* queue.offer({
+          eventId: makeEventId(),
+          connectorInstanceId: options.instanceId,
+          threadId,
+          createdAt: new Date(millis).toISOString(),
+          ...pending,
+        } as RuntimeEvent);
+      });
+
+    const failed = (message: string) =>
+      new SpawnFailed({ kind: CODEX_KIND, instanceId: options.instanceId, message });
+
+    const mcp = yield* services.mcpEndpoint(threadId);
+    const group = makeProcessGroup({
+      onStderr: (chunk) => {
+        void run(services.logger.log("debug", "codex stderr", { chunk }));
+      },
+    });
+    const child = group.spawn({
+      command: options.binary.command,
+      args: sessionServerArgs(mcp),
+      cwd: options.workspaceRoot,
+      env: sessionEnv(options.env, mcp),
+    });
+    const rpc = makeRpcClient(child, {
+      onUnparsed: (line) => {
+        void run(services.logger.log("debug", "codex unparsed line", { line }));
+      },
+    });
+    // Registered before the first line can be read, so nothing is missed; the
+    // consumer below takes them in the order the server sent them.
+    const inbox = yield* Queue.unbounded<Inbound>();
+    rpc.onNotification((notification) => {
+      Queue.offerUnsafe(inbox, { kind: "notification", notification });
+    });
+    rpc.onRequest((request) => {
+      Queue.offerUnsafe(inbox, { kind: "request", request });
+    });
+
+    const opened = yield* Effect.gen(function* () {
+      yield* initialize(rpc);
+      return yield* openThread({
+        rpc,
+        cwd: options.workspaceRoot,
+        settings,
+        ...(options.sessionRef === undefined ? {} : { resume: options.sessionRef.threadId }),
+      });
+    }).pipe(
+      Effect.mapError((error) => failed(error.message)),
+      Effect.timeoutOrElse({
+        duration: HANDSHAKE_TIMEOUT,
+        orElse: () => Effect.fail(failed("the Codex app-server did not open the thread")),
+      }),
+      Effect.tapError(() => group.stop),
+    );
+    const codexThreadId = opened.threadId;
+
+    const currentRef = (): CodexSessionRef => ({
+      threadId: codexThreadId,
+      cwd: options.workspaceRoot,
+    });
+
+    const translator = makeTranslator({ loginCommand: options.loginCommand });
+
+    /**
+     * The running turn, if `notification` belongs to it. A notification that
+     * names another turn of the CLI's — the previous turn's token total a
+     * resume restates, say — belongs to none, even while one runs. Until
+     * `turn/start` has answered, the running turn's id is not known yet, and
+     * the notification waits for it.
+     */
+    const turnOf = (notification: Notification): Effect.Effect<ActiveTurn | null> =>
+      Effect.gen(function* () {
+        const turn = yield* Ref.get(turnRef);
+        if (turn === null) return null;
+        const params = asRecord(notification.params);
+        const named = asString(params.turnId) ?? asString(asRecord(params.turn).id);
+        if (named === undefined) return turn;
+        const running = yield* Deferred.await(turn.codexTurnId);
+        return running === null || running === named ? turn : null;
+      });
+
+    /** A notification, translated against the turn it belongs to. */
+    const onNotification = (notification: Notification): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        const turn = yield* turnOf(notification);
+        if (turn === null && notification.method === "turn/completed") {
+          // A completion for a turn other than the running one — the CLI's
+          // own, say — must not end Poseidon's, nor fail its rows.
+          if ((yield* Ref.get(turnRef)) !== null) {
+            yield* services.logger.log("debug", "codex completed a turn it was not running", {
+              params: asRecord(notification.params),
+            });
+            return;
+          }
+        }
+        for (const event of translator.translate(notification, turn)) {
+          if (event.type === "turn.completed") yield* Ref.set(turnRef, null);
+          yield* emit(event);
+        }
+      });
+
+    const onRequest = (request: RpcServerRequest): Effect.Effect<void> =>
+      rpc.respond(request.id, declineOutcome(request));
+
+    /**
+     * The one way a session ends. `stopped` when the caller closed it,
+     * `crashed` when the app-server went away by itself. It resolves only
+     * once the process group is proven gone.
+     */
+    const endSession = (
+      reason: "stopped" | "crashed",
+      consumer: Fiber.Fiber<unknown> | null,
+      exitCode?: number,
+    ): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        if (yield* Ref.getAndSet(closedRef, true)) return;
+        if (consumer !== null) yield* Fiber.interrupt(consumer);
+        yield* group.stop;
+        if (!(yield* group.isGone)) {
+          yield* group.stop;
+          if (!(yield* group.isGone)) {
+            yield* services.logger.log("error", "codex process group survived close", {
+              pids: group.children().map((each) => each.pid),
+            });
+            return yield* Effect.die(new Error("the Codex process group survived close"));
+          }
+        }
+        yield* emit({
+          type: "session.ended",
+          payload: { reason, ...(exitCode === undefined ? {} : { exitCode }) },
+        });
+        yield* queue.end;
+      });
+
+    yield* emit({
+      type: "session.started",
+      payload: {
+        sessionRef: currentRef(),
+        model: settings.model,
+        capabilities: CODEX_CAPABILITIES,
+      },
+    });
+    for (const message of [options.warning, opened.warning]) {
+      if (message !== undefined) yield* emit({ type: "session.warning", payload: { message } });
+    }
+
+    const consumer = yield* Queue.take(inbox).pipe(
+      Effect.flatMap((inbound) =>
+        inbound.kind === "notification"
+          ? onNotification(inbound.notification)
+          : onRequest(inbound.request),
+      ),
+      Effect.forever,
+      Effect.forkScoped,
+    );
+
+    /** The app-server went away while the session was open: say why, then end as a crash. */
+    yield* Effect.promise(() => rpc.closed).pipe(
+      Effect.flatMap((reason) =>
+        Effect.gen(function* () {
+          if (yield* Ref.get(closedRef)) return;
+          // What the server said before it went is still worth translating.
+          yield* Fiber.interrupt(consumer);
+          for (const inbound of yield* Queue.clear(inbox)) {
+            if (inbound.kind === "notification") yield* onNotification(inbound.notification);
+          }
+          const exit = yield* Effect.promise(() => child.exited);
+          yield* emit({
+            type: "runtime.error",
+            payload: { message: `Codex stopped: ${reason}`, fatal: true },
+          });
+          yield* endSession("crashed", null, exit.code ?? undefined);
+        }),
+      ),
+      Effect.forkScoped,
+    );
+
+    const close = endSession("stopped", consumer);
+    yield* Effect.addFinalizer(() => close);
+
+    /** The effort `turn/start` names: none when unset or not one the model offers. */
+    const effortFor = (): Effort | undefined => {
+      const { effort, model } = settings;
+      if (effort === undefined) return undefined;
+      const offered = options.effortsFor?.(model);
+      return offered === undefined || offered.includes(effort) ? effort : undefined;
+    };
+
+    const turnParams = (input: ReturnType<typeof userInput>) => {
+      const model = codexModelFor(settings.model);
+      const effort = effortFor();
+      const mode = settings.runtimeMode;
+      const modeChanged = mode !== appliedMode;
+      appliedMode = mode;
+      return {
+        threadId: codexThreadId,
+        input,
+        ...(model === undefined ? {} : { model }),
+        ...(effort === undefined ? {} : { effort }),
+        ...(modeChanged
+          ? { approvalPolicy: APPROVAL_POLICY, sandboxPolicy: sandboxPolicyFor(mode) }
+          : {}),
+      };
+    };
+
+    const send = (turn: TurnInput): Effect.Effect<void, ConnectorError> =>
+      Effect.gen(function* () {
+        if (yield* Ref.get(closedRef)) return yield* new SessionClosed({ threadId });
+        const codexTurnId = yield* Deferred.make<string | null>();
+        const turnId = makeTurnId();
+        const claimed = yield* Ref.modify(turnRef, (now): [ActiveTurn | null, ActiveTurn] =>
+          now !== null ? [now, now] : [null, { turnId, interrupted: false, codexTurnId }],
+        );
+        if (claimed !== null) {
+          return yield* new TurnInProgress({ threadId, activeTurnId: claimed.turnId });
+        }
+        // Once claimed, the turn is started to the end: a send interrupted
+        // halfway would leave a claimed turn the CLI never heard of, or one
+        // it runs whose id nothing knows, and either strands the thread.
+        yield* Effect.uninterruptible(
+          Effect.gen(function* () {
+            yield* emit({ type: "turn.started", payload: { turnId } });
+            const staged = yield* Effect.promise(() =>
+              stageAttachments({
+                attachmentsDir: services.attachmentsDir,
+                threadId,
+                attachments: turn.attachments,
+              }),
+            );
+            for (const message of staged.warnings) {
+              yield* emit({ type: "session.warning", payload: { message } });
+            }
+            yield* call(
+              rpc,
+              "turn/start",
+              turnParams(userInput(turn, staged)),
+              TurnStartResponse,
+            ).pipe(
+              Effect.flatMap((response) => Deferred.succeed(codexTurnId, response.turn.id)),
+              Effect.catch((error) =>
+                Effect.gen(function* () {
+                  yield* Deferred.succeed(codexTurnId, null);
+                  if (yield* Ref.get(closedRef)) return;
+                  yield* Ref.set(turnRef, null);
+                  yield* emit({
+                    type: "runtime.error",
+                    payload: { message: `Codex refused the turn: ${error.message}`, fatal: false },
+                  });
+                  yield* emit({ type: "turn.completed", payload: { turnId, stopReason: "error" } });
+                }),
+              ),
+            );
+          }),
+        );
+      });
+
+    const interrupt = (): Effect.Effect<void, ConnectorError> =>
+      Effect.gen(function* () {
+        const active = yield* Ref.get(turnRef);
+        if (active === null || active.interrupted) return;
+        yield* Ref.set(turnRef, { ...active, interrupted: true });
+        const codexTurnId = yield* Deferred.await(active.codexTurnId);
+        if (codexTurnId === null) return;
+        yield* rpc
+          .request("turn/interrupt", { threadId: codexThreadId, turnId: codexTurnId })
+          .pipe(
+            Effect.catch((error) =>
+              services.logger.log("warn", "codex turn/interrupt failed", { error: error.message }),
+            ),
+          );
+      });
+
+    /**
+     * The thread's new settings, kept for the next `turn/start`, which names
+     * the model, the effort and — when they changed — the modes. The CLI
+     * takes them per turn, so `model.changed` says at once what the next
+     * turn runs on.
+     */
+    const updateSettings = (patch: ThreadSettingsPatch): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        const before = settings;
+        settings = { ...settings, ...patch };
+        if (settings.model === before.model && settings.effort === before.effort) return;
+        yield* emit({
+          type: "model.changed",
+          payload: {
+            model: settings.model,
+            ...(settings.effort === undefined ? {} : { effort: settings.effort }),
+          },
+        });
+      });
+
+    return {
+      events: queue.events,
+      send,
+      interrupt,
+      // Every approval is answered on arrival until the approval cards land;
+      // there is nothing parked for an answer to reach.
+      respondToRequest: (requestId, decision) =>
+        services.logger.log("debug", "codex approval answered", { requestId, decision }),
+      respondToUserInput: (requestId) =>
+        services.logger.log("debug", "codex question answered", { requestId }),
+      respondToPlan: (turnId, action) =>
+        services.logger.log("debug", "codex plan answered", { turnId, action }),
+      updateSettings,
+      sessionRef: () => Effect.sync(currentRef),
+      close: () => close,
+    };
+  });

@@ -86,3 +86,21 @@ export const finalise = (options: {
     configDir: operatorCodexHome(),
     operatorNames: operatorNames(options.codex),
   });
+
+/**
+ * The model the CLI opened the recorded session's thread on — what a thread
+ * on the CLI's default actually ran as — from the tee's capture.
+ */
+export const threadModelOf = (rawDir: string): string | undefined => {
+  for (const name of NodeFS.readdirSync(rawDir).filter((file) => file.endsWith(".ndjson"))) {
+    for (const line of NodeFS.readFileSync(NodePath.join(rawDir, name), "utf8").split("\n")) {
+      if (!line.includes('"thread"')) continue;
+      const { data } = JSON.parse(line) as {
+        data?: { result?: { thread?: unknown; model?: unknown } };
+      };
+      const model = data?.result?.model;
+      if (data?.result?.thread !== undefined && typeof model === "string") return model;
+    }
+  }
+  return undefined;
+};

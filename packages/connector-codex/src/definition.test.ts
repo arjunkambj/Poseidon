@@ -3,6 +3,7 @@
  * `connectors.describe` serves — and what an instance of it offers.
  */
 
+import * as NodeOS from "node:os";
 import { eraseConnectorDefinition } from "@poseidon/connector-sdk/definition";
 import { makeConnectorInstanceId, makeProjectId, makeThreadId } from "@poseidon/contracts/ids";
 import { describe, expect, it } from "@effect/vitest";
@@ -58,20 +59,20 @@ describe("codexConnectorDefinition", () => {
     }).pipe(Effect.scoped),
   );
 
-  it.effect("refuses a session until the app-server session lands", () =>
+  it.effect("fails a session start when the binary cannot be started", () =>
     Effect.gen(function* () {
       const instance = yield* codexConnectorDefinition.createInstance({
         instanceId: makeConnectorInstanceId(),
-        config: {},
+        config: { binaryPath: "/nonexistent/codex" },
         services: yield* testServices(),
       });
       const error = yield* Effect.flip(
         instance.startSession({
           threadId: makeThreadId(),
           projectId: makeProjectId(),
-          workspaceRoot: "/nonexistent",
+          workspaceRoot: NodeOS.tmpdir(),
           settings: {
-            model: "gpt-5.5",
+            model: "default",
             runtimeMode: "approval-required",
             interactionMode: "default",
           },

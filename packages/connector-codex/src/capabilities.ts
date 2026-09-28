@@ -12,8 +12,8 @@ import type { ConnectorCapabilities } from "@poseidon/contracts/runtime";
 
 export const CODEX_CAPABILITIES: ConnectorCapabilities = {
   // `turn/start` carries `model` and `effort` of its own, so each turn names
-  // what it runs on in the one app-server process. `model-switch` is the
-  // recording that will show it.
+  // what it runs on in the one app-server process (`model-switch`: the second
+  // turn on another model at effort low).
   modelSwitch: "per-turn",
   effortSwitch: "per-turn",
   // `turn/steer` exists, but nothing recorded shows it yet (`steering`).
@@ -22,13 +22,15 @@ export const CODEX_CAPABILITIES: ConnectorCapabilities = {
   planMode: false,
   // Codex's collaboration agents are not mapped to Poseidon's tasks.
   subagents: false,
-  // A `localImage` user input by path; `image` is the recording that will show it.
+  // A `localImage` user input by path (`image`: the model names a PNG's colour).
   images: true,
-  // `thread/resume` against the CLI's own rollout; `resume-after-restart`.
+  // `thread/resume` against the CLI's own rollout, from a new process
+  // (`resume`); a thread it has no rollout for starts afresh (`resume-missing`).
   resume: true,
   // `thread/fork` exists; nothing in Poseidon needs it yet.
   fork: false,
-  // `turn/interrupt` stops the running turn and leaves the thread; `interrupt`.
+  // `turn/interrupt` stops the running turn and leaves the thread, and the
+  // same process answers the next (`interrupt`).
   interrupt: "turn",
   // `thread/revert` exists; Poseidon's checkpoints are git and do not need it.
   rollback: false,

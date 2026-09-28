@@ -16,6 +16,17 @@ import type { ModelOption } from "@poseidon/contracts/connectors";
 
 import type { CodexModel } from "./protocol";
 
+/**
+ * The model id that means "whatever the CLI's default is": a thread on it
+ * names no model to the CLI at all. The recordings run on it, so they follow
+ * the account's default rather than naming one.
+ */
+export const DEFAULT_MODEL = "default";
+
+/** What `thread/start` and `turn/start` name as the model: nothing for the default. */
+export const codexModelFor = (model: string): string | undefined =>
+  model === DEFAULT_MODEL ? undefined : model;
+
 /** The picker's group header for every row this connector lists. */
 export const MODEL_FAMILY = "Codex";
 

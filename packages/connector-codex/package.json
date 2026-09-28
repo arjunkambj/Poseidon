@@ -16,6 +16,7 @@
   "dependencies": {
     "@poseidon/connector-sdk": "workspace:*",
     "@poseidon/contracts": "workspace:*",
+    "@poseidon/shared": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

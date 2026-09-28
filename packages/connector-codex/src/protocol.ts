@@ -76,3 +76,22 @@ export const ModelListResponse = Schema.Struct({
   nextCursor: Schema.NullOr(Schema.String),
 });
 export type ModelListResponse = typeof ModelListResponse.Type;
+
+// ── thread/start, thread/resume, turn/start ────────────────────
+
+/** What `thread/start` and `thread/resume` answer: the thread, and what it runs on. */
+export const ThreadOpenResponse = Schema.Struct({
+  thread: Schema.Struct({
+    /** The id `thread/resume` and every turn name the thread by. */
+    id: Schema.String,
+  }),
+  /** The model the thread resolved to — the CLI's default when none was named. */
+  model: Schema.String,
+});
+export type ThreadOpenResponse = typeof ThreadOpenResponse.Type;
+
+/** What `turn/start` answers: the turn the CLI opened, whose id `turn/interrupt` takes. */
+export const TurnStartResponse = Schema.Struct({
+  turn: Schema.Struct({ id: Schema.String }),
+});
+export type TurnStartResponse = typeof TurnStartResponse.Type;

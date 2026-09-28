@@ -34,7 +34,7 @@ export const INITIALIZE_PARAMS = {
 const MAX_MODEL_PAGES = 20;
 
 /** A response decoded through `schema`, a mismatch failing like the request would. */
-const call = <A>(
+export const call = <A>(
   rpc: RpcClient,
   method: string,
   params: unknown,
