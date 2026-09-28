@@ -278,6 +278,17 @@ export const makeFixtureRpc = (context: FixtureRpcContext): PoseidonRpcClient =>
                 threadCount: 1,
               },
             ]);
+        // One editor beside the file manager and terminal, so the header's
+        // "Open in" control and the file menus show; opening does nothing.
+        case "editors.list":
+          return () =>
+            Effect.succeed([
+              { id: "vscode", label: "VS Code", kind: "editor", supportsLine: true },
+              { id: "finder", label: "Finder", kind: "file-manager", supportsLine: false },
+              { id: "terminal", label: "Terminal", kind: "terminal", supportsLine: false },
+            ]);
+        case "editors.open":
+          return () => Effect.succeed({});
         default:
           return () => Effect.die(new Error(`fixture: unimplemented rpc ${String(key)}`));
       }

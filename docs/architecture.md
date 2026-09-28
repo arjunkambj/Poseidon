@@ -905,6 +905,14 @@ Everything a client needs that is not React.
   remove; and the header's commit, push and pull request. Built on
   `gitAtoms`: a worktree write refreshes the project's branch list, a commit
   or push refetches every git read of the project.
+- `editors.ts` — `editorsAtom`, the server's `editors.list`, listed once per
+  connected epoch and kept alive so the header and every file menu share one
+  answer (a failed call is the empty list, which hides the "Open in" control);
+  and `openIn`, a one-shot `editors.open` that resolves with the server's
+  refusal for a toast. The renderer builds them once per client runtime
+  (`open-in/editor-atoms.ts`), and `open-in/favourite.ts` picks the button's
+  editor from the stored `preferredEditor`, falling back to the first editor
+  found.
 - `oneShot.ts` — `runOneShot`, how every git write but the setup runs: a
   fresh atom per call, held until it settles. A shared `runtime.fn` atom would
   interrupt a call still in flight when the next one starts and hand the first
