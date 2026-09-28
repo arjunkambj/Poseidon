@@ -1,9 +1,9 @@
 /**
  * The integrated terminal's half of the client runtime.
  *
- * - `terminalListAtom(ownerKey)` — `terminal.list` for one owner, a thread or
- *   a project with no thread yet, keyed by `terminalOwnerKey` (a thread's key
- *   is its bare id). Refetched on every connected epoch and after
+ * - `terminalListAtom(ownerKey)` — `terminal.list` for one owner, a thread, a
+ *   project with no thread yet or home, keyed by `terminalOwnerKey` (a
+ *   thread's key is its bare id). Refetched on every connected epoch and after
  *   `openTerminal` / `closeTerminal`. A failure is a value
  *   (`TerminalListQuery`), not the atom's error channel, so the drawer can say
  *   what went wrong and the next reconnect still has a stream to refetch on.
@@ -105,8 +105,8 @@ export type TerminalAttachItem = TerminalStreamItem | { readonly kind: "gone" };
 /**
  * `Atom.family` keys have to be primitives, so a terminal becomes one string:
  * its owner's key, then its id. A project's key holds a separator of its own,
- * but ids are UUIDs and never do, so the last one splits them; a test pins the
- * round trip.
+ * but ids are UUIDs and never do, so the last one splits them; home's key
+ * holds none. A test pins the round trip.
  */
 export const encodeTerminalKey = (ref: TerminalRef): string =>
   `${terminalOwnerKey(ref)}:${ref.terminalId}`;
@@ -282,7 +282,7 @@ export const makeTerminalAtoms = (runtime: Atom.AtomRuntime<Connection | Connect
       ),
     );
 
-  /** Keyed by `terminalOwnerKey`: a thread's bare id, or a project's key. */
+  /** Keyed by `terminalOwnerKey`: a thread's bare id, a project's key, or home's. */
   const terminalListAtom = Atom.family((ownerKey: string) =>
     listingAtom(
       Effect.gen(function* () {

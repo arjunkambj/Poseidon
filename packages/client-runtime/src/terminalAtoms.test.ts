@@ -285,7 +285,8 @@ const newProjectRef = (): TerminalRef => ({
 
 describe("terminal atoms", () => {
   it("a terminal round-trips through its family key", () => {
-    const refs = [newRef(), newRef(), newProjectRef(), newProjectRef()];
+    const home = { home: true as const, terminalId: makeTerminalId() };
+    const refs = [newRef(), newRef(), newProjectRef(), newProjectRef(), home];
     for (const ref of refs) {
       expect(decodeTerminalKey(encodeTerminalKey(ref))).toEqual(ref);
     }
@@ -442,6 +443,26 @@ describe("terminal atoms", () => {
       const listed = yield* Effect.promise(() => awaitValue(registry, projectList, ids(1)));
       expect(listed._tag === "ok" && listed.terminals[0]).toMatchObject(project);
       yield* Effect.promise(() => awaitValue(registry, threadList, ids(0)));
+    }),
+  );
+
+  it.live("lists home's terminals apart from a project's", () =>
+    Effect.gen(function* () {
+      const home = { home: true as const, terminalId: makeTerminalId() };
+      const project = { projectId: makeProjectId(), terminalId: makeTerminalId() };
+      const script = newScript();
+      const { registry, terminalListAtom, openTerminal } = yield* runtimeWith(script);
+      const homeList = terminalListAtom(terminalOwnerKey(home));
+      const projectList = terminalListAtom(terminalOwnerKey(project));
+      registry.mount(homeList);
+      registry.mount(projectList);
+
+      const ids = (length: number) => (query: TerminalListQuery) =>
+        query._tag === "ok" && query.terminals.length === length;
+      void openTerminal(registry, { ...home, cols: 80, rows: 24 });
+      const listed = yield* Effect.promise(() => awaitValue(registry, homeList, ids(1)));
+      expect(listed._tag === "ok" && listed.terminals[0]).toMatchObject(home);
+      yield* Effect.promise(() => awaitValue(registry, projectList, ids(0)));
     }),
   );
 
