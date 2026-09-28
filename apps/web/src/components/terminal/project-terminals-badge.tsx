@@ -15,7 +15,8 @@
  * the client hearing of it. Both badges of a project read the same list atom,
  * and the return refetch is shared by that atom (`useSharedWindowReturn`), so
  * the list is fetched once per trigger however many badges show it. Nothing
- * shows while none is running.
+ * shows while none is running. A thread's own running shells show on its
+ * sidebar row instead (`./thread-terminals-mark`), from the same hook.
  */
 
 import type { ProjectId } from "@poseidon/contracts/ids";

@@ -1,7 +1,8 @@
 /**
  * Which of an owner's terminals are still running, and how to say so — the
  * pure half of the project's running-terminals badge
- * (`./project-terminals-badge`).
+ * (`./project-terminals-badge`) and of a thread row's terminal mark
+ * (`./thread-terminals-mark`).
  */
 
 import type { TerminalListQuery } from "@poseidon/client-runtime/terminalAtoms";
@@ -18,3 +19,11 @@ export const runningTerminalCount = (list: TerminalListQuery | null): number =>
 /** What the badge's tooltip and accessible name say. */
 export const runningTerminalsLabel = (count: number): string =>
   `${count} ${count === 1 ? "terminal" : "terminals"} running in this project's folder`;
+
+/**
+ * What a thread row's terminal mark says: the running terminals by title. A
+ * terminal summary carries no foreground command, so the titles are all
+ * there is to name.
+ */
+export const threadTerminalsLabel = (titles: ReadonlyArray<string>): string =>
+  `Running: ${titles.join(", ")}`;

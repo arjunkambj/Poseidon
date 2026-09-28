@@ -2,7 +2,12 @@ import fixture from "@poseidon/contracts/fixtures/rpc/terminal-summary.project.j
 import type { TerminalSummary } from "@poseidon/contracts/terminal";
 import { describe, expect, it } from "vitest";
 
-import { runningTerminalCount, runningTerminals, runningTerminalsLabel } from "./running-terminals";
+import {
+  runningTerminalCount,
+  runningTerminals,
+  runningTerminalsLabel,
+  threadTerminalsLabel,
+} from "./running-terminals";
 
 const terminal = (status: "running" | "exited"): TerminalSummary => ({
   ...(fixture as TerminalSummary),
@@ -40,5 +45,14 @@ describe("runningTerminalsLabel", () => {
   it("says how many run, and where", () => {
     expect(runningTerminalsLabel(1)).toBe("1 terminal running in this project's folder");
     expect(runningTerminalsLabel(2)).toBe("2 terminals running in this project's folder");
+  });
+});
+
+describe("threadTerminalsLabel", () => {
+  it("names the running terminals by title", () => {
+    expect(threadTerminalsLabel(["Terminal 1"])).toBe("Running: Terminal 1");
+    expect(threadTerminalsLabel(["Terminal 1", "Terminal 2"])).toBe(
+      "Running: Terminal 1, Terminal 2",
+    );
   });
 });

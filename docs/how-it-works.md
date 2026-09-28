@@ -2515,6 +2515,13 @@ counts the project's `terminal.list`, reread on connecting, after every open,
 close, exit the drawer sees and hand-over, and on a return to the window —
 once per project, since both badges share its list atom and its return
 refetch (`useSharedWindowReturn` in `apps/web/src/lib/window-return.ts`).
+A thread's own running shells show on its sidebar row instead:
+`ThreadTerminalsMark` (`thread-terminals-mark.tsx`) puts a small terminal
+icon beside the title, with the count when more than one runs, and a tooltip
+naming them by title ("Running: Terminal 1, Terminal 2") — a terminal summary
+carries no foreground command. Both read their owner's listing through one
+hook, `useRunningTerminals` (`use-running-terminals.ts`), so the row shares the
+thread drawer's list atom. Each visible row reads its own thread's listing.
 
 The shell comes from `resolveShell` in
 `apps/server/src/terminal/shell.ts`: `$SHELL` when it is an absolute path,

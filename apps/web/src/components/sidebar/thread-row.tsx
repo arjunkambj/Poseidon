@@ -1,13 +1,15 @@
 /**
  * One thread in the projects → threads tree, on the stock sidebar menu parts.
  *
- * Left to right: a fixed status slot, the title, a fork mark when the thread
- * works in its own worktree, and how long ago the thread last moved. The slot
- * holds the status mark from `./thread-status` — needs you, plan ready,
- * running, error — and, only when there is none, the unread dot; a thread
- * that is running or waiting says so louder than "unread" can, and the
- * title's weight still carries the unread emphasis. The slot sits under the
- * project's folder icon, so the title lines up with the project name.
+ * Left to right: a fixed status slot, the title, a terminal mark while the
+ * thread's own terminals run a shell (`../terminal/thread-terminals-mark`), a
+ * fork mark when the thread works in its own worktree, and how long ago the
+ * thread last moved. The slot holds the status mark from `./thread-status` —
+ * needs you, plan ready, running, error — and, only when there is none, the
+ * unread dot; a thread that is running or waiting says so louder than
+ * "unread" can, and the title's weight still carries the unread emphasis.
+ * The slot sits under the project's folder icon, so the title lines up with
+ * the project name.
  *
  * A row that is only working — running, waiting on nobody, not the open
  * thread — recedes: a muted title, and how long the turn has been working in
@@ -35,6 +37,8 @@ import { isUnread, useThreadSeen } from "@/components/sidebar/thread-seen";
 import { selectGestureOf, type SelectGesture } from "@/components/sidebar/thread-selection";
 import { threadStatusMark } from "@/components/sidebar/thread-status";
 import { recedes, workingLabel } from "@/components/sidebar/working-time";
+import { ThreadTerminalsMark } from "@/components/terminal/thread-terminals-mark";
+import { useRunningTerminals } from "@/components/terminal/use-running-terminals";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { GitFork } from "@honeyicons/react";
@@ -97,6 +101,11 @@ export function ThreadRow({
   const working = receding ? workingLabel(thread, now) : null;
   // "1h 4m" is wider than "3h", so the title keeps further from the corner.
   const clearTime = working === null ? "mr-6" : "mr-12";
+  const terminals = useRunningTerminals({ threadId });
+  // The last inline piece keeps clear of the corner: the fork mark, else the
+  // terminal mark, else the title.
+  const lastPiece =
+    thread.worktree !== undefined ? "fork" : terminals.length > 0 ? "terminals" : "title";
 
   return (
     <ThreadContextMenu thread={thread} active={active} row={<SidebarMenuItem />}>
@@ -133,7 +142,7 @@ export function ThreadRow({
             "min-w-0 flex-1 truncate text-sm",
             // The time is pinned to the corner, so the last inline piece
             // keeps clear of the hover menu on its own.
-            thread.worktree === undefined && clearTime,
+            lastPiece === "title" && clearTime,
             // The highlight marks the open row; only unread changes the
             // weight, so the title and the time undo the active row's. A row
             // that is only working steps back, unread or not.
@@ -151,6 +160,10 @@ export function ThreadRow({
         >
           {thread.title}
         </span>
+        <ThreadTerminalsMark
+          terminals={terminals}
+          className={lastPiece === "terminals" ? clearTime : undefined}
+        />
         {thread.worktree === undefined ? null : (
           <span
             title={`Worktree ${thread.worktree.branch}`}

@@ -337,7 +337,10 @@ working — running, waiting on nobody, not the open thread — recedes: its tit
 turns muted whether or not it is unread, and the right edge shows how long the
 turn has been working instead ("<1m", "3m", "1h 4m", from `runningSince`;
 `apps/web/src/components/sidebar/working-time.ts`). It comes back to full
-weight when the turn ends or needs the user. On hover the time gives
+weight when the turn ends or needs the user. While the thread's own terminals
+run a shell, a small terminal mark sits beside the title, with the count when
+more than one runs and a tooltip naming them
+(`apps/web/src/components/terminal/thread-terminals-mark.tsx`). On hover the time gives
 way to two actions: archive, and the overflow menu (rename, archive or
 unarchive, delete). An archived row, listed only while it is open, offers the
 menu alone.
