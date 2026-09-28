@@ -76,7 +76,7 @@ export function useEditResend({
   const docRef = React.useRef(doc);
   docRef.current = doc;
 
-  const copy = edit === null ? null : editCopy(edit.point, edit.steered);
+  const copy = edit === null ? null : editCopy(edit.point, edit.steered, edit.attachments ?? 0);
 
   const intercept = (draft: Draft): boolean => {
     if (edit === null || edit.sent !== undefined || edit.point === null || draft.mode !== "start") {

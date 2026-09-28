@@ -2282,7 +2282,9 @@ and the text is sent as a new turn. The conversation above stays, and the
 agent still remembers it: nothing is cut from the timeline or from the
 harness's session. With no restore point (the first turn, or no git) it says
 the files stay as they are. Cancel ends the edit and leaves the text. The
-original message's attachments are not carried over; attach them again.
+original message's attachments are not carried over; when it had any, the
+banner and the confirmation both say they are not sent again, to attach them
+once more.
 
 A plain send of the edit (Enter or Send, no turn running) opens a
 confirmation with the same wording, plus the skipped-turn caveat when it

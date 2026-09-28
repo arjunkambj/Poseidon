@@ -30,6 +30,8 @@ export interface MessageEdit {
   readonly steered: boolean;
   readonly text: string;
   readonly point: RestorePoint | null;
+  /** How many attachments the original carried: none of them is resent. */
+  readonly attachments?: number;
   readonly sent?: EditInFlight;
 }
 

@@ -6,8 +6,8 @@
  * timeline's checkpoints — and resends (`composer/use-edit-resend`).
  *
  * A draft already in the composer is not thrown away on a click: it asks
- * first. The message's attachments are not carried over, and its skill and
- * plugin references are. Disabled, saying why, whenever a restore could not
+ * first. The message's attachments are not carried over — the banner and
+ * the confirmation say so — and its skill and plugin references are. Disabled, saying why, whenever a restore could not
  * start (`restoreBlockedReason`), like Restore; it keeps its focus stop then
  * (`aria-disabled`). Left out outside a timeline, and for a message with no
  * text to edit.
@@ -64,6 +64,7 @@ function EditButton({
       steered,
       text,
       point: restorePointBefore(item.turnId, thread.turnOrder, thread.checkpoints, thread.restores),
+      attachments: item.attachments?.length ?? 0,
     });
     draft.setText(text);
     draft.setMentions([]);

@@ -23,14 +23,33 @@ export interface EditCopy {
   readonly skippedNote: string | null;
   /** Whether sending restores first, and so asks before it does. */
   readonly restores: boolean;
+  /** Shown when the original carried attachments, which an edit does not resend. */
+  readonly attachmentsNote: string | null;
 }
 
-export const editCopy = (point: RestorePoint | null, steered: boolean): EditCopy => {
+/**
+ * The original's attachments are not carried into the composer: an edit
+ * resends only what the composer holds, so the user is told to add them again.
+ */
+const attachmentsNoteFor = (attachments: number): string | null =>
+  attachments === 0
+    ? null
+    : attachments === 1
+      ? "The original message's attachment is not sent again; attach it once more if this still needs it."
+      : `The original message's ${attachments} attachments are not sent again; attach them once more if this still needs them.`;
+
+export const editCopy = (
+  point: RestorePoint | null,
+  steered: boolean,
+  attachments = 0,
+): EditCopy => {
+  const attachmentsNote = attachmentsNoteFor(attachments);
   if (point === null) {
     return {
       summary: "Editing a message. Files stay as they are; this is sent as a new turn.",
       skippedNote: null,
       restores: false,
+      attachmentsNote,
     };
   }
   const before = steered ? "before the turn it joined" : "before it";
@@ -42,6 +61,7 @@ export const editCopy = (point: RestorePoint | null, steered: boolean): EditCopy
         : "The turn right before it has no checkpoint, so this goes back to an earlier one and undoes that turn's changes too."
       : null,
     restores: true,
+    attachmentsNote,
   };
 };
 

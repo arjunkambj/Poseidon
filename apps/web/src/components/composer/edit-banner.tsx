@@ -25,7 +25,9 @@ export function EditBanner({ editResend }: { readonly editResend: EditResend }) 
         <AlertDescription>
           {restoring
             ? "Restoring the workspace… The edited message is sent once it is back."
-            : copy.summary}
+            : copy.attachmentsNote === null
+              ? copy.summary
+              : `${copy.summary} ${copy.attachmentsNote}`}
         </AlertDescription>
         {restoring ? null : (
           <AlertAction>

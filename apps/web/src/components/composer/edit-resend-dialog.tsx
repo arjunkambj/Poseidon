@@ -37,6 +37,9 @@ export function EditResendDialog({
         {copy.skippedNote === null ? null : (
           <p className="type-body text-muted-foreground">{copy.skippedNote}</p>
         )}
+        {copy.attachmentsNote === null ? null : (
+          <p className="type-body text-muted-foreground">{copy.attachmentsNote}</p>
+        )}
         <p className="type-micro text-muted-foreground">
           Every tracked file returns to that checkpoint and files created since are removed.
           Uncommitted work that is not in a checkpoint is lost. If git refuses the restore, nothing

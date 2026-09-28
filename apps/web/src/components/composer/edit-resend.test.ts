@@ -44,8 +44,15 @@ describe("editCopy", () => {
       summary: "Editing a message. Files stay as they are; this is sent as a new turn.",
       skippedNote: null,
       restores: false,
+      attachmentsNote: null,
     });
     expect(editCopy(null, true)).toEqual(copy);
+  });
+
+  it("says the original's attachments are not sent again", () => {
+    expect(editCopy(point, false).attachmentsNote).toBeNull();
+    expect(editCopy(point, false, 1).attachmentsNote).toContain("attachment is not sent again");
+    expect(editCopy(null, false, 3).attachmentsNote).toContain("3 attachments are not sent again");
   });
 });
 
