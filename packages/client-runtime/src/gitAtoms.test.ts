@@ -73,7 +73,12 @@ const diff = (from: string | null, to: string | null): GitDiff => ({
 
 interface Calls {
   readonly status: Array<{ projectId: string; threadId?: string }>;
-  readonly diff: Array<{ from?: string; to?: string; mergeBase?: string }>;
+  readonly diff: Array<{
+    from?: string;
+    to?: string;
+    mergeBase?: string;
+    ignoreWhitespace?: boolean;
+  }>;
   readonly branches?: Array<{ projectId: string; threadId?: string }>;
   readonly checkout?: Array<{ projectId: string; threadId?: string; branch: string }>;
   readonly checkpoints?: Array<{ projectId: string; threadId: string }>;
@@ -193,12 +198,27 @@ describe("git atoms", () => {
       { projectId, threadId: makeThreadId(), from: "main", to: "refs/poseidon/checkpoints/b" },
       { projectId, mergeBase: "main" },
       { projectId, threadId: makeThreadId(), mergeBase: "origin/main" },
+      { projectId, mergeBase: "main", ignoreWhitespace: true },
+      { projectId, ignoreWhitespace: true },
+      { projectId, ignoreWhitespace: false },
     ];
     for (const range of ranges) {
       expect(decodeDiffRange(encodeDiffRange(range))).toEqual(range);
     }
     // Distinct comparisons must not collide on one atom.
     expect(new Set(ranges.map(encodeDiffRange)).size).toBe(ranges.length);
+  });
+
+  it("toggling ignoreWhitespace is a different comparison, and an older key still decodes", () => {
+    const projectId = makeProjectId();
+    expect(encodeDiffRange({ projectId, ignoreWhitespace: true })).not.toBe(
+      encodeDiffRange({ projectId }),
+    );
+    // A key written before the field existed has five slots.
+    expect(decodeDiffRange(JSON.stringify([projectId, null, "HEAD", null, null]))).toEqual({
+      projectId,
+      from: "HEAD",
+    });
   });
 
   it("a git scope round-trips through its family key", () => {
@@ -343,6 +363,29 @@ describe("git atoms", () => {
         // The working-tree atom sends neither ref; the ranged one sends both.
         expect(calls.diff).toContainEqual({ projectId });
         expect(calls.diff).toContainEqual({ projectId, from: "refs/a", to: "refs/b" });
+      }),
+    ),
+  );
+
+  it.live("an ignore-whitespace range sends the flag as a comparison of its own", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const projectId = makeProjectId();
+        const calls: Calls = { status: [], diff: [] };
+        const failing = yield* Ref.make(false);
+        const { registry, gitDiffAtom } = yield* runtimeWith(fakeClient(calls, failing), CONNECTED);
+
+        const ignoring = gitDiffAtom({ projectId, ignoreWhitespace: true });
+        expect(ignoring).not.toBe(gitDiffAtom({ projectId }));
+        registry.mount(ignoring);
+        yield* Effect.promise(() =>
+          awaitValue<GitQuery<GitDiff>, Cause.NoSuchElementError>(
+            registry,
+            ignoring,
+            (query) => query._tag === "ok",
+          ),
+        );
+        expect(calls.diff).toEqual([{ projectId, ignoreWhitespace: true }]);
       }),
     ),
   );

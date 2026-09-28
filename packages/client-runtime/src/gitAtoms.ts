@@ -92,6 +92,8 @@ export interface GitDiffRange extends GitScope {
   readonly to?: string | undefined;
   /** Diff the working tree against the merge base of `HEAD` and this ref. */
   readonly mergeBase?: string | undefined;
+  /** Diff with `-w`. Part of the key, so toggling it refetches. */
+  readonly ignoreWhitespace?: boolean | undefined;
 }
 
 /**
@@ -106,15 +108,17 @@ export const encodeDiffRange = (range: GitDiffRange): string =>
     range.from ?? null,
     range.to ?? null,
     range.mergeBase ?? null,
+    range.ignoreWhitespace ?? null,
   ]);
 
 export const decodeDiffRange = (key: string): GitDiffRange => {
-  const [projectId, threadId, from, to, mergeBase] = JSON.parse(key) as [
+  const [projectId, threadId, from, to, mergeBase, ignoreWhitespace] = JSON.parse(key) as [
     ProjectId,
     ThreadId | null,
     string | null,
     string | null,
     string | null,
+    boolean | null | undefined,
   ];
   return {
     projectId,
@@ -122,6 +126,7 @@ export const decodeDiffRange = (key: string): GitDiffRange => {
     ...(from === null ? {} : { from }),
     ...(to === null ? {} : { to }),
     ...(mergeBase === null ? {} : { mergeBase }),
+    ...(ignoreWhitespace === null || ignoreWhitespace === undefined ? {} : { ignoreWhitespace }),
   };
 };
 
@@ -233,6 +238,9 @@ export const makeGitAtoms = (runtime: Atom.AtomRuntime<Connection | ConnectionSt
         ...(range.from === undefined ? {} : { from: range.from }),
         ...(range.to === undefined ? {} : { to: range.to }),
         ...(range.mergeBase === undefined ? {} : { mergeBase: range.mergeBase }),
+        ...(range.ignoreWhitespace === undefined
+          ? {}
+          : { ignoreWhitespace: range.ignoreWhitespace }),
       }),
     );
   });
