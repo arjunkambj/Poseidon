@@ -2684,17 +2684,21 @@ actions, is a split button over `editors.list` and `editors.open`. Its main
 half opens the thread's workspace — its worktree, when it has one — in the
 favourite editor; below 32rem it drops the editor's name for its icon and
 tooltip, like Commit. The chevron lists every editor the server detected,
-then the file manager and the terminal. Picking an editor opens the workspace
-in it and makes it the favourite, stored as `preferredEditor` in the settings
-document, so the main half and `Mod+O` (`editor.openFavorite`) follow the last
-choice across reloads and windows. The file manager and the terminal only
-open; they never become the favourite. Until an editor is picked, or when the
-stored one is not installed on this machine, the first editor the server
-listed leads (`pickFavourite` in `open-in/favourite.ts`). A refusal — the
-workspace gone, the app uninstalled since the listing — is a toast with the
-server's message. With no editor detected (only the file manager, or nothing
-while offline) the control is not shown, and `Mod+O` and its palette entry go
-with it.
+then the file manager and the terminal. Each app leads with its logo where
+Honeyicons ships one (Cursor, Windsurf and Zed; `editorIconFor` in
+`components/ui/icons/brand-icons.ts`) and a glyph for its kind otherwise (code
+for VS Code and Sublime, a folder for the file manager, a prompt for the
+terminal); the file menus' "Open in" and "Open with" entries draw the same.
+Picking an editor opens the workspace in it and makes it the favourite, stored
+as `preferredEditor` in the settings document, so the main half and `Mod+O`
+(`editor.openFavorite`) follow the last choice across reloads and windows. The
+file manager and the terminal only open; they never become the favourite.
+Until an editor is picked, or when the stored one is not installed on this
+machine, the first editor the server listed leads (`pickFavourite` in
+`open-in/favourite.ts`). A refusal — the workspace gone, the app uninstalled
+since the listing — is a toast with the server's message. With no editor
+detected (only the file manager, or nothing while offline) the control is not
+shown, and `Mod+O` and its palette entry go with it.
 
 The same apps open single files from the file menus: the Changes "…" menu, a
 right-click on a Changes file header, and a right-click on a row of the dock's

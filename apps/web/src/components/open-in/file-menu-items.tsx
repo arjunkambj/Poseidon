@@ -35,6 +35,7 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { appendToDraft } from "@/components/panes/browser/page-to-chat";
+import { editorIconFor } from "@/components/ui/icons/brand-icons";
 import { copyPath } from "@/lib/copy-path";
 import { useKeybindingDispatch } from "@/lib/shortcuts";
 import { useRequestFileReveal } from "@/state/file-reveal";
@@ -43,7 +44,6 @@ import { useComposerDraft } from "@/state/ui";
 import {
   Chat,
   Clipboard,
-  Code,
   Copy,
   ExternalLink,
   File as FileIcon,
@@ -78,6 +78,12 @@ const CONTEXT: MenuParts = {
   SubContent: ContextMenuSubContent,
   Separator: ContextMenuSeparator,
 };
+
+/** An editor's logo when Honeyicons has one, else the generic code glyph. */
+function EditorIcon({ editor }: { editor: DetectedEditor }) {
+  const Icon = editorIconFor(editor);
+  return <Icon variant="bold" />;
+}
 
 export interface FileMenuProps {
   /** Relative to the workspace root, or to the repository when not `inWorkspace`. */
@@ -177,7 +183,7 @@ function FileMenuItems({
       case "open":
         return (
           <parts.Item key={key} onClick={() => open(entry.editor, false)}>
-            <Code variant="bold" />
+            <EditorIcon editor={entry.editor} />
             Open in {entry.editor.label}
           </parts.Item>
         );
@@ -191,7 +197,7 @@ function FileMenuItems({
             <parts.SubContent className="w-44">
               {entry.editors.map((editor) => (
                 <parts.Item key={editor.id} onClick={() => open(editor, false)}>
-                  <Code variant="bold" />
+                  <EditorIcon editor={editor} />
                   {editor.label}
                 </parts.Item>
               ))}

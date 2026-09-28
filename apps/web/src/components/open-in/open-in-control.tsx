@@ -32,19 +32,22 @@ import {
 } from "@poseidon/ui/components/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 
+import { editorIconFor } from "@/components/ui/icons/brand-icons";
 import { useKeybindingCommand } from "@/lib/shortcuts";
 
-import { Check, ChevronDown, Code, FolderOpen, Terminal } from "@honeyicons/react";
+import { Check, ChevronDown } from "@honeyicons/react";
 
 import { useDetectedEditors } from "./editor-atoms";
 import { editorsOnly, otherApps, showOpenIn } from "./favourite";
 import { useFavouriteEditor, useOpenInWithToast } from "./use-open-in";
 
-/** The icon a detected app is listed with; the editors share one. */
+/**
+ * The icon a detected app is listed with: its logo when Honeyicons has one
+ * (Cursor, Windsurf, Zed), else a glyph for its kind.
+ */
 function AppIcon({ app }: { app: DetectedEditor }) {
-  if (app.kind === "file-manager") return <FolderOpen variant="bold" />;
-  if (app.kind === "terminal") return <Terminal variant="bold" />;
-  return <Code variant="bold" />;
+  const Icon = editorIconFor(app);
+  return <Icon variant="bold" />;
 }
 
 /**
