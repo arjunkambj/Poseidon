@@ -354,7 +354,7 @@ unpin, mark unread and rename can be undone
 toast offers Undo, and `Mod+Z` outside text fields, the terminal and the
 browser pane undoes the latest of them. Archiving unpins a thread; undoing
 the archive unarchives it, pins it again and, when it was the open thread,
-opens it again.
+opens it again. `Mod+Shift+P` pins or unpins the open thread.
 
 The sidebar's order is also a keyboard order. Pinned threads come first, then
 projects in their listed order, each with its threads in list order; a folded project contributes only

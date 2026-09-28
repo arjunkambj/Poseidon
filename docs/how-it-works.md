@@ -2779,6 +2779,7 @@ fields entirely.
 | Threads  | `thread.rename`                                       | `Mod+Alt+R`                   | `threadOpen`                                                                           |
 | Threads  | `thread.archive`                                      | `Mod+Shift+A`                 | `threadOpen`                                                                           |
 | Threads  | `thread.delete`                                       | `Mod+Alt+Backspace`           | `threadOpen`                                                                           |
+| Threads  | `thread.pin`                                          | `Mod+Shift+P`                 | `threadOpen`                                                                           |
 | Threads  | `nav.back` / `nav.forward`                            | `Mod+[` / `Mod+]`             | `!browserFocus`                                                                        |
 | Composer | `composer.planMode.toggle`                            | `Shift+Tab`                   | `composerFocus`                                                                        |
 | Composer | `composer.runtimeMode.cycle`                          | `Mod+Shift+L`                 |                                                                                        |
@@ -2865,9 +2866,10 @@ unpin, mark unread, or rename. The listener's `preventDefault` keeps the
 Electron default Edit menu from taking the key first. The undo stack holds
 the newest 20 entries, in memory only (`components/sidebar/sidebar-undo.ts`).
 An archive toast's Undo takes its own entry off the same stack, so the toast
-and the key never undo one action twice. `sidebar.undo` is answered by
-`components/sidebar/triage-shortcuts.tsx`, and is claimed only while the
-stack holds an entry.
+and the key never undo one action twice. `sidebar.undo` and `thread.pin`
+(which pins or unpins the open thread) are answered by
+`components/sidebar/triage-shortcuts.tsx`, and each is claimed only while it
+can act.
 
 `RESERVED_KEYBINDINGS`, in the same module, holds chords for features that are
 still being built, so that nothing ships on them first. Nothing dispatches

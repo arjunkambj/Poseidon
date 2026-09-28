@@ -23,8 +23,8 @@
  * can be undone — Archive from its toast, all three with `sidebar.undo`.
  *
  * The open thread's menu names the keys that do the same from anywhere —
- * `thread.archive` and `thread.delete` are answered by
- * `@/components/thread/thread-shortcuts` while a thread is open.
+ * `thread.pin` (`./triage-shortcuts`), `thread.archive` and `thread.delete`
+ * (`@/components/thread/thread-shortcuts`) while a thread is open.
  *
  * Both menus draw one item list (`ThreadMenuItems`) and each keeps its own
  * delete dialog. The dialog is a sibling of its menu, not a child of it: two modal
@@ -216,6 +216,7 @@ function ThreadMenuItems({
       <Item onClick={() => actions.setPinned(thread, !pinned)}>
         {pinned ? <PinOff variant="bold" /> : <Pin variant="bold" />}
         {pinned ? "Unpin" : "Pin"}
+        {keys("thread.pin")}
       </Item>
       <Item onClick={() => actions.markUnread([thread])}>
         <Email variant="bold" />

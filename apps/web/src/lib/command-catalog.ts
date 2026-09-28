@@ -50,6 +50,7 @@ import {
   Maximize,
   OctagonX,
   Paperclip,
+  Pin,
   Play,
   Refresh,
   Search,
@@ -147,6 +148,7 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   command("Threads", "thread.delete", "Delete thread", Trash, {
     description: "Asks before deleting",
   }),
+  command("Threads", "thread.pin", "Pin thread", Pin, { description: "Unpins a pinned thread" }),
   command("Threads", "nav.back", "Go back", ArrowLeft),
   command("Threads", "nav.forward", "Go forward", ArrowRight),
 

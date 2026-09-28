@@ -117,6 +117,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<Keybinding> = [
   { command: "thread.rename", shortcut: "Mod+Alt+R", when: THREAD },
   { command: "thread.archive", shortcut: "Mod+Shift+A", when: THREAD },
   { command: "thread.delete", shortcut: "Mod+Alt+Backspace", when: THREAD },
+  { command: "thread.pin", shortcut: "Mod+Shift+P", when: THREAD },
   { command: "nav.back", shortcut: "Mod+[", when: OUTSIDE_BROWSER },
   { command: "nav.forward", shortcut: "Mod+]", when: OUTSIDE_BROWSER },
   // Composer
