@@ -2196,10 +2196,14 @@ thread's `persist:thread-<id>` guests, each reported as a `page`. Every other
 browser-level method is refused, because a guest's own debugger can see and
 attach to the app window. A page session is a flat session on that guest's
 `webContents.debugger`; `cdpPolicy.ts` forwards a fixed list of domains
-(Runtime, Page, DOM, Accessibility, Input, Network, Emulation, CSS,
-DOMSnapshot, Overlay, Log, Performance, Fetch, WebMCP) and refuses the rest —
-cookie-jar calls, file uploads, downloads, `Page.close`/`crash`, `IO.*`,
-`Security.*`, and navigation to anything but http(s) or `about:blank`.
+(Runtime, Page, DOM, Accessibility, Input, Network, CSS, DOMSnapshot, Overlay,
+Log, Performance, Fetch, WebMCP), grants `Emulation` method by method (media,
+geolocation, locale, timezone, user agent and the clears), and refuses the
+rest — cookie-jar calls, file uploads, downloads, `Page.close`/`crash`,
+`IO.*`, `Security.*`, the calls that would lay the page out at a size of its
+own (`Emulation.setDeviceMetricsOverride`, `setVisibleSize`,
+`setPageScaleFactor`), and navigation to anything but http(s) or
+`about:blank`.
 `Page.reload` becomes a guest `reload()` (CDP's reload of a guest view
 reloads the whole app window), `Page.bringToFront` selects the pane tab,
 `createTarget` opens a pane tab, and native input runs one command at a time

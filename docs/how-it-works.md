@@ -2267,6 +2267,22 @@ attaches its debugger, its `window.open` handler turns popups into requests
 for a pane tab, and its input relay tags every gesture with the thread and the
 guest's `webContents` id.
 
+A page is always laid out at the pane's size: the webview's box is the page's
+viewport, and resizing the dock resizes the page. As hardening, the bridge
+refuses the CDP calls that would give the page a size or scale of its own
+(`Emulation.setDeviceMetricsOverride`, `setVisibleSize`, `setPageScaleFactor`),
+since the guest would keep such an override for as long as the client stayed
+attached; the caller reads that the page takes the pane's size, which the
+person sets. Of the rest of `Emulation` only media, geolocation, locale,
+timezone, user agent and the two clears are granted; everything else is
+refused. None of the agent's browser tools sends any `Emulation` call — the
+catalogue has no `set` command, and agent-browser sends none to connect, open,
+snapshot, click, scroll or take a screenshot, full-page ones included — so
+this changes nothing the agent does today. A page that looks wider than the
+pane is a site with a minimum width of its own, which scrolls sideways in a
+narrow pane as it would in a narrow browser window — DuckDuckGo's results page
+sets `min-width: 1000px` — and widening the dock is the answer there.
+
 The webviews themselves belong to the renderer's browser host
 (`apps/web/src/components/browser-host/`), mounted above the routes rather
 than in the dock, so a tab outlives closing the dock, switching dock tab or
