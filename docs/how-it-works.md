@@ -1998,6 +1998,26 @@ web links only, nothing on a detached HEAD), under the branch the push
 reported. The header's View PR button reads it back and opens it through
 `openExternal`, as the toast's Open action does.
 
+### Opening the workspace in an editor
+
+The thread header's "Open in" control
+(`apps/web/src/components/open-in/open-in-control.tsx`), just before the git
+actions, is a split button over `editors.list` and `editors.open`. Its main
+half opens the thread's workspace — its worktree, when it has one — in the
+favourite editor; below 32rem it drops the editor's name for its icon and
+tooltip, like Commit. The chevron lists every editor the server detected,
+then the file manager and the terminal. Picking an editor opens the workspace
+in it and makes it the favourite, stored as `preferredEditor` in the settings
+document, so the main half and `Mod+O` (`editor.openFavorite`) follow the last
+choice across reloads and windows. The file manager and the terminal only
+open; they never become the favourite. Until an editor is picked, or when the
+stored one is not installed on this machine, the first editor the server
+listed leads (`pickFavourite` in `open-in/favourite.ts`). A refusal — the
+workspace gone, the app uninstalled since the listing — is a toast with the
+server's message. With no editor detected (only the file manager, or nothing
+while offline) the control is not shown, and `Mod+O` and its palette entry go
+with it.
+
 ### Worktrees
 
 `git.worktree.create` (`apps/server/src/git/Worktrees.ts`) gives a new thread a
@@ -2862,6 +2882,7 @@ fields entirely.
 | View     | `terminal.toggle`                                     | `Mod+J`                       |                                                                                        |
 | View     | `font.increase` / `decrease` / `reset`                | `Mod+Alt+=` / `-` / `0`       |                                                                                        |
 | View     | `chatWidth.cycle`                                     | unbound                       |                                                                                        |
+| View     | `editor.openFavorite`                                 | `Mod+O`                       | `threadOpen`                                                                           |
 | Timeline | `timeline.jumpToLatest`                               | `Mod+Shift+J`                 | `threadOpen`                                                                           |
 | Timeline | `timeline.collapseAll` / `expandAll`                  | `Mod+Alt+[` / `Mod+Alt+]`     | `threadOpen`                                                                           |
 | Timeline | `timeline.previousMessage` / `nextMessage`            | `Alt+Shift+ArrowUp` / `Down`  | `threadOpen && !inputFocus`                                                            |
@@ -2924,7 +2945,9 @@ control is disabled, and none is answered outside a repository. `git.commit`
 and `git.push` also do nothing while the commit or pull request dialog is up
 (`gitStartOf` in `apps/web/src/lib/git-actions.ts`): they fire from inside the
 dialog's message box, and reopening it would drop the typed message and the
-unticked files.
+unticked files. `editor.openFavorite` is the thread header's "Open in" button,
+answered only while that button is shown, that is while the server has
+detected an editor.
 
 `Mod+Z` is reserved for undo and redo, and the sidebar takes it over only
 under the `sidebar.undo` clause, where no text is focused. In the composer,

@@ -1,7 +1,7 @@
 import type { DetectedEditor } from "@poseidon/contracts/editors";
 import { describe, expect, it } from "vitest";
 
-import { absolutePath, editorsOnly, pickFavourite, showOpenIn } from "./favourite";
+import { absolutePath, editorsOnly, otherApps, pickFavourite, showOpenIn } from "./favourite";
 
 const cursor: DetectedEditor = {
   id: "cursor",
@@ -44,9 +44,14 @@ describe("pickFavourite", () => {
   });
 });
 
-describe("editorsOnly and showOpenIn", () => {
+describe("editorsOnly, otherApps and showOpenIn", () => {
   it("keeps the editors in the server's order", () => {
     expect(editorsOnly([finder, zed, terminal, cursor])).toEqual([zed, cursor]);
+  });
+
+  it("keeps the file manager and the terminal apart, in the server's order", () => {
+    expect(otherApps([cursor, finder, zed, terminal])).toEqual([finder, terminal]);
+    expect(otherApps([cursor])).toEqual([]);
   });
 
   it("shows the control only when an editor is detected", () => {

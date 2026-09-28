@@ -16,6 +16,10 @@ export const editorsOnly = (
   editors: ReadonlyArray<DetectedEditor>,
 ): ReadonlyArray<DetectedEditor> => editors.filter((editor) => editor.kind === "editor");
 
+/** The file manager and the terminal, in the server's order: the menus list them after the editors. */
+export const otherApps = (editors: ReadonlyArray<DetectedEditor>): ReadonlyArray<DetectedEditor> =>
+  editors.filter((editor) => editor.kind !== "editor");
+
 export const pickFavourite = (
   editors: ReadonlyArray<DetectedEditor>,
   preferredId: string | null | undefined,

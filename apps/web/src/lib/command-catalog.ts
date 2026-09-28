@@ -33,6 +33,7 @@ import {
   ChevronDown,
   ChevronsDown,
   ChevronUp,
+  Code,
   Edit,
   Eraser,
   FileCode,
@@ -190,6 +191,9 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   command("View", "font.decrease", "Smaller text", ZoomOut),
   command("View", "font.reset", "Reset text size", TextSize),
   command("View", "chatWidth.cycle", "Cycle chat width", Maximize),
+  command("View", "editor.openFavorite", "Open in editor", Code, {
+    description: "The workspace, in your favourite editor",
+  }),
 
   // Timeline
   command("Timeline", "timeline.jumpToLatest", "Jump to latest", ChevronsDown),

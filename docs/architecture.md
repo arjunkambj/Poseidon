@@ -912,7 +912,9 @@ Everything a client needs that is not React.
   refusal for a toast. The renderer builds them once per client runtime
   (`open-in/editor-atoms.ts`), and `open-in/favourite.ts` picks the button's
   editor from the stored `preferredEditor`, falling back to the first editor
-  found.
+  found. The thread header's split button (`open-in/open-in-control.tsx`)
+  reads both, and remembers an editor picked from its menu as the favourite
+  (`open-in/use-open-in.ts`).
 - `oneShot.ts` — `runOneShot`, how every git write but the setup runs: a
   fresh atom per call, held until it settles. A shared `runtime.fn` atom would
   interrupt a call still in flight when the next one starts and hand the first

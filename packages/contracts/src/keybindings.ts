@@ -149,6 +149,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<Keybinding> = [
   { command: "font.increase", shortcut: "Mod+Alt+=" },
   { command: "font.decrease", shortcut: "Mod+Alt+-" },
   { command: "font.reset", shortcut: "Mod+Alt+0" },
+  { command: "editor.openFavorite", shortcut: "Mod+O", when: THREAD },
   // Timeline
   { command: "timeline.jumpToLatest", shortcut: "Mod+Shift+J", when: THREAD },
   { command: "timeline.collapseAll", shortcut: "Mod+Alt+[", when: THREAD },
