@@ -13,7 +13,7 @@ import type { PullRequestCheck } from "@poseidon/contracts/pullRequest";
 import { openExternal } from "@/lib/desktop";
 import { cn } from "@/lib/utils";
 
-import { Check, Clock, ExternalLink, Minus, X } from "@honeyicons/react";
+import { Check, Clock, Close, ExternalLink, Minus } from "@honeyicons/react";
 
 import { checkDuration, checkSummary } from "./pr-format";
 
@@ -21,7 +21,7 @@ const BUCKET_ICON: Record<
   PullRequestCheck["bucket"],
   { readonly icon: HoneyIcon; readonly tone: string; readonly label: string }
 > = {
-  fail: { icon: X, tone: "text-destructive", label: "Failing" },
+  fail: { icon: Close, tone: "text-destructive", label: "Failing" },
   pending: { icon: Clock, tone: "text-muted-foreground", label: "Pending" },
   pass: { icon: Check, tone: "text-added", label: "Passing" },
   skipped: { icon: Minus, tone: "text-muted-foreground", label: "Skipped" },
