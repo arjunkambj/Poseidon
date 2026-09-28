@@ -63,6 +63,7 @@ export const IMPORT_ALLOWLIST = new Map([
 export const TEST_ONLY_ALLOWLIST = new Map([
   ["apps/server", ["testkit", "client-runtime", "connector-cmd", "connector-claude"]],
   ["packages/connector-claude", ["testkit"]],
+  ["packages/connector-codex", ["testkit"]],
   ["apps/desktop", ["testkit"]],
 ]);
 

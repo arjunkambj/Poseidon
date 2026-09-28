@@ -52,6 +52,15 @@
       // Spawned via execFile — a system tool, not an npm dependency.
       "ignoreBinaries": ["pgrep"]
     },
+    "packages/connector-codex": {
+      "includeEntryExports": true,
+      "ignoreExportsUsedInFile": true,
+      // The recorders under test/ are run by hand against the real CLI (they
+      // read the operator's account), so nothing imports them.
+      "entry": ["test/*.test.ts"],
+      // Spawned via execFile — a system tool, not an npm dependency.
+      "ignoreBinaries": ["pgrep"]
+    },
     "packages/connector-sdk": {
       "includeEntryExports": true,
       "ignoreExportsUsedInFile": true

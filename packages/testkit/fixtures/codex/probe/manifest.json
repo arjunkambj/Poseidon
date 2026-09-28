@@ -1,0 +1,35 @@
+{
+  "formatVersion": 1,
+  "kind": "codex",
+  "transport": "stdio-jsonrpc",
+  "scenario": "probe",
+  "description": "The connector's probe: --version, login status, and the zero-turn app-server handshake (initialize, account/read, model/list). No thread is started. Recorded signed in.",
+  "cliVersion": "0.156.1",
+  "recordedOn": "2026-09-28",
+  "model": "default",
+  "real": true,
+  "prompts": [],
+  "invocations": [
+    {
+      "argv": ["--version"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["login", "status"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-2.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["app-server", "--stdio"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-3.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}
