@@ -8,6 +8,7 @@
  *   `afterSequence` receives exactly the events it missed.
  * - A 200-item thread's snapshot stays inside a per-item wire budget, counted
  *   from the bytes the socket actually delivered (transfer-budget test).
+ * - `threads.searchMessages` finds a thread by text the engine wrote.
  */
 
 import { mkdtempSync } from "node:fs";
@@ -51,6 +52,7 @@ import { OrchestrationEngine } from "../orchestration/Engine";
 import { ProviderCommandReactor } from "../orchestration/ProviderCommandReactor";
 import { ConnectorSelection, SessionManager } from "../orchestration/SessionManager";
 import { EventStore } from "../persistence/EventStore";
+import { layer as messageSearchLayer } from "../persistence/MessageSearch";
 import { ReadModelStore } from "../persistence/ReadModels";
 import { testLayer as sqliteTestLayer } from "../persistence/Sqlite";
 import { serverLayer, ServerToken } from "./server";
@@ -132,6 +134,7 @@ const testStack = (browserLayer: Layer.Layer<BrowserService> = BrowserService.em
       TerminalService.empty,
       DevServerDiscovery.empty,
       EditorLauncher.empty,
+      messageSearchLayer.pipe(Layer.provide(persistence)),
       AttachmentStore.layerAt(mkdtempSync(NodePath.join(NodeOS.tmpdir(), "poseidon-transport-"))),
       SettingsStore.layer.pipe(Layer.provide(sqlite)),
     );
@@ -567,6 +570,52 @@ describe("transport", () => {
         // 200-item thread costs, so the budget alone can never catch a
         // snapshot that starts carrying whole file bodies or base64 images.
         expect(bytes / ITEMS).toBeLessThan(MAX_BYTES_PER_ITEM);
+      }),
+    ),
+  );
+
+  it.live("threads.searchMessages finds a thread by the text the engine wrote", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { url, engine } = yield* testStack();
+        const connection = yield* connect(url, TOKEN);
+        const client = yield* connection.client;
+        yield* client["orchestration.dispatch"]({ command: createProject });
+        yield* client["orchestration.dispatch"]({ command: createThread });
+        const itemId = makeItemId();
+        yield* engine.appendThreadEvents(threadId, [
+          {
+            eventId: makeEventId(),
+            streamKind: "thread",
+            streamId: threadId,
+            occurredAt: "2026-01-01T00:00:02.000Z",
+            type: "thread.item.upserted",
+            actor: "connector",
+            payload: {
+              item: {
+                itemId,
+                kind: "assistant_message",
+                status: "completed",
+                text: "The lantern flickers because the wick is too short.",
+              },
+            },
+          },
+        ]);
+
+        const hits = yield* client["threads.searchMessages"]({ query: "LANTERN" });
+        expect(hits).toEqual([
+          {
+            threadId,
+            projectId,
+            title: expect.any(String),
+            archived: false,
+            itemId,
+            role: "assistant",
+            snippet: "The lantern flickers because the wick is too short.",
+          },
+        ]);
+        expect(yield* client["threads.searchMessages"]({ query: "la" })).toEqual([]);
+        expect(yield* client["threads.searchMessages"]({ query: "candle" })).toEqual([]);
       }),
     ),
   );

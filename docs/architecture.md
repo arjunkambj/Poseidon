@@ -775,7 +775,7 @@ enabled one.
 ### packages/contracts
 
 Every wire shape, as `effect/Schema` codecs. Modules: `base`, `ids`, `enums`,
-`runtime`, `orchestration`, `decisions`, `git`, `editors`, `settings`,
+`runtime`, `orchestration`, `decisions`, `git`, `editors`, `search`, `settings`,
 `keybindings`, `connectors`, `terminal`, `rpc`. `keybindings` holds the shipped keymap, the
 chords reserved for features still being built, and how the user's stored
 overrides layer on the keymap, since both server and renderer need it.
@@ -785,9 +785,10 @@ their shapes (`GitBranch`, `GitBranchList`, `GitCommitResult`, `GitPushResult`,
 the setup script streams); they are defined there rather than in `rpc.ts`,
 their names are spread into `RPC_METHODS`, and `rpc.ts` lists them in the
 group. `editors` does the same for `editors.list` and `editors.open`, with
-`EditorId` and `DetectedEditor`. `PoseidonRpcError` lives in `rpcError.ts` so
-`git` and `editors` can name it without an import cycle, and `rpc` re-exports
-it. `browser.ts` holds the browser pane's
+`EditorId` and `DetectedEditor`, and `search` for `threads.searchMessages`,
+with `MessageSearchHit` and its `MESSAGE_SEARCH_LIMIT` of 50.
+`PoseidonRpcError` lives in `rpcError.ts` so `git`, `editors` and `search` can
+name it without an import cycle, and `rpc` re-exports it. `browser.ts` holds the browser pane's
 payloads (`BrowserState`, `BrowserHumanInput`, `DevServer`,
 `BrowserToolStatus`), and `files.ts` the workspace file reads' payloads
 (`FileSearchResult`, `FileContent`, and `FileStat` with the
@@ -1082,7 +1083,9 @@ message no longer in the document is dropped. `removeThread` and
 `clearProjections` empty it with the rest. `ReadModelStore.searchMessages`
 answers one hit per thread (its newest matching message) with a one-line
 snippet around the match, most recently active thread first, archived threads
-included and marked, at most 50.
+included and marked, at most 50. `threads.searchMessages` serves it through
+the `MessageSearch` service (`persistence/MessageSearch.ts`); a failed query
+reaches the client as a bare `internal` error.
 
 `worktree` is on the wire too, on `ThreadDetailSnapshot` and `ThreadSummary`:
 the git worktree a thread works in — its absolute `path`, its `branch` and the
@@ -1933,6 +1936,7 @@ the client in the terminal `incompatible` state.
 | `threads.list`                | call   | Thread summaries, optionally per project, optionally with archived                   |
 | `threads.subscribe`           | stream | One thread: snapshot or catch-up from `afterSequence`, then live                     |
 | `threads.listSubscribe`       | stream | The thread list, same shape                                                          |
+| `threads.searchMessages`      | call   | Threads whose user or assistant text contains a query, at most 50, archived marked   |
 | `connectors.list`             | call   | Configured connectors with their cached probes; `refresh` re-probes                  |
 | `connectors.models`           | call   | The model picker's options for one instance                                          |
 | `connectors.describe`         | call   | Every connector the build ships: metadata and config form, configured or not         |

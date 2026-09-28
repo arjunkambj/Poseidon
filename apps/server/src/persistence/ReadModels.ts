@@ -9,6 +9,7 @@
 
 import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import type { ProjectSummary, ThreadSummary } from "@poseidon/contracts/orchestration";
+import type { MessageSearchHit } from "@poseidon/contracts/search";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -20,7 +21,6 @@ import {
   removeThreadMessages,
   searchMessages,
   syncThreadMessages,
-  type MessageSearchHit,
 } from "./MessageIndex";
 import { layer as migrationsLayer } from "./Migrations";
 

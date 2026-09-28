@@ -11,35 +11,21 @@
  */
 
 import type { ItemId, ProjectId, ThreadId } from "@poseidon/contracts/ids";
+import {
+  MESSAGE_SEARCH_LIMIT,
+  MESSAGE_SEARCH_MIN_LENGTH,
+  type MessageSearchHit,
+  type MessageSearchRole,
+} from "@poseidon/contracts/search";
 import * as Effect from "effect/Effect";
 import type * as SqlClient from "effect/unstable/sql/SqlClient";
 import type { SqlError } from "effect/unstable/sql/SqlError";
 
 import type { ThreadDoc } from "../orchestration/state";
 
-/** The most hits one search returns, whatever the caller asks for. */
-export const MESSAGE_SEARCH_LIMIT = 50;
-
-/** The trigram tokenizer cannot match anything shorter. */
-const MESSAGE_SEARCH_MIN_LENGTH = 3;
-
 const SNIPPET_BEFORE = 40;
 const SNIPPET_AFTER = 80;
 const SNIPPET_FALLBACK = SNIPPET_BEFORE + SNIPPET_AFTER;
-
-export type MessageRole = "user" | "assistant";
-
-/** One thread whose message text matched: the newest matching message in it. */
-export interface MessageSearchHit {
-  readonly threadId: ThreadId;
-  readonly projectId: ProjectId;
-  readonly title: string;
-  readonly archived: boolean;
-  readonly itemId: ItemId;
-  readonly role: MessageRole;
-  /** One line around the first match, `…` where it was cut. */
-  readonly snippet: string;
-}
 
 interface HitRow {
   readonly thread_id: string;
@@ -51,7 +37,7 @@ interface HitRow {
   readonly text: string;
 }
 
-const roleOf = (kind: string): MessageRole | null =>
+const roleOf = (kind: string): MessageSearchRole | null =>
   kind === "user_message" ? "user" : kind === "assistant_message" ? "assistant" : null;
 
 /**
@@ -64,7 +50,8 @@ export const syncThreadMessages = (
   sql: SqlClient.SqlClient,
   doc: ThreadDoc,
 ): Effect.Effect<void, SqlError> => {
-  const messages: Array<{ readonly i: string; readonly r: MessageRole; readonly t: string }> = [];
+  const messages: Array<{ readonly i: string; readonly r: MessageSearchRole; readonly t: string }> =
+    [];
   for (const item of doc.items) {
     const role = roleOf(item.kind);
     if (role !== null && item.text !== undefined && item.text.trim() !== "") {
@@ -125,6 +112,7 @@ export const searchMessages = (
   limit: number = MESSAGE_SEARCH_LIMIT,
 ): Effect.Effect<ReadonlyArray<MessageSearchHit>, SqlError> => {
   const trimmed = query.trim();
+  // The trigram tokenizer cannot match anything shorter.
   if (Array.from(trimmed).length < MESSAGE_SEARCH_MIN_LENGTH) {
     return Effect.succeed([]);
   }

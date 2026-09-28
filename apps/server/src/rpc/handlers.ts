@@ -22,6 +22,7 @@ import {
   EditorLauncher,
   FileService,
   GitService,
+  MessageSearch,
   ServerIdentity,
   SettingsStore,
   TerminalService,
@@ -55,6 +56,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
     const attachments = yield* AttachmentStore;
     const terminals = yield* TerminalService;
     const editors = yield* EditorLauncher;
+    const messageSearch = yield* MessageSearch;
 
     return {
       "server.hello": () =>
@@ -87,6 +89,8 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
             })
             .pipe(Effect.mapError(toRpcError)),
         ),
+
+      "threads.searchMessages": ({ query, limit }) => messageSearch.search(query, limit),
 
       "connectors.list": ({ refresh }) => connectors.list(refresh ?? false),
       "connectors.models": ({ instanceId }) => connectors.models(instanceId),

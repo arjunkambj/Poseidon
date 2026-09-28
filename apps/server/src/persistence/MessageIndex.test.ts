@@ -17,13 +17,14 @@ import {
   type ThreadId,
 } from "@poseidon/contracts/ids";
 import type { OrchestrationEvent } from "@poseidon/contracts/orchestration";
+import { MESSAGE_SEARCH_LIMIT } from "@poseidon/contracts/search";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { foldThread, type ItemSnapshot, type ThreadDoc } from "../orchestration/state";
-import { MESSAGE_SEARCH_LIMIT, messageSnippet } from "./MessageIndex";
+import { messageSnippet } from "./MessageIndex";
 import { runMigrations } from "./Migrations";
 import { ReadModelStore } from "./ReadModels";
 import { layer as sqliteLayer } from "./Sqlite";

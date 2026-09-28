@@ -41,6 +41,7 @@ import type {
 } from "@poseidon/contracts/git";
 import type { DetectedEditor, EditorId } from "@poseidon/contracts/editors";
 import type { CheckpointSummary } from "@poseidon/contracts/orchestration";
+import type { MessageSearchHit } from "@poseidon/contracts/search";
 import { migrateLegacyKeybindingTable } from "@poseidon/contracts/keybindings";
 import { defaultSettings, Settings } from "@poseidon/contracts/settings";
 import type { SettingsPatch } from "@poseidon/contracts/settings";
@@ -361,6 +362,28 @@ export class EditorLauncher extends Context.Service<
           new PoseidonRpcError({ code: "unavailable", message: "no editors on this server" }),
         ),
     }),
+  );
+}
+
+// ── Message search ─────────────────────────────────────────────
+
+/**
+ * Threads whose user or assistant text contains a query, answered from the
+ * projection's message index (`../persistence/MessageSearch.ts`). The empty
+ * one finds nothing.
+ */
+export class MessageSearch extends Context.Service<
+  MessageSearch,
+  {
+    readonly search: (
+      query: string,
+      limit?: number,
+    ) => Effect.Effect<ReadonlyArray<MessageSearchHit>, PoseidonRpcError>;
+  }
+>()("server/rpc/MessageSearch") {
+  static readonly empty = Layer.succeed(
+    MessageSearch,
+    MessageSearch.of({ search: () => Effect.succeed([]) }),
   );
 }
 

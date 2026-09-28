@@ -48,6 +48,10 @@
       "types": "./src/git.ts",
       "import": "./src/git.ts"
     },
+    "./search": {
+      "types": "./src/search.ts",
+      "import": "./src/search.ts"
+    },
     "./rpc": {
       "types": "./src/rpc.ts",
       "import": "./src/rpc.ts"

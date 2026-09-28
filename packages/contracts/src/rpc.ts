@@ -59,6 +59,7 @@ import {
 import { FileChangeKind } from "./runtime";
 import { PoseidonRpcError } from "./rpcError";
 import { Keybinding, Settings, SettingsPatch } from "./settings";
+import { THREAD_SEARCH_RPC_METHODS, ThreadsSearchMessagesRpc } from "./search";
 import {
   TERMINAL_WRITE_MAX_CHARS,
   TerminalOwner,
@@ -212,6 +213,7 @@ export const RPC_METHODS = {
   threadsList: "threads.list",
   threadsSubscribe: "threads.subscribe",
   threadsListSubscribe: "threads.listSubscribe",
+  ...THREAD_SEARCH_RPC_METHODS,
   connectorsList: "connectors.list",
   connectorsModels: "connectors.models",
   connectorsDescribe: "connectors.describe",
@@ -687,6 +689,7 @@ export const PoseidonRpcGroup = RpcGroup.make(
   ThreadsListRpc,
   ThreadsSubscribeRpc,
   ThreadsListSubscribeRpc,
+  ThreadsSearchMessagesRpc,
   ConnectorsListRpc,
   ConnectorsModelsRpc,
   ConnectorsDescribeRpc,
