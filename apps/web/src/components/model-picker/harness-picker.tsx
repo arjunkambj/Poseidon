@@ -28,6 +28,7 @@ import {
   type PickerState,
   type PickerStep,
 } from "@/lib/harness-picker";
+import type { EmptyText } from "@/lib/model-catalog-state";
 import type { ModelPick } from "@/lib/model-picks";
 import { Search } from "@honeyicons/react";
 
@@ -88,7 +89,11 @@ function Flyout({
       {entry.items.length === 0 ? (
         <NoModels
           title="No models"
-          description="Every model of this harness is off in Settings → Models."
+          description={
+            entry.listsModels
+              ? "Every model of this harness is off in Settings → Models."
+              : "This harness listed no models. Check it on the Connectors page."
+          }
         />
       ) : (
         entry.items.map((item, model) => (
@@ -111,6 +116,8 @@ export interface HarnessPickerViewProps {
   readonly base: string;
   readonly rail: ReadonlyArray<HarnessRailEntry>;
   readonly state: PickerState;
+  /** What an empty rail says, and why (`emptyPickerText`). */
+  readonly empty: EmptyText;
   /** The current model when no harness lists it, shown verbatim above the lists. */
   readonly unlisted?: string;
   /** Compare mode: the ticked picks (`encodeModelPick`); every row gets a checkbox. */
@@ -126,6 +133,7 @@ export function HarnessPickerView({
   base,
   rail,
   state,
+  empty,
   unlisted,
   checked,
   inputRef,
@@ -161,7 +169,7 @@ export function HarnessPickerView({
         <div className="truncate px-2 text-xs text-muted-foreground">Current · {unlisted}</div>
       )}
       {rail.length === 0 ? (
-        <NoModels title="No models" description="Switch a harness on in Settings → Models." />
+        <NoModels title={empty.title} description={empty.description} />
       ) : (
         <div className="flex max-h-72 min-h-0">
           <HarnessRailColumn
@@ -229,6 +237,7 @@ export function HarnessPickerView({
 export function HarnessPicker({
   rail,
   current,
+  empty,
   unlisted,
   checked,
   inputRef,
@@ -237,6 +246,7 @@ export function HarnessPicker({
 }: {
   readonly rail: ReadonlyArray<HarnessRailEntry>;
   readonly current: ModelPick | null;
+  readonly empty: EmptyText;
   readonly unlisted?: string;
   readonly checked?: ReadonlySet<string>;
   readonly inputRef?: React.Ref<HTMLInputElement>;
@@ -269,6 +279,7 @@ export function HarnessPicker({
       base={base}
       rail={rail}
       state={state}
+      empty={empty}
       {...(unlisted === undefined ? {} : { unlisted })}
       {...(checked === undefined ? {} : { checked })}
       {...(inputRef === undefined ? {} : { inputRef })}

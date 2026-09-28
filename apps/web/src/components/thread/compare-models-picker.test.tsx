@@ -68,6 +68,7 @@ const body = (picks: ReadonlyArray<ModelPick>) =>
       <CompareModelsBody
         catalog={catalog}
         full={catalog}
+        empty={{ title: "No models", description: "None." }}
         picks={picks}
         onToggle={() => {}}
         onClose={() => {}}
@@ -159,6 +160,7 @@ describe("CompareModelsBody", () => {
     const drawn = CompareModelsBody({
       catalog,
       full: catalog,
+      empty: { title: "No models", description: "None." },
       picks: [],
       onToggle,
       onClose: () => {},

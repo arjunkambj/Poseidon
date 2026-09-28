@@ -48,6 +48,12 @@ export interface HarnessRailEntry {
   readonly locked: boolean;
   /** The harness the current pick is under. */
   readonly current: boolean;
+  /**
+   * The instance lists models at all; false when its models call came back
+   * empty or failed. With no `items`, this tells "every model switched off"
+   * from "none to switch".
+   */
+  readonly listsModels: boolean;
   readonly items: ReadonlyArray<HarnessRailItem>;
 }
 
@@ -87,6 +93,7 @@ export const harnessRail = (
   return groups.map((group) => {
     const instanceId = group.connector.connectorInstanceId;
     const isCurrent = current !== null && current.connectorInstanceId === instanceId;
+    const listed = catalog.find((entry) => entry.connector.connectorInstanceId === instanceId);
     return {
       connector: group.connector,
       instanceId,
@@ -95,6 +102,7 @@ export const harnessRail = (
         monograms.get(instanceId) ?? harnessMonograms([group.connector.displayName])[0] ?? "",
       locked: group.locked,
       current: isCurrent,
+      listsModels: (listed?.models.length ?? group.items.length) > 0,
       items: group.items.flatMap((item) => {
         const pick = decodeModelPick(item.value);
         if (pick === null) {

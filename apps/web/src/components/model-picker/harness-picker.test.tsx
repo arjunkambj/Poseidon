@@ -60,6 +60,7 @@ const render = (
         base="p"
         rail={rail}
         state={state}
+        empty={{ title: "Empty rail", description: "Why it is empty." }}
         {...(unlisted === undefined ? {} : { unlisted })}
         {...(checked === undefined ? {} : { checked })}
         dispatch={() => {}}
@@ -149,6 +150,25 @@ describe("HarnessPickerView", () => {
     const html = render(railFor(), state);
     expect(html).toContain("No models match");
     expect(tagsWith(html, 'role="combobox"')[0]).not.toContain("aria-activedescendant");
+  });
+
+  it("says why an empty rail is empty", () => {
+    const html = render([], initialPickerState([], current));
+    expect(html).toContain("Empty rail");
+    expect(html).toContain("Why it is empty.");
+  });
+
+  it("tells a harness whose models are all off from one that listed none", () => {
+    const listed = [group("a", "Comet Cloud", [model("swift-1", "Swift One")])];
+    const keep = { connectorInstanceId: id("a"), model: "swift-1" };
+    const groups = modelPickerGroups([{ ...listed[0]!, models: [] }], {
+      instanceId: id("a"),
+      locked: false,
+    });
+    const off = harnessRail(groups, keep, listed);
+    expect(render(off, initialPickerState(off, keep))).toContain("off in Settings → Models");
+    const none = harnessRail(groups, keep, [{ ...listed[0]!, models: [] }]);
+    expect(render(none, initialPickerState(none, keep))).toContain("listed no models");
   });
 
   it("shows a current model no harness lists verbatim", () => {

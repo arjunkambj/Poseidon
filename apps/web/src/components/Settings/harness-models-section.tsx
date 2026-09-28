@@ -6,7 +6,9 @@
  * offer; see `@/lib/model-visibility`.
  *
  * An instance switched off on the Connectors page is not in the catalog at
- * all, so it gets no card; one muted line names such instances instead.
+ * all, so it gets no card; one muted line names such instances instead. While
+ * the catalog is still asking the harnesses for their models the section says
+ * so, and a catalog that failed says why, rather than "no harness enabled".
  */
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
@@ -27,6 +29,7 @@ import { toast } from "sonner";
 
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
 import { catalogMonograms } from "@/lib/harness-monogram";
+import { modelCatalogState } from "@/lib/model-catalog-state";
 import { enableAll, resetVisibility } from "@/lib/model-visibility";
 import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
 import { Brain, CheckDouble, RotateCcw } from "@honeyicons/react";
@@ -42,6 +45,7 @@ export function HarnessModelsSection() {
   const prefs = useModelPickerPrefs();
 
   const catalog = AsyncResult.isSuccess(catalogResult) ? catalogResult.value : [];
+  const catalogState = modelCatalogState(catalogResult);
   const connectors = AsyncResult.isSuccess(settingsResult)
     ? (settingsResult.value?.connectors ?? [])
     : [];
@@ -61,7 +65,19 @@ export function HarnessModelsSection() {
       description="Which harnesses and models the model pickers offer. Switching one off hides it from the pickers only."
       card={false}
     >
-      {catalog.length === 0 ? (
+      {catalogState.status === "loading" ? (
+        <p className="text-xs text-muted-foreground">Loading harnesses…</p>
+      ) : catalogState.status === "failed" ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Brain variant="bold" />
+            </EmptyMedia>
+            <EmptyTitle>Could not list the harnesses</EmptyTitle>
+            <EmptyDescription>{catalogState.message}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : catalog.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">

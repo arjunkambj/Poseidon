@@ -29,6 +29,7 @@ import { cn } from "@poseidon/ui/lib/utils";
 import * as React from "react";
 
 import { harnessRail } from "@/lib/harness-picker";
+import { emptyPickerText, useModelCatalogState } from "@/lib/model-catalog-state";
 import { encodeModelPick, modelPickerGroups, type ModelPick } from "@/lib/model-picks";
 import { visibleCatalog } from "@/lib/model-visibility";
 import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
@@ -73,6 +74,7 @@ export function ModelPicker({
   // still loading): it is shown verbatim so the picker never lies about it.
   const label = listed?.label ?? (model === "" ? "Choose…" : model);
   const disabled = disabledReason !== undefined;
+  const catalogState = useModelCatalogState();
 
   const trigger =
     variant === "settings" ? (
@@ -117,6 +119,7 @@ export function ModelPicker({
         <HarnessPicker
           rail={rail}
           current={current}
+          empty={emptyPickerText(catalogState, catalog)}
           {...(listed === undefined && model !== "" ? { unlisted: model } : {})}
           inputRef={inputRef}
           onClose={() => onOpenChange(false)}

@@ -34,6 +34,7 @@ import {
   type WorkspaceChoice,
 } from "@/components/thread/workspace-mode-picker";
 import { harnessRail, type HarnessRailEntry } from "@/lib/harness-picker";
+import { emptyPickerText, useModelCatalogState, type EmptyText } from "@/lib/model-catalog-state";
 import { encodeModelPick, modelPickerGroups, type ModelPick } from "@/lib/model-picks";
 import { visibleCatalog } from "@/lib/model-visibility";
 import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
@@ -110,6 +111,7 @@ export const compareRail = (
 export function CompareModelsBody({
   catalog,
   full,
+  empty,
   picks,
   inputRef,
   onToggle,
@@ -119,6 +121,8 @@ export function CompareModelsBody({
   readonly catalog: ReadonlyArray<ConnectorModels>;
   /** The unfiltered catalog, for the monograms. */
   readonly full: ReadonlyArray<ConnectorModels>;
+  /** What an empty rail says (`emptyPickerText`). */
+  readonly empty: EmptyText;
   readonly picks: ReadonlyArray<ModelPick>;
   readonly inputRef?: React.Ref<HTMLInputElement>;
   readonly onToggle: (pick: ModelPick) => void;
@@ -130,6 +134,7 @@ export function CompareModelsBody({
       <HarnessPicker
         rail={rail}
         current={picks[0] ?? null}
+        empty={empty}
         checked={checked}
         {...(inputRef === undefined ? {} : { inputRef })}
         onPick={onToggle}
@@ -155,6 +160,7 @@ export function CompareModelsPicker({
   const count = compare.picks.length;
   // Only what Settings → Models leaves on, and every pick already ticked.
   const visible = visibleCatalog(catalog, useModelPickerPrefs(), compare.picks);
+  const catalogState = useModelCatalogState();
 
   return (
     <Popover open={open} onOpenChange={(next) => onOpenChange(next)}>
@@ -169,6 +175,7 @@ export function CompareModelsPicker({
         <CompareModelsBody
           catalog={visible}
           full={catalog}
+          empty={emptyPickerText(catalogState, catalog)}
           picks={compare.picks}
           inputRef={inputRef}
           onToggle={compare.toggle}

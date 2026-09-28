@@ -601,7 +601,11 @@ search model is `apps/web/src/lib/harness-picker.ts`, the popup
 `apps/web/src/components/model-picker/`. It lists only the harnesses and models switched on in Settings → Models
 (`visibleCatalog` in `apps/web/src/lib/model-visibility.ts`), and always the
 thread's current pick: a thread on a harness or model switched off keeps
-showing it, keeps it as current and keeps working. Picking a model picks its
+showing it, keeps it as current and keeps working. A picker with no harness to
+show says why (`emptyPickerText`): still loading, the catalog failed, no
+connector enabled, no harness listed a model, or all switched off in Settings →
+Models; a kept harness with no model left says whether its models are switched
+off or it listed none. Picking a model picks its
 instance too: the start screen sends both on `thread.create`, the header on
 `thread.settings.update`. Until the user picks, a new thread shows the saved
 default model under the first instance the pickers offer it from (under a
@@ -3727,7 +3731,9 @@ switches are `modelPicker`, keyed by connector instance id, and filter the
 pickers only: they are not the Connectors page's `enabled`, which stops an
 instance and takes it out of `modelCatalogAtom` — such instances get no card,
 only a muted line naming them. With no instance enabled the section is an
-empty state linking to Connectors.
+empty state linking to Connectors; while the catalog is still asking the
+harnesses for their models it says it is loading, and a failed catalog says why
+(`modelCatalogState` in `apps/web/src/lib/model-catalog-state.ts`).
 
 `permissions` is a projection, not a second store: the `permission_rules` table
 is the single source of truth, and a settings update that carries a
