@@ -1,6 +1,7 @@
 /**
  * The Git & worktrees page: the prefix a new worktree's branch starts with
- * (`git.branchPrefix`) and each project's setup script
+ * (`git.branchPrefix`), whether it is cut from origin, how commit and PR text
+ * is written (`./commit-text-section`) and each project's setup script
  * (`projectSettings[projectId].setupScript`).
  *
  * Both are read from the settings subscription and written through
@@ -22,7 +23,11 @@ import {
   EmptyTitle,
 } from "@poseidon/ui/components/empty";
 import { Input } from "@poseidon/ui/components/input";
-import { DEFAULT_BRANCH_PREFIX, type SettingsPatch } from "@poseidon/contracts/settings";
+import {
+  DEFAULT_BRANCH_PREFIX,
+  type GitSettings,
+  type SettingsPatch,
+} from "@poseidon/contracts/settings";
 import * as Exit from "effect/Exit";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { toast } from "sonner";
@@ -31,6 +36,7 @@ import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
 import { useConnectionState, useProjects } from "@/state/hooks";
 import { GitBranch } from "@honeyicons/react";
 
+import { CommitTextSection, WorktreeFromOriginRow } from "./commit-text-section";
 import { prefixProblem, prefixToSave, withSetupScript } from "./git-settings";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "./settings-section";
 import { SetupScriptCard } from "./setup-script-card";
@@ -136,11 +142,20 @@ export function GitPanel() {
     return false;
   };
 
+  // The whole struct, spread from this render's document, so the branch prefix
+  // and every other field survive a switch.
+  const saveGit = async (patch: Partial<GitSettings>) => {
+    const exit = await updateSettings({ git: { ...settings.git, ...patch } });
+    if (!Exit.isSuccess(exit)) {
+      toast.error(describeExitError(exit, "Could not save the git settings"));
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <SettingsPageHeader
         title="Git & worktrees"
-        description="How a thread started in a new worktree names its branch, and what runs in the worktree before the first turn."
+        description="How a thread started in a new worktree names its branch, what runs in the worktree before the first turn, and how commit and PR text is written."
       />
 
       <SettingsSection title="Branches">
@@ -155,7 +170,18 @@ export function GitPanel() {
             )
           }
         />
+        <WorktreeFromOriginRow
+          git={settings.git}
+          disabled={disabled}
+          onChange={(patch) => void saveGit(patch)}
+        />
       </SettingsSection>
+
+      <CommitTextSection
+        git={settings.git}
+        disabled={disabled}
+        onChange={(patch) => void saveGit(patch)}
+      />
 
       <SettingsSection
         title="Setup scripts"

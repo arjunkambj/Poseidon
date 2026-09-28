@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { CUSTOM_INSTRUCTIONS_MAX } from "@poseidon/contracts/generation";
 
-import { prefixProblem, prefixToSave, withSetupScript } from "./git-settings";
+import {
+  instructionsProblem,
+  instructionsToSave,
+  prefixProblem,
+  prefixToSave,
+  withSetupScript,
+} from "./git-settings";
 
 describe("prefixProblem", () => {
   it("accepts the default, a personal prefix and an empty one", () => {
@@ -66,5 +73,19 @@ describe("withSetupScript", () => {
     const before = structuredClone(saved);
     withSetupScript(saved, "p1", "");
     expect(saved).toEqual(before);
+  });
+});
+
+describe("custom instructions", () => {
+  it("saves the trimmed draft, and nothing when it is what is saved", () => {
+    expect(instructionsToSave("", "  Use the past tense.\n")).toBe("Use the past tense.");
+    expect(instructionsToSave("Use the past tense.", "Use the past tense. ")).toBeNull();
+    expect(instructionsToSave("Old", "   ")).toBe("");
+  });
+
+  it("refuses more than the cap, and accepts exactly the cap", () => {
+    expect(instructionsProblem("a".repeat(CUSTOM_INSTRUCTIONS_MAX))).toBeNull();
+    expect(instructionsProblem(` ${"a".repeat(CUSTOM_INSTRUCTIONS_MAX)} `)).toBeNull();
+    expect(instructionsProblem("a".repeat(CUSTOM_INSTRUCTIONS_MAX + 1))).toMatch(/20,000/);
   });
 });

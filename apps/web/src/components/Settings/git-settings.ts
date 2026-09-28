@@ -1,12 +1,14 @@
 /**
- * The pure half of the Git & worktrees page: what a draft saves as, and
- * whether it saves at all.
+ * The pure half of the Git & worktrees page: what a draft (a branch prefix,
+ * a setup script, custom writing instructions) saves as, and whether it saves
+ * at all.
  *
  * `settings.update` replaces each key it carries, so a setup script is saved
  * by writing the whole `projectSettings` record — built here from the latest
  * one, so saving one project's script never drops another's.
  */
 
+import { CUSTOM_INSTRUCTIONS_MAX } from "@poseidon/contracts/generation";
 import type { ProjectSettings } from "@poseidon/contracts/settings";
 
 type ProjectSettingsRecord = { readonly [projectId: string]: ProjectSettings };
@@ -66,4 +68,20 @@ export const withSetupScript = (
   const next: ProjectSettings = script === "" ? rest : { ...rest, setupScript: script };
   const { [projectId]: _old, ...others } = current;
   return Object.keys(next).length === 0 ? others : { ...others, [projectId]: next };
+};
+
+/**
+ * Why custom writing instructions cannot be saved, or null when they can: the
+ * settings document refuses more than `CUSTOM_INSTRUCTIONS_MAX` characters,
+ * so the page says so rather than cutting the text short.
+ */
+export const instructionsProblem = (draft: string): string | null =>
+  draft.trim().length > CUSTOM_INSTRUCTIONS_MAX
+    ? `Keep the instructions to ${CUSTOM_INSTRUCTIONS_MAX.toLocaleString("en-US")} characters or fewer.`
+    : null;
+
+/** The instructions a draft saves as (trimmed), or null when saving would change nothing. */
+export const instructionsToSave = (current: string, draft: string): string | null => {
+  const next = draft.trim();
+  return next === current ? null : next;
 };
