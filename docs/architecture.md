@@ -955,6 +955,13 @@ it; the effort keys never step onto it, a model that states no ladder does not
 offer it, and a harness without it never receives it — Claude Code and Command
 Code leave their effort flag out for it, so the CLI default applies.
 
+`ThreadSettings.ultracode` (optional, also on `ThreadSettingsPatch`, so on
+`thread.settings.update` and `thread.settings.updated`, and on the
+`model.changed` runtime event) is Claude Code's ultracode session mode: `xhigh`
+effort plus standing dynamic-workflow orchestration. Absent is off, which is
+every event written before it existed; it means something only on a session
+whose capabilities carry `ultracode`.
+
 `ModelOption.hidden` is optional: a connector may list a model it does not want
 offered by default. The settings document's `modelPicker` holds the user's
 switches over that — `harnesses` keyed by connector instance id, `models` by
@@ -1961,6 +1968,7 @@ instead of the kind:
 | `stopTask`                   | optional boolean                     | the decider and the agents strip's Stop              |
 | `fork`                       | boolean                              | the decider: a fork of the tail forks the session    |
 | `textGeneration`             | optional boolean                     | whether `generateText` exists                        |
+| `ultracode`                  | optional boolean                     | whether `ThreadSettings.ultracode` can be switched   |
 
 `steering` also decides `TurnInProgress` and whether a handle has `steer`,
 below.

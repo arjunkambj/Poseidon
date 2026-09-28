@@ -176,6 +176,11 @@ export type CapabilitySwitch = typeof CapabilitySwitch.Type;
  *   (`ConnectorInstance.generateText`): commit messages, pull-request text,
  *   thread titles. Optional like `stopTask`: capabilities are copied into
  *   stored session events, and absent reads as false.
+ *
+ * - `ultracode` — the session can switch Claude Code's ultracode mode on and
+ *   off (`xhigh` effort plus standing dynamic-workflow orchestration), the
+ *   thread's `ThreadSettings.ultracode`. Optional like `stopTask`: absent
+ *   reads as false, and the composer offers the toggle only when it is true.
  */
 export const ConnectorCapabilities = Schema.Struct({
   modelSwitch: CapabilitySwitch,
@@ -194,6 +199,7 @@ export const ConnectorCapabilities = Schema.Struct({
   attachments: Schema.Literals(["images", "files"]),
   stopTask: Schema.optional(Schema.Boolean),
   textGeneration: Schema.optional(Schema.Boolean),
+  ultracode: Schema.optional(Schema.Boolean),
 });
 export type ConnectorCapabilities = typeof ConnectorCapabilities.Type;
 
@@ -410,7 +416,12 @@ const ContextUpdatedEvent = event(
 
 const ModelChangedEvent = event(
   "model.changed",
-  Schema.Struct({ model: NonEmptyString, effort: Schema.optional(Effort) }),
+  Schema.Struct({
+    model: NonEmptyString,
+    effort: Schema.optional(Effort),
+    /** Claude Code's ultracode mode, when the harness reports it. */
+    ultracode: Schema.optional(Schema.Boolean),
+  }),
 );
 
 const McpStatusUpdatedEvent = event(

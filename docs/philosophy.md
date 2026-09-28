@@ -119,7 +119,8 @@ docs. An idea borrowed from elsewhere is described in our own words.
 Capabilities are how the UI adapts without knowing. A connector declares
 `ConnectorCapabilities` — `modelSwitch`, `effortSwitch`, `steering`, `planMode`,
 `subagents`, `images`, `resume`, `fork`, `interrupt`, `rollback`, `compaction`,
-`questions`, `runtimeModes`, `attachments`, and optionally `stopTask` — and the renderer branches on those
+`questions`, `runtimeModes`, `attachments`, and optionally `stopTask`, `textGeneration` and
+`ultracode` — and the renderer branches on those
 (`packages/connector-cmd/src/capabilities.ts`). The mode picker offers the
 connector's `runtimeModes`, the composer refuses attachments when `images` is
 false, and the decider steers a message into a running turn only for a

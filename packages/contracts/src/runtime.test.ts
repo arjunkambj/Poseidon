@@ -138,4 +138,54 @@ describe("ConnectorCapabilities", () => {
       expect(decoded.textGeneration).toBe(true);
     }),
   );
+
+  it.effect("reads ultracode as absent on capabilities stored before it, and carries it", () =>
+    Effect.gen(function* () {
+      const old = yield* Schema.decodeUnknownEffect(ConnectorCapabilities)(stored);
+      expect("ultracode" in old).toBe(false);
+      const declared = yield* Schema.decodeUnknownEffect(ConnectorCapabilities)({
+        ...stored,
+        ultracode: true,
+      });
+      expect(declared.ultracode).toBe(true);
+    }),
+  );
+});
+
+describe("model.changed", () => {
+  const modelChanged = (payload: Record<string, unknown>) => ({
+    ...envelope(),
+    type: "model.changed",
+    payload: { model: "claude-opus-4-7", ...payload },
+  });
+
+  it.effect("still decodes a payload stored before ultracode existed", () =>
+    Effect.gen(function* () {
+      const decoded = yield* Schema.decodeUnknownEffect(RuntimeEvent)(
+        modelChanged({ effort: "high" }),
+      );
+      if (decoded.type !== "model.changed") throw new Error(decoded.type);
+      expect(decoded.payload.effort).toBe("high");
+      expect("ultracode" in decoded.payload).toBe(false);
+    }),
+  );
+
+  it.effect("round-trips ultracode and the ultra effort rung", () =>
+    Effect.gen(function* () {
+      const decoded = yield* Schema.decodeUnknownEffect(RuntimeEvent)(
+        modelChanged({ effort: "xhigh", ultracode: true }),
+      );
+      if (decoded.type !== "model.changed") throw new Error(decoded.type);
+      expect(decoded.payload.ultracode).toBe(true);
+      const again = yield* Schema.decodeUnknownEffect(RuntimeEvent)(
+        yield* Schema.encodeEffect(RuntimeEvent)(decoded),
+      );
+      expect(again).toEqual(decoded);
+      const ultra = yield* Schema.decodeUnknownEffect(RuntimeEvent)(
+        modelChanged({ effort: "ultra" }),
+      );
+      if (ultra.type !== "model.changed") throw new Error(ultra.type);
+      expect(ultra.payload.effort).toBe("ultra");
+    }),
+  );
 });

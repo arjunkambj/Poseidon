@@ -25,6 +25,11 @@ export type Mention = typeof Mention.Type;
  * optional because every event written before threads could choose one lacks
  * it, and because a thread may leave the choice to routing: absent means "the
  * default rule" — the first enabled connector that is open.
+ *
+ * `ultracode` is a Claude Code session mode: `xhigh` effort plus standing
+ * dynamic-workflow orchestration (the harness's Workflow tool). It is off when
+ * absent, which is every event written before it existed, and it only means
+ * something on a session whose capabilities carry `ultracode`.
  */
 export const ThreadSettings = Schema.Struct({
   model: NonEmptyString,
@@ -32,6 +37,7 @@ export const ThreadSettings = Schema.Struct({
   runtimeMode: RuntimeMode,
   interactionMode: InteractionMode,
   connectorInstanceId: Schema.optional(ConnectorInstanceId),
+  ultracode: Schema.optional(Schema.Boolean),
 });
 export type ThreadSettings = typeof ThreadSettings.Type;
 
@@ -42,6 +48,7 @@ export const ThreadSettingsPatch = Schema.Struct({
   runtimeMode: Schema.optional(RuntimeMode),
   interactionMode: Schema.optional(InteractionMode),
   connectorInstanceId: Schema.optional(ConnectorInstanceId),
+  ultracode: Schema.optional(Schema.Boolean),
 });
 export type ThreadSettingsPatch = typeof ThreadSettingsPatch.Type;
 

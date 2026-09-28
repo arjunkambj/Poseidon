@@ -178,6 +178,82 @@ describe("ThreadSettings.connectorInstanceId", () => {
   );
 });
 
+describe("ThreadSettings.ultracode", () => {
+  const decode = Schema.decodeUnknownSync(OrchestrationEvent);
+  const THREAD = "0199c0de-0002-7000-8000-000000000001";
+  const envelope = (type: string, streamVersion: number) => ({
+    sequence: streamVersion + 2,
+    eventId: `0199c0de-0006-7000-8000-00000000011${streamVersion}`,
+    streamKind: "thread",
+    streamId: THREAD,
+    streamVersion,
+    occurredAt: "2026-09-15T12:00:03.000Z",
+    actor: "user",
+    type,
+  });
+  const threadCreated = (settings: Record<string, unknown>) => ({
+    ...envelope("thread.created", 1),
+    payload: {
+      threadId: THREAD,
+      projectId: "0199c0de-0001-7000-8000-000000000001",
+      title: "Health check endpoint",
+      settings: {
+        model: "default",
+        runtimeMode: "approval-required",
+        interactionMode: "default",
+        ...settings,
+      },
+    },
+  });
+  const settingsUpdated = (patch: Record<string, unknown>) => ({
+    ...envelope("thread.settings.updated", 2),
+    payload: patch,
+  });
+
+  it.effect("still decodes a thread.created and a settings update stored before it, as off", () =>
+    Effect.gen(function* () {
+      const created = yield* Effect.sync(() => decode(threadCreated({ effort: "high" })));
+      if (created.type !== "thread.created") throw new Error(created.type);
+      expect(created.payload.settings.ultracode).toBeUndefined();
+      const updated = yield* Effect.sync(() => decode(settingsUpdated({ effort: "max" })));
+      if (updated.type !== "thread.settings.updated") throw new Error(updated.type);
+      expect("ultracode" in updated.payload).toBe(false);
+    }),
+  );
+
+  it.effect("round-trips the flag on thread.created and thread.settings.updated", () =>
+    Effect.gen(function* () {
+      const encode = Schema.encodeSync(OrchestrationEvent);
+      const created = decode(threadCreated({ effort: "xhigh", ultracode: true }));
+      if (created.type !== "thread.created") throw new Error(created.type);
+      expect(created.payload.settings.ultracode).toBe(true);
+      const updated = decode(settingsUpdated({ ultracode: false }));
+      if (updated.type !== "thread.settings.updated") throw new Error(updated.type);
+      expect(updated.payload.ultracode).toBe(false);
+      const again = yield* Effect.sync(() => decode(encode(created)));
+      expect(again).toEqual(created);
+    }),
+  );
+
+  it.effect("travels on thread.settings.update, and refuses a non-boolean", () =>
+    Effect.gen(function* () {
+      const command = {
+        commandId: "0199c0de-0008-7000-8000-000000000001",
+        createdAt: "2026-09-15T12:00:00.000Z",
+        type: "thread.settings.update",
+        threadId: THREAD,
+      };
+      const decoded = yield* Effect.sync(() =>
+        Schema.decodeUnknownSync(Command)({ ...command, ultracode: true }),
+      );
+      if (decoded.type !== "thread.settings.update") throw new Error(decoded.type);
+      expect(decoded.ultracode).toBe(true);
+      const exit = Schema.decodeUnknownExit(Command)({ ...command, ultracode: "on" });
+      expect(exit._tag).toBe("Failure");
+    }),
+  );
+});
+
 describe("ThreadSummary.runningSince", () => {
   const decode = Schema.decodeUnknownSync(ThreadSummary);
   const encode = Schema.encodeSync(ThreadSummary);
