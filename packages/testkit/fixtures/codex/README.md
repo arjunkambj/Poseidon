@@ -48,3 +48,13 @@ port nothing listens on, so each shows it named, tried and failed.
 
 `mcp-servers` sends no message to a model and reads no account; its scratch
 `CODEX_HOME` holds nothing of the operator's.
+
+## Live check
+
+Besides the recordings, `packages/connector-codex/src/liveConformance.test.ts`
+runs against the operator's CLI behind `POSEIDON_LIVE_CODEX=1`
+(docs/codex-connector.md, "After a new CLI release"). It was last run on
+**2026-09-28** against 0.156.1: all eleven cases passed — the probe, the
+schema check of every method the connector uses, the conformance suite, a
+plain turn with nothing unmapped, an approval allowed once and a plan turn.
+A live run that disagrees with a recording means the recording is stale.
