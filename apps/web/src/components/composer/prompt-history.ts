@@ -75,6 +75,26 @@ export interface RecallStep {
 }
 
 /**
+ * The cursor if the composer still shows what it recalled, else `null`. A
+ * prompt sent mid-walk — a queued message draining — shifts every index, so
+ * the recalled text is looked up again rather than dropping the walk.
+ */
+const liveCursor = (
+  cursor: RecallCursor,
+  history: ReadonlyArray<RecalledPrompt>,
+  draftText: string,
+): RecallCursor => {
+  if (cursor === null || cursor.text !== draftText) {
+    return null;
+  }
+  if (history[cursor.index]?.text === cursor.text) {
+    return cursor;
+  }
+  const index = history.findIndex((prompt) => prompt.text === cursor.text);
+  return index === -1 ? null : { index, text: cursor.text };
+};
+
+/**
  * What an arrow press does to recall, or `null` when the key is not recall's
  * and the textarea should have it. At the oldest prompt ArrowUp is still
  * consumed — so the caret does not jump to the start — but the step returns
@@ -84,13 +104,8 @@ export const recallStep = (input: RecallStepInput): RecallStep | null => {
   if (input.triggerOpen) {
     return null;
   }
-  const { cursor, history } = input;
-  const live =
-    cursor !== null &&
-    cursor.text === input.draftText &&
-    history[cursor.index]?.text === cursor.text
-      ? cursor
-      : null;
+  const { history } = input;
+  const live = liveCursor(input.cursor, history, input.draftText);
   if (input.key === "ArrowUp") {
     if (live === null) {
       const newest = history[0];

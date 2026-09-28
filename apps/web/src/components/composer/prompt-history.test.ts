@@ -127,10 +127,25 @@ describe("recallStep", () => {
     expect(step({ key: "ArrowDown", cursor, draftText: "third!" })).toBeNull();
   });
 
-  it("treats a cursor whose history moved on as stale", () => {
-    const cursor: RecallCursor = { index: 0, text: "third" };
+  it("keeps walking when a prompt is sent mid-walk and shifts the history", () => {
+    const cursor: RecallCursor = { index: 1, text: "second\nline two" };
     const moved = [prompt("fourth"), ...history];
-    expect(step({ key: "ArrowDown", cursor, draftText: "third", history: moved })).toBeNull();
+    const onRecall = { cursor, draftText: "second\nline two", history: moved };
+    expect(step({ ...onRecall, key: "ArrowDown" })).toEqual({
+      cursor: { index: 1, text: "third" },
+      prompt: moved[1],
+    });
+    expect(step(onRecall)).toEqual({ cursor: { index: 3, text: "first" }, prompt: moved[3] });
+    const newest: RecallCursor = { index: 0, text: "third" };
+    expect(step({ key: "ArrowDown", cursor: newest, draftText: "third", history: moved })).toEqual({
+      cursor: { index: 0, text: "fourth" },
+      prompt: moved[0],
+    });
+  });
+
+  it("treats a cursor whose text left the history as stale", () => {
+    const cursor: RecallCursor = { index: 0, text: "gone" };
+    expect(step({ key: "ArrowDown", cursor, draftText: "gone" })).toBeNull();
   });
 });
 
