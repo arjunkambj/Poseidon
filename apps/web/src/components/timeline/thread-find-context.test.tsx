@@ -62,12 +62,12 @@ describe("find marks", () => {
     expect(render(<UserMessageRow item={item({})} />, null)).not.toContain("<mark");
   });
 
-  it("rings the current row only, with no element of its own otherwise", () => {
+  it("rings the current row only, keeping the same wrapper on every row", () => {
     const row = <FindRowMark rowId="row-1">body</FindRowMark>;
     expect(render(row, highlight("x", "row-1"))).toBe(
       '<div data-find-current="true" class="rounded-lg ring-1 ring-ring ring-offset-4 ring-offset-background">body</div>',
     );
-    expect(render(row, highlight("x", "row-2"))).toBe("body");
-    expect(render(row, null)).toBe("body");
+    expect(render(row, highlight("x", "row-2"))).toBe("<div>body</div>");
+    expect(render(row, null)).toBe("<div>body</div>");
   });
 });

@@ -1091,7 +1091,9 @@ runs only on the blocks holding the query (`timeline/rehype-find-marks.ts`).
 Fenced code is counted but not marked, since it renders through the code
 block's highlighter, and a match the source splits with markup (`**de**ploy`)
 is not marked either. The marks come from a context that is `null` while the
-bar is closed, so a closed bar adds no element and no parse to any row.
+bar is closed, so a closed bar adds no parse to any row. Every row keeps the
+same wrapper element whether it holds the current match or not, so moving the
+ring changes a class and never remounts a row.
 
 ### Closing the turn
 

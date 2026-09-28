@@ -64,19 +64,21 @@ export function FindText({ text }: { text: string }) {
 }
 
 /**
- * Rings the row holding the current match. Every other row, and every row
- * while the bar is closed, renders with no element of its own, so the list
- * measures what it always does.
+ * Rings the row holding the current match. Every row keeps the same wrapper
+ * whether or not it is the current one, and only its classes change: a row
+ * that swapped its root element would remount, losing its local state and a
+ * streaming reply's progress. The ring is a shadow, so the list measures the
+ * row as it always does.
  */
 export function FindRowMark({ rowId, children }: { rowId: string; children: React.ReactNode }) {
   const highlight = useFindHighlight();
-  if (highlight === null || highlight.activeRowId !== rowId) {
-    return children;
-  }
+  const current = highlight !== null && highlight.activeRowId === rowId;
   return (
     <div
-      data-find-current
-      className="rounded-lg ring-1 ring-ring ring-offset-4 ring-offset-background"
+      data-find-current={current ? true : undefined}
+      className={
+        current ? "rounded-lg ring-1 ring-ring ring-offset-4 ring-offset-background" : undefined
+      }
     >
       {children}
     </div>
