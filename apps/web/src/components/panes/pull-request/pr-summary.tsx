@@ -1,6 +1,6 @@
 /**
  * The Pull request tab's head: the title, its number as a link to GitHub,
- * its state, where it merges (base ← head), who opened it and when it last
+ * its state (tinted as the sidebar's glyph is), where it merges (base ← head), who opened it and when it last
  * changed. The refresh button sits beside the title, and the lifecycle
  * actions and the Fix menu (`./pr-controls`) under the author line.
  */
@@ -12,25 +12,11 @@ import type { PullRequestDetail } from "@poseidon/contracts/pullRequest";
 import type * as React from "react";
 
 import { openExternal } from "@/lib/desktop";
+import { pullRequestTone } from "@/lib/pull-request-tone";
 
 import { ExternalLink, Refresh } from "@honeyicons/react";
 
 import { updatedLabel } from "./pr-format";
-
-/** The state as a word and a badge look: draft is a state of its own while open. */
-const stateBadge = (
-  pullRequest: Pick<PullRequestDetail, "state" | "isDraft">,
-): { readonly label: string; readonly variant: "secondary" | "outline" | "destructive" } => {
-  if (pullRequest.state === "merged") {
-    return { label: "Merged", variant: "secondary" };
-  }
-  if (pullRequest.state === "closed") {
-    return { label: "Closed", variant: "destructive" };
-  }
-  return pullRequest.isDraft
-    ? { label: "Draft", variant: "outline" }
-    : { label: "Open", variant: "secondary" };
-};
 
 export function PrSummary({
   pullRequest,
@@ -44,7 +30,12 @@ export function PrSummary({
   /** The lifecycle actions and the Fix menu, under the author line. */
   readonly controls?: React.ReactNode;
 }) {
-  const badge = stateBadge(pullRequest);
+  // The glyph the sidebar row shows for this pull request, in its tint.
+  const tone = pullRequestTone({
+    state: pullRequest.state,
+    isDraft: pullRequest.isDraft,
+    failing: pullRequest.checks.some((check) => check.bucket === "fail"),
+  });
   const updated = updatedLabel(nowMs, pullRequest.updatedAt);
   return (
     <div className="flex flex-col gap-1.5 px-3 py-2">
@@ -70,7 +61,10 @@ export function PrSummary({
         </Tooltip>
       </div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-        <Badge variant={badge.variant}>{badge.label}</Badge>
+        <Badge variant="outline">
+          <tone.icon variant="bold" className={tone.tone} />
+          {tone.state}
+        </Badge>
         <Button
           type="button"
           variant="link"
