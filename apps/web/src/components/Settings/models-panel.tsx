@@ -7,8 +7,9 @@
  * The default model is not a plain select but the composer's harness picker
  * (`DefaultModelRow`): it lists only what the harness and model switches leave
  * on, plus the saved default, and with none saved it shows the model New task
- * seeds a new thread with. The switches themselves are `HarnessModelsSection`,
- * below.
+ * seeds a new thread with. Under the defaults, `GeneratedTextSection` picks
+ * who writes commit, pull request and title text; the switches themselves are
+ * `HarnessModelsSection`, below.
  */
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
@@ -23,6 +24,7 @@ import { EFFORT_LABELS } from "@/lib/efforts";
 import { RUNTIME_MODE_LABELS } from "@/lib/runtime-modes";
 
 import { DefaultModelRow } from "./default-model-row";
+import { GeneratedTextSection } from "./generated-text-section";
 import { HarnessModelsSection } from "./harness-models-section";
 import { StructForm } from "./schema-form";
 import { SettingsPageHeader, SettingsSection } from "./settings-section";
@@ -88,6 +90,8 @@ export function ModelsPanel() {
           }}
         />
       </SettingsSection>
+
+      <GeneratedTextSection generation={settings.generation} catalog={catalog} />
 
       <HarnessModelsSection />
     </div>
