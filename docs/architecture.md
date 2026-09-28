@@ -1100,6 +1100,11 @@ Test infrastructure, never shipped.
   (`sdkStreamReplayer(kind)`) are the replay half. It is gated on stdin, rewrites the SDK's
   request ids, and exits 97 on divergence. See
   [development.md](development.md#sdk-stream).
+- `packages/testkit/src/stdioJsonRpcRecording.ts` — the `stdio-jsonrpc` recorder: the same tee
+  and finaliser, with JSON-RPC's defaults. `packages/testkit/bin/replay-stdio-jsonrpc.mjs` and
+  `packages/testkit/src/replayStdioJsonRpc.ts` (`stdioJsonRpcReplayer(kind)`) are the replay
+  half, gated per JSON-RPC message and rewriting the connector's request ids. See
+  [development.md](development.md#stdio-jsonrpc).
 - `packages/testkit/src/fakeConnector.ts` — a real `ConnectorDefinition` whose sessions replay a
   scripted event list, for everything above the connector layer. With `steering` on its sessions
   offer `steer`, recorded as a call like every other method, and `refuseSteering` makes each

@@ -1,5 +1,6 @@
 /**
- * Plumbing for the tests of the `sdk-stream` tee and replayer.
+ * Plumbing for the tests of the stdio tee and the `sdk-stream` and
+ * `stdio-jsonrpc` replayers.
  *
  * Those tests exercise the transport mechanics — lines in both directions,
  * request ids, process groups, exit codes — so they need a process on the far
@@ -22,8 +23,19 @@ import * as NodeReadline from "node:readline";
  * `can_use_tool` request of its own, the answer to
  * that with a `result` naming the behaviour, and anything else with an `echo` —
  * and exits 0 when stdin closes.
+ *
+ * `login status` prints one line too. A run with `app-server` in its argv
+ * speaks JSON-RPC instead, and says nothing until it is asked: a request gets a
+ * result carrying its method and params, the program's pid, cwd and temp
+ * directory — except `ask` and `question`, which are answered and then raise a
+ * request of the program's own (`approve` or `question`, its ids counting from
+ * 0), and `fail`, which gets an error; an answer to one of its requests gets an
+ * `answered` notification carrying it; the `exit` notification exits with its
+ * `code`, and any other notification gets an `echo`. It exits 0 when stdin
+ * closes.
  */
 const PROGRAM = `
+import * as os from "node:os";
 import * as readline from "node:readline";
 const argv = process.argv.slice(2);
 const say = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
@@ -35,24 +47,55 @@ if (argv[0] === "auth" && argv[1] === "status") {
   say({ loggedIn: true, email: "someone@example.org", orgName: "Example Org" });
   process.exit(0);
 }
-say({ type: "ready", pid: process.pid, cwd: process.cwd() });
-let asked = 0;
-const lines = readline.createInterface({ input: process.stdin });
-lines.on("line", (line) => {
-  const message = JSON.parse(line);
-  if (message.type === "control_request") {
-    say({ type: "control_response", response: { subtype: "success", request_id: message.request_id, response: { subtype: message.request.subtype } } });
-  } else if (message.type === "user") {
-    if (message.uuid !== undefined) say({ type: "receipt", command_uuid: message.uuid });
-    asked += 1;
-    say({ type: "control_request", request_id: "asked-" + asked, request: { subtype: "can_use_tool", tool_name: "Anything" } });
-  } else if (message.type === "control_response") {
-    say({ type: "result", request_id: message.response.request_id, behavior: message.response.response.behavior });
-  } else {
-    say({ type: "echo", message });
-  }
-});
-lines.on("close", () => process.exit(0));
+if (argv[0] === "login" && argv[1] === "status") {
+  process.stdout.write("Logged in as someone@example.org\\n");
+  process.exit(0);
+}
+const serve = () => {
+  let raised = 0;
+  const lines = readline.createInterface({ input: process.stdin });
+  lines.on("line", (line) => {
+    const message = JSON.parse(line);
+    const params = message.params ?? null;
+    if (typeof message.method !== "string") {
+      say({ method: "answered", params: { id: message.id, result: message.result ?? null, error: message.error ?? null } });
+    } else if (message.id === undefined) {
+      if (message.method === "exit") process.exit(params.code);
+      say({ method: "echo", params: { method: message.method, params } });
+    } else if (message.method === "ask" || message.method === "question") {
+      say({ id: message.id, result: {} });
+      say({ id: raised, method: message.method === "ask" ? "approve" : "question", params });
+      raised += 1;
+    } else if (message.method === "fail") {
+      say({ id: message.id, error: { code: -32000, message: "failed as asked" } });
+    } else {
+      say({ id: message.id, result: { method: message.method, params, pid: process.pid, cwd: process.cwd(), tmp: os.tmpdir() } });
+    }
+  });
+  lines.on("close", () => process.exit(0));
+};
+const stream = () => {
+  say({ type: "ready", pid: process.pid, cwd: process.cwd() });
+  let asked = 0;
+  const lines = readline.createInterface({ input: process.stdin });
+  lines.on("line", (line) => {
+    const message = JSON.parse(line);
+    if (message.type === "control_request") {
+      say({ type: "control_response", response: { subtype: "success", request_id: message.request_id, response: { subtype: message.request.subtype } } });
+    } else if (message.type === "user") {
+      if (message.uuid !== undefined) say({ type: "receipt", command_uuid: message.uuid });
+      asked += 1;
+      say({ type: "control_request", request_id: "asked-" + asked, request: { subtype: "can_use_tool", tool_name: "Anything" } });
+    } else if (message.type === "control_response") {
+      say({ type: "result", request_id: message.response.request_id, behavior: message.response.response.behavior });
+    } else {
+      say({ type: "echo", message });
+    }
+  });
+  lines.on("close", () => process.exit(0));
+};
+if (argv.includes("app-server")) serve();
+else stream();
 `;
 
 /** Writes the program into `dir` as an executable and returns its path. */

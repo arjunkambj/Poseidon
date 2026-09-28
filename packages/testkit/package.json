@@ -23,6 +23,14 @@
       "types": "./src/replaySdkStream.ts",
       "import": "./src/replaySdkStream.ts"
     },
+    "./stdioJsonRpcRecording": {
+      "types": "./src/stdioJsonRpcRecording.ts",
+      "import": "./src/stdioJsonRpcRecording.ts"
+    },
+    "./replayStdioJsonRpc": {
+      "types": "./src/replayStdioJsonRpc.ts",
+      "import": "./src/replayStdioJsonRpc.ts"
+    },
     "./fakeConnector": {
       "types": "./src/fakeConnector.ts",
       "import": "./src/fakeConnector.ts"

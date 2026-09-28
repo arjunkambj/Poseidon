@@ -743,6 +743,60 @@ The tests of the tee and the replayer
 node program written into a temp directory (`stdioCounterpart.ts`). It is no
 harness and needs no harness binary.
 
+#### stdio-jsonrpc
+
+A harness whose server mode speaks JSON-RPC over stdio, one message per line,
+is recorded at the process boundary too, by the same tee: it frames lines
+whatever they hold. On stdin travel the connector's requests and
+notifications and its answers to the harness's own requests (approvals,
+questions); on stdout the harness's responses, notifications and requests.
+
+**Recording.** Point the connector's binary path at `makeTeeLauncher`, as for
+`sdk-stream`.
+`finalizeStdioJsonRpcRecording({ kind, scenario, rawDir, description, cliVersion, model, prompts, operatorNames? })`
+(`packages/testkit/src/stdioJsonRpcRecording.ts`) runs the same finaliser
+(`finalizeStdioRecording` in `sdkStreamRecording.ts`) with
+`transport: "stdio-jsonrpc"`. The manifest names no SDK: it carries the common
+fields plus `prompts` and `invocations[]`. A run is a launch whose argv holds
+`app-server`. A probe tags its server-mode launch with
+`STDIO_JSONRPC_PROBE_MARKER` (`--stdio`, the CLI's own flag for the transport
+it uses anyway), and the scratch root is taken from the first run that is not a
+probe's. `loadStdioJsonRpcRecording(kind, scenario)` reads a recording back
+with its frames.
+
+**Replaying.** `stdioJsonRpcReplayer(kind).config(scenario, { tmpDir, pidDir?, divergenceLog? })`
+(`packages/testkit/src/replayStdioJsonRpc.ts`) returns `{ binaryPath }` and
+refuses a manifest recorded over any other transport.
+`bin/replay-stdio-jsonrpc.mjs` behind it follows the `sdk-stream` replayer's
+rules, with JSON-RPC's moves:
+
+- **Choosing an invocation.** The argv classes are `--version`,
+  `login status`, a probe's server-mode handshake (`app-server` with the probe
+  marker), a session's `app-server` run, or else the exact argv, counted in
+  `tmpDir` across launches. A probe asked again hears the last recorded answer
+  again; a session with no recorded run left is a divergence.
+- **Gating.** A request or notification must have the same `method`, and be a
+  request where a request was recorded. An answer to a request the harness
+  made must carry the same `id`, be a result or an error as recorded, and
+  carry the same `result.decision` for an approval and the same answer keys
+  (`result.answers`) for a question. Answers to two open harness requests may
+  arrive in either order, and so may a connector message and the answer to an
+  open harness request; each is held back and checked in its recorded place.
+- **Id rewriting.** The connector's request ids are its own: each recorded id
+  is mapped to the live one when the request arrives, and the recorded response
+  to it carries the live id. The harness's own request ids come from the
+  recording, so the live answers carry them unchanged. The two id spaces are
+  kept apart: a response is told from a request by having no `method`. A
+  connector sends no optional id of its own (a per-message client id, say)
+  that the harness would echo back, so nothing else needs rewriting.
+- **Divergence and ending** are as for `sdk-stream`: both sides printed and
+  appended to `divergenceLog`, exit **97**; after the last frame the replay
+  waits for stdin to close and exits as the recorded run did. `pidDir` works
+  the same way.
+
+`stdioJsonRpcRecording.test.ts` and `replayStdioJsonRpc.test.ts` drive the same
+counterpart program, which speaks JSON-RPC when its argv holds `app-server`.
+
 ### Making one
 
 Recording spends the operator's paid plan, so it is never run from CI:
