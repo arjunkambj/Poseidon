@@ -15,6 +15,10 @@
  * (`./pinned-threads`), first in the order the thread keys walk too. Pins are
  * this window's, like the unread stamps — see `./thread-pins`.
  *
+ * The field in the Projects header filters every row by title
+ * (`./thread-filter-input`); while it holds a query, projects with no match
+ * and an empty "Other threads" are left out, and folding is ignored.
+ *
  * The tree owns the one-minute tick behind every row's relative time, so a
  * long list runs one interval rather than one per row.
  *
@@ -70,6 +74,8 @@ import { ProjectTerminalsBadge } from "@/components/terminal/project-terminals-b
 import { ProjectRowMenu } from "@/components/sidebar/project-menu";
 import { projectStatusRollup, type ProjectStatusRollup } from "@/components/sidebar/project-status";
 import { ProjectStatusMark } from "@/components/sidebar/project-status-mark";
+import { isFiltering, useThreadFilter } from "@/components/sidebar/thread-filter";
+import { ThreadFilterInput } from "@/components/sidebar/thread-filter-input";
 import { ThreadRow } from "@/components/sidebar/thread-row";
 import { sidebarThreadGroups } from "@/components/sidebar/thread-order";
 import { useThreadPins } from "@/components/sidebar/thread-pins";
@@ -84,7 +90,7 @@ import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 import { useConnectionState, useProjects, useThreadList } from "@/state/hooks";
 import { useCollapsedProjects, useProjectCollapsed } from "@/state/ui";
-import { Add, ChevronRight, Folder, FolderAdd, FolderOpen } from "@honeyicons/react";
+import { Add, ChevronRight, Folder, FolderAdd, FolderOpen, Search } from "@honeyicons/react";
 
 function NewThreadButton({
   projectId,
@@ -140,14 +146,16 @@ export function ProjectTree() {
   const openThreadId = openRoute === false ? null : openRoute.threadId;
   const collapsed = useCollapsedProjects();
   const [pins] = useThreadPins();
+  const [query] = useThreadFilter();
+  const filtering = isFiltering(query);
   // The same grouping the thread keys walk — see `./thread-order`.
   const {
     pinned: pinnedThreads,
     byProject: threadsByProject,
     orphans: orphanThreads,
   } = React.useMemo(
-    () => sidebarThreadGroups(projects, threads, collapsed, openThreadId, { pinned: pins }),
-    [projects, threads, collapsed, openThreadId, pins],
+    () => sidebarThreadGroups(projects, threads, collapsed, openThreadId, { pinned: pins, query }),
+    [projects, threads, collapsed, openThreadId, pins, query],
   );
   // Rows top to bottom, as `sidebarThreadOrder` walks them.
   const order = React.useMemo(
@@ -158,6 +166,10 @@ export function ProjectTree() {
     ],
     [pinnedThreads, projects, threadsByProject, orphanThreads],
   );
+  // While filtering, a project with no matching thread is left out.
+  const shownProjects = filtering
+    ? projects.filter((project) => threadsByProject.has(project.projectId))
+    : projects;
   const selection = useThreadSelection(order, openThreadId);
   // What each project would show folded, over all its threads, not the listed ones.
   const rollups = React.useMemo(() => {
@@ -196,11 +208,12 @@ export function ProjectTree() {
       />
       <SidebarGroup padding="section" className="min-h-0 flex-1">
         <div className="flex h-6 items-center gap-1">
-          <SidebarGroupLabel className="h-auto flex-1">Projects</SidebarGroupLabel>
+          <SidebarGroupLabel className="h-auto shrink-0">Projects</SidebarGroupLabel>
+          <ThreadFilterInput />
           <AddProjectDialog disabled={connection.status !== "connected"} command="project.add" />
         </div>
         <SidebarGroupContent className="min-h-0 overflow-y-auto [scrollbar-width:none]">
-          {projects.length === 0 && orphanThreads.length === 0 ? (
+          {!filtering && projects.length === 0 && orphanThreads.length === 0 ? (
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -217,8 +230,19 @@ export function ProjectTree() {
               </EmptyHeader>
             </Empty>
           ) : null}
+          {filtering && order.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Search variant="bold" />
+                </EmptyMedia>
+                <EmptyTitle>No matching threads</EmptyTitle>
+                <EmptyDescription>Nothing in the sidebar has that in its title.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : null}
           <div className="grid min-w-0 gap-0.5">
-            {projects.map((project) => (
+            {shownProjects.map((project) => (
               <ProjectSection
                 key={project.projectId}
                 project={project}

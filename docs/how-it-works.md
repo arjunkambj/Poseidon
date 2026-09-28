@@ -2787,6 +2787,7 @@ fields entirely.
 | Threads  | `thread.archive`                                      | `Mod+Shift+A`                 | `threadOpen`                                                                           |
 | Threads  | `thread.delete`                                       | `Mod+Alt+Backspace`           | `threadOpen`                                                                           |
 | Threads  | `thread.pin`                                          | `Mod+Shift+P`                 | `threadOpen`                                                                           |
+| Threads  | `threads.filter`                                      | unbound                       |                                                                                        |
 | Threads  | `nav.back` / `nav.forward`                            | `Mod+[` / `Mod+]`             | `!browserFocus`                                                                        |
 | Composer | `composer.planMode.toggle`                            | `Shift+Tab`                   | `composerFocus`                                                                        |
 | Composer | `composer.runtimeMode.cycle`                          | `Mod+Shift+L`                 |                                                                                        |
@@ -2877,6 +2878,19 @@ and the key never undo one action twice. `sidebar.undo` and `thread.pin`
 (which pins or unpins the open thread) are answered by
 `components/sidebar/triage-shortcuts.tsx`, and each is claimed only while it
 can act.
+
+`threads.filter` has no default chord, so it leaves `Mod+F` and its variants
+free for searching inside a thread; the palette's "Filter threads" row runs
+it. It opens the sidebar when it is folded away (on a narrow window, the
+sheet) and puts the focus in the filter field in the Projects header
+(`components/sidebar/thread-filter-input.tsx`). The field narrows every
+sidebar row — pinned, each project, "Other threads" — to titles that contain
+the trimmed query, ignoring case, and ignores folding while it holds one.
+Projects with no match are left out, and "No matching threads" shows when
+nothing is left. The thread keys walk the same filtered order, so `Mod+1`
+opens the first row on screen. Escape in the field clears the query, and a
+second Escape leaves the field. The query is not stored, and message text is
+not searched (`components/sidebar/thread-filter.ts`).
 
 `RESERVED_KEYBINDINGS`, in the same module, holds chords for features that are
 still being built, so that nothing ships on them first. Nothing dispatches

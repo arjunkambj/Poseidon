@@ -1,7 +1,8 @@
 /**
  * What the thread keys act on, read once for every surface that names them:
- * the sidebar's thread order (so `Mod+N` opens the Nth row on screen), the
- * open thread, and the project `thread.newInProject` starts a thread in.
+ * the sidebar's thread order (so `Mod+N` opens the Nth row on screen, title
+ * filter applied), the open thread, and the project `thread.newInProject`
+ * starts a thread in.
  * `AppShortcuts` answers the keys from it and the palette labels its rows
  * from it, so the two can never disagree about which thread is number 3.
  */
@@ -12,6 +13,7 @@ import * as React from "react";
 import type { ProjectSummary, ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { projectForNewThread, sidebarThreadOrder } from "@/components/sidebar/thread-order";
+import { useThreadFilter } from "@/components/sidebar/thread-filter";
 import { useThreadPins } from "@/components/sidebar/thread-pins";
 import { useProjects, useThreadList } from "@/state/hooks";
 import { useCollapsedProjects, useLastProject } from "@/state/ui";
@@ -30,12 +32,13 @@ export function useThreadTargets(): ThreadTargets {
   const collapsed = useCollapsedProjects();
   const [lastProject] = useLastProject();
   const [pinned] = useThreadPins();
+  const [query] = useThreadFilter();
   const openRoute = useMatchRoute()({ to: "/t/$threadId" });
   const openThreadId = openRoute === false ? null : openRoute.threadId;
 
   const order = React.useMemo(
-    () => sidebarThreadOrder(projects, threads, collapsed, openThreadId, { pinned }),
-    [projects, threads, collapsed, openThreadId, pinned],
+    () => sidebarThreadOrder(projects, threads, collapsed, openThreadId, { pinned, query }),
+    [projects, threads, collapsed, openThreadId, pinned, query],
   );
   const openThreadProject = threads.find((thread) => thread.threadId === openThreadId)?.projectId;
   const newThreadProject = projectForNewThread(projects, openThreadProject, lastProject);
