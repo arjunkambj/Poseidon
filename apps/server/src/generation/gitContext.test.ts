@@ -66,6 +66,9 @@ describe("commitContext", () => {
       const picked = yield* commitContext(root, ["a.txt"]);
       expect(picked.files).toEqual(["M\ta.txt"]);
       expect(picked.patch).not.toContain("staged");
+
+      const none = yield* Effect.flip(commitContext(root, []));
+      expect(none).toMatchObject({ code: "invalid" });
     }),
   );
 

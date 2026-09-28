@@ -90,7 +90,8 @@ const notice = Schema.optional(NonEmptyString);
 /**
  * A commit message for the thread's workspace (or the project's root), written
  * from the diff of `paths` — every changed path when absent. Fails with code
- * `unavailable` when no harness can generate text.
+ * `unavailable` when no harness can generate text, and `invalid` when `paths`
+ * is empty.
  */
 export const GitGenerateCommitMessageRpc = Rpc.make(
   GENERATION_RPC_METHODS.gitGenerateCommitMessage,

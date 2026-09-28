@@ -98,16 +98,20 @@ export interface CommitContext {
 /**
  * The change a commit of `paths` (every changed path when absent) would
  * record: the working tree against `HEAD`, plus the untracked files with their
- * contents. `invalid` when there is nothing to describe.
+ * contents. `invalid` when there is nothing to describe, and when `paths` is
+ * empty: a pick of no files is never widened to every change.
  */
 export const commitContext = (
   root: string,
   paths: ReadonlyArray<string> | undefined,
 ): Effect.Effect<CommitContext, PoseidonRpcError | GitError> =>
   Effect.gen(function* () {
+    if (paths !== undefined && paths.length === 0) {
+      return yield* Effect.fail(invalid("Tick at least one file to write a message for."));
+    }
     yield* mustBeRepository(root);
     const from = yield* headOrEmptyTree(root);
-    const pathspec = paths === undefined || paths.length === 0 ? [] : ["--", ...paths];
+    const pathspec = paths === undefined ? [] : ["--", ...paths];
     const git = (args: ReadonlyArray<string>) =>
       run(root, ["--literal-pathspecs", ...args, ...pathspec]).pipe(Effect.map((r) => r.stdout));
     const tracked = lines(yield* git(["diff", ...DIFF_FLAGS, "--name-status", from]));

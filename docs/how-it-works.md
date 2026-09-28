@@ -2624,7 +2624,9 @@ title from the last 8 000 characters of the conversation and applies it with
 sparkle, `apps/web/src/components/git/generate-button.tsx`) beside the message
 label. It calls `git.generateCommitMessage` with the ticked `paths` (none when
 every file is ticked) and puts the subject, a blank line and the body in the
-box (`use-generate-commit-message.ts`). The message then counts as edited, so
+box (`use-generate-commit-message.ts`). While no file is ticked it is disabled
+with "Tick at least one file to commit.", and the server refuses an empty
+`paths` rather than reading it as every change. The message then counts as edited, so
 ticks no longer redraft it, and it is marked generated until the user changes
 it. While it runs the button is a spinner, and a click cancels: the client
 runtime interrupts the call, the server stops the harness, and an answer that
