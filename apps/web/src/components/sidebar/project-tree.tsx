@@ -333,12 +333,12 @@ function ProjectSection({
 
   return (
     <div className="grid gap-0.5">
-      <div className="group/project flex h-7 items-center gap-1 rounded-xl text-sm text-sidebar-foreground">
+      <div className="group/project relative flex h-7 items-center gap-1 rounded-xl text-sm text-sidebar-foreground">
         <button
           type="button"
           aria-expanded={!collapsed}
           onClick={() => setCollapsed(!collapsed)}
-          className="flex h-full min-w-0 flex-1 items-center gap-1 rounded-xl px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          className="flex h-full min-w-0 flex-1 items-center gap-1 rounded-xl px-2 text-left outline-none group-focus-within/project:pr-16 group-hover/project:pr-16 group-has-data-popup-open/project:pr-16 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
           {/* The folder turns into the disclosure chevron under the pointer. */}
           <span className="relative flex size-4 shrink-0 items-center justify-center">
@@ -363,9 +363,15 @@ function ProjectSection({
           </span>
           <span className="ml-1.5 min-w-0 flex-1 truncate">{project.name}</span>
         </button>
-        {collapsed && rollup !== null ? <ProjectStatusMark rollup={rollup} /> : null}
-        <ProjectTerminalsBadge projectId={project.projectId} />
-        <span className="flex items-center opacity-0 transition-opacity duration-150 ease-out group-hover/project:opacity-100 group-focus-within/project:opacity-100 [&:has([data-popup-open])]:opacity-100">
+        {/* The status mark and the terminal badge share the right slot with
+            the hover actions, as a thread row's time does: they fade out
+            while the actions fade in over them, so nothing hidden holds a
+            gap at the row's end. */}
+        <span className="flex shrink-0 items-center gap-1 pr-1 transition-opacity duration-150 ease-out empty:hidden group-hover/project:opacity-0 group-focus-within/project:opacity-0 group-has-data-popup-open/project:opacity-0">
+          {collapsed && rollup !== null ? <ProjectStatusMark rollup={rollup} /> : null}
+          <ProjectTerminalsBadge projectId={project.projectId} />
+        </span>
+        <span className="absolute top-0 right-0.5 flex h-full items-center opacity-0 transition-opacity duration-150 ease-out group-hover/project:opacity-100 group-focus-within/project:opacity-100 has-data-popup-open:opacity-100">
           <ProjectRowMenu
             project={project}
             threadCount={counts.threads}
