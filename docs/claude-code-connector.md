@@ -206,6 +206,12 @@ what each holds).
 under the environment a session would get (`env.ts`), from the system temp
 directory. `fixtures/claude/probe/` is the probe recorded.
 
+When no `claude` resolves, the probe asks nothing and reports
+`not-installed` with `installCommand`, `npm install -g
+@anthropic-ai/claude-code` (`INSTALL_COMMAND`), the package the CLI ships
+as. That is the line the connectors page and the harness banner offer to
+copy or run.
+
 1. **`claude --version`** prints `2.1.280 (Claude Code)`. A non-zero exit or
    an unparsable answer is status `error`, with the CLI's own output as the
    message.

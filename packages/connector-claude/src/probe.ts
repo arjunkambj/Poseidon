@@ -45,6 +45,9 @@ export const OLDEST_TESTED_VERSION = "2.1.280";
 /** How a signed-out CLI is signed in, as its own `auth --help` lists it. */
 export const LOGIN_ARGS: ReadonlyArray<string> = ["auth", "login"];
 
+/** How a machine without the CLI gets it: the npm package it ships as. */
+export const INSTALL_COMMAND = "npm install -g @anthropic-ai/claude-code";
+
 /** How long the zero-turn handshake may take before the probe gives up on it. */
 const INITIALIZE_TIMEOUT = "20 seconds";
 
@@ -232,6 +235,7 @@ export const probe = (
         probedAt,
         installed: false,
         message: "claude not found on PATH or in the usual install directories",
+        installCommand: INSTALL_COMMAND,
         auth: "unknown" as const,
         models: [],
         warnings: [],

@@ -14,6 +14,7 @@ import * as Effect from "effect/Effect";
 import { isPidGone, replay } from "../test/replay";
 import { CLAUDE_KIND } from "./kind";
 import {
+  INSTALL_COMMAND,
   OLDEST_TESTED_VERSION,
   isBelowOldestTested,
   parseAuthStatus,
@@ -103,7 +104,13 @@ describe("probe", () => {
   it.effect("says not installed when nothing resolves", () =>
     Effect.gen(function* () {
       const result = yield* probe({}, () => null);
-      expect(result).toMatchObject({ status: "not-installed", installed: false, models: [] });
+      expect(result).toMatchObject({
+        status: "not-installed",
+        installed: false,
+        installCommand: INSTALL_COMMAND,
+        models: [],
+      });
+      expect(result.loginCommand).toBeUndefined();
     }),
   );
 
