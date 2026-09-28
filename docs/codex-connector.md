@@ -553,6 +553,15 @@ through `-c` (see the launch), never written to the config.
 - **`CODEX_HOME` must exist,** or every command fails.
 - **`thread/resume` of an unknown id fails with "no rollout found"**
   (`resume-missing`).
+- **The model can apply a patch through the CLI's `exec` tool** (a script
+  calling `tools.apply_patch`). Seen once in a live run on 0.156.1: the file
+  was written with no approval request, and the `exec` call then hung until
+  the turn was stopped. No recording has it, so the gate has nothing to
+  answer; the session's ungated check does not see it either, since no
+  `fileChange` item completes.
+- **An MCP tool call is approved by elicitation** (`mcp-tool-approval`), not
+  by an approval request, and a tool that is not read-only and reaches
+  outside the machine is asked about even under full access.
 
 ## After a new CLI release
 

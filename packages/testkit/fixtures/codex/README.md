@@ -62,4 +62,8 @@ runs against the operator's CLI behind `POSEIDON_LIVE_CODEX=1`
 **2026-09-28** against 0.156.1: all eleven cases passed — the probe, the
 schema check of every method the connector uses, the conformance suite, a
 plain turn with nothing unmapped, an approval allowed once and a plan turn.
-A live run that disagrees with a recording means the recording is stale.
+Run again the same day after the review fixes, ten passed and the approval
+case timed out once: the model applied its patch through the CLI's `exec`
+tool, which wrote the file with no approval request and then hung. Run on its
+own, the case passed. A live run that disagrees with a recording means the
+recording is stale.
