@@ -149,9 +149,7 @@ export function ProjectTerminal({
 /**
  * Home's drawer, for a page with no project (first-run setup): terminals in
  * the user's home folder, links in the system browser, and nothing that needs
- * a composer or a project.
- *
- * @public — first-run setup mounts it, before any project exists.
+ * a composer or a project. First-run setup's harness step mounts it.
  */
 export function HomeTerminal() {
   return <OwnedTerminal ownerKey={terminalOwnerKey({ home: true })} onOpenLink={openExternal} />;

@@ -1,8 +1,8 @@
 /**
  * The General page: the theme cards, the main and sidebar font sizes, the chat
  * width, when idle threads move to the sidebar's Done section, whether
- * deleting a thread asks first, and a reset
- * that puts every appearance choice back to its default. New-thread defaults (model,
+ * deleting a thread asks first, a reset that puts every appearance choice
+ * back to its default, and a way back into first-run setup. New-thread defaults (model,
  * effort, runtime mode) live on the Models page.
  */
 
@@ -14,6 +14,7 @@ import { DEFAULT_CHAT_WIDTH, DEFAULT_FONT_SIZE } from "@poseidon/contracts/setti
 import { useTheme } from "@/components/theme-provider";
 import { useAppAtoms } from "@/lib/app-runtime";
 import { applyFontSizes } from "@/lib/font-size";
+import { useOnboardingOpen } from "@/state/onboarding";
 import { useResetLayoutWidths } from "@/state/ui";
 
 import { AutoDoneSelect } from "./auto-done-select";
@@ -55,6 +56,22 @@ function ResetAppearance() {
   );
 }
 
+function RunSetupAgain() {
+  const [, setOpen] = useOnboardingOpen();
+  return (
+    <SettingsSection title="Setup">
+      <SettingsRow
+        title="First-run setup"
+        description="Check your harnesses, pick a theme, add a project and import sessions."
+      >
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          Run setup again
+        </Button>
+      </SettingsRow>
+    </SettingsSection>
+  );
+}
+
 export function GeneralPanel() {
   return (
     <div className="flex flex-col gap-6">
@@ -67,6 +84,7 @@ export function GeneralPanel() {
       <AutoDoneSelect />
       <ConfirmDeleteSwitch />
       <ResetAppearance />
+      <RunSetupAgain />
     </div>
   );
 }

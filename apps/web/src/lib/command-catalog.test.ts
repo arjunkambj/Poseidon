@@ -40,6 +40,15 @@ describe("COMMAND_CATALOG", () => {
     expect(offered).toContain("sidebar.toggle");
   });
 
+  it("offers first-run setup in the palette with no default chord", () => {
+    const entry = COMMAND_CATALOG.find((c) => c.id === "onboarding.open");
+    expect(entry?.palette).toBe(true);
+    expect(entry?.area).toBe("General");
+    expect(entry?.title).toBe("Set up Poseidon…");
+    expect(DEFAULT_KEYBINDINGS.filter((row) => row.command === "onboarding.open")).toEqual([]);
+    expect(RESERVED_KEYBINDINGS.filter((row) => row.command === "onboarding.open")).toEqual([]);
+  });
+
   it("offers the chat width cycle in the palette with no default chord", () => {
     const entry = COMMAND_CATALOG.find((c) => c.id === "chatWidth.cycle");
     expect(entry?.palette).toBe(true);

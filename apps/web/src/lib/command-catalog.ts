@@ -6,8 +6,8 @@
  * this says what the command is called and where it is listed. The palette
  * offers the entries marked `palette` whose surface is mounted, grouped by
  * area. A command with no default chord (`mcp.open`, `chatWidth.cycle`,
- * `thread.regenerateTitle`) is still here, so it can
- * be found and bound.
+ * `thread.regenerateTitle`, `onboarding.open`) is still here, so it can be
+ * found and bound.
  *
  * `palette: false` is for a command the palette already reaches another way,
  * or would only add noise with. The Navigation and Settings groups stand in
@@ -54,6 +54,7 @@ import {
   ListChecks,
   ListOrdered,
   Lock,
+  MagicWand,
   Maximize,
   OctagonX,
   Paperclip,
@@ -134,6 +135,9 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   command("General", "mcp.open", "MCP servers", Server, { palette: false }),
   command("General", "plugins.open", "Plugins", Puzzle, { palette: false }),
   command("General", "project.add", "Add project", FolderAdd),
+  command("General", "onboarding.open", "Set up Poseidon…", MagicWand, {
+    description: "Harnesses, theme, a project and session import",
+  }),
   command("General", "sidebar.undo", "Undo sidebar action", Undo, {
     description: "Archive, pin, rename, mark unread",
   }),

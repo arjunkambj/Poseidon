@@ -39,6 +39,13 @@ export const useProjects = (): ReadonlyArray<ProjectSummary> =>
   AsyncResult.getOrElse(useAtomValue(getAppAtoms().projectsAtom), () => []);
 
 /**
+ * The same list, but `null` until the server has answered — for a decision an
+ * empty list while loading would get wrong, like opening first-run setup.
+ */
+export const useLoadedProjects = (): ReadonlyArray<ProjectSummary> | null =>
+  AsyncResult.getOrElse(useAtomValue(getAppAtoms().projectsAtom), () => null);
+
+/**
  * `threadListAtom(null)` — every thread, grouped by project in the sidebar.
  * Empty until connected.
  */

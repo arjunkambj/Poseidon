@@ -14,6 +14,7 @@ import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import { AppShortcuts } from "@/components/Layout/app-shortcuts";
 import { SearchProvider } from "@/components/Layout/search-command";
 import { ShortcutsDialog } from "@/components/keybindings/shortcuts-dialog";
+import { OnboardingHost } from "@/components/onboarding/onboarding-host";
 import { WorktreeForceRemovalHost } from "@/components/sidebar/delete-thread-dialog";
 import { BranchOffHost } from "@/components/thread/branch-off-dialog";
 import { DiffWorkerPoolProvider } from "@/components/timeline/diff-pool";
@@ -156,6 +157,8 @@ function RootComponent() {
                   <WorktreeForceRemovalHost />
                   {/* The fork dialog: it outlives the row or menu that opened it. */}
                   <BranchOffHost />
+                  {/* First-run setup: the palette and Settings open it on any route. */}
+                  <OnboardingHost />
                 </DiffWorkerPoolProvider>
               </SearchProvider>
             </KeybindingsProvider>

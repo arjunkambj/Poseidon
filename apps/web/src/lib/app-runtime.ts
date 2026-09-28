@@ -213,9 +213,10 @@ const makeSettingsAtoms = (base: BaseAppAtoms) => {
   );
 
   /**
-   * Settings → Import's list of harness sessions. Not kept alive: it reads up
-   * to every instance's session files, so it loads while the page is open and
-   * again each time it opens, never in the background.
+   * Settings → Import's list of harness sessions, which first-run setup reads
+   * too. Not kept alive: it reads up to every instance's session files, so it
+   * loads while the page or setup is open and again each time it opens, never
+   * in the background.
    */
   const importableSessionsAtom = runtime.atom(
     Effect.flatMap(client, (c) => c["sessions.importable"]({})),
