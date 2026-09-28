@@ -14,7 +14,8 @@
  * - `worktreeSetupRun` — the same stream as a one-shot call that resolves
  *   with the finished run only. A start that runs in the background, or one
  *   of several started at once, uses it: nothing shows the output while it
- *   grows, and two runs must not interrupt each other.
+ *   grows, and two runs must not interrupt each other. Aborting its `signal`
+ *   ends the stream, which kills the script on the server.
  * - `worktreeRemove` — `git.worktree.remove`: discards a worktree, keeping
  *   its branch.
  *
@@ -151,16 +152,25 @@ export const makeGitCommands = (
 
   /**
    * Runs the setup script and resolves with the finished run — its whole
-   * output, its exit status, or `skipped`. Each call is its own stream.
+   * output, its exit status, or `skipped`. Each call is its own stream; an
+   * aborted `signal` ends it and resolves with the interruption.
    */
-  const worktreeSetupRun = (registry: AtomRegistry.AtomRegistry, input: WorktreeTarget) =>
-    runOneShot(runtime, registry, () =>
-      Effect.map(client, (c) =>
-        c["git.worktree.setup"]({ projectId: input.projectId, path: input.path }),
-      ).pipe(
-        Stream.unwrap,
-        Stream.runFold(() => emptySetupProgress, scanSetupFrame),
-      ),
+  const worktreeSetupRun = (
+    registry: AtomRegistry.AtomRegistry,
+    input: WorktreeTarget,
+    options?: { readonly signal?: AbortSignal },
+  ) =>
+    runOneShot(
+      runtime,
+      registry,
+      () =>
+        Effect.map(client, (c) =>
+          c["git.worktree.setup"]({ projectId: input.projectId, path: input.path }),
+        ).pipe(
+          Stream.unwrap,
+          Stream.runFold(() => emptySetupProgress, scanSetupFrame),
+        ),
+      options,
     );
 
   /** Fails with `conflict` while a thread works there, or on unsaved work without `force`. */

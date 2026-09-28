@@ -11,7 +11,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import type { GitBranchList, WorktreeSetupFrame } from "@poseidon/contracts/git";
 import { makeProjectId, makeThreadId } from "@poseidon/contracts/ids";
-import type * as Cause from "effect/Cause";
+import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -90,7 +90,15 @@ const fakeClient = (
         case "git.worktree.setup":
           return (payload: { readonly path: string }) => {
             calls.setup.push(payload);
-            return Stream.fromQueue(setupFrames.get(payload.path) ?? frames);
+            return Stream.fromQueue(setupFrames.get(payload.path) ?? frames).pipe(
+              Stream.onExit((exit) =>
+                Effect.sync(() => {
+                  if (Exit.hasInterrupts(exit)) {
+                    calls.interrupted.push(payload);
+                  }
+                }),
+              ),
+            );
           };
         case "git.worktree.remove":
           return (payload: unknown) =>
@@ -344,6 +352,28 @@ describe("git commands", () => {
         exit: { code: 0 },
         skipped: false,
       });
+    }),
+  );
+
+  it.live("an aborted setup run ends its stream and resolves as interrupted", () =>
+    Effect.gen(function* () {
+      const projectId = makeProjectId();
+      const { calls, frames, registry, worktreeSetupRun } = yield* setupWith;
+      const controller = new AbortController();
+      // A script that never exits: nothing ends the queue.
+      const run = worktreeSetupRun(
+        registry,
+        { projectId, path: WORKTREE.path },
+        { signal: controller.signal },
+      );
+      yield* Queue.offer(frames, { kind: "output", text: "watching\n" });
+      yield* Effect.promise(() => expect.poll(() => calls.setup.length).toBe(1));
+      controller.abort();
+      const finished = yield* Effect.promise(() => run);
+      expect(Exit.isFailure(finished) && Cause.hasInterruptsOnly(finished.cause)).toBe(true);
+      yield* Effect.promise(() =>
+        expect.poll(() => calls.interrupted).toEqual([{ projectId, path: WORKTREE.path }]),
+      );
     }),
   );
 

@@ -12,7 +12,9 @@
  * `runOneShot` builds a fresh atom per call instead, holds it mounted until
  * the call settles and lets the registry drop it after. Calls run side by
  * side, each resolves with its own `Exit`, and none depends on the component
- * that started it staying mounted.
+ * that started it staying mounted. An aborted `signal` stops the call: the
+ * atom loses its last subscriber, so the registry drops it and interrupts
+ * what it runs, and the promise resolves with the interruption.
  */
 
 import * as Effect from "effect/Effect";
@@ -28,7 +30,9 @@ export const runOneShot = <R, ER, A, E>(
   body: (
     get: Atom.AtomContext,
   ) => Effect.Effect<A, E, R | Scope.Scope | AtomRegistry.AtomRegistry | Reactivity.Reactivity>,
+  options?: { readonly signal?: AbortSignal },
 ): Promise<Exit.Exit<A, E | ER>> =>
   Effect.runPromiseExit(
     AtomRegistry.getResult(registry, runtime.atom(body), { suspendOnWaiting: true }),
+    options?.signal === undefined ? undefined : { signal: options.signal },
   );
