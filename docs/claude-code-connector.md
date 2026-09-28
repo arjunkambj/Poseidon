@@ -54,6 +54,7 @@ routes new threads to Command Code until the user picks this instance.
 | `capabilities.ts`         | what a Claude Code session can do, and why                                |
 | `spawn.ts`                | the SDK's `spawnClaudeCodeProcess`: a process group, and proof it is gone |
 | `queryOptions.ts`         | the SDK options a session starts with; runtime mode → permission mode     |
+| `flagSettings.ts`         | effort and ultracode switched mid-session in one `applyFlagSettings` call |
 | `generateText.ts`         | one piece of text outside any session: a one-shot, tool-less `query()`    |
 | `inputQueue.ts`           | the streaming-input prompt the session writes user messages to            |
 | `userMessage.ts`          | one composer turn as the user message the CLI reads                       |
@@ -264,26 +265,27 @@ variables go in, and the child sees only the allowlist and those two.
 `buildQueryOptions` (`queryOptions.ts`) is the whole of a session's SDK
 options:
 
-| option                            | value                                                               |
-| --------------------------------- | ------------------------------------------------------------------- |
-| `pathToClaudeCodeExecutable`      | the resolved binary                                                 |
-| `spawnClaudeCodeProcess`          | `spawn.ts`'s, so the CLI leads a process group of its own           |
-| `env`                             | `childEnv`                                                          |
-| `cwd`                             | the thread's workspace root                                         |
-| `sessionId` / `resume`            | a fresh id we mint, or the ref's id to resume                       |
-| `settingSources`                  | `user`, `project`, `local`                                          |
-| `systemPrompt`                    | the CLI's own preset (`claude_code`)                                |
-| `includePartialMessages`          | true: text and thinking stream as deltas                            |
-| `forwardSubagentText`             | true: a subagent's text arrives, not only its tool calls            |
-| `permissionMode`                  | from the thread's modes (see [Runtime modes](#runtime-modes))       |
-| `allowDangerouslySkipPermissions` | true, which the SDK requires before `bypassPermissions` can be used |
-| `model`, `effort`                 | the thread's; left out for `default`, `minimal` or `ultra` effort   |
-| `mcpServers`                      | `poseidon`, over HTTP, with the per-thread bearer                   |
-| `plugins`                         | the enabled Poseidon plugins, only when there are some (below)      |
-| `additionalDirectories`           | the thread's attachments directory                                  |
-| `hooks`                           | one PreToolUse callback, for every tool                             |
-| `canUseTool`                      | the approval gate                                                   |
-| `maxTurns`, `maxBudgetUsd`        | only when a test or recording sets them; production sets neither    |
+| option                            | value                                                                 |
+| --------------------------------- | --------------------------------------------------------------------- |
+| `pathToClaudeCodeExecutable`      | the resolved binary                                                   |
+| `spawnClaudeCodeProcess`          | `spawn.ts`'s, so the CLI leads a process group of its own             |
+| `env`                             | `childEnv`                                                            |
+| `cwd`                             | the thread's workspace root                                           |
+| `sessionId` / `resume`            | a fresh id we mint, or the ref's id to resume                         |
+| `settingSources`                  | `user`, `project`, `local`                                            |
+| `systemPrompt`                    | the CLI's own preset (`claude_code`)                                  |
+| `includePartialMessages`          | true: text and thinking stream as deltas                              |
+| `forwardSubagentText`             | true: a subagent's text arrives, not only its tool calls              |
+| `permissionMode`                  | from the thread's modes (see [Runtime modes](#runtime-modes))         |
+| `allowDangerouslySkipPermissions` | true, which the SDK requires before `bypassPermissions` can be used   |
+| `model`, `effort`                 | the thread's; left out for `default`, `minimal` or `ultra` effort     |
+| `settings`                        | `{ ultracode: true }`, with `effort` xhigh, only when ultracode is on |
+| `mcpServers`                      | `poseidon`, over HTTP, with the per-thread bearer                     |
+| `plugins`                         | the enabled Poseidon plugins, only when there are some (below)        |
+| `additionalDirectories`           | the thread's attachments directory                                    |
+| `hooks`                           | one PreToolUse callback, for every tool                               |
+| `canUseTool`                      | the approval gate                                                     |
+| `maxTurns`, `maxBudgetUsd`        | only when a test or recording sets them; production sets neither      |
 
 That becomes this argv (`fixtures/claude/signed-out-steer/`, bearer and paths
 scrubbed):
@@ -708,13 +710,14 @@ them.
 
 `updateSettings` switches the model with the SDK's `setModel`, which sends no
 model for `default` so the CLI's own default applies again. It switches the
-effort with `applyFlagSettings({ effortLevel })`. Both act on the running
-process from its next request, and `fixtures/claude/session-controls/` has the
-CLI answering `set_model` (an explicit id, and none) and
-`apply_flag_settings` with success, in one process with no restart. The
-session then emits `model.changed` with what the CLI runs on: the new pick
-once the CLI took it, the previous one when it refused, so the thread never
-shows a model the session is not using.
+effort with `applyFlagSettings({ effortLevel })` — one call, which also names
+`ultracode` when that changed too ([Ultracode](#ultracode)). Both act on the
+running process from its next request, and
+`fixtures/claude/session-controls/` has the CLI answering `set_model` (an
+explicit id, and none) and `apply_flag_settings` with success, in one process
+with no restart. The session then emits `model.changed` with what the CLI runs
+on: the new pick once the CLI took it, the previous one when it refused, so
+the thread never shows a model, effort or ultracode the session is not using.
 
 The thread model `default` leaves the SDK's `model` option out altogether. On
 the recording account the CLI's `system/init` named what it resolved to, and
@@ -722,6 +725,76 @@ that is the id each manifest's `model` records. Poseidon's `minimal` and `ultra`
 efforts have no rung in the CLI and are left out, so the CLI's default effort
 applies (`ultra` is Codex's multi-agent rung; Claude Code's counterpart is the
 ultracode session mode, not an effort).
+
+## Ultracode
+
+Ultracode is a Claude Code session mode: xhigh effort plus standing
+dynamic-workflow orchestration, in which the model may launch the CLI's
+Workflow tool on its own. It is a setting, not an effort rung and not a slash
+command. The thread keeps it as `ThreadSettings.ultracode`, off when absent,
+and the server's rules keep it consistent with the effort (on sets xhigh, off
+keeps the effort, an effort pick turns it off; see
+[architecture.md](architecture.md)). The evidence, all read, none recorded:
+
+- **The SDK** (0.3.280, `sdk.d.ts`) declares `Settings.ultracode?: boolean` —
+  "Enable ultracode for the session: xhigh effort plus standing
+  dynamic-workflow orchestration", session-scoped, "typically provided via
+  --settings or the apply_flag_settings control request", and requiring
+  "workflows to be enabled and an xhigh-capable model".
+  `Query.applyFlagSettings` merges into the flag settings layer "only in
+  streaming input mode", which is the mode a session runs in, and a `null` or
+  `false` `ultracode` resets it "to off with the current effort kept".
+- **The CLI** (2.1.280, `strings` on `bin/claude.exe`) reads `ultracode` from
+  its merged settings at start and defaults the effort to xhigh with it. Its
+  SDK handler for `apply_flag_settings` applies `effortLevel` first, then
+  `ultracode`: `true` sets the session's effort to xhigh, `false` keeps it.
+  An `effortLevel` alone leaves the flag as it was there — only the Remote
+  Control handler turns ultracode off on an effort — so an effort pick that
+  ends ultracode sends `ultracode: false` beside it. Whether workflows run is
+  decided per request: ultracode is in force only while workflows are enabled
+  (managed settings, org policy, `disableWorkflows`, availability) and the
+  effort resolves to xhigh; `get_settings` reports that as
+  `applied.ultracode`.
+- **The refusal** "apply_flag_settings: ultracode is not available for this
+  session (dynamic workflows are off, the model does not support xhigh effort,
+  or an effort cap … excludes it)" is in the bundle, in the Remote Control
+  handler. The SDK handler has no such gate that the bundle shows, so an
+  account without workflows may take the flag and simply never run one —
+  which only a signed-in run settles.
+- **The interactive switch** is `/effort ultracode`, a local-jsx command that
+  needs the terminal UI and is not reachable over the SDK. There is no
+  `/ultracode` command.
+- **The keyword.** The word "ultracode" in a prompt opts that one turn into the
+  Workflow tool (`settings.workflowKeywordTriggerEnabled`, default true; the
+  CLI injects a system reminder). It works through Poseidon today as plain
+  text; nothing is added for it.
+- **Which models.** `ModelInfo` has no ultracode flag, only
+  `supportedEffortLevels`; a model that lists `xhigh` is the per-model proxy
+  for "xhigh-capable". `CLAUDE_CAPABILITIES.ultracode` says the session can
+  switch the mode at all.
+
+What the connector does:
+
+- **Launch** (`ultracodeLaunchOptions` in `queryOptions.ts`): a thread with
+  ultracode on starts the session with the SDK's inline
+  `settings: { ultracode: true }` — the `--settings` flag layer — and
+  `effort: "xhigh"`, whatever the thread's effort says. Off adds nothing, so
+  the launch is exactly what it was before.
+- **Mid-session** (`flagSettings.ts`): `updateSettings` makes one
+  `applyFlagSettings` call for the effort and the flag together —
+  `{ effortLevel }` for an effort alone, `{ ultracode }` for the flag alone,
+  both keys when both changed, no call when neither did. Taken with ultracode
+  going on, the session runs at xhigh. Refused, the effort and the flag go
+  back to what they were. Either way `model.changed` says what the CLI runs
+  on, with `ultracode` whenever the call named it, so a refusal turns the
+  thread's flag back off through the event.
+- **`generateText`** never uses ultracode.
+- **The Workflow tool** stays gated: it is not one of the no-permission tools
+  (`approvals.ts`), so in approval-required each workflow launch asks on a
+  card. Its call opens an ordinary tool row, not a task row, so the CLI's
+  task_* messages for it (`task_type: "local_workflow"`, with
+  `workflow_name`) are kept as `event.unmapped` until a recording shows how
+  they map ([Subagents](#subagents)).
 
 ## Writing one piece of text
 
@@ -796,6 +869,9 @@ snapshot, which the translator reads as any answer (`local-command`).
   which would reset the conversation behind the timeline.
 - **Command Code** has no such extension; its `/` menu shows no Harness group
   ([command-code-connector.md](command-code-connector.md)).
+- **No `/ultracode`.** The CLI has no such command — its switch is
+  `/effort ultracode`, which needs the terminal UI — so the menu gets no
+  entry for it ([Ultracode](#ultracode)).
 
 ## Attachments
 
@@ -894,8 +970,9 @@ message the turn is held for that ends without being `started`.
 | `runtimeModes`   | all three    | the PreToolUse hook puts every call in every mode past the ladder                                                                               |
 | `attachments`    | `files`      | images as blocks, anything else by path under a readable directory                                                                              |
 | `textGeneration` | `true`       | `generateText`: one tool-less `query()` with no session; only its signed-out refusal is recorded (`generate-text-signed-out`)                   |
+| `ultracode`      | `true`       | `Settings.ultracode` at launch and through `applyFlagSettings`; SDK declarations and the CLI bundle only, nothing recorded                      |
 
-`planMode`, `subagents`, `questions` and `stopTask` rest on the SDK's declarations and on
+`planMode`, `subagents`, `questions`, `stopTask` and `ultracode` rest on the SDK's declarations and on
 reading the CLI's bundle until their recordings are made; the capability
 comments say which recording will pin each.
 
@@ -1005,6 +1082,24 @@ has no recording of what an interrupt leaves behind; `rollback` and `fork` stay
   that would close the wrong Poseidon turn.
 - `lastAssistantUuid` taking a synthetic local-command snapshot's uuid, which
   matters only once rollback is offered.
+
+**Ultracode** ([Ultracode](#ultracode)), built from the SDK's declarations and
+the CLI's bundle with unit tests on the options and calls only:
+
+- Launch: whether a headless CLI honours `settings: { ultracode: true }` from
+  the SDK's inline settings, and runs at xhigh with workflows on.
+- `apply_flag_settings` with `ultracode`: taken on an account with workflows;
+  on one without, whether the SDK handler refuses (the thread's flag goes back
+  off) or takes it and never runs a workflow (the thread shows it on).
+  `get_settings`' `applied.ultracode` would tell the two apart.
+- The Workflow tool's approval card in approval-required, and what its input
+  shows on the card.
+- How the `local_workflow` task_started and task_notification messages render
+  (`translate/subagents.ts` keeps them unmapped today).
+- Whether the headless CLI holds its `result` until a workflow finishes, or
+  closes the Poseidon turn early — the Workflow tool returns at once with a
+  task id and reports back in a later task notification.
+- A model switch while ultracode is on, to a model without xhigh.
 
 ### Owner commands
 
