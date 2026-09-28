@@ -15,10 +15,20 @@
  * that name clears the session context, and no command in the union does that
  * yet. Offering it as a name for "empty the textarea" would silently drop the
  * draft while keeping the context the user meant to drop.
+ *
+ * Last comes the Harness group: the harness's own commands as the connector
+ * lists them (`connectors.commands.list`). Picking one inserts `/name ` like a
+ * skill does, and the harness runs it when the message is sent. Names Poseidon
+ * already offers above (every built-in, even `/compact` while it is hidden,
+ * and an enabled skill's name) are left out so nothing is listed twice, and so
+ * is the harness's `/clear`, which would reset the conversation behind the
+ * timeline's back. The group goes last because `TriggerMenu` draws a heading
+ * where `group` changes, and a heading above the skills would claim them too.
  */
 
 import type { Effort, InteractionMode, RuntimeMode } from "@poseidon/contracts/enums";
 import type { ModelOption, SkillSummary } from "@poseidon/contracts/connectors";
+import type { HarnessCommand } from "@poseidon/contracts/harnessCommands";
 import type { ConnectorCapabilities } from "@poseidon/contracts/runtime";
 
 import {
@@ -37,6 +47,7 @@ import {
   Minimize,
   Play,
   Sparkles,
+  Terminal,
 } from "@honeyicons/react";
 
 export type SlashLevel = "root" | "model" | "effort" | "mode";
@@ -66,6 +77,15 @@ export interface SlashMenuItem extends TriggerMenuItem {
   readonly action: SlashAction;
 }
 
+/** Harness command names never offered: `/clear` would reset the session behind the timeline. */
+const HARNESS_SKIPPED: ReadonlySet<string> = new Set(["clear"]);
+
+/** The harness's words for a command, with its argument hint after them. */
+const harnessDescription = (command: HarnessCommand): string | undefined =>
+  [command.description, command.argumentHint]
+    .filter((part) => part !== undefined && part !== "")
+    .join(" · ") || undefined;
+
 const RUNTIME_MODE_DESCRIPTIONS: Readonly<Record<RuntimeMode, string>> = {
   "approval-required": "Prompt for everything that mutates or reaches out",
   "auto-accept-edits": "Edits inside the project run free, shell and web still ask",
@@ -82,13 +102,15 @@ export const slashMenuItems = (input: {
   /** The whole trigger query; a second level filters on what follows the command word. */
   readonly query: string;
   readonly skills: ReadonlyArray<SkillSummary>;
+  /** The harness's own commands, listed last under a Harness heading. */
+  readonly harnessCommands: ReadonlyArray<HarnessCommand>;
   readonly models: ReadonlyArray<ModelOption>;
   readonly efforts: ReadonlyArray<Effort> | undefined;
   readonly capabilities: ConnectorCapabilities | null;
   /** The thread's bound session can compact on demand (`canCompact`). */
   readonly canCompact: boolean;
 }): ReadonlyArray<SlashMenuItem> => {
-  const { level, skills, models, efforts, capabilities, canCompact } = input;
+  const { level, skills, harnessCommands, models, efforts, capabilities, canCompact } = input;
   const query = level === "root" ? input.query : subQuery(input.query);
 
   if (level === "model") {
@@ -194,7 +216,28 @@ export const slashMenuItems = (input: {
       action: { type: "insert", text: `/${skill.name} ` },
     }));
 
-  return [...builtins, ...skillItems];
+  // Every built-in name, listed or not, and every enabled skill's name.
+  const taken = new Set([
+    ...HARNESS_SKIPPED,
+    ...builtinList.map((item) => item.label.slice(1)),
+    "compact",
+    ...skills.filter((skill) => skill.enabled).map((skill) => skill.name),
+  ]);
+  const harnessItems: ReadonlyArray<SlashMenuItem> = harnessCommands
+    .filter((command) => !taken.has(command.name))
+    .filter((command) =>
+      match(query, command.name, command.description ?? "", command.argumentHint ?? ""),
+    )
+    .map((command) => ({
+      id: `harness:${command.name}`,
+      label: `/${command.name}`,
+      description: harnessDescription(command),
+      group: "Harness",
+      icon: Terminal,
+      action: { type: "insert", text: `/${command.name} ` },
+    }));
+
+  return [...builtins, ...skillItems, ...harnessItems];
 };
 
 export function SlashMenu({

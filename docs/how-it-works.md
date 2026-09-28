@@ -512,6 +512,18 @@ in Command Code it drops the session's context, no command in the union does
 that, and binding it to emptying the textarea would throw away the sentence the
 user was writing while keeping every token they meant to drop.
 
+Below the skills, under a Harness heading, come the harness's own slash
+commands, as the thread's instance lists them through `connectors.commands.list`
+(`use-harness-commands.ts`; see Harness commands below). A row shows the
+command's description with its argument hint after it, and picking one inserts
+`/name ` into the draft like a skill does. The message is sent as plain text,
+and the harness runs the command itself, as it does a typed `/compact`. Names
+the menu already offers are left out so nothing is listed twice: every
+built-in above, `/compact` even while it is hidden, and an enabled skill's
+name. So is the harness's own `/clear`, which would reset the session behind
+the timeline's back. While the listing loads, or when the handshake behind it
+fails, the group is simply absent.
+
 `#` searches the thread's files — its worktree, or the project's folder; on
 the start screen, before there is a thread, the project's folder — through
 `files.search` (`use-file-mentions.ts`), and says "No files match" when nothing
@@ -3553,6 +3565,7 @@ one's name (without the `/`), description and argument hint
 empty list, as `pluginsAtom` does. Claude Code's instance lists the CLI's
 built-in and bundled commands from the same zero-turn handshake its model list
 comes from, one handshake per instance for both; Command Code's lists none.
+The composer's `/` menu shows them in its Harness group (§4).
 
 ### Attention
 

@@ -38,6 +38,7 @@ import { QueueStrip } from "@/components/composer/queue-strip";
 import { SlashMenu, slashMenuItems, type SlashMenuItem } from "@/components/composer/slash-menu";
 import { useAttachments } from "@/components/composer/use-attachments";
 import { useCompactNow } from "@/components/composer/use-compact-now";
+import { useHarnessCommands } from "@/components/composer/use-harness-commands";
 import { useComposerCommands } from "@/components/composer/use-composer-commands";
 import { useComposerTrigger } from "@/components/composer/use-composer-trigger";
 import { useMentionMenus } from "@/components/composer/use-mention-menus";
@@ -81,6 +82,7 @@ export function Composer({
   const models = AsyncResult.isSuccess(modelsResult) ? modelsResult.value : [];
   const skillsResult = useAtomValue(skillsAtom(instanceId)(projectId));
   const skills = AsyncResult.isSuccess(skillsResult) ? skillsResult.value : [];
+  const harnessCommands = useHarnessCommands(instanceId, projectId);
 
   // The draft lives in a per-thread renderer atom, not in this component: the
   // composer unmounts on every thread switch (the next thread's detail atom
@@ -137,12 +139,22 @@ export function Composer({
       level: slashLevel,
       query: trigger.query,
       skills,
+      harnessCommands,
       models,
       efforts: currentModel?.efforts,
       capabilities,
       canCompact: compactable,
     });
-  }, [trigger, slashLevel, skills, models, doc?.settings.model, capabilities, compactable]);
+  }, [
+    trigger,
+    slashLevel,
+    skills,
+    harnessCommands,
+    models,
+    doc?.settings.model,
+    capabilities,
+    compactable,
+  ]);
 
   const setTextAndCaret = (nextText: string, caret: number) => {
     setText(nextText);
