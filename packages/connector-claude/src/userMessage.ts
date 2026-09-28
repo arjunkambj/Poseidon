@@ -2,7 +2,8 @@
  * One composer turn as the user message the CLI reads.
  *
  * The text goes first, then each mention as the CLI's own `@path` form, then
- * one line per attachment named by path (`attachments.ts`). Images are not
+ * one line per skill or plugin reference (`references.ts`), then one line per
+ * attachment named by path (`attachments.ts`). Images are not
  * lines: they travel as image content blocks ahead of the text. The text goes
  * last on purpose — the CLI reads a message as a slash command only when its
  * last block is text — so `/compact` with a screenshot is still the command;
@@ -19,6 +20,7 @@ import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { TurnInput } from "@poseidon/connector-sdk/definition";
 
 import type { StagedAttachments } from "./attachments";
+import { referenceLines } from "./references";
 
 const NONE: Pick<StagedAttachments, "images" | "promptLines"> = { images: [], promptLines: [] };
 
@@ -26,7 +28,12 @@ const promptText = (
   turn: TurnInput,
   staged: Pick<StagedAttachments, "promptLines"> = NONE,
 ): string =>
-  [turn.text, ...turn.mentions.map((mention) => `@${mention}`), ...staged.promptLines]
+  [
+    turn.text,
+    ...turn.mentions.map((mention) => `@${mention}`),
+    ...referenceLines(turn.references ?? []),
+    ...staged.promptLines,
+  ]
     .filter((line) => line !== "")
     .join("\n");
 
