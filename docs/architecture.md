@@ -891,29 +891,32 @@ Claude Code and Codex threads keep their sessions in the same folders the
 readers list, so the extension's optional `sourceIdOf` turns a thread's
 persisted `sessionRef` back into a `sourceId`, matched across every instance
 of the connector's kind (two instances reading one folder list the same
-sessions). `sessions.import` reads the transcript
-through the instance, finds the project whose root is the session's `cwd` or
-dispatches `project.create` there (refusing, `not-found`, when that folder no
-longer exists), and dispatches `thread.create` for a local thread on it with
-the instance as its connector, since a resume must run where the session ran.
-The command carries `imported: { connectorKind, sourceId, session? }`, with
+sessions). `sessions.import` reads the transcript through the instance, finds
+the project whose root is the session's `cwd` or dispatches `project.create`
+there (refusing, `not-found`, when that folder no longer exists), and
+dispatches `thread.create` for a local thread on it with the instance as its
+connector, since a resume must run where the session ran. The command carries
+`imported: { connectorKind, sourceId, session? }`, with
 `session: { connectorInstanceId, sessionRef }` when the instance's
 `capabilities.resume` is true and the reader gave a `sessionRef`. It then
 appends, as the system, one completed `thread.item.upserted` per message, a
-new turn at each user message and the replies after it sharing it. No
-session is bound: the supervisor's boot scan resumes only bound threads, so
-an imported thread nobody has run never spawns a harness. Its first turn
-continues the conversation the way a native fork does (see the fork section
-under Contracts): it resumes the recorded session, or starts fresh with the
-imported rows as a transcript. A never-run imported thread also counts, by
-its `imported.sourceId`, as the thread that holds that session.
-Which thread each `<instanceId>:<sourceId>` became is kept in
+new turn at each user message and the replies after it sharing it. Each of
+those events occurred when its message was said (a message with no time takes
+the one before it, the first the session's start), so the thread's
+`updatedAt` is the session's last message and a batch of imports lists in the
+sessions' own order. No session is bound: the supervisor's boot scan resumes
+only bound threads, so an imported thread nobody has run never spawns a
+harness. Its first turn continues the conversation the way a native fork does
+(see the fork section under Contracts): it resumes the recorded session, or
+starts fresh with the imported rows as a transcript. A never-run imported
+thread also counts, by its `imported.sourceId`, as the thread that holds that
+session. Which thread each `<instanceId>:<sourceId>` became is kept in
 `session-imports.json` under the Poseidon home, replaced through a temporary
 file and a rename; importing a session whose thread still exists, or that a
 live thread runs, answers that thread without a copy, and `importable` names
-it only while it does. Imports run one at a
-time. A failure after `thread.create` dispatches `thread.delete`, so a retry
-starts clean; a project the import added stays.
+it only while it does. Imports run one at a time. A failure after
+`thread.create` dispatches `thread.delete`, so a retry starts clean; a project
+the import added stays.
 
 Public seam: the RPC group in `packages/contracts/src/rpc.ts` and the three
 loopback HTTP routes. May import `contracts`, `connector-sdk` and `shared`;

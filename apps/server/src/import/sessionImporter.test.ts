@@ -303,6 +303,23 @@ describe("SessionImporter", () => {
     ),
   );
 
+  it.effect("dates imported threads by their sessions, so a batch lists in source order", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { importer, engine, resuming } = yield* fixture();
+        // Newest first, the order the import panel runs a selection in.
+        const noisy = yield* importer.importSession(resuming, NOISY_ID);
+        const alpha = yield* importer.importSession(resuming, ALPHA_ID);
+        const threads = yield* engine.listThreads(alpha.projectId);
+        expect(threads.map((thread) => thread.threadId)).toEqual([noisy.threadId, alpha.threadId]);
+        // Each thread's last update is its session's last message, not the import.
+        const alphaDoc = yield* engine.threadDoc(alpha.threadId);
+        expect(alphaDoc!.updatedAt).toBe("2026-09-20T10:00:06.000Z");
+        expect(threads[0]!.updatedAt.startsWith("2026-09-21T09:30:")).toBe(true);
+      }),
+    ),
+  );
+
   it.effect("marks an imported session, and imports it only once while its thread lives", () =>
     Effect.scoped(
       Effect.gen(function* () {

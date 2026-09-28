@@ -8,6 +8,12 @@
  * history the way it groups a conversation held here. A reply with no user
  * message before it (a transcript whose head was cut by the reader's caps)
  * gets a turn of its own.
+ *
+ * Each row is stamped with when its message was said, so the thread's last
+ * update, which the sidebar sorts and labels by, is the session's own last
+ * message rather than the moment of the import. A message the harness wrote
+ * no time for takes the one before it, and the first takes the session's
+ * start.
  */
 
 import type { ImportedMessage } from "@poseidon/connector-sdk/extensions";
@@ -25,32 +31,40 @@ interface Env {
   readonly nextItemId: () => ItemId;
 }
 
-const envelope = (threadId: ThreadId, env: Env) => ({
-  eventId: env.nextEventId(),
-  streamKind: "thread" as const,
-  streamId: threadId,
-  occurredAt: env.now(),
-  actor: "system" as const,
-});
+/** A harness's time as the event log spells one, or undefined when it is not a time. */
+const isoOf = (at: string | undefined): string | undefined => {
+  const ms = at === undefined ? Number.NaN : Date.parse(at);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : undefined;
+};
 
-/** One `thread.item.upserted` per message, oldest first, grouped into turns. */
+/**
+ * One `thread.item.upserted` per message, oldest first, grouped into turns;
+ * `startedAt` is the session's start, for messages that carry no time.
+ */
 export const transcriptEvents = (
   threadId: ThreadId,
   messages: ReadonlyArray<ImportedMessage>,
+  startedAt: string,
   env: Env,
 ): ReadonlyArray<PlannedEvent> => {
   let turnId: TurnId | null = null;
+  let occurredAt = isoOf(startedAt) ?? env.now();
   return messages.map((message): PlannedEvent => {
     if (message.role === "user" || turnId === null) {
       turnId = env.nextTurnId();
     }
+    occurredAt = isoOf(message.timestamp) ?? occurredAt;
     const itemId = env.nextItemId();
     const item: ItemSnapshot =
       message.role === "user"
         ? userMessageItem(itemId, turnId, { text: message.text, attachments: [] })
         : { itemId, kind: "assistant_message", status: "completed", turnId, text: message.text };
     return {
-      ...envelope(threadId, env),
+      eventId: env.nextEventId(),
+      streamKind: "thread",
+      streamId: threadId,
+      occurredAt,
+      actor: "system",
       type: "thread.item.upserted",
       payload: { item, turnId },
     };

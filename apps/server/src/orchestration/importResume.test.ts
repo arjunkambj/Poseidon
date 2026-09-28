@@ -154,6 +154,7 @@ const importAndRun = (options: { readonly resume: Resume; readonly canResume?: b
             { role: "user", text: "Add a health check." },
             { role: "assistant", text: "Added GET /healthz." },
           ],
+          "2026-09-20T10:00:00.000Z",
           env,
         ),
       );

@@ -247,7 +247,10 @@ export class SessionImporter extends Context.Service<
           Effect.gen(function* () {
             const env = yield* EngineEnv;
             yield* engine
-              .appendThreadEvents(threadId, transcriptEvents(threadId, transcript.messages, env))
+              .appendThreadEvents(
+                threadId,
+                transcriptEvents(threadId, transcript.messages, transcript.session.startedAt, env),
+              )
               .pipe(Effect.catch(internal("write the transcript")));
             const ledger = yield* readLedger(options.ledgerPath);
             yield* writeLedger(options.ledgerPath, { ...ledger, [key]: threadId }).pipe(
