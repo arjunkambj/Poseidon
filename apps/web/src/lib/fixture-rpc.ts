@@ -359,6 +359,17 @@ export const makeFixtureRpc = (context: FixtureRpcContext): PoseidonRpcClient =>
                 message: "No harness can write text in the fixture.",
               }),
             );
+        // No harness session files here: nothing to list, nothing to import.
+        case "sessions.importable":
+          return () => Effect.succeed([]);
+        case "sessions.import":
+          return () =>
+            Effect.fail(
+              new PoseidonRpcError({
+                code: "unavailable",
+                message: "the fixture client imports no sessions",
+              }),
+            );
         default:
           return () => Effect.die(new Error(`fixture: unimplemented rpc ${String(key)}`));
       }

@@ -264,3 +264,60 @@ describe("git.discard and git.blame", () => {
     expect(decode({ projectId, path: "a.txt", endLine: 1.5 })._tag).toBe("Failure");
   });
 });
+
+describe("sessions.importable and sessions.import", () => {
+  const importable = PoseidonRpcGroup.requests.get(RPC_METHODS.sessionsImportable);
+  const importOne = PoseidonRpcGroup.requests.get(RPC_METHODS.sessionsImport);
+  const connectorInstanceId = "0190aaaa-0000-7000-8000-000000000002";
+  const entry = {
+    sourceId: "0b6f3c1e-5a2d-4c8e-9f10-2a3b4c5d6e01",
+    cwd: "/code/alpha",
+    title: "Fix the flaky test",
+    startedAt: "2026-09-20T10:00:00.000Z",
+    updatedAt: "2026-09-20T10:05:00.000Z",
+    connectorInstanceId,
+    connectorKind: "claude-code",
+    connectorName: "Claude Code",
+    projectId: null,
+    importedThreadId: null,
+  };
+
+  it("lists sessions with their instance, project and earlier import", () => {
+    expect(importable).toBeDefined();
+    expect(RpcSchema.isStreamSchema(importable!.successSchema)).toBe(false);
+    expect(Schema.decodeUnknownExit(importable!.payloadSchema)({})._tag).toBe("Success");
+    const answer = Schema.decodeUnknownExit(importable!.successSchema);
+    expect(answer([entry])._tag).toBe("Success");
+    expect(
+      answer([
+        {
+          ...entry,
+          messageCount: 4,
+          projectId: "0190aaaa-0000-7000-8000-000000000001",
+          importedThreadId: "0190aaaa-0000-7000-8000-000000000003",
+        },
+      ])._tag,
+    ).toBe("Success");
+    // Neither link may be left out: `null` is how "none" is said.
+    const { projectId: _projectId, ...withoutProject } = entry;
+    expect(answer([withoutProject])._tag).toBe("Failure");
+    expect(answer([{ ...entry, connectorName: "" }])._tag).toBe("Failure");
+  });
+
+  it("imports one session by its instance and source id", () => {
+    expect(importOne).toBeDefined();
+    const payload = Schema.decodeUnknownExit(importOne!.payloadSchema);
+    expect(payload({ connectorInstanceId, sourceId: entry.sourceId })._tag).toBe("Success");
+    expect(payload({ connectorInstanceId, sourceId: "" })._tag).toBe("Failure");
+    expect(payload({ sourceId: entry.sourceId })._tag).toBe("Failure");
+    const answer = Schema.decodeUnknownExit(importOne!.successSchema);
+    expect(
+      answer({
+        threadId: "0190aaaa-0000-7000-8000-000000000003",
+        projectId: "0190aaaa-0000-7000-8000-000000000001",
+        resumes: true,
+      })._tag,
+    ).toBe("Success");
+    expect(answer({ threadId: "0190aaaa-0000-7000-8000-000000000003" })._tag).toBe("Failure");
+  });
+});

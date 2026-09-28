@@ -937,7 +937,9 @@ holds what the renderer learns about a connector — models, probe, configured
 instances, metadata and config form, and the skills, plugins and MCP servers
 its extensions list. `sessionImport` holds `ImportableSession`, one session
 a harness recorded on its own, as a `sessions` extension lists it for an
-import. `terminal` holds the integrated terminal's summary, its
+import, and `sessions.importable` and `sessions.import`, with the
+`ImportableSessionEntry` the list answers and the `SessionImportResult` an
+import does. `terminal` holds the integrated terminal's summary, its
 output stream frames and the limits both ends share. `rpc` holds the methods
 that carry them.
 
@@ -2450,6 +2452,8 @@ the client in the terminal `incompatible` state.
 | `threads.subscribe`           | stream | One thread: snapshot or catch-up from `afterSequence`, then live                                                                        |
 | `threads.listSubscribe`       | stream | The thread list, same shape                                                                                                             |
 | `threads.searchMessages`      | call   | Threads whose user or assistant text contains a query, at most 50, archived marked                                                      |
+| `sessions.importable`         | call   | Sessions the harnesses recorded on their own, newest first, with their project and any earlier import                                   |
+| `sessions.import`             | call   | Brings one in as a thread with its transcript; binds the harness session when the instance resumes; idempotent                          |
 | `connectors.list`             | call   | Configured connectors with their cached probes; `refresh` re-probes                                                                     |
 | `connectors.models`           | call   | The model picker's options for one instance                                                                                             |
 | `connectors.describe`         | call   | Every connector the build ships: metadata and config form, configured or not                                                            |

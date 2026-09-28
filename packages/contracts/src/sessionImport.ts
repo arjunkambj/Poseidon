@@ -8,8 +8,11 @@
  */
 
 import * as Schema from "effect/Schema";
+import * as Rpc from "effect/unstable/rpc/Rpc";
 
 import { IsoDateTime, NonEmptyString, NonNegativeInt } from "./base";
+import { ConnectorInstanceId, ConnectorKind, ProjectId, ThreadId } from "./ids";
+import { PoseidonRpcError } from "./rpcError";
 
 /**
  * One session, as the list names it. `sourceId` is the harness's own id for
@@ -33,3 +36,68 @@ export const ImportableSession = Schema.Struct({
   messageCount: Schema.optional(NonNegativeInt),
 });
 export type ImportableSession = typeof ImportableSession.Type;
+
+/**
+ * One session as `sessions.importable` lists it: the session, the connector
+ * instance whose files it came from (`connectorName` is that instance's name
+ * as the connectors page shows it), the project already open on its `cwd`
+ * when there is one, and the thread an earlier import made of it while that
+ * thread still exists.
+ */
+export const ImportableSessionEntry = Schema.Struct({
+  ...ImportableSession.fields,
+  connectorInstanceId: ConnectorInstanceId,
+  connectorKind: ConnectorKind,
+  connectorName: NonEmptyString,
+  projectId: Schema.NullOr(ProjectId),
+  importedThreadId: Schema.NullOr(ThreadId),
+});
+export type ImportableSessionEntry = typeof ImportableSessionEntry.Type;
+
+/**
+ * What an import made. `resumes` is true when the thread is bound to the
+ * harness's own session, so its next turn carries that conversation on; false
+ * when the instance cannot resume and the thread starts a fresh session.
+ */
+export const SessionImportResult = Schema.Struct({
+  threadId: ThreadId,
+  projectId: ProjectId,
+  resumes: Schema.Boolean,
+});
+export type SessionImportResult = typeof SessionImportResult.Type;
+
+// ── Method names and RPCs ──────────────────────────────────────
+
+/** Spread into `RPC_METHODS`, so the names stay in the one table. */
+export const SESSION_IMPORT_RPC_METHODS = {
+  sessionsImportable: "sessions.importable",
+  sessionsImport: "sessions.import",
+} as const;
+
+/**
+ * The sessions every open instance with a `sessions` extension can import,
+ * newest first. An instance whose files cannot be read is left out rather
+ * than failing the list.
+ */
+const SessionsImportableRpc = Rpc.make(SESSION_IMPORT_RPC_METHODS.sessionsImportable, {
+  payload: Schema.Struct({}),
+  success: Schema.Array(ImportableSessionEntry),
+  error: PoseidonRpcError,
+});
+
+/**
+ * Brings one session in as a thread on the project for its `cwd` (added when
+ * there is none yet), its messages as the thread's timeline. Importing a
+ * session whose earlier import still exists answers that thread again.
+ */
+const SessionsImportRpc = Rpc.make(SESSION_IMPORT_RPC_METHODS.sessionsImport, {
+  payload: Schema.Struct({
+    connectorInstanceId: ConnectorInstanceId,
+    sourceId: NonEmptyString,
+  }),
+  success: SessionImportResult,
+  error: PoseidonRpcError,
+});
+
+/** Both RPCs, spread into `PoseidonRpcGroup`. */
+export const SESSION_IMPORT_RPCS = [SessionsImportableRpc, SessionsImportRpc] as const;

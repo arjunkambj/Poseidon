@@ -86,6 +86,7 @@ import {
   ThreadRegenerateTitleRpc,
 } from "./generation";
 import { SCRIPT_RPC_METHODS, ScriptsDetectRpc } from "./scripts";
+import { SESSION_IMPORT_RPC_METHODS, SESSION_IMPORT_RPCS } from "./sessionImport";
 import { Keybinding, Settings, SettingsPatch } from "./settings";
 import { THREAD_SEARCH_RPC_METHODS, ThreadsSearchMessagesRpc } from "./search";
 import {
@@ -252,6 +253,7 @@ export const RPC_METHODS = {
   threadsSubscribe: "threads.subscribe",
   threadsListSubscribe: "threads.listSubscribe",
   ...THREAD_SEARCH_RPC_METHODS,
+  ...SESSION_IMPORT_RPC_METHODS,
   connectorsList: "connectors.list",
   connectorsModels: "connectors.models",
   connectorsDescribe: "connectors.describe",
@@ -768,4 +770,5 @@ export const PoseidonRpcGroup = RpcGroup.make(
   TerminalListRunningRpc,
   TerminalSubscribeRpc,
   TerminalAdoptRpc,
+  ...SESSION_IMPORT_RPCS,
 );
