@@ -102,6 +102,7 @@ const thread = (
   context: null,
   createdAt: NOW,
   updatedAt: NOW,
+  doneAt: null,
   approvals: [],
   userInputs: [],
   preview: undefined,
