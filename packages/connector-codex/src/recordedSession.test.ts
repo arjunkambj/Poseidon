@@ -15,6 +15,9 @@
  * requests reaching the ladder and a card, and the card's answer reaching the
  * CLI — accept, decline, and a read of `.env` stopped even under full access.
  *
+ * Plan mode, questions, steering and compaction replay in
+ * `recordedInteractions.test.ts`, on the same helpers (`test/replaySession.ts`).
+ *
  * Every replay checks what the connector sent against what the recording
  * says it sent, so a request the connector stopped making, or made in
  * another order, fails here; the divergence log must stay empty.

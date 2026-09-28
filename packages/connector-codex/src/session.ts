@@ -14,11 +14,16 @@
  *    (`sessionRef.ts`), then translates every notification on one consumer
  *    fiber (`translate/translator.ts`), in the order the server sent them;
  * 4. starts each turn with `turn/start`, naming the thread's model and effort
- *    for that turn, and its modes again when they changed (`modes.ts`);
+ *    for that turn, its modes again when they changed (`modes.ts`), and its
+ *    collaboration mode — plan or default — from the first plan turn on
+ *    (`plans.ts`); a
+ *    `/compact` turn is `thread/compact/start` instead (`compaction.ts`), and
+ *    a message for the running turn is `turn/steer` (`steering.ts`);
  * 5. answers every request the server makes of it: the command and
  *    file-change approvals through Poseidon's permission ladder and its cards
- *    (`toolGate.ts`), each on a fiber of its own so a card waiting on the user
- *    holds up nothing else; every other request with a safe refusal
+ *    (`toolGate.ts`), the model's questions on the question card
+ *    (`questions.ts`), each on a fiber of its own so a card waiting on the
+ *    user holds up nothing else; every other request with a safe refusal
  *    (`serverRequests.ts`);
  * 6. closes by ending the server's stdin — it exits on EOF — stopping the
  *    process group and proving it gone (`spawn.ts`).
@@ -35,7 +40,12 @@ import type {
   TurnInput,
 } from "@poseidon/connector-sdk/definition";
 import { makeApprovalGate } from "@poseidon/connector-sdk/approvalGate";
-import { SessionClosed, SpawnFailed, TurnInProgress } from "@poseidon/connector-sdk/definition";
+import {
+  NotSteerable,
+  SessionClosed,
+  SpawnFailed,
+  TurnInProgress,
+} from "@poseidon/connector-sdk/definition";
 import { makeBoundedEventQueue, type SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
 import type { Effort, RuntimeMode } from "@poseidon/contracts/enums";
 import type { ConnectorInstanceId, ThreadId, TurnId } from "@poseidon/contracts/ids";
@@ -52,16 +62,20 @@ import type * as Scope from "effect/Scope";
 import { stageAttachments } from "./attachments";
 import type { ResolvedBinary } from "./binary";
 import { CODEX_CAPABILITIES } from "./capabilities";
+import { isCompactCommand, ThreadCompactStartResponse } from "./compaction";
 import { call, initialize } from "./handshake";
 import { CODEX_KIND } from "./kind";
 import { sessionEnv, sessionServerArgs } from "./launch";
 import { codexModelFor } from "./models";
 import { APPROVAL_POLICY, sandboxPolicyFor } from "./modes";
+import { collaborationModeFor } from "./plans";
 import { TurnStartResponse } from "./protocol";
+import { makeCodexQuestions, USER_INPUT_REQUEST } from "./questions";
 import { makeRpcClient, type RpcServerRequest } from "./rpc";
 import { refusalFor } from "./serverRequests";
 import type { CodexSessionRef } from "./sessionRef";
 import { makeProcessGroup } from "./spawn";
+import { steerRefusal, TurnSteerResponse } from "./steering";
 import { openThread } from "./threadOpen";
 import { GATED_METHODS, makeCodexToolGate } from "./toolGate";
 import {
@@ -102,7 +116,12 @@ const HANDSHAKE_TIMEOUT = "60 seconds";
 interface ActiveTurn {
   readonly turnId: TurnId;
   readonly interrupted: boolean;
-  /** The CLI's id for the turn, once `turn/start` answered; null when it failed. */
+  /** A `/compact` turn: the CLI's compaction, whose id only `turn/started` names. */
+  readonly compaction: boolean;
+  /**
+   * The CLI's id for the turn — once `turn/start` answered, or for a
+   * compaction once `turn/started` named it; null when it failed to start.
+   */
   readonly codexTurnId: Deferred.Deferred<string | null>;
 }
 
@@ -182,6 +201,12 @@ export const makeCodexSession = (
       Effect.tapError(() => group.stop),
     );
     const codexThreadId = opened.threadId;
+    /**
+     * Whether the CLI's thread may carry a collaboration mode, so every turn
+     * names its own (`plans.ts`): once a turn named one, or from the start
+     * for a resumed thread, which the previous process may have left in plan.
+     */
+    let carriesMode = options.sessionRef !== undefined && opened.warning === undefined;
 
     const currentRef = (): CodexSessionRef => ({
       threadId: codexThreadId,
@@ -193,6 +218,7 @@ export const makeCodexSession = (
     /** Where each approval's fiber lives: the session's scope, not the consumer's. */
     const sessionScope = yield* Effect.scope;
     const toolGate = makeCodexToolGate({ threadId, gate, settings: () => settings });
+    const questions = makeCodexQuestions({ emit });
 
     /**
      * The running turn, if `notification` belongs to it. A notification that
@@ -208,6 +234,12 @@ export const makeCodexSession = (
         const params = asRecord(notification.params);
         const named = asString(params.turnId) ?? asString(asRecord(params.turn).id);
         if (named === undefined) return turn;
+        // A compaction's id comes only with its `turn/started`, which this
+        // consumer reads: until then, a turn named is not the compaction's.
+        if (turn.compaction && notification.method === "turn/started") {
+          yield* Deferred.succeed(turn.codexTurnId, named);
+        }
+        if (turn.compaction && !(yield* Deferred.isDone(turn.codexTurnId))) return null;
         const running = yield* Deferred.await(turn.codexTurnId);
         return running === null || running === named ? turn : null;
       });
@@ -227,6 +259,7 @@ export const makeCodexSession = (
           }
         }
         yield* toolGate.observe(notification);
+        yield* questions.observe(notification);
         for (const event of translator.translate(notification, turn)) {
           if (event.type === "turn.completed") {
             yield* Ref.set(turnRef, null);
@@ -246,8 +279,11 @@ export const makeCodexSession = (
      * must not. Anything else is refused at once.
      */
     const onRequest = (request: RpcServerRequest): Effect.Effect<void> =>
-      GATED_METHODS.has(request.method)
-        ? toolGate.answer(request).pipe(
+      GATED_METHODS.has(request.method) || request.method === USER_INPUT_REQUEST
+        ? (request.method === USER_INPUT_REQUEST
+            ? questions.ask(request)
+            : toolGate.answer(request)
+          ).pipe(
             Effect.flatMap((outcome) =>
               outcome === null ? Effect.void : rpc.respond(request.id, outcome),
             ),
@@ -278,6 +314,7 @@ export const makeCodexSession = (
         if (consumer !== null) yield* Fiber.interrupt(consumer);
         // No card outlives the process that asked: each resolves before the end.
         yield* toolGate.closeAll;
+        yield* questions.closeAll;
         yield* group.stop;
         if (!(yield* group.isGone)) {
           yield* group.stop;
@@ -355,6 +392,13 @@ export const makeCodexSession = (
       const mode = settings.runtimeMode;
       const modeChanged = mode !== appliedMode;
       appliedMode = mode;
+      const collaborationMode = collaborationModeFor({
+        mode: settings.interactionMode,
+        carried: carriesMode,
+        model: model ?? opened.model,
+        effort,
+      });
+      if (collaborationMode !== undefined) carriesMode = true;
       return {
         threadId: codexThreadId,
         input,
@@ -363,16 +407,50 @@ export const makeCodexSession = (
         ...(modeChanged
           ? { approvalPolicy: APPROVAL_POLICY, sandboxPolicy: sandboxPolicyFor(mode) }
           : {}),
+        ...(collaborationMode === undefined ? {} : { collaborationMode }),
       };
     };
+
+    /** The staged attachments of a turn or a steer, their warnings said. */
+    const staged = (turn: TurnInput) =>
+      Effect.gen(function* () {
+        const result = yield* Effect.promise(() =>
+          stageAttachments({
+            attachmentsDir: services.attachmentsDir,
+            threadId,
+            attachments: turn.attachments,
+          }),
+        );
+        for (const message of result.warnings) {
+          yield* emit({ type: "session.warning", payload: { message } });
+        }
+        return result;
+      });
+
+    /** What starts the CLI's turn: `turn/start`, or `thread/compact/start` for a compaction. */
+    const startTurn = (
+      turn: TurnInput,
+      compaction: boolean,
+      codexTurnId: Deferred.Deferred<string | null>,
+    ) =>
+      compaction
+        ? call(rpc, "thread/compact/start", { threadId: codexThreadId }, ThreadCompactStartResponse)
+        : Effect.gen(function* () {
+            const input = userInput(turn, yield* staged(turn));
+            const response = yield* call(rpc, "turn/start", turnParams(input), TurnStartResponse);
+            yield* Deferred.succeed(codexTurnId, response.turn.id);
+          });
 
     const send = (turn: TurnInput): Effect.Effect<void, ConnectorError> =>
       Effect.gen(function* () {
         if (yield* Ref.get(closedRef)) return yield* new SessionClosed({ threadId });
         const codexTurnId = yield* Deferred.make<string | null>();
         const turnId = makeTurnId();
+        const compaction = isCompactCommand(turn);
         const claimed = yield* Ref.modify(turnRef, (now): [ActiveTurn | null, ActiveTurn] =>
-          now !== null ? [now, now] : [null, { turnId, interrupted: false, codexTurnId }],
+          now !== null
+            ? [now, now]
+            : [null, { turnId, interrupted: false, compaction, codexTurnId }],
         );
         if (claimed !== null) {
           return yield* new TurnInProgress({ threadId, activeTurnId: claimed.turnId });
@@ -384,23 +462,7 @@ export const makeCodexSession = (
           Effect.gen(function* () {
             yield* toolGate.turnStarted;
             yield* emit({ type: "turn.started", payload: { turnId } });
-            const staged = yield* Effect.promise(() =>
-              stageAttachments({
-                attachmentsDir: services.attachmentsDir,
-                threadId,
-                attachments: turn.attachments,
-              }),
-            );
-            for (const message of staged.warnings) {
-              yield* emit({ type: "session.warning", payload: { message } });
-            }
-            yield* call(
-              rpc,
-              "turn/start",
-              turnParams(userInput(turn, staged)),
-              TurnStartResponse,
-            ).pipe(
-              Effect.flatMap((response) => Deferred.succeed(codexTurnId, response.turn.id)),
+            yield* startTurn(turn, compaction, codexTurnId).pipe(
               Effect.catch((error) =>
                 Effect.gen(function* () {
                   yield* Deferred.succeed(codexTurnId, null);
@@ -424,8 +486,9 @@ export const makeCodexSession = (
         if (active === null || active.interrupted) return;
         yield* Ref.set(turnRef, { ...active, interrupted: true });
         // Every open card resolves now, and its request is cancelled, which
-        // stops the CLI's turn as well.
+        // stops the CLI's turn as well; an open question is answered empty.
         yield* toolGate.cancelAll;
+        yield* questions.cancelAll;
         const codexTurnId = yield* Deferred.await(active.codexTurnId);
         if (codexTurnId === null) return;
         yield* rpc
@@ -435,6 +498,33 @@ export const makeCodexSession = (
               services.logger.log("warn", "codex turn/interrupt failed", { error: error.message }),
             ),
           );
+      });
+
+    /**
+     * A message into the running turn: `turn/steer`, naming the turn the
+     * session is running, so the CLI refuses it should that turn have ended
+     * meanwhile. No `turn.started`: the CLI keeps the turn, and its one
+     * `turn/completed` ends it (`steering.ts`). Any refusal is `NotSteerable`.
+     */
+    const steer = (turn: TurnInput): Effect.Effect<void, ConnectorError> =>
+      Effect.gen(function* () {
+        if (yield* Ref.get(closedRef)) return yield* new SessionClosed({ threadId });
+        const active = yield* Ref.get(turnRef);
+        const refusal = steerRefusal(active);
+        if (refusal !== undefined || active === null) {
+          return yield* new NotSteerable({ threadId, reason: refusal ?? "no turn is running" });
+        }
+        const expectedTurnId = yield* Deferred.await(active.codexTurnId);
+        if (expectedTurnId === null) {
+          return yield* new NotSteerable({ threadId, reason: "the running turn did not start" });
+        }
+        const input = userInput(turn, yield* staged(turn));
+        yield* call(
+          rpc,
+          "turn/steer",
+          { threadId: codexThreadId, expectedTurnId, input },
+          TurnSteerResponse,
+        ).pipe(Effect.mapError((error) => new NotSteerable({ threadId, reason: error.message })));
       });
 
     /**
@@ -460,10 +550,12 @@ export const makeCodexSession = (
     return {
       events: queue.events,
       send,
+      steer,
       interrupt,
       respondToRequest: gate.respond,
-      respondToUserInput: (requestId) =>
-        services.logger.log("debug", "codex question answered", { requestId }),
+      respondToUserInput: questions.respond,
+      // Nothing is parked on a plan: the plan turn ended when it handed the
+      // plan over, and accepting or revising it is the server's next turn.
       respondToPlan: (turnId, action) =>
         services.logger.log("debug", "codex plan answered", { turnId, action }),
       updateSettings,

@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "kind": "codex",
+  "transport": "stdio-jsonrpc",
+  "scenario": "question",
+  "description": "A plan turn in which the model asks the user a question (item/tool/requestUserInput); the card is answered with its first option, and the plan names it.",
+  "cliVersion": "0.156.1",
+  "recordedOn": "2026-09-28",
+  "model": "gpt-6-astra",
+  "real": true,
+  "prompts": [
+    "Without running any commands, first ask me with your question tool whether the new file should be named a.txt or b.txt. Then give a one-line plan."
+  ],
+  "invocations": [
+    {
+      "argv": [
+        "app-server",
+        "-c",
+        "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
+        "-c",
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+      ],
+      "cwd": "<SCRATCH>/question",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}

@@ -13,6 +13,8 @@
  *   `textDelta`, `item/plan/delta`, `item/commandExecution/outputDelta`,
  *   `item/fileChange/patchUpdated`) → rows (`tools.ts`);
  * - `turn/plan/updated` → one `todo` row per turn, the model's checklist;
+ * - a `plan` item completed in a turn that ends `end_turn` → that turn's
+ *   `turn.plan.proposed`, just before its `turn.completed` (`plans.ts`);
  * - `thread/tokenUsage/updated` → `usage.updated` and `context.updated`;
  * - `turn/completed` → the rows the turn left open failed, the checklist
  *   settled, the turn's error when nothing said it yet, and `turn.completed`:
@@ -46,6 +48,7 @@ import {
   type Notification,
   type PendingRuntimeEvent,
 } from "./pending";
+import { makePlanTracker } from "../plans";
 import { makeItemRows } from "./tools";
 import { makeUsageTracker } from "./usage";
 
@@ -115,6 +118,7 @@ export const makeTranslator = (options: {
 }): Translator => {
   const rows = makeItemRows();
   const usage = makeUsageTracker();
+  const plans = makePlanTracker();
   const mcp = new Map<string, McpServerStatus>();
   /** The turn the checklist row and the error flag belong to. */
   let turnSeen: TurnId | null = null;
@@ -126,6 +130,7 @@ export const makeTranslator = (options: {
     turnSeen = turn.turnId;
     todoRow = null;
     errorReported = false;
+    plans.take();
     usage.startTurn();
   };
 
@@ -186,6 +191,7 @@ export const makeTranslator = (options: {
     turn: TurnContext | null,
   ): ReadonlyArray<PendingRuntimeEvent> => {
     const events: Array<PendingRuntimeEvent> = [...rows.failOpen()];
+    const plan = plans.take();
     if (todoRow !== null) {
       const { itemId, todos: list } = todoRow;
       events.push({
@@ -215,6 +221,12 @@ export const makeTranslator = (options: {
         },
       });
     }
+    if (stopReason === "end_turn" && plan !== undefined) {
+      events.push({
+        type: "turn.plan.proposed",
+        payload: { turnId: turn.turnId, planMarkdown: plan },
+      });
+    }
     events.push({ type: "turn.completed", payload: { turnId: turn.turnId, stopReason } });
     return events;
   };
@@ -227,8 +239,11 @@ export const makeTranslator = (options: {
     switch (method) {
       case "item/started":
         return rows.started(asRecord(params.item));
-      case "item/completed":
-        return rows.completed(asRecord(params.item));
+      case "item/completed": {
+        const item = asRecord(params.item);
+        if (item.type === "plan") plans.completed(asString(item.text) ?? "");
+        return rows.completed(item);
+      }
       case "item/agentMessage/delta":
         return rows.delta(
           asString(params.itemId) ?? "",

@@ -16,10 +16,14 @@ export const CODEX_CAPABILITIES: ConnectorCapabilities = {
   // turn on another model at effort low).
   modelSwitch: "per-turn",
   effortSwitch: "per-turn",
-  // `turn/steer` exists, but nothing recorded shows it yet (`steering`).
-  steering: false,
-  // `collaborationMode: plan` on `turn/start`, experimental; no recording yet.
-  planMode: false,
+  // `turn/steer` into the running turn, which the CLI keeps: one
+  // `turn/completed` ends it with both messages answered (`steering`: a steer
+  // while `sleep 5` ran, the one answer naming the steered word).
+  steering: true,
+  // `collaborationMode: plan` on `turn/start` (experimental, asked for in the
+  // handshake); the plan item is proposed at the turn's end, and the next
+  // turn leaves plan mode (`plan-accept`).
+  planMode: true,
   // Codex's collaboration agents are not mapped to Poseidon's tasks.
   subagents: false,
   // A `localImage` user input by path (`image`: the model names a PNG's colour).
@@ -34,10 +38,12 @@ export const CODEX_CAPABILITIES: ConnectorCapabilities = {
   interrupt: "turn",
   // `thread/revert` exists; Poseidon's checkpoints are git and do not need it.
   rollback: false,
-  // `thread/compact/start` exists; nothing recorded shows it yet.
-  compaction: false,
-  // `item/tool/requestUserInput` exists; nothing recorded shows it yet.
-  questions: false,
+  // A `/compact` turn is `thread/compact/start`, run by the CLI as a turn of
+  // its own (`compaction`: the contextCompaction row and the smaller context).
+  compaction: true,
+  // `item/tool/requestUserInput` (experimental, offered in plan mode) is the
+  // question card; its answer goes back by option label (`question`).
+  questions: true,
   // Every mode keeps the approval policy that asks, and varies only the
   // sandbox; each request goes through Poseidon's ladder and card
   // (`edit-approval`: a file change allowed once; `deny`: a command declined;

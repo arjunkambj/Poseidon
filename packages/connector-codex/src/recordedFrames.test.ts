@@ -55,12 +55,16 @@ describe("the recorded Codex sessions", () => {
   it("include every session scenario the connector is tested against", () => {
     expect(recordingNames(CODEX_KIND)).toEqual(
       expect.arrayContaining([
+        "compaction",
         "image",
         "interrupt",
         "model-switch",
         "plain-reply",
+        "plan-accept",
+        "question",
         "resume",
         "resume-missing",
+        "steering",
       ]),
     );
   });
