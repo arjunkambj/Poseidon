@@ -51,7 +51,10 @@ export const CODEX_CAPABILITIES: ConnectorCapabilities = {
   // about every command on the recording machine, reads included
   // (`sensitive-full-access`: `cat .env` under full access); a known-safe read
   // it runs unasked where its exemption applies is the gap `toolGate.ts`
-  // names.
+  // names. A write the CLI fails to ask about (once, a patch from inside its
+  // `exec` tool) meets the read-only sandbox under approval required
+  // (`modes.ts`); in the writing modes it lands, and the turn ends with the
+  // ungated warning (`turnWrites.ts`).
   runtimeModes: ["approval-required", "auto-accept-edits", "full-access"],
   // Images go as `localImage` inputs; any other file is named in the prompt.
   attachments: "files",

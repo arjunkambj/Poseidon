@@ -14,8 +14,13 @@
  * access stopped for approval). Where its known-safe-read exemption applies,
  * such a read runs unasked; `toolGate.ts` says what the gate does about it.
  *
- * Only the sandbox varies, as the OS-level backstop under the ladder: the
- * workspace is writable in the two asking modes, and full access lifts it.
+ * Only the sandbox varies, as the OS-level backstop under the ladder.
+ * Approval required is `read-only`: every write is one the user allowed, and
+ * a call the CLI asks about runs outside the sandbox once allowed — so a write
+ * the CLI fails to ask about (seen once on 0.156.1: a patch applied from
+ * inside its scripted `exec` tool) finds nothing writable, if that path
+ * honours the sandbox; the gate's check of the turn's diff stays behind it.
+ * Auto-accept edits writes the workspace, and full access lifts the sandbox.
  * `thread/start` takes the sandbox by name; `turn/start` wants the policy
  * spelled out, so the two forms live side by side.
  */
@@ -32,6 +37,7 @@ export const sandboxModeFor = (mode: RuntimeMode): SandboxMode => {
     case "full-access":
       return "danger-full-access";
     case "approval-required":
+      return "read-only";
     case "auto-accept-edits":
       return "workspace-write";
   }

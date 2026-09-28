@@ -393,7 +393,7 @@ sandbox varies:
 
 | Runtime mode        | Approval policy | Sandbox              |
 | ------------------- | --------------- | -------------------- |
-| `approval-required` | `untrusted`     | `workspace-write`    |
+| `approval-required` | `untrusted`     | `read-only`          |
 | `auto-accept-edits` | `untrusted`     | `workspace-write`    |
 | `full-access`       | `untrusted`     | `danger-full-access` |
 
@@ -402,14 +402,19 @@ allows, and the ladder's sensitive-path rung prompts even under full access.
 With `never` the CLI would ask about nothing, and a sensitive path would never
 reach the ladder. Under `untrusted` the CLI asks, the ladder allows what the
 mode allows without a card, and prompts for the rest. The sandbox is the
-OS-level backstop under it.
+OS-level backstop under it. Under approval required it is `read-only`: a
+call the CLI asks about runs outside the sandbox once allowed
+(`edit-approval` writes `hello.txt` after its card), so every write is one
+the user allowed, and a write the CLI fails to ask about finds nothing
+writable. Whether that one path honours the sandbox has not been observed, so
+the ungated check below stays behind it.
 
 What the recordings show: on 0.156.1, under `untrusted`, the CLI asked about
 every command, reads included — `sensitive-full-access` stopped `cat .env`
 under full access for approval, and the card was denied (`deny` and the
 conformance recording show a command asked about under approval required).
 Across the recordings, every command and file change the CLI ran was asked
-about first (nine items in seven recordings). The CLI does keep a list of
+about first (eight items in eight recordings). The CLI does keep a list of
 known-safe reads it may run without asking, though, and where that exemption
 applies a read never reaches the ladder. So the session counts every item that ran without a
 request for it: a file change, or a command that is not one of those reads,
@@ -580,9 +585,11 @@ through `-c` (see the launch), never written to the config.
 - **The model can apply a patch through the CLI's `exec` tool** (a script
   calling `tools.apply_patch`). Seen once in a live run on 0.156.1: the file
   was written with no approval request, and the `exec` call then hung until
-  the turn was stopped. No recording has it, so the gate has nothing to
-  answer; the session's ungated check does not see it either, since no
-  `fileChange` item completes.
+  the turn was stopped. That run was under the `workspace-write` sandbox
+  approval required used then; it is `read-only` now, so such a write finds
+  nothing writable if that path honours the sandbox. No recording has it, so the gate has nothing to answer; if the
+  write lands anyway it shows in the turn's diff with no `fileChange` item,
+  and the turn ends with the ungated warning.
 - **The default shell environment policy passes variables named like
   secrets** (`KEY`, `SECRET`, `TOKEN`) to the commands the model runs: with no
   `shell_environment_policy` configured, `ignore_default_excludes` is in

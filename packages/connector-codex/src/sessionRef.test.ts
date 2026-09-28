@@ -21,11 +21,16 @@ describe("parseSessionRef", () => {
 });
 
 describe("the sandbox a runtime mode runs in", () => {
-  it("writes the workspace in the asking modes, and lifts the sandbox for full access", () => {
-    expect(sandboxModeFor("approval-required")).toBe("workspace-write");
+  it("reads only under approval required, writes the workspace under auto-accept, and lifts it for full access", () => {
+    // A write the CLI fails to ask about must meet the sandbox, not the disk.
+    expect(sandboxModeFor("approval-required")).toBe("read-only");
     expect(sandboxModeFor("auto-accept-edits")).toBe("workspace-write");
     expect(sandboxModeFor("full-access")).toBe("danger-full-access");
-    expect(sandboxPolicyFor("approval-required").type).toBe("workspaceWrite");
+    expect(sandboxPolicyFor("approval-required")).toEqual({
+      type: "readOnly",
+      networkAccess: false,
+    });
+    expect(sandboxPolicyFor("auto-accept-edits").type).toBe("workspaceWrite");
     expect(sandboxPolicyFor("full-access")).toEqual({ type: "dangerFullAccess" });
   });
 });
