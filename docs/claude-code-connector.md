@@ -48,6 +48,7 @@ routes new threads to Command Code until the user picks this instance.
 | `env.ts`                  | the default-deny child environment                                        |
 | `probe.ts`                | `--version`, `auth status --json`, the zero-turn handshake, version floor |
 | `models.ts`               | the CLI's model rows and their effort ladders                             |
+| `commands.ts`             | the CLI's own slash commands, for the composer's `/` menu                 |
 | `capabilities.ts`         | what a Claude Code session can do, and why                                |
 | `spawn.ts`                | the SDK's `spawnClaudeCodeProcess`: a process group, and proof it is gone |
 | `queryOptions.ts`         | the SDK options a session starts with; runtime mode → permission mode     |
@@ -164,7 +165,25 @@ the model it currently stands for, and each row has a `value`, a
 `toModelOptions` (`models.ts`) keeps every row, labels it with its display
 name, groups it under "Claude", and keeps the effort rungs Poseidon's ladder
 knows. `listModels` runs the same handshake once per instance and caches the
-list, so the model picker does not start a CLI every time it opens.
+result, so the model picker does not start a CLI every time it opens.
+
+`commands` is the CLI's slash commands (the SDK's `SlashCommand`: `name`,
+`description`, `argumentHint`, and `builtin` on Claude Code's own ones). The
+instance's `commands` extension answers them through `connectors.commands.list`
+from the same cached handshake as the models: one CLI start per instance for
+both, and asks that arrive together wait for the one in flight. A failed
+handshake is not cached and answers `ConnectorExtensionFailed` with code
+`internal`. `toHarnessCommands` (`commands.ts`) strips a leading `/`, leaves out
+an empty description or argument hint, and keeps one row per name: the built-in
+one when a row is marked, otherwise the first. Because the handshake runs with
+`settingSources: []`, the list holds only the CLI's built-in and bundled
+commands. The user's and the project's own commands (`.claude/commands`,
+plugins, MCP prompts) are not listed, though the CLI still runs them when a
+message names one. For the same reason the list does not depend on the
+project, so the extension ignores its scope. The recorder scrubs the command
+list down to one `scrubbed-entry` row, so the replayed tests
+(`definition.test.ts`, `models.test.ts`) assert on that row, and the mapping is
+unit-tested on the SDK's declared fields (`commands.test.ts`).
 
 The account comes from `auth status` first and from the initialize response's
 `account.email` otherwise. The recorded, signed-out response says only

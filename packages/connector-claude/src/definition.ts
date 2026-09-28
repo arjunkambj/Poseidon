@@ -13,16 +13,20 @@ import type {
   StartSessionInput,
 } from "@poseidon/connector-sdk/definition";
 import { SpawnFailed } from "@poseidon/connector-sdk/definition";
-import type { ModelOption } from "@poseidon/contracts/connectors";
+import {
+  ConnectorExtensionFailed,
+  type CommandsExtension,
+} from "@poseidon/connector-sdk/extensions";
 import * as Effect from "effect/Effect";
 import * as Ref from "effect/Ref";
+import * as Semaphore from "effect/Semaphore";
 
 import { resolveBinary, terminalCommand, type ResolvedBinary } from "./binary";
 import { CLAUDE_CAPABILITIES } from "./capabilities";
 import { ClaudeConnectorConfig } from "./configSchema";
 import { childEnv } from "./env";
 import { CLAUDE_KIND } from "./kind";
-import { LOGIN_ARGS, probe as probeBinary, readInitialization } from "./probe";
+import { LOGIN_ARGS, probe as probeBinary, readInitialization, type Initialization } from "./probe";
 import type { SessionLimits } from "./queryOptions";
 import { makeClaudeSession } from "./session";
 import { parseSessionRef, type ClaudeSessionRef } from "./sessionRef";
@@ -110,11 +114,17 @@ export const makeClaudeConnectorDefinition = (
           });
         });
 
-      /** One model list per instance: the handshake is a process start. */
-      const models = yield* Ref.make<ReadonlyArray<ModelOption> | null>(null);
-      const listModels = () =>
+      /**
+       * One handshake per instance, shared by the model list and the slash
+       * commands: it is a process start. Asks that arrive together wait for
+       * the one in flight. A failed one is not kept, so the next ask tries
+       * again.
+       */
+      const initialization = yield* Ref.make<Initialization | null>(null);
+      const oneAtATime = yield* Semaphore.make(1);
+      const initialize = oneAtATime.withPermits(1)(
         Effect.gen(function* () {
-          const cached = yield* Ref.get(models);
+          const cached = yield* Ref.get(initialization);
           if (cached !== null) return cached;
           const { binary, env } = yield* launch;
           if (binary === null) {
@@ -125,9 +135,21 @@ export const makeClaudeConnectorDefinition = (
             env,
             cwd: NodeOS.tmpdir(),
           }).pipe(Effect.mapError((error) => failed(error.message)));
-          yield* Ref.set(models, listed.models);
-          return listed.models;
-        });
+          yield* Ref.set(initialization, listed);
+          return listed;
+        }),
+      );
+      const listModels = () => Effect.map(initialize, (listed) => listed.models);
+      // The handshake loads no settings (`commands.ts`), so the scope changes nothing.
+      const commands: CommandsExtension = {
+        list: () =>
+          initialize.pipe(
+            Effect.map((listed) => listed.commands),
+            Effect.mapError(
+              (error) => new ConnectorExtensionFailed({ code: "internal", message: error.message }),
+            ),
+          ),
+      };
 
       return {
         instanceId,
@@ -148,6 +170,7 @@ export const makeClaudeConnectorDefinition = (
           );
         },
         listModels,
+        extensions: { commands },
       };
     }),
 });

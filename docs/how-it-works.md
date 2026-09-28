@@ -3550,7 +3550,9 @@ a read-only `commands` extension, and `connectors.commands.list` answers each
 one's name (without the `/`), description and argument hint
 (`contracts/src/harnessCommands.ts`). An instance without it answers
 `unavailable`, and the client runtime's `harnessCommandsAtom` reads that as an
-empty list, as `pluginsAtom` does.
+empty list, as `pluginsAtom` does. Claude Code's instance lists the CLI's
+built-in and bundled commands from the same zero-turn handshake its model list
+comes from, one handshake per instance for both; Command Code's lists none.
 
 ### Attention
 

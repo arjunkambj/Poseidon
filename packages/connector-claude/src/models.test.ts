@@ -66,6 +66,8 @@ describe("readInitialization", () => {
         cwd: NodeOS.tmpdir(),
       });
       expect(listed.models).toEqual(toModelOptions(recordedModels()));
+      // The recorder scrubs the command list down to one entry.
+      expect(listed.commands.map((command) => command.name)).toEqual(["scrubbed-entry"]);
       // Signed out, the handshake names no account.
       expect(listed.account).toBeUndefined();
     }),

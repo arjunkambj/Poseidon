@@ -1598,7 +1598,9 @@ harness's own words, and `enabled`); `mcpServers` lists, adds (an upsert) and
 removes servers in the harness's own config; `commands` lists the harness's own
 slash commands (`list` only — each a `HarnessCommand`: `name` without the `/`,
 optional `description` and `argumentHint`). Command Code carries `skills` and
-`mcpServers` but no `plugins`, since it has none. Every extension takes an
+`mcpServers` but no `plugins`, since it has none, and no `commands`, since
+nothing lists which of its slash commands a headless run executes. Claude Code
+carries `commands` only, read from the CLI's initialize handshake. Every extension takes an
 `ExtensionScope` — `{ workspaceRoot: string | null }`, the user scope plus one
 project — and fails with `ConnectorExtensionFailed { code, message }`, never an
 RPC error: the server (`settings/ConnectorExtensions.ts`) resolves the

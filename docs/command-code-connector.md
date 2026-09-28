@@ -1251,6 +1251,14 @@ instance's `extraEnv.HOME` when it sets one — the home the CLI itself resolves
 and under the user's home otherwise. Writes from every instance of the
 definition share one semaphore, so two never interleave on one file.
 
+The instance carries no `commands` extension, so `connectors.commands.list`
+answers `unavailable` and the composer's `/` menu lists no harness commands for
+its threads. The only list of Command Code's slash commands is the "Slash
+Commands" block of `cmd --help` (`fixtures/cmd/probe/help.stdout.txt`), and
+those are the interactive app's commands (`/theme`, `/copy`, `/ide` and the
+like). Nothing recorded shows which of them a headless `-p` run executes rather
+than sending to the model as text, so the connector does not offer them.
+
 ## Known CLI behaviour worth remembering
 
 - **`--output-format json` does stream text.** `text_delta` carries

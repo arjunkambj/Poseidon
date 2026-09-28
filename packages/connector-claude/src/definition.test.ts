@@ -66,7 +66,8 @@ describe("claudeConnectorDefinition", () => {
       });
       expect(instance.kind).toBe(CLAUDE_KIND);
       expect(instance.capabilities).toEqual(CLAUDE_CAPABILITIES);
-      expect(instance.extensions).toBeUndefined();
+      // Only the harness's own slash commands; plugins, skills and MCP are not managed here.
+      expect(Object.keys(instance.extensions ?? {})).toEqual(["commands"]);
     }).pipe(Effect.scoped),
   );
 
@@ -84,6 +85,49 @@ describe("claudeConnectorDefinition", () => {
       expect(first[0]?.id).toBe("default");
       // One replayed handshake; a second launch would have found none left to play.
       expect(replayed.pids()).toHaveLength(1);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("lists its slash commands from the same handshake as its models", () =>
+    Effect.gen(function* () {
+      const replayed = replay("probe");
+      const instance = yield* claudeConnectorDefinition.createInstance({
+        instanceId: makeConnectorInstanceId(),
+        config: { binaryPath: replayed.binaryPath },
+        services: yield* testServices(),
+      });
+      const commands = instance.extensions?.commands;
+      expect(commands).toBeDefined();
+      // Asked together, as the model picker and the '/' menu do on first open.
+      const [models, listed] = yield* Effect.all(
+        [instance.listModels(), commands!.list({ workspaceRoot: null })],
+        { concurrency: "unbounded" },
+      );
+      // The scope changes nothing: the handshake loads no project settings.
+      const inProject = yield* commands!.list({ workspaceRoot: "/work/project" });
+      expect(models[0]?.id).toBe("default");
+      // The recorder scrubs the command list down to one entry; its empty
+      // argument hint is left out.
+      expect(listed).toEqual([
+        { name: "scrubbed-entry", description: "scrubbed-entry (recording)" },
+      ]);
+      expect(inProject).toBe(listed);
+      expect(replayed.pids()).toHaveLength(1);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("answers a failed handshake as an internal extension failure", () =>
+    Effect.gen(function* () {
+      const instance = yield* claudeConnectorDefinition.createInstance({
+        instanceId: makeConnectorInstanceId(),
+        config: { binaryPath: "/nonexistent/claude" },
+        services: yield* testServices(),
+      });
+      const error = yield* Effect.flip(
+        instance.extensions!.commands!.list({ workspaceRoot: null }),
+      );
+      expect(error._tag).toBe("ConnectorExtensionFailed");
+      expect(error.code).toBe("internal");
     }).pipe(Effect.scoped),
   );
 });

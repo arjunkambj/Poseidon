@@ -15,7 +15,7 @@
  *   prints the document, so the output is read whatever the exit code;
  * - the model list, which only the CLI's SDK handshake carries: a query whose
  *   prompt never yields a message starts the CLI, completes its initialize
- *   exchange — models, account — and is torn down. Nothing is sent to the
+ *   exchange — models, slash commands, account — and is torn down. Nothing is sent to the
  *   API, so it costs nothing (`fixtures/claude/probe/`).
  */
 
@@ -23,11 +23,13 @@ import { execFile } from "node:child_process";
 import * as NodeOS from "node:os";
 import { query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { ModelOption } from "@poseidon/contracts/connectors";
+import type { HarnessCommand } from "@poseidon/contracts/harnessCommands";
 import type { ConnectorProbe } from "@poseidon/connector-sdk/definition";
 import { ProbeFailed } from "@poseidon/connector-sdk/definition";
 import * as Effect from "effect/Effect";
 
 import { resolveBinary, terminalCommand, type ResolvedBinary } from "./binary";
+import { toHarnessCommands } from "./commands";
 import type { ClaudeConnectorConfig } from "./configSchema";
 import { childEnv } from "./env";
 import { CLAUDE_KIND } from "./kind";
@@ -136,6 +138,8 @@ export const parseAuthStatus = (stdout: string): AuthStatus => {
 
 export interface Initialization {
   readonly models: ReadonlyArray<ModelOption>;
+  /** The CLI's built-in and bundled slash commands (`commands.ts`). */
+  readonly commands: ReadonlyArray<HarnessCommand>;
   readonly account?: string;
 }
 
@@ -190,6 +194,7 @@ export const readInitialization = (input: {
         const email = init.account?.email;
         return {
           models: toModelOptions(init.models),
+          commands: toHarnessCommands(init.commands),
           ...(typeof email === "string" && email !== "" ? { account: email } : {}),
         };
       },
@@ -262,7 +267,7 @@ export const probe = (
     const initialization = yield* readInitialization({ binary, env, cwd: NodeOS.tmpdir() }).pipe(
       Effect.catch((error) => {
         warnings.push(error.message);
-        return Effect.succeed<Initialization>({ models: [] });
+        return Effect.succeed<Initialization>({ models: [], commands: [] });
       }),
     );
     const account = status.account ?? initialization.account;
