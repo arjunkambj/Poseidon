@@ -452,12 +452,12 @@ attachments, as `/clear-draft` does. The settings row under the input
 (`thread-settings-keys.tsx`) answers the rest through the same `onChange` a
 click uses:
 
-| key                           | does                                                                                    |
-| ----------------------------- | --------------------------------------------------------------------------------------- |
-| `Shift+Tab` (in the composer) | toggle plan mode (§6)                                                                   |
-| `Mod+Shift+L`                 | next runtime mode the connector offers, in contract order, wrapping (`nextRuntimeMode`) |
-| `Mod+Shift+M` / `Mod+Shift+E` | open the model / effort picker                                                          |
-| `Mod+Shift+.` / `Mod+Shift+,` | one rung up / down the model's effort ladder, stopping at either end (`stepEffort`)     |
+| key                           | does                                                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `Shift+Tab` (in the composer) | toggle plan mode (§6)                                                                                               |
+| `Mod+Shift+L`                 | next runtime mode the connector offers, in contract order, wrapping (`nextRuntimeMode`)                             |
+| `Mod+Shift+M` / `Mod+Shift+E` | open the model / effort picker                                                                                      |
+| `Mod+Shift+.` / `Mod+Shift+,` | one rung up / down the model's effort ladder, stopping at either end and never stepping onto `ultra` (`stepEffort`) |
 
 A picker the connector locks until restart does not open, and a locked effort
 does not step. The plan button's tooltip and the attach button's show their

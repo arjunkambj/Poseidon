@@ -28,6 +28,23 @@ export const EFFORT_LABELS: Readonly<Record<Effort, string>> = {
 };
 
 /**
+ * The one-line note a picker shows under a rung that needs one: `ultra`
+ * delegates to subagents, and its cost is the reason to pick it on purpose.
+ */
+export const EFFORT_NOTES: Readonly<Partial<Record<Effort, string>>> = {
+  ultra: "Delegates to subagents · uses many more tokens",
+};
+
+/** `item` with the rung's note as its description, when the rung has one. */
+export const withNote = <T extends object>(
+  item: T,
+  effort: Effort,
+): T | (T & { description: string }) => {
+  const note = EFFORT_NOTES[effort];
+  return note === undefined ? item : { ...item, description: note };
+};
+
+/**
  * One rung up (`1`) or down (`-1`) the model's ladder from `current`, for the
  * effort keys. It stops at either end rather than wrapping — a key that jumped
  * from the top rung to the bottom would be a surprise mid-thread. A current

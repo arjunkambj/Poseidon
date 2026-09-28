@@ -1,7 +1,7 @@
 import { EFFORT_ORDER } from "@poseidon/contracts/enums";
 import { describe, expect, it } from "vitest";
 
-import { EFFORT_LABELS, orderEfforts, stepEffort } from "./efforts";
+import { EFFORT_LABELS, EFFORT_NOTES, orderEfforts, stepEffort, withNote } from "./efforts";
 
 describe("orderEfforts", () => {
   it("offers the whole ladder but ultra when the model states none", () => {
@@ -71,5 +71,18 @@ describe("EFFORT_LABELS", () => {
       "Max",
       "Ultra",
     ]);
+  });
+});
+
+describe("withNote", () => {
+  it("gives ultra its cost note and leaves every other rung as it is", () => {
+    expect(withNote({ value: "ultra" }, "ultra")).toEqual({
+      value: "ultra",
+      description: EFFORT_NOTES.ultra,
+    });
+    expect(EFFORT_NOTES.ultra).toContain("uses many more tokens");
+    for (const effort of EFFORT_ORDER.filter((rung) => rung !== "ultra")) {
+      expect(withNote({ value: effort }, effort)).toEqual({ value: effort });
+    }
   });
 });

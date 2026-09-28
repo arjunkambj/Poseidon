@@ -58,7 +58,7 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import { useClientRuntime } from "@/lib/client-runtime";
 import { instanceCapabilities, threadConnectorInstanceId } from "@/lib/connector-routing";
 import { DISPATCH_UNREACHABLE, receiptError } from "@/lib/dispatch-outcome";
-import { orderEfforts } from "@/lib/efforts";
+import { orderEfforts, withNote } from "@/lib/efforts";
 import { findModel, modelPickPatch } from "@/lib/model-picks";
 import { RUNTIME_MODE_LABELS, runtimeModeOptions } from "@/lib/runtime-modes";
 import { CommandKbd } from "@/lib/shortcuts";
@@ -211,7 +211,7 @@ export function ThreadSettingsControls({
       ? undefined
       : findModel(catalog, { connectorInstanceId, model: settings.model });
   const effortOptions: ReadonlyArray<HeaderOption> = orderEfforts(currentModel?.efforts).map(
-    (effort) => ({ value: effort, label: effort }),
+    (effort) => withNote({ value: effort, label: effort }, effort),
   );
   // A mode the connector cannot honour stays visible while it is the current
   // one — under its own name, not picked again — so the picker never lies.

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { ModelOption, SkillSummary } from "@poseidon/contracts/connectors";
+import type { Effort } from "@poseidon/contracts/enums";
 import type { HarnessCommand } from "@poseidon/contracts/harnessCommands";
 
 import { slashMenuItems } from "@/components/composer/slash-menu";
+import { EFFORT_NOTES } from "@/lib/efforts";
 
 const rootItems = (
   query: string,
@@ -133,5 +135,28 @@ describe("slashMenuItems /model", () => {
 
   it("finds a model by a word of its tagline", () => {
     expect(modelItems("/model agentic").map((item) => item.label)).toEqual(["Gemini 3.5 Flash"]);
+  });
+});
+
+describe("slashMenuItems /effort", () => {
+  const effortItems = (efforts: ReadonlyArray<Effort> | undefined) =>
+    slashMenuItems({
+      level: "effort",
+      query: "",
+      skills: [],
+      harnessCommands: [],
+      models: [],
+      efforts,
+      capabilities: null,
+      canCompact: false,
+    });
+
+  it("offers ultra with its cost note only where the model lists it", () => {
+    const listed = effortItems(["high", "max", "ultra"]);
+    expect(listed.map((item) => item.label)).toEqual(["high", "max", "ultra"]);
+    expect(listed.at(-1)?.description).toBe(EFFORT_NOTES.ultra);
+    expect(listed[0]?.description).toBeUndefined();
+    expect(effortItems(["high", "max"]).map((item) => item.label)).not.toContain("ultra");
+    expect(effortItems(undefined).map((item) => item.label)).not.toContain("ultra");
   });
 });

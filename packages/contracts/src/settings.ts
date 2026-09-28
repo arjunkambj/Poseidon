@@ -338,7 +338,8 @@ export const SettingsDefaults = Schema.Struct({
   effort: Effort.pipe(
     settingsForm({
       label: "Default effort",
-      description: "Reasoning effort new threads start with, where the model accepts one.",
+      description:
+        "Reasoning effort new threads start with, where the model accepts one. Ultra delegates to subagents and uses many more tokens; a model that does not offer it runs at its own default.",
       control: "select",
     }),
   ),

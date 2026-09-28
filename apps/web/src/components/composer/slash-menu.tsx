@@ -36,7 +36,7 @@ import {
   matchesQuery as match,
   type TriggerMenuItem,
 } from "@/components/composer/trigger-menu";
-import { orderEfforts } from "@/lib/efforts";
+import { orderEfforts, withNote } from "@/lib/efforts";
 import { RUNTIME_MODE_LABELS, runtimeModeOptions } from "@/lib/runtime-modes";
 import {
   Brain,
@@ -128,12 +128,17 @@ export const slashMenuItems = (input: {
   if (level === "effort") {
     return orderEfforts(efforts)
       .filter((effort) => match(query, effort))
-      .map((effort) => ({
-        id: `effort:${effort}`,
-        label: effort,
-        icon: Lightning,
-        action: { type: "settings", patch: { effort } },
-      }));
+      .map((effort) =>
+        withNote(
+          {
+            id: `effort:${effort}`,
+            label: effort,
+            icon: Lightning,
+            action: { type: "settings", patch: { effort } },
+          },
+          effort,
+        ),
+      );
   }
 
   if (level === "mode") {
