@@ -21,7 +21,11 @@ export type BrowserBridgeSetting =
   | { readonly kind: "enabled" }
   | { readonly kind: "disabled"; readonly reason: string };
 
-/** The reason the kill switch reports, in the tools and the settings page. */
+/**
+ * What the shell logs at startup when the kill switch is on. Only the log
+ * reads it: the tools answer the server's own `BROWSER_DISABLED_MESSAGE`, and
+ * the pane and the settings page show their own disabled text.
+ */
 export const KILL_SWITCH_REASON = "POSEIDON_REMOTE_DEBUG=0 turned the in-app browser off";
 
 export const resolveBrowserBridge = (env: NodeJS.ProcessEnv): BrowserBridgeSetting => {
