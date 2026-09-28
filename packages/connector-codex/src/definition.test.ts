@@ -24,7 +24,7 @@ describe("codexConnectorDefinition", () => {
     const { kind, metadata } = codexConnectorDefinition;
     expect(kind).toBe(CODEX_KIND);
     expect(metadata.displayName).toBe("Codex");
-    expect(metadata.iconKey).toBe("terminal");
+    expect(metadata.iconKey).toBe("codex");
     expect(metadata.accent).toMatch(/^#[0-9a-f]{6}$/i);
     // The CLI's own --help names no documentation link, so none is claimed.
     expect(metadata.docsUrl).toBeUndefined();

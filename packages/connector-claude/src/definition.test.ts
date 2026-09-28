@@ -31,7 +31,7 @@ describe("claudeConnectorDefinition", () => {
       const { kind, metadata } = yield* Effect.succeed(claudeConnectorDefinition);
       expect(kind).toBe(CLAUDE_KIND);
       expect(metadata.displayName).toBe("Claude Code");
-      expect(metadata.iconKey).toBe("terminal");
+      expect(metadata.iconKey).toBe("claude-code");
       expect(metadata.accent).toMatch(/^#[0-9a-f]{6}$/i);
       // The CLI's own --help names no documentation link, so none is claimed.
       expect(metadata.docsUrl).toBeUndefined();

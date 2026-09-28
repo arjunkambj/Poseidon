@@ -88,6 +88,7 @@ export const makeCmdConnectorDefinition = (
     kind: CMD_KIND,
     metadata: {
       displayName: "Command Code",
+      // Honeyicons ships no logo for it, so the generic glyph stands in.
       iconKey: "terminal",
       accent: "#6e56cf",
       // The docs root the CLI's own `--help` points at (fixtures/cmd/probe/help.stdout.txt).

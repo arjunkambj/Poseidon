@@ -86,7 +86,7 @@ export const makeCodexConnectorDefinition = (
     kind: CODEX_KIND,
     metadata: {
       displayName: "Codex",
-      iconKey: "terminal",
+      iconKey: "codex",
       accent: "#10a37f",
       // `codex --help` names no documentation link, so none is given.
     },

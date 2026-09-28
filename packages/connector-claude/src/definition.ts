@@ -73,7 +73,7 @@ export const makeClaudeConnectorDefinition = (
   kind: CLAUDE_KIND,
   metadata: {
     displayName: "Claude Code",
-    iconKey: "terminal",
+    iconKey: "claude-code",
     accent: "#d97757",
     // `claude --help` names no documentation link, so none is given.
   },

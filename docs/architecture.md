@@ -1885,9 +1885,10 @@ as `ProbeFailed` or `SpawnFailed` for whichever operation needed it.
 
 A definition describes itself, so no layer above it has to. `metadata` is how
 it presents itself: `displayName` (what a new instance is named and the
-connectors page offers to add), `iconKey` (a generic glyph such as `terminal`,
-never a product's logo — the renderer maps it to an icon it ships and falls
-back to a generic one), `accent` (a colour, carried as data; the renderer keeps
+connectors page offers to add), `iconKey` (a key the renderer maps to a logo or
+glyph it ships — `claude-code`, `codex`, or a generic glyph such as `terminal`
+for a harness with no logo — falling back to a generic one for a key it does
+not know), `accent` (a colour, carried as data; the renderer keeps
 to the theme's tokens and does not paint it) and an optional `docsUrl`, which
 is also the renderer's fallback help link for a probe that failed on the
 account. `configSchema` must be a struct whose fields carry `settingsForm`

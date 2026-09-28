@@ -94,9 +94,10 @@ export const ConnectorSummary = Schema.Struct({
 export type ConnectorSummary = typeof ConnectorSummary.Type;
 
 /**
- * How a connector presents itself, from its own definition. `iconKey` names a
- * generic icon (`"terminal"`, never a product's logo) the renderer maps to one
- * it ships; `accent` is a CSS colour; `docsUrl` is where the connector's own
+ * How a connector presents itself, from its own definition. `iconKey` is a
+ * key the renderer maps to a logo or glyph it ships (`"claude-code"`,
+ * `"terminal"`), falling back to a generic glyph for a key it does not know;
+ * `accent` is a CSS colour; `docsUrl` is where the connector's own
  * documentation lives, and the fallback help link for a probe that failed on
  * the account.
  */
