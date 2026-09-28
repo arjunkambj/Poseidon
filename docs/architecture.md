@@ -335,7 +335,9 @@ The shell is a left sidebar (projects → threads), the thread column (the
 timeline, then the composer with any open approval, question or plan card
 docked above its input, and while subagents run an "N agents working" strip
 there too, whose View opens the dock's agents tab on the newest one (a request
-in `state/agents-reveal.ts` the thread view answers), then the terminal drawer — a strip with a show button
+in `state/agents-reveal.ts` the thread view answers) and whose Stop, shown only
+when the bound session's `capabilities.stopTask` is true, sends
+`thread.task.stop` for that one, then the terminal drawer — a strip with a show button
 while closed — whose toolbar finds text and quotes a selection into the
 composer draft, and whose mod-clicked http(s) links open on the dock's browser
 tab) and a right dock whose strip holds only the tabs opened in that thread
@@ -1315,14 +1317,14 @@ and its append.
 
 ### Commands and events
 
-Seventeen commands (`packages/contracts/src/orchestration.ts`):
+Eighteen commands (`packages/contracts/src/orchestration.ts`):
 `project.create`, `project.remove`, `thread.create`, `thread.rename`,
 `thread.archive`, `thread.unarchive`, `thread.delete`, `thread.turn.start`,
-`thread.turn.steer`, `thread.turn.interrupt`, `thread.settings.update`, `thread.approval.respond`,
+`thread.turn.steer`, `thread.turn.interrupt`, `thread.task.stop`, `thread.settings.update`, `thread.approval.respond`,
 `thread.userInput.respond`, `thread.plan.respond`, `thread.queue.remove`,
 `thread.queue.reorder`, `thread.checkpoint.restore`.
 
-Thirty-two events, from `project.created` through `thread.error`. The catalogue
+Thirty-three events, from `project.created` through `thread.error`. The catalogue
 is kept as data (`commandTypes`, `orchestrationEventTypes`) and a test holds
 each list and its union in lockstep. The value objects the commands, events
 and read models share — `ThreadSettings`, `QueuedMessage`, `ThreadSession` and
@@ -1602,6 +1604,7 @@ instead of the kind:
 | `questions`                  | boolean                              | whether a turn can put a question to the user        |
 | `steering`                   | boolean                              | the decider (bound session) and the composer's Enter |
 | `subagents`, `resume`        | boolean                              | declared                                             |
+| `stopTask`                   | optional boolean                     | the decider and the agents strip's Stop              |
 | `fork`                       | boolean                              | declared; read once a harness supports it            |
 
 `steering` also decides `TurnInProgress` and whether a handle has `steer`,
@@ -1673,7 +1676,12 @@ with no new turn boundary, and the connector keeps that turn open until the
 harness has answered the steered message too, so the turn still completes
 exactly once. It fails with `NotSteerable` when there is no turn to take the
 message. `close` is not best-effort: it resolves only once the connector has
-proved the process tree it started is gone.
+proved the process tree it started is gone. `stopTask`, present only when
+`capabilities.stopTask` is true, stops one running subagent by its task row
+and leaves the turn going: the decider accepts `thread.task.stop` only for an
+`in_progress` task of the running turn, `thread.task.stopRequested` records
+it, and the provider reactor calls the handle; the harness then settles the
+row as it settles any task.
 
 **The bounded queue.** `makeBoundedEventQueue` is a dropping queue of 2048
 slots, of which the last 64 are reserved for terminal events —
