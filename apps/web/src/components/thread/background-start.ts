@@ -21,7 +21,9 @@
  * worktree creates go one after another in lane order. Setup, create and send
  * then overlap across lanes, except that each thread create waits until the
  * lane before it has issued its own (or ended without one), so the new rows
- * land in the sidebar together and in order.
+ * land in the sidebar together and in order. That wait gives up after
+ * `TURN_WAIT_MS`: a lane whose setup runs on (a watcher it started, a prompt
+ * nobody answers) must not keep the lanes after it from their threads.
  */
 
 import type { WorktreeSetupProgress } from "@poseidon/client-runtime/gitCommands";
@@ -99,11 +101,32 @@ export const serialized = () => {
   };
 };
 
+/**
+ * How long a lane ready to create its thread waits for the lane before it to
+ * create its own; past this the rows may land out of order, but they land.
+ */
+const TURN_WAIT_MS = 10_000;
+
+/** Settles when `promise` does, or after `ms`, whichever comes first. */
+const waitAtMost = async (promise: Promise<void>, ms: number): Promise<void> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ms);
+  });
+  try {
+    await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 /** How one lane shares the repository and the sidebar with its siblings. */
 interface LaneGates {
   readonly serial: ReturnType<typeof serialized>;
   /** Settles once the lane before has issued its thread create, or ended. */
   readonly turn: Promise<void>;
+  /** At most how long the lane waits on `turn`. */
+  readonly turnWaitMs: number;
   /** This lane has issued its thread create, or will not. */
   readonly passTurn: () => void;
 }
@@ -111,6 +134,7 @@ interface LaneGates {
 const soloGates = (): LaneGates => ({
   serial: serialized(),
   turn: Promise.resolve(),
+  turnWaitMs: 0,
   passTurn: () => undefined,
 });
 
@@ -120,7 +144,7 @@ const runLane = async (
   gates: LaneGates,
 ): Promise<BackgroundOutcome> => {
   const createThread = async (worktree: ThreadWorktree | undefined): Promise<string | null> => {
-    await gates.turn;
+    await waitAtMost(gates.turn, gates.turnWaitMs);
     const pending = steps.createThread(lane, worktree);
     gates.passTurn();
     try {
@@ -218,6 +242,7 @@ export const runBackgroundLane = (
 export const runBackgroundLanes = (
   lanes: ReadonlyArray<BackgroundLane>,
   steps: BackgroundLaneSteps,
+  turnWaitMs: number = TURN_WAIT_MS,
 ): Promise<ReadonlyArray<BackgroundOutcome>> => {
   const serial = serialized();
   let turn: Promise<void> = Promise.resolve();
@@ -226,7 +251,7 @@ export const runBackgroundLanes = (
     const passed = new Promise<void>((resolve) => {
       passTurn = resolve;
     });
-    const run = runLane(lane, steps, { serial, turn, passTurn });
+    const run = runLane(lane, steps, { serial, turn, turnWaitMs, passTurn });
     turn = passed;
     return run;
   });

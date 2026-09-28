@@ -2328,9 +2328,11 @@ into one lane per model, in tick order:
 order, because concurrent `git worktree add` on one repository races on git's
 locks, and each `thread.create` waits for the lane before it. The threads are
 therefore created in tick order and land next to each other in the sidebar,
-which lists threads by their latest update. Setups, sends and turns overlap,
-while image uploads go one at a time. A lane fails, parks or starts on its own
-terms, as described above, and never holds up the next one. The one toast
+which lists threads by their latest update. That wait lasts at most 10 seconds
+(`TURN_WAIT_MS`) once a lane is ready, so a setup that runs on does not keep
+the later lanes from their threads; they land ahead of it. Setups, sends and
+turns overlap, while image uploads go one at a time. A lane fails, parks or
+starts on its own terms, as described above. The one toast
 reads "Starting N threads in <project>…", then "Started N threads in
 <project>" naming the models, "Started k of N threads" naming each lane that
 did not start and why, or "Could not start N threads". **Open** goes to the

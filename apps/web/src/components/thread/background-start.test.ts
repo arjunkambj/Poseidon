@@ -1,7 +1,7 @@
 import type { WorktreeSetupProgress } from "@poseidon/client-runtime/gitCommands";
 import type { ThreadWorktree } from "@poseidon/contracts/git";
 import type { ThreadId } from "@poseidon/contracts/ids";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   backgroundSummary,
@@ -279,6 +279,46 @@ describe("runBackgroundLanes", () => {
     ]);
     const threads = log.filter((line) => line.startsWith("thread"));
     expect(threads).toEqual(["thread thread-1 poseidon/a", "thread thread-2 poseidon/b"]);
+  });
+
+  describe("with a setup that never ends", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("creates the later lanes' threads once the wait for the stuck lane runs out", async () => {
+      vi.useFakeTimers();
+      const stuck = deferred<WorktreeSetupProgress>();
+      const { log, steps } = recorder({
+        runSetup: (worktree) => {
+          log.push(`setup ${worktree.branch}`);
+          return worktree.branch === "poseidon/a" ? stuck.promise : Promise.resolve(run());
+        },
+      });
+      const all = runBackgroundLanes([lane(T1, "a"), lane(T2, "b"), lane(T3, "c")], steps, 1_000);
+
+      await flush();
+      expect(log.some((line) => line.startsWith("thread"))).toBe(false);
+      await vi.advanceTimersByTimeAsync(1_000);
+      await flush();
+      // Lane b gave up on a; c then follows b as usual, without a wait of its own.
+      expect(log.filter((line) => line.startsWith("send"))).toEqual([
+        "send thread-2",
+        "send thread-3",
+      ]);
+
+      stuck.resolve(run());
+      await expect(all).resolves.toEqual([
+        { _tag: "started", threadId: T1 },
+        { _tag: "started", threadId: T2 },
+        { _tag: "started", threadId: T3 },
+      ]);
+      expect(log.filter((line) => line.startsWith("thread"))).toEqual([
+        "thread thread-2 poseidon/b",
+        "thread thread-3 poseidon/c",
+        "thread thread-1 poseidon/a",
+      ]);
+    });
   });
 
   it("does not hold a lane back behind one that ended without a thread", async () => {
