@@ -21,7 +21,8 @@
  * reveals the first file after the cursor that is not viewed as it is now,
  * wrapping round (`nextUnviewed`). The change keys and their buttons move
  * between blocks of changed lines (`useChangeNavigation`), over the list as
- * last laid out (`useReviewLayout`).
+ * last laid out (`useReviewLayout`), and marks along the scroller show where
+ * every change sits (`ChangeMarkers`).
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
@@ -32,6 +33,7 @@ import { useKeybindingCommand } from "@/lib/shortcuts";
 import { useChangesTreeOpen } from "@/state/changes-view";
 import { useChangesReview, type DiffStyle } from "@/state/ui";
 
+import { ChangeMarkers } from "./change-markers";
 import { linkedFileIndex } from "./deep-link";
 import { FileJumpMenu } from "./file-jump-menu";
 import { FileSection } from "./file-section";
@@ -219,27 +221,35 @@ export function ReviewList({
         {layout === "aside" ? (
           <FileTree {...treeProps} className="w-56 shrink-0 border-r border-border" />
         ) : null}
-        <div ref={scrollerRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-          <div ref={contentRef}>
-            {hashed.map(({ file, hash }) => (
-              <FileSection
-                key={file.path}
-                threadId={threadId}
-                file={file}
-                prefix={prefix}
-                open={isOpen(review, file.path)}
-                onOpenChange={(open) => {
-                  moveCursor(file.path);
-                  setOpen([file.path], open);
-                }}
-                viewed={viewedPaths.has(file.path)}
-                onViewedChange={(viewed) =>
-                  updateReview((current) => withViewed(current, file.path, viewed ? hash : null))
-                }
-                diffStyle={diffStyle}
-              />
-            ))}
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto">
+            <div ref={contentRef}>
+              {hashed.map(({ file, hash }) => (
+                <FileSection
+                  key={file.path}
+                  threadId={threadId}
+                  file={file}
+                  prefix={prefix}
+                  open={isOpen(review, file.path)}
+                  onOpenChange={(open) => {
+                    moveCursor(file.path);
+                    setOpen([file.path], open);
+                  }}
+                  viewed={viewedPaths.has(file.path)}
+                  onViewedChange={(viewed) =>
+                    updateReview((current) => withViewed(current, file.path, viewed ? hash : null))
+                  }
+                  diffStyle={diffStyle}
+                />
+              ))}
+            </div>
           </div>
+          <ChangeMarkers
+            layout={reviewLayout}
+            files={files}
+            open={files.map((file) => isOpen(review, file.path))}
+            onJump={changes.jumpTo}
+          />
         </div>
       </div>
     </div>

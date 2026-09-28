@@ -1903,6 +1903,17 @@ element's shadow root, where a changed line is a `[data-line]` row typed
 `change-addition` or `change-deletion`, and touching rows make one block — in
 split view the two columns fold together by height.
 
+Marks along the right edge of the list's scroller show where every change
+sits in the whole list, the way an editor marks its scrollbar
+(`change-markers.tsx`, `markerItems` and `markerLayout` in
+`change-blocks.ts`): an open file marks each block — green adds, red removes,
+grey both — and any other file one mark at its header, coloured by what the
+file does. A mark is never thinner than 3px, the track lets the pointer
+through everywhere but on a mark, and it shows only while the list scrolls.
+Clicking a mark scrolls there and parks the change keys on it. The pane
+measures the list again whenever the content or the view changes size
+(`use-review-layout.ts`, a `ResizeObserver`, at most once a frame).
+
 Beside the files sits a tree of them (`file-tree.ts` for the rules,
 `file-tree-view.tsx` for the tree): folders with chains of single folders
 shown as one row (`apps/web/src`), folders before files, each by name. A file

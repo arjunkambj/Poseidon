@@ -1,11 +1,20 @@
 /**
  * The Changes list's change blocks: rows grouped by touching, where the change
- * keys stop, and which stop they move to.
+ * keys stop, which stop they move to, and the scrollbar's marks.
  */
 
 import { describe, expect, it } from "vitest";
 
-import { type ChangeRow, changeBlocks, changeStops, nextChangeTarget } from "./change-blocks";
+import {
+  type ChangeRow,
+  MARKER_MIN_HEIGHT,
+  changeBlocks,
+  changeStops,
+  fileChangeKind,
+  markerItems,
+  markerLayout,
+  nextChangeTarget,
+} from "./change-blocks";
 
 const added = (top: number, height = 20): ChangeRow => ({
   top,
@@ -99,5 +108,72 @@ describe("changeStops", () => {
       { index: 0, top: 0, opens: true },
       { index: 2, top: 72, opens: false },
     ]);
+  });
+});
+
+describe("scrollbar marks", () => {
+  const sections = [
+    {
+      top: 0,
+      bottom: 300,
+      header: 28,
+      blocks: [
+        { top: 60, bottom: 80, kind: "added" as const },
+        { top: 200, bottom: 260, kind: "mixed" as const },
+      ],
+    },
+    { top: 300, bottom: 328, header: 28, blocks: [] },
+    { top: 328, bottom: 356, header: 28, blocks: [] },
+  ];
+  const files = [
+    { kind: "edit" as const },
+    { kind: "create" as const },
+    { kind: "delete" as const },
+  ];
+
+  it("marks each block of an open file and the header of every other", () => {
+    expect(markerItems(sections, files, [true, false, false])).toEqual([
+      { top: 60, height: 20, kind: "added", target: 32 },
+      { top: 200, height: 60, kind: "mixed", target: 172 },
+      { top: 300, height: 28, kind: "added", target: 300 },
+      { top: 328, height: 28, kind: "removed", target: 328 },
+    ]);
+  });
+
+  it("marks an open file whose patch has not rendered at its header", () => {
+    expect(markerItems(sections.slice(1, 2), files.slice(1, 2), [true])).toEqual([
+      { top: 300, height: 28, kind: "added", target: 300 },
+    ]);
+  });
+
+  it("colours a file by what it does", () => {
+    expect(fileChangeKind("create")).toBe("added");
+    expect(fileChangeKind("delete")).toBe("removed");
+    expect(fileChangeKind("edit")).toBe("mixed");
+  });
+
+  it("scales marks onto the track, never thinner than the least height nor past its end", () => {
+    const [block, tiny, last] = markerLayout(
+      [
+        { top: 250, height: 100, kind: "added", target: 0 },
+        { top: 500, height: 1, kind: "removed", target: 0 },
+        { top: 999, height: 1, kind: "mixed", target: 7 },
+      ],
+      1000,
+      300,
+    );
+    expect(block).toEqual({ top: 25, height: 10, kind: "added", target: 0 });
+    const least = (MARKER_MIN_HEIGHT / 300) * 100;
+    expect(tiny?.top).toBe(50);
+    expect(tiny?.height).toBeCloseTo(least);
+    // Kept inside the track, and the click target stays in px.
+    expect(last?.top).toBeCloseTo(100 - least);
+    expect(last?.target).toBe(7);
+  });
+
+  it("marks nothing without a height to scale by", () => {
+    const items = [{ top: 0, height: 10, kind: "added" as const, target: 0 }];
+    expect(markerLayout(items, 0, 300)).toEqual([]);
+    expect(markerLayout(items, 1000, 0)).toEqual([]);
   });
 });

@@ -1,12 +1,15 @@
 /**
  * Where the changes sit in the Changes pane's list, with no DOM in the way:
  * the rows `./diff-dom` reads off an open file grouped into change blocks,
- * and where the change keys stop.
+ * where the change keys stop, and where each change marks the scrollbar
+ * (`./change-markers`).
  *
  * Every position is in the list's content, in px from its top — the space
  * `scrollTop` counts in — so a block's top is also the scroll position that
  * brings it to the top of the view.
  */
+
+import type { GitDiffFile } from "@poseidon/contracts/rpc";
 
 import { EDGE } from "./review";
 
@@ -116,3 +119,76 @@ export const changeStops = (
       ? [{ index, top: section.top, opens: true }]
       : section.blocks.map((block) => ({ index, top: block.top - section.header, opens: false })),
   );
+
+/** How a closed file shows on the scrollbar: by what the whole file does. */
+export const fileChangeKind = (kind: GitDiffFile["kind"]): ChangeKind =>
+  kind === "create" ? "added" : kind === "delete" ? "removed" : "mixed";
+
+/** Something to mark on the scrollbar, in the list's px. */
+export interface MarkerItem {
+  readonly top: number;
+  readonly height: number;
+  readonly kind: ChangeKind;
+  /** The scroll position a click on the mark moves to. */
+  readonly target: number;
+}
+
+/**
+ * What the scrollbar marks: one mark per block of an open file, and one at
+ * the header of any other file, coloured by what the file does — so a closed
+ * file, or an open one whose patch has not rendered, still shows where it is.
+ * `open[i]` says file `i` is open.
+ */
+export const markerItems = (
+  sections: ReadonlyArray<SectionChanges & { readonly bottom: number }>,
+  files: ReadonlyArray<Pick<GitDiffFile, "kind">>,
+  open: ReadonlyArray<boolean>,
+): ReadonlyArray<MarkerItem> =>
+  sections.flatMap((section, index): ReadonlyArray<MarkerItem> => {
+    const file = files[index];
+    if (file === undefined) {
+      return [];
+    }
+    if (open[index] === true && section.blocks.length > 0) {
+      return section.blocks.map((block) => ({
+        top: block.top,
+        height: block.bottom - block.top,
+        kind: block.kind,
+        target: block.top - section.header,
+      }));
+    }
+    return [
+      {
+        top: section.top,
+        height: section.header,
+        kind: fileChangeKind(file.kind),
+        target: section.top,
+      },
+    ];
+  });
+
+/** The least height a mark is drawn at, in px of the track, so a one-line change still shows. */
+export const MARKER_MIN_HEIGHT = 3;
+
+/**
+ * `items` scaled onto a track `trackHeight` px tall standing for a list
+ * `contentHeight` px tall: each mark's top and height as percentages of the
+ * track (its `target` stays in px), at
+ * least `MARKER_MIN_HEIGHT` px tall and kept inside the track. Nothing when
+ * either height is not positive.
+ */
+export const markerLayout = (
+  items: ReadonlyArray<MarkerItem>,
+  contentHeight: number,
+  trackHeight: number,
+): ReadonlyArray<MarkerItem> => {
+  if (contentHeight <= 0 || trackHeight <= 0) {
+    return [];
+  }
+  const least = Math.min(100, (MARKER_MIN_HEIGHT / trackHeight) * 100);
+  return items.map((item) => {
+    const height = Math.min(100, Math.max(least, (item.height / contentHeight) * 100));
+    const top = Math.min(100 - height, Math.max(0, (item.top / contentHeight) * 100));
+    return { ...item, top, height };
+  });
+};
