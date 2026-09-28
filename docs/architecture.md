@@ -115,10 +115,12 @@ server runs under and which would start an Electron editor as bare node.
 pseudo-terminal by `@lydell/node-pty` (`apps/server/src/terminal/pty.ts`). A
 terminal belongs to a thread, and starts in the thread's workspace (its
 worktree, else its project's folder), or — on the New task page, before any
-thread exists — to a project, and starts in the project's folder. A shell lives
-until its terminal is closed, its thread is deleted or archived (its project
-removed, for a project's own), or the server shuts down; switching threads or
-reloading the renderer leaves it running. When the New task page starts a
+thread exists — to a project, and starts in the project's folder, or — in
+first-run setup, before any project exists — to home (`{ home: true }`), and
+starts in the user's home folder. A shell lives until its terminal is closed,
+its thread is deleted or archived (its project removed, for a project's own),
+or the server shuts down; switching threads or reloading the renderer leaves
+it running. When the New task page starts a
 local thread — one working in the project's folder — `terminal.adopt` hands
 the project's terminals to it, shells and scrollback intact.
 
@@ -975,8 +977,9 @@ its extensions list. `sessionImport` holds `ImportableSession`, one session
 a harness recorded on its own, as a `sessions` extension lists it for an
 import, and `sessions.importable` and `sessions.import`, with the
 `ImportableSessionEntry` the list answers and the `SessionImportResult` an
-import does. `terminal` holds the integrated terminal's summary, its
-output stream frames and the limits both ends share. `rpc` holds the methods
+import does. `terminal` holds the integrated terminal's owner (a thread, a
+project or home), its summary, its output stream frames and the limits both
+ends share. `rpc` holds the methods
 that carry them.
 
 Ids are branded UUIDv7 strings, so a `ThreadId` cannot be passed where a
@@ -1272,7 +1275,8 @@ Everything a client needs that is not React.
   stops the harness). The renderer binds them to its registry, with the
   availability check and the cancellable runner the Generate buttons share,
   in `lib/use-generation.ts`.
-- `terminalAtoms.ts` — a thread's terminal list, every thread's running
+- `terminalAtoms.ts` — an owner's terminal list (a thread's, a project's or
+  home's, by `terminalOwnerKey`), every thread's running
   terminals in one listing (`runningTerminalsAtom`), the open/write/resize/close
   calls, and `terminalAttachAtom`, which hands one terminal's output to a
   callback item by item. It is a `runtime.fn`, not an atom over the stream,

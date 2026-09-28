@@ -3440,7 +3440,9 @@ No agent-browser daemon outlives what started it
 Each thread has a terminal drawer at the bottom of its column: real shells,
 running on the server in the thread's workspace, shown in xterm. The New task
 page has one too, before any thread exists: its shells belong to the picked
-project and run in the project's folder.
+project and run in the project's folder. First-run setup, before any project
+exists, can mount one as well (`HomeTerminal`): its shells belong to home and
+run in the user's home folder.
 
 ### Opening one
 
@@ -3448,19 +3450,19 @@ project and run in the project's folder.
 the closed drawer collapses to, at the bottom of the thread column
 (`terminal-bar.tsx`), all fire the same command, `terminal.toggle`; the open
 drawer's own "Hide terminal" button closes it. The command is answered by
-`ThreadTerminal` (`apps/web/src/components/terminal/owned-terminal.tsx`),
-which is always mounted with the thread view — or, on the New task page, by
-`ProjectTerminal` — so the button and the chord take one path — the one that
-also moves focus into the terminal it opens. Whether a thread's (or a
-project's) drawer is open, and how tall the drawer is, is presentation state in
-localStorage (`apps/web/src/state/terminal-ui.ts`). The drawer is at least
-120px tall and at most 70% of the column, and never so tall that the
-conversation above it gets less than 120px: the header and composer keep their
-height, so the drawer measures them (`use-drawer-bound.ts`) and is shown at the
-stored height or that bound, whichever is lower — the way the dock always
-leaves the thread column its minimum width, even after the window shrinks. On
-a window too short for both floors the drawer keeps its 120px, and the xterm
-fits the rows it can show.
+`ThreadTerminal` (`apps/web/src/components/terminal/owned-terminal.tsx`), which
+is always mounted with the thread view — or, on the New task page, by
+`ProjectTerminal`, or by `HomeTerminal` where there is no project — so the
+button and the chord take one path — the one that also moves focus into the
+terminal it opens. Whether a thread's (or a project's) drawer is open, and how
+tall the drawer is, is presentation state in localStorage
+(`apps/web/src/state/terminal-ui.ts`). The drawer is at least 120px tall and at
+most 70% of the column, and never so tall that the conversation above it gets
+less than 120px: the header and composer keep their height, so the drawer
+measures them (`use-drawer-bound.ts`) and is shown at the stored height or that
+bound, whichever is lower — the way the dock always leaves the thread column its
+minimum width, even after the window shrinks. On a window too short for both
+floors the drawer keeps its 120px, and the xterm fits the rows it can show.
 
 A drawer that opens with no terminals starts one, once `terminal.list` has
 said there are none and the xterm has measured the grid to start it at. The
@@ -3475,18 +3477,26 @@ beyond it, and turns a vertical mouse wheel into a sideways scroll.
 
 Every terminal has an owner (`TerminalOwner` in
 `packages/contracts/src/terminal.ts`): a thread, whose payloads carry
-`threadId`, or a project with no thread yet, whose payloads carry `projectId`
-in its place. The New task page's draft id is never used as an owner — the
-thread it becomes may run in a new worktree, and the server has no thread by
-that id until it is sent. On the server, `TerminalService`
+`threadId`, a project with no thread yet, whose payloads carry `projectId`
+in its place, or home, with no project at all, whose payloads carry
+`home: true`. Each variant rules the others' fields out, so a payload naming
+two owners is refused. The New task page's draft id is never used as an owner
+— the thread it becomes may run in a new worktree, and the server has no
+thread by that id until it is sent. On the server, `TerminalService`
 (`apps/server/src/terminal/TerminalService.ts`) keys its registry by
-`terminalOwnerKey`, so a project's terminals and its threads' are separate
-sets, and asks `workspaceOf` for the directory: for a thread, its workspace
+`terminalOwnerKey` (a thread's bare id, `project:<id>`, or `home`), so a
+project's terminals, its threads' and home's are separate sets, and asks
+`workspaceOf` for the directory: for a thread, its workspace
 root from `threadWorkspaceRoot` — its worktree when it has one, its project's
 folder otherwise — refused as `not-found` for a deleted thread, and as
 `invalid` for an archived one or a folder that no longer exists on disk; for a
 project, its folder, refused as `not-found` once the project is removed and as
-`invalid` when the folder is gone.
+`invalid` when the folder is gone; for home, the user's home folder. Home's
+drawer has no composer, no files and no browser pane, so it has no "Add
+selection to chat", no file links and no "Open in browser", and its links open
+in the system browser. Its shells end only when closed or when the server
+shuts down, are never handed to a thread, and are not in
+`terminal.listRunning`, which is every thread's.
 
 A project's terminals follow the first message. When the New task page starts
 a local thread — no worktree, so it works in the folder those shells run in —
