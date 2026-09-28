@@ -9,7 +9,7 @@
  * there takes them all (`./use-terminal-hand-over`), when the count drops to
  * nothing.
  *
- * It reads the project's `terminal.list` (`./running-terminals` counts it):
+ * It reads the project's `terminal.list` through `./use-running-terminals`:
  * refetched on connecting, after every open, close and hand-over, and on a
  * return to the window, since a shell nobody is watching can exit without
  * the client hearing of it. Both badges of a project read the same list atom,
@@ -18,28 +18,16 @@
  * shows while none is running.
  */
 
-import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
 import type { ProjectId } from "@poseidon/contracts/ids";
-import { terminalOwnerKey } from "@poseidon/contracts/terminal";
 import { Badge } from "@poseidon/ui/components/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
-import { AsyncResult } from "effect/unstable/reactivity";
 
-import {
-  runningTerminalCount,
-  runningTerminalsLabel,
-} from "@/components/terminal/running-terminals";
-import { useTerminalAtoms } from "@/components/terminal/terminal-atoms";
-import { useSharedWindowReturn } from "@/lib/window-return";
+import { runningTerminalsLabel } from "@/components/terminal/running-terminals";
+import { useRunningTerminals } from "@/components/terminal/use-running-terminals";
 import { Terminal } from "@honeyicons/react";
 
 export function ProjectTerminalsBadge({ projectId }: { projectId: ProjectId }) {
-  const listAtom = useTerminalAtoms().terminalListAtom(terminalOwnerKey({ projectId }));
-  const list = useAtomValue(listAtom);
-  const refresh = useAtomRefresh(listAtom);
-  useSharedWindowReturn(listAtom, refresh);
-
-  const count = runningTerminalCount(AsyncResult.isSuccess(list) ? list.value : null);
+  const count = useRunningTerminals({ projectId }).length;
   if (count === 0) {
     return null;
   }
