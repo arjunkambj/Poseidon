@@ -13,7 +13,9 @@
  *
  * Pinned threads leave their project for a "Pinned" group above the tree
  * (`./pinned-threads`), first in the order the thread keys walk too. Pins are
- * this window's, like the unread stamps — see `./thread-pins`.
+ * this window's, like the unread stamps — see `./thread-pins`. Done threads
+ * move to a collapsed "Done · N" section under their project's active rows
+ * (`./done-threads`, `./thread-done`).
  *
  * The tree owns the one-minute tick behind every row's relative time, so a
  * long list runs one interval rather than one per row.
@@ -64,13 +66,15 @@ import type { ProjectId } from "@poseidon/contracts/ids";
 import type { ProjectSummary, ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { AddProjectDialog } from "@/components/sidebar/add-project-dialog";
+import { DoneThreads } from "@/components/sidebar/done-threads";
 import { PinnedThreads } from "@/components/sidebar/pinned-threads";
 import { ProjectTerminalsBadge } from "@/components/terminal/project-terminals-badge";
 import { ProjectRowMenu } from "@/components/sidebar/project-menu";
 import { projectStatusRollup, type ProjectStatusRollup } from "@/components/sidebar/project-status";
 import { ProjectStatusMark } from "@/components/sidebar/project-status-mark";
 import { ThreadRow } from "@/components/sidebar/thread-row";
-import { sidebarThreadGroups } from "@/components/sidebar/thread-order";
+import { useDoneExpandedProjects } from "@/components/sidebar/thread-done";
+import { groupedThreadOrder, sidebarThreadGroups } from "@/components/sidebar/thread-order";
 import { useThreadPins } from "@/components/sidebar/thread-pins";
 import { selectedRows } from "@/components/sidebar/thread-selection";
 import { ThreadSelectionBar } from "@/components/sidebar/thread-selection-bar";
@@ -78,6 +82,7 @@ import {
   useThreadSelection,
   type ThreadSelectionControls,
 } from "@/components/sidebar/use-thread-selection";
+import { useThreadIsDone } from "@/components/sidebar/use-thread-done";
 import { useCreateThread } from "@/lib/use-create-thread";
 import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
@@ -139,24 +144,21 @@ export function ProjectTree() {
   const openThreadId = openRoute === false ? null : openRoute.threadId;
   const collapsed = useCollapsedProjects();
   const [pins] = useThreadPins();
+  const isDone = useThreadIsDone();
+  const doneExpanded = useDoneExpandedProjects();
   // The same grouping the thread keys walk — see `./thread-order`.
-  const {
-    pinned: pinnedThreads,
-    byProject: threadsByProject,
-    orphans: orphanThreads,
-  } = React.useMemo(
-    () => sidebarThreadGroups(projects, threads, collapsed, openThreadId, { pinned: pins }),
-    [projects, threads, collapsed, openThreadId, pins],
+  const groups = React.useMemo(
+    () =>
+      sidebarThreadGroups(projects, threads, collapsed, openThreadId, {
+        pinned: pins,
+        isDone,
+        doneExpanded,
+      }),
+    [projects, threads, collapsed, openThreadId, pins, isDone, doneExpanded],
   );
+  const { pinned: pinnedThreads, byProject: threadsByProject, orphans: orphanThreads } = groups;
   // Rows top to bottom, as `sidebarThreadOrder` walks them.
-  const order = React.useMemo(
-    () => [
-      ...pinnedThreads,
-      ...projects.flatMap((project) => threadsByProject.get(project.projectId) ?? []),
-      ...orphanThreads,
-    ],
-    [pinnedThreads, projects, threadsByProject, orphanThreads],
-  );
+  const order = React.useMemo(() => groupedThreadOrder(projects, groups), [projects, groups]);
   const selection = useThreadSelection(order, openThreadId);
   // What each project would show folded, over all its threads, not the listed ones.
   const rollups = React.useMemo(() => {
@@ -216,6 +218,8 @@ export function ProjectTree() {
               key={project.projectId}
               project={project}
               threads={threadsByProject.get(project.projectId) ?? []}
+              done={groups.doneByProject.get(project.projectId) ?? []}
+              doneCount={groups.doneCount.get(project.projectId) ?? 0}
               counts={threadCounts.get(project.projectId) ?? NO_THREADS}
               rollup={rollups.get(project.projectId) ?? null}
               now={now}
@@ -292,6 +296,8 @@ function SelectableThreadRow({
 function ProjectSection({
   project,
   threads,
+  done,
+  doneCount,
   counts,
   rollup,
   now,
@@ -300,12 +306,18 @@ function ProjectSection({
   project: ProjectSummary;
   /** The listed threads, folding already applied: the open one only, when folded. */
   threads: ReadonlyArray<ThreadSummary>;
+  /** The listed Done threads, and how many the Done section holds. */
+  done: ReadonlyArray<ThreadSummary>;
+  doneCount: number;
   counts: ThreadCounts;
   rollup: ProjectStatusRollup | null;
   now: number;
   selection: ThreadSelectionControls;
 }) {
   const [collapsed, setCollapsed] = useProjectCollapsed(project.projectId);
+  const row = (thread: ThreadSummary) => (
+    <SelectableThreadRow key={thread.threadId} thread={thread} now={now} selection={selection} />
+  );
 
   return (
     <div className="grid gap-0.5">
@@ -356,18 +368,15 @@ function ProjectSection({
           <NewThreadButton projectId={project.projectId} onCreated={() => setCollapsed(false)} />
         </span>
       </div>
-      {threads.length > 0 ? (
-        <SidebarMenu>
-          {threads.map((thread) => (
-            <SelectableThreadRow
-              key={thread.threadId}
-              thread={thread}
-              now={now}
-              selection={selection}
-            />
-          ))}
-        </SidebarMenu>
-      ) : null}
+      {threads.length > 0 ? <SidebarMenu>{threads.map(row)}</SidebarMenu> : null}
+      {collapsed ? null : (
+        <DoneThreads
+          projectId={project.projectId}
+          count={doneCount}
+          threads={done}
+          renderRow={row}
+        />
+      )}
     </div>
   );
 }

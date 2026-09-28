@@ -11,8 +11,10 @@ import * as React from "react";
 
 import type { ProjectSummary, ThreadSummary } from "@poseidon/contracts/orchestration";
 
+import { useDoneExpandedProjects } from "@/components/sidebar/thread-done";
 import { projectForNewThread, sidebarThreadOrder } from "@/components/sidebar/thread-order";
 import { useThreadPins } from "@/components/sidebar/thread-pins";
+import { useThreadIsDone } from "@/components/sidebar/use-thread-done";
 import { useProjects, useThreadList } from "@/state/hooks";
 import { useCollapsedProjects, useLastProject } from "@/state/ui";
 
@@ -30,12 +32,19 @@ export function useThreadTargets(): ThreadTargets {
   const collapsed = useCollapsedProjects();
   const [lastProject] = useLastProject();
   const [pinned] = useThreadPins();
+  const isDone = useThreadIsDone();
+  const doneExpanded = useDoneExpandedProjects();
   const openRoute = useMatchRoute()({ to: "/t/$threadId" });
   const openThreadId = openRoute === false ? null : openRoute.threadId;
 
   const order = React.useMemo(
-    () => sidebarThreadOrder(projects, threads, collapsed, openThreadId, { pinned }),
-    [projects, threads, collapsed, openThreadId, pinned],
+    () =>
+      sidebarThreadOrder(projects, threads, collapsed, openThreadId, {
+        pinned,
+        isDone,
+        doneExpanded,
+      }),
+    [projects, threads, collapsed, openThreadId, pinned, isDone, doneExpanded],
   );
   const openThreadProject = threads.find((thread) => thread.threadId === openThreadId)?.projectId;
   const newThreadProject = projectForNewThread(projects, openThreadProject, lastProject);

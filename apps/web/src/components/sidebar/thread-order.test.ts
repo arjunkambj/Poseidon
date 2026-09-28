@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  groupedThreadOrder,
   neighbourThread,
   nthThread,
   projectForNewThread,
@@ -74,6 +75,67 @@ describe("sidebarThreadOrder", () => {
     const { byProject } = sidebarThreadGroups(projects, threads, none, null);
     expect(ids(byProject.get("p1") ?? [])).toEqual(["a1", "a2"]);
     expect(ids(byProject.get("p2") ?? [])).toEqual(["b1"]);
+  });
+});
+
+describe("the Done section", () => {
+  const threads = [thread("a1", "p1"), thread("a2", "p1"), thread("a3", "p1"), thread("b1", "p2")];
+  const done = new Set(["a1", "a3"]);
+  const isDone = (t: { threadId: string }) => done.has(t.threadId);
+
+  it("moves done threads out of the active rows and counts them", () => {
+    const groups = sidebarThreadGroups(projects, threads, none, null, { isDone });
+    expect(ids(groups.byProject.get("p1") ?? [])).toEqual(["a2"]);
+    expect(groups.doneByProject.get("p1")).toBeUndefined();
+    expect(groups.doneCount.get("p1")).toBe(2);
+    expect(groups.doneCount.get("p2")).toBeUndefined();
+  });
+
+  it("lists every done thread while the section is expanded", () => {
+    const options = { isDone, doneExpanded: new Set(["p1"]) };
+    const groups = sidebarThreadGroups(projects, threads, none, null, options);
+    expect(ids(groups.doneByProject.get("p1") ?? [])).toEqual(["a1", "a3"]);
+  });
+
+  it("keeps the open thread listed in a collapsed section", () => {
+    const groups = sidebarThreadGroups(projects, threads, none, "a3", { isDone });
+    expect(ids(groups.doneByProject.get("p1") ?? [])).toEqual(["a3"]);
+    expect(groups.doneCount.get("p1")).toBe(2);
+  });
+
+  it("walks active rows, then the expanded Done rows, project by project", () => {
+    expect(ids(sidebarThreadOrder(projects, threads, none, null, { isDone }))).toEqual([
+      "a2",
+      "b1",
+    ]);
+    const options = { isDone, doneExpanded: new Set(["p1"]) };
+    expect(ids(sidebarThreadOrder(projects, threads, none, null, options))).toEqual([
+      "a2",
+      "a1",
+      "a3",
+      "b1",
+    ]);
+    const groups = sidebarThreadGroups(projects, threads, none, null, options);
+    expect(ids(groupedThreadOrder(projects, groups))).toEqual(["a2", "a1", "a3", "b1"]);
+  });
+
+  it("never moves a pinned thread to Done", () => {
+    const groups = sidebarThreadGroups(projects, threads, none, null, {
+      pinned: ["a1"],
+      isDone,
+      doneExpanded: new Set(["p1"]),
+    });
+    expect(ids(groups.pinned)).toEqual(["a1"]);
+    expect(ids(groups.doneByProject.get("p1") ?? [])).toEqual(["a3"]);
+  });
+
+  it("hides the Done section of a folded project, open thread aside", () => {
+    const folded = new Set(["p1"]);
+    const options = { isDone, doneExpanded: new Set(["p1"]) };
+    const groups = sidebarThreadGroups(projects, threads, folded, "a3", options);
+    expect(ids(groups.byProject.get("p1") ?? [])).toEqual(["a3"]);
+    expect(groups.doneByProject.get("p1")).toBeUndefined();
+    expect(groups.doneCount.get("p1")).toBeUndefined();
   });
 });
 
