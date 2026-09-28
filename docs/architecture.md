@@ -1313,8 +1313,9 @@ them, so that is still where they are imported from.
 `thread.turn.steer` is how a message reaches a turn that is already running.
 The decider decides it from the thread's bound session: `thread.session.bound`
 carries the `ConnectorCapabilities` the session announced, and only a session
-whose `steering` is true is steered — `thread.turn.steered` plus the user's
-row, stamped with the running turn. Everything else about the command is the
+whose `steering` is true is steered — `thread.turn.steered`, stamped with the
+running turn; the user's row follows from the reactor once the message is
+delivered. Everything else about the command is the
 same as `thread.turn.start`: the same checks bar it, with no turn running it
 starts one, while an interrupt settles it queues, and for a harness whose
 session says it cannot steer it is refused with the queue as the recourse.
@@ -1379,8 +1380,10 @@ more watcher of its own, subscribed the same eager way inside its layer: on
 `thread.deleted` or `thread.archived` it kills that thread's shells.
 
 **`ProviderCommandReactor`.** `turn.requested` → ensure the session and
-`handle.send(turnId, turn)`. `turn.steered` → `handle.steer(turnId, turn)`;
-when there is no live handle or the steer fails, the message is dispatched
+`handle.send(turnId, turn)`. `turn.steered` → `handle.steer(turnId, turn)`,
+then the user's `user_message` row on that turn once it is delivered; when
+there is no live handle or the steer fails, no row is written there and the
+message is dispatched
 again as `thread.turn.start { queued: true }` — a new turn if the running one
 has ended, the queue if not — and put on the queue directly if even that is
 refused, so it is never lost. `turn.interrupted` → `handle.interrupt(turnId)`,

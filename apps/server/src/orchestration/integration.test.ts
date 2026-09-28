@@ -607,7 +607,7 @@ describe("orchestration with a fake connector", () => {
     }),
   );
 
-  it.effect("a steer the harness refuses falls back to the queue", () =>
+  it.effect("a steer the harness refuses falls back to the queue, with one row in total", () =>
     Effect.gen(function* () {
       const { fake, instance } = yield* openFake({
         script: approvalTurnScript,
@@ -631,13 +631,45 @@ describe("orchestration with a fake connector", () => {
         expect(detail?.queue.map((message) => [message.text, message.mentions])).toEqual([
           ["use port 8081", ["README.md"]],
         ]);
+        const firstTurn = detail?.currentTurnId;
+        const userRows = (items: ReadonlyArray<{ kind: string; text?: string; turnId?: string }>) =>
+          items
+            .filter((item) => item.kind === "user_message")
+            .map((item) => [item.text, item.turnId]);
+        // The turn the steer missed never saw the message, so it holds no row
+        // for it: the row belongs to the turn the queue starts.
+        expect(userRows(detail?.items ?? [])).toEqual([["first", firstTurn]]);
+
+        // Finishing the first turn drains the queue into a second one, which
+        // opens its own approval once it runs.
+        const next = yield* awaitEvent(engine, isType("thread.approval.opened"));
+        yield* engine.dispatch({
+          commandId: makeCommandId(),
+          createdAt: NOW,
+          type: "thread.approval.respond",
+          threadId,
+          requestId: detail!.pendingApproval!.requestId,
+          decision: "allow-once",
+        });
+        yield* Fiber.join(next);
+
+        const drained = yield* engine.threadDetail(threadId);
+        const secondTurn = drained?.currentTurnId;
+        expect(secondTurn).not.toBe(firstTurn);
+        expect(drained?.queue).toEqual([]);
+        // Exactly one row for the steered message in total, in the new turn.
+        expect(userRows(drained?.items ?? [])).toEqual([
+          ["first", firstTurn],
+          ["use port 8081", secondTurn],
+        ]);
       }).pipe(Effect.provide(stackLayer({ instance })));
 
       const session = yield* fake.session(threadId);
-      // The steer was tried and refused; the turn it was meant for is still
-      // the only one sent, and the message waits on the queue for the next.
+      // The steer was tried and refused; the message waited on the queue and
+      // went out as the next turn's own send.
       const methods = (yield* session!.calls).map((call) => call.method);
-      expect(methods.filter((method) => method !== "close")).toEqual(["send", "steer"]);
+      expect(methods.slice(0, 2)).toEqual(["send", "steer"]);
+      expect(methods.filter((method) => method === "send")).toHaveLength(2);
     }),
   );
 

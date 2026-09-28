@@ -388,8 +388,8 @@ const ThreadTurnCompletedEvent = orchestrationEvent(
 
 /**
  * A message delivered into `turnId` while it runs. The turn keeps its
- * boundary — no new turn starts — and the user's row arrives beside this as a
- * `thread.item.upserted` stamped with the same turn.
+ * boundary — no new turn starts — and the user's row follows once the message
+ * is delivered, as a `thread.item.upserted` stamped with the same turn.
  */
 const ThreadTurnSteeredEvent = orchestrationEvent(
   "thread.turn.steered",

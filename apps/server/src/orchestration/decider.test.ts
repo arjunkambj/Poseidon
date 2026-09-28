@@ -1232,31 +1232,19 @@ describe("steering a running turn", () => {
       env,
     );
 
-  it("delivers into the running turn, with the user's row in that same turn", () => {
+  it("delivers into the running turn and leaves the user's row to the reactor", () => {
     const attachments = [{ path: "/home/.poseidon/attachments/t/abc-shot.png", mime: "image/png" }];
     const result = steer(steerable(), attachments);
     expect(result.accepted).toBe(true);
     if (!result.accepted) return;
-    expect(result.events.map((event) => event.type)).toEqual([
-      "thread.turn.steered",
-      "thread.item.upserted",
-    ]);
+    // The row is written once the message has reached the turn: a steer
+    // that misses is started again through the queue, whose turn writes it.
+    expect(result.events.map((event) => event.type)).toEqual(["thread.turn.steered"]);
     expect(result.events[0]!.payload).toEqual({
       turnId: RUNNING,
       text: "use port 8081",
       attachments,
       mentions: ["README.md"],
-    });
-    const upserted = result.events[1]!.payload as {
-      turnId: string;
-      item: { kind: string; turnId: string; text: string; attachments?: unknown };
-    };
-    expect(upserted.turnId).toBe(RUNNING);
-    expect(upserted.item).toMatchObject({
-      kind: "user_message",
-      turnId: RUNNING,
-      text: "use port 8081",
-      attachments,
     });
   });
 

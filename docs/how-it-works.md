@@ -1620,7 +1620,7 @@ mentions — and the decider answers it from the thread as it is:
 | a turn stopping (`interrupting`)         | `thread.message.queued`, drained on that turn's completion       |
 | a turn running, not known to steer       | `thread.message.queued`, as a send would queue it                |
 | a turn running, the session cannot steer | rejected: "this thread's harness cannot take a message mid-turn" |
-| a turn running, the session steers       | `thread.turn.steered` plus the user's row, both on that turn     |
+| a turn running, the session steers       | `thread.turn.steered` on that turn                               |
 
 The first row absorbs a race: the turn ended while the user was still typing,
 and the message simply starts the next one. "Not known to steer" is a thread
@@ -1633,17 +1633,20 @@ same checks as a send bar a steer outright — a missing or archived thread, a
 checkpoint restore in this thread or a sibling.
 
 `thread.turn.steered` changes nothing in either fold: the turn it names keeps
-running, and the user's row arrives as its own `thread.item.upserted` stamped
-with that turn, so the timeline shows the message inside the turn it joined.
-`ProviderCommandReactor` calls `handle.steer(turnId, input)`, which the
-turn-scoped handle delivers only while that turn is still the active one. When
-there is no live handle, or the steer fails — the turn settled between the
-decision and the call, say — the message is dispatched again as
+running. `ProviderCommandReactor` calls `handle.steer(turnId, input)`, which
+the turn-scoped handle delivers only while that turn is still the active one.
+Once it is delivered, the reactor writes the user's row as its own
+`thread.item.upserted` stamped with that turn, so the timeline shows the
+message inside the turn it joined. The row therefore lands a moment after the
+steer rather than with it; should the server stop between the two, the message
+still reached the harness but has no row. When there is no live handle, or the
+steer fails — the turn settled between the decision and the call, say — no row
+is written for the running turn and the message is dispatched again as
 `thread.turn.start { queued: true }`: a new turn when none is running, the
 queue when one is. Should even that be refused, it goes onto the queue
-directly, as a refused drain does. The row the decider already wrote stays in
-the turn it was meant for, so a message that fell back shows twice: once where
-it was sent, once where it was answered.
+directly, as a refused drain does. Either way the turn that finally takes the
+message writes its row, so a message that fell back shows once, where it was
+answered.
 
 The connector writes the message into its harness while the turn runs, with no
 new `turn.started`, and keeps the running turn open until its harness has

@@ -5,8 +5,9 @@
  * already decided; this fiber performs the side effect the event calls for:
  *
  * - `turn.requested` → ensure the session, `handle.send(turnId, turn)`.
- * - `turn.steered` → `handle.steer(turnId, turn)` into the running turn; a
- *   message that cannot be delivered falls back to the queue, never lost.
+ * - `turn.steered` → `handle.steer(turnId, turn)` into the running turn, then
+ *   the user's row; a message that cannot be delivered falls back to the
+ *   queue, never lost.
  * - `turn.interrupted` → `handle.interrupt(turnId)`; the turn stays in flight
  *   until the connector settles it, and this fiber settles it itself when
  *   there is no live session left to do so.
@@ -46,6 +47,7 @@ import type { PlannedEvent } from "../persistence/EventStore";
 import { OrchestrationEngine } from "./Engine";
 import { SessionManager } from "./SessionManager";
 import type { ThreadDoc } from "./state";
+import { userMessageItem } from "./userMessageItem";
 import { threadWorkspaceRoot } from "./workspaceRoot";
 
 const systemEvent = <Type extends OrchestrationEvent["type"]>(
@@ -158,6 +160,10 @@ export const ProviderCommandReactor = Layer.effectDiscard(
      * `queued: true` starts a turn when none is running and queues behind the
      * one that is — and a refusal of that too puts it on the queue directly,
      * as the drain does, so the user never loses what they typed.
+     *
+     * The user's row is written here, only once the message has reached the
+     * turn: a miss leaves it to the turn the queue starts, so the message
+     * never shows twice or sits in a turn that never saw it.
      */
     const steerOrQueue = (threadId: ThreadId, turnId: TurnId, input: TurnInput, causedBy: string) =>
       Effect.gen(function* () {
@@ -171,6 +177,15 @@ export const ProviderCommandReactor = Layer.effectDiscard(
               ),
             );
         if (delivered) {
+          yield* engine.appendThreadEvents(threadId, [
+            systemEvent(
+              threadId,
+              "thread.item.upserted",
+              { turnId, item: userMessageItem(makeItemId(), turnId, input) },
+              new Date().toISOString(),
+              causedBy,
+            ),
+          ]);
           return;
         }
         const receipt = yield* dispatchTurn(threadId, input, true);

@@ -25,6 +25,7 @@ import type {
 import type { PermissionScope } from "@poseidon/contracts/settings";
 import type { PlannedEvent } from "../persistence/EventStore";
 import type { ProjectDoc, ThreadDoc } from "./state";
+import { userMessageItem } from "./userMessageItem";
 
 /** What one accepted command may write besides its events. */
 export interface NewPermissionRule {
@@ -166,15 +167,7 @@ const queueMessage = (emit: Emit, env: DecideEnv, command: TurnText): PlannedEve
 const userMessage = (emit: Emit, env: DecideEnv, command: TurnText, turnId: TurnId): PlannedEvent =>
   emit("thread.item.upserted", {
     turnId,
-    item: {
-      itemId: env.nextItemId(),
-      kind: "user_message",
-      status: "completed",
-      turnId,
-      text: command.text,
-      ...(command.attachments.length === 0 ? {} : { attachments: command.attachments }),
-      ...referencesOf(command),
-    },
+    item: userMessageItem(env.nextItemId(), turnId, command),
   });
 
 const startTurn = (emit: Emit, env: DecideEnv, command: TurnText): ReadonlyArray<PlannedEvent> => {
@@ -355,16 +348,17 @@ export const decide = (
       if (steering !== true) {
         return accepted([queueMessage(emit, env, command)]);
       }
-      const turnId = thread.currentTurn.turnId;
+      // No user row here: the provider reactor writes it once the message
+      // has reached the turn. A steer that misses goes back through the
+      // queue, and the turn it starts writes the row there instead.
       return accepted([
         emit("thread.turn.steered", {
-          turnId,
+          turnId: thread.currentTurn.turnId,
           text: command.text,
           attachments: command.attachments,
           mentions: command.mentions,
           ...referencesOf(command),
         }),
-        userMessage(emit, env, command, turnId),
       ]);
     }
 
