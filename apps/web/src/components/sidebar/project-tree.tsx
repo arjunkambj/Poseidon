@@ -198,6 +198,82 @@ export function ProjectTree() {
     return counts;
   }, [threads]);
 
+  const projectsGroup = (
+    <SidebarGroup padding="section" className="min-h-0 flex-1">
+      <div className="flex h-6 items-center gap-1">
+        <SidebarGroupLabel className="h-auto shrink-0">Projects</SidebarGroupLabel>
+        <ThreadFilterInput />
+        <AddProjectDialog disabled={connection.status !== "connected"} command="project.add" />
+      </div>
+      <SidebarGroupContent className="min-h-0 overflow-y-auto [scrollbar-width:none]">
+        {!filtering && projects.length === 0 && orphanThreads.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FolderAdd variant="bold" />
+              </EmptyMedia>
+              <EmptyTitle>
+                {connection.status === "connected" ? "No projects yet" : "Not connected"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {connection.status === "connected"
+                  ? "Add one to start a thread."
+                  : "Connect to a server to see projects."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : null}
+        {filtering && order.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Search variant="bold" />
+              </EmptyMedia>
+              <EmptyTitle>No matching threads</EmptyTitle>
+              <EmptyDescription>Nothing in the sidebar has that in its title.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : null}
+        <div className="grid min-w-0 gap-0.5">
+          {shownProjects.map((project) => (
+            <ProjectSection
+              key={project.projectId}
+              project={project}
+              threads={threadsByProject.get(project.projectId) ?? []}
+              counts={threadCounts.get(project.projectId) ?? NO_THREADS}
+              rollup={rollups.get(project.projectId) ?? null}
+              now={now}
+              selection={selection}
+            />
+          ))}
+          {orphanThreads.length > 0 ? (
+            <div className="grid gap-0.5">
+              <div className="flex h-7 items-center gap-2.5 rounded-xl px-2 text-sm text-sidebar-foreground">
+                <Folder variant="bold" className="size-4 shrink-0" />
+                <span className="min-w-0 truncate">Other threads</span>
+              </div>
+              <SidebarMenu>
+                {orphanThreads.map((thread) => (
+                  <SelectableThreadRow
+                    key={thread.threadId}
+                    thread={thread}
+                    now={now}
+                    selection={selection}
+                  />
+                ))}
+              </SidebarMenu>
+            </div>
+          ) : null}
+        </div>
+      </SidebarGroupContent>
+      <ThreadSelectionBar
+        threads={selectedRows(order, selection.selection)}
+        onClear={selection.clear}
+      />
+    </SidebarGroup>
+  );
+
+  // The Pinned group sits above Projects and shares its selection.
   return (
     <>
       <PinnedThreads
@@ -211,78 +287,7 @@ export function ProjectTree() {
           />
         )}
       />
-      <SidebarGroup padding="section" className="min-h-0 flex-1">
-        <div className="flex h-6 items-center gap-1">
-          <SidebarGroupLabel className="h-auto shrink-0">Projects</SidebarGroupLabel>
-          <ThreadFilterInput />
-          <AddProjectDialog disabled={connection.status !== "connected"} command="project.add" />
-        </div>
-        <SidebarGroupContent className="min-h-0 overflow-y-auto [scrollbar-width:none]">
-          {!filtering && projects.length === 0 && orphanThreads.length === 0 ? (
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <FolderAdd variant="bold" />
-                </EmptyMedia>
-                <EmptyTitle>
-                  {connection.status === "connected" ? "No projects yet" : "Not connected"}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {connection.status === "connected"
-                    ? "Add one to start a thread."
-                    : "Connect to a server to see projects."}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : null}
-          {filtering && order.length === 0 ? (
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Search variant="bold" />
-                </EmptyMedia>
-                <EmptyTitle>No matching threads</EmptyTitle>
-                <EmptyDescription>Nothing in the sidebar has that in its title.</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : null}
-          <div className="grid min-w-0 gap-0.5">
-            {shownProjects.map((project) => (
-              <ProjectSection
-                key={project.projectId}
-                project={project}
-                threads={threadsByProject.get(project.projectId) ?? []}
-                counts={threadCounts.get(project.projectId) ?? NO_THREADS}
-                rollup={rollups.get(project.projectId) ?? null}
-                now={now}
-                selection={selection}
-              />
-            ))}
-            {orphanThreads.length > 0 ? (
-              <div className="grid gap-0.5">
-                <div className="flex h-7 items-center gap-2.5 rounded-xl px-2 text-sm text-sidebar-foreground">
-                  <Folder variant="bold" className="size-4 shrink-0" />
-                  <span className="min-w-0 truncate">Other threads</span>
-                </div>
-                <SidebarMenu>
-                  {orphanThreads.map((thread) => (
-                    <SelectableThreadRow
-                      key={thread.threadId}
-                      thread={thread}
-                      now={now}
-                      selection={selection}
-                    />
-                  ))}
-                </SidebarMenu>
-              </div>
-            ) : null}
-          </div>
-        </SidebarGroupContent>
-        <ThreadSelectionBar
-          threads={selectedRows(order, selection.selection)}
-          onClear={selection.clear}
-        />
-      </SidebarGroup>
+      {projectsGroup}
     </>
   );
 }
