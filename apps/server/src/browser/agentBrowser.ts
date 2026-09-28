@@ -34,9 +34,9 @@
 
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import * as Context from "effect/Context";
 import * as Data from "effect/Data";
@@ -141,17 +141,52 @@ export const daemonPidPath = (home: string, namespace: string, session: string):
   join(namespaceDir(home, namespace), "run", `${session}.pid`);
 
 /**
+ * The config file every invocation is pointed at, under the Poseidon home.
+ *
+ * Left to itself agent-browser reads `~/.agent-browser/config.json` and then
+ * `./agent-browser.json` on every run, and those carry the knobs the env
+ * allowlist below refuses (`autoConnect`, `allowFileAccess`) and stronger
+ * ones: `executablePath`, `args`, `extensions`, `initScripts`, `headers` and
+ * `plugins`. Naming a file in `AGENT_BROWSER_CONFIG` replaces both lookups
+ * (checked against 0.38.1: a broken user config is then never read). The
+ * file must exist and parse, so `ensureOwnConfig` writes it before a run
+ * whenever it holds anything but `{}` — an edit to it does not carry over.
+ */
+export const ownConfigPath = (poseidonHome: string): string =>
+  join(poseidonHome, "agent-browser.json");
+
+const OWN_CONFIG = "{}\n";
+
+/** Puts `{}` at `path` unless it is already there; the swap is a rename. */
+export const ensureOwnConfig = (path: string): Effect.Effect<void> =>
+  Effect.tryPromise(async () => {
+    const current = await readFile(path, "utf8").catch(() => null);
+    if (current === OWN_CONFIG) return;
+    await mkdir(dirname(path), { recursive: true });
+    const temp = `${path}.${process.pid}.${Math.random().toString(16).slice(2)}.tmp`;
+    await writeFile(temp, OWN_CONFIG, { mode: 0o600 });
+    await rename(temp, path);
+  }).pipe(
+    Effect.catch((error) =>
+      Effect.logWarning(`browser: could not write ${path}: ${String(error)}`),
+    ),
+  );
+
+/**
  * The env one session's invocations run with, beyond the allowlist.
  *
  * The idle timeout is the safety net behind `close`: a daemon we never got to
- * close (a crashed server) still reaps itself.
+ * close (a crashed server) still reaps itself. The config is ours alone
+ * (`ownConfigPath`).
  */
 export const sessionEnvFor = (
   namespace: string,
+  configPath: string,
   extra?: Readonly<Record<string, string>>,
 ): Readonly<Record<string, string>> => ({
   AGENT_BROWSER_IDLE_TIMEOUT_MS: String(IDLE_TIMEOUT_MS),
   AGENT_BROWSER_NAMESPACE: namespace,
+  AGENT_BROWSER_CONFIG: configPath,
   ...extra,
 });
 
@@ -170,7 +205,9 @@ export const sessionEnvFor = (
  * `AGENT_BROWSER_CDP` points the daemon at another browser,
  * `AGENT_BROWSER_AUTO_CONNECT` makes it go looking for one, and
  * `AGENT_BROWSER_ALLOW_FILE_ACCESS` lets pages read local files. The only
- * `AGENT_BROWSER_*` values the child sees are the ones this module sets.
+ * `AGENT_BROWSER_*` values the child sees are the ones this module sets, and
+ * `AGENT_BROWSER_CONFIG` among them keeps the same knobs from coming in
+ * through a config file instead.
  *
  * The list is here rather than shared with `packages/connector-cmd/src/spawn.ts`
  * because the two children need different things: this one wants the display
@@ -529,6 +566,7 @@ export class AgentBrowser extends Context.Service<
         binary: binaryOverride ?? (found ? "agent-browser" : null),
         version: found ? probe.stdout.trim() : null,
         bridge,
+        prepare: ensureOwnConfig,
       });
     }),
   );
@@ -546,6 +584,14 @@ export const makeAgentBrowser = (options: {
   readonly env?: Readonly<Record<string, string | undefined>>;
   /** Our namespace; by default the one for the environment's `POSEIDON_HOME`. */
   readonly namespace?: string;
+  /** The config every run is pointed at; by default `ownConfigPath` of `POSEIDON_HOME`. */
+  readonly configPath?: string;
+  /**
+   * Runs before every invocation: the layer puts `{}` at `configPath`
+   * (`ensureOwnConfig`). Nothing by default, so tests over a recorded runner
+   * write no files.
+   */
+  readonly prepare?: (configPath: string) => Effect.Effect<void>;
   readonly run?: ChildRunner;
   readonly kill?: DaemonKiller;
 }): AgentBrowser["Service"] => {
@@ -553,6 +599,8 @@ export const makeAgentBrowser = (options: {
   const bridge = options.bridge;
   const env = options.env ?? process.env;
   const namespace = options.namespace ?? namespaceFor(configDir(env));
+  const configPath = options.configPath ?? ownConfigPath(configDir(env));
+  const prepare = options.prepare?.(configPath) ?? Effect.void;
   const home = env.HOME ?? homedir();
   const kill: DaemonKiller =
     options.kill ?? ((session) => killDaemonAt(daemonPidPath(home, namespace, session)));
@@ -580,10 +628,13 @@ export const makeAgentBrowser = (options: {
         "--json",
         ...argv,
       ];
-      return run(binary, args, {
-        env: browserEnv(env, sessionEnvFor(namespace, extra)),
-        timeoutMs: invocation.timeoutMs,
-      }).pipe(
+      return Effect.andThen(
+        prepare,
+        run(binary, args, {
+          env: browserEnv(env, sessionEnvFor(namespace, configPath, extra)),
+          timeoutMs: invocation.timeoutMs,
+        }),
+      ).pipe(
         Effect.flatMap((result) =>
           result.timedOut === true
             ? Effect.fail(

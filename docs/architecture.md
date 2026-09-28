@@ -2270,6 +2270,13 @@ terminal — inherits the key. Each agent-browser child gets the thread's URL as
 is an allowlist, and the operator's own `AGENT_BROWSER_*` and `CHROME_*` are
 not on it: `AGENT_BROWSER_CDP`, `AGENT_BROWSER_AUTO_CONNECT` and
 `AGENT_BROWSER_ALLOW_FILE_ACCESS` would each redirect or loosen the child.
+The same knobs, and stronger ones (`executablePath`, `plugins`,
+`initScripts`, `headers`), can come from agent-browser's own config files,
+`~/.agent-browser/config.json` and `./agent-browser.json`, so every child gets
+`AGENT_BROWSER_CONFIG=<Poseidon home>/agent-browser.json`, which replaces both
+lookups; the server writes `{}` there before any run that finds it changed.
+`.agent-browser` is also one of the sensitive path segments, so writing the
+CLI's own files always asks.
 
 The in-app attach is `tab list` (connecting; on a thread with no webview,
 agent-browser's own `Target.createTarget(about:blank)` on connect is what
@@ -2525,7 +2532,8 @@ specifically: `.env*`, `.netrc`, `.pgpass`, `credentials`, SSH key names,
 `.pem`/`.key`/`.p12`/`.pfx`, and anything under `.ssh`, `.aws`, `.gnupg`,
 `.git`, `.config/gh`, or a harness config home — `.commandcode`, `.claude`,
 `.codex`, `.config/opencode` — since those hold auth tokens and the harness's
-own permission settings. The directory rules read only what lies below the
+own permission settings — or `.agent-browser`, the browser CLI's auth vault
+and config. The directory rules read only what lies below the
 parent of the thread's workspace root, so a project kept under
 `.claude/worktrees/` is ordinary source, while its own `.claude/settings.json`
 and `~/.claude` opened as a project still count.

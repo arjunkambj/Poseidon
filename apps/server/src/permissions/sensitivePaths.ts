@@ -32,6 +32,8 @@ const SENSITIVE_EXTENSIONS = [".pem", ".key", ".p12", ".pfx"];
  * Directories whose whole contents count. The harness config homes are here
  * because they hold auth tokens and the harness's own permission settings — a
  * tool call rewriting them could grant itself more than the user did.
+ * `.agent-browser` holds the browser CLI's auth vault and its config, whose
+ * `executablePath` and `plugins` name programs to run.
  */
 const SENSITIVE_SEGMENTS = new Set([
   ".ssh",
@@ -41,6 +43,7 @@ const SENSITIVE_SEGMENTS = new Set([
   ".commandcode",
   ".claude",
   ".codex",
+  ".agent-browser",
 ]);
 
 /** `.config/<name>` homes, matched as two consecutive segments. */

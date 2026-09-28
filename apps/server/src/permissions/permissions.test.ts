@@ -104,6 +104,7 @@ describe("sensitive paths", () => {
     "project/.claude/settings.json",
     ".codex/auth.json",
     "/home/user/.codex/config.toml",
+    "/home/user/.agent-browser/config.json",
     ".config/opencode/opencode.json",
     "/home/user/.config/opencode/auth.json",
   ])("flags %s", (path) => {

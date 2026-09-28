@@ -27,9 +27,11 @@ import {
   browserEnv,
   daemonPidPath,
   decodeResult,
+  ensureOwnConfig,
   makeAgentBrowser,
   modeFor,
   namespaceFor,
+  ownConfigPath,
   readBridgeConfig,
   sessionEnvFor,
   sessionNameFor,
@@ -93,7 +95,20 @@ describe("agentBrowser", () => {
   it("gives every session an idle timeout", () => {
     // The safety net behind `close`: a daemon the server never closed (it
     // crashed) still reaps itself.
-    expect(sessionEnvFor("poseidon-x").AGENT_BROWSER_IDLE_TIMEOUT_MS).toBe("300000");
+    expect(sessionEnvFor("poseidon-x", "/p/agent-browser.json").AGENT_BROWSER_IDLE_TIMEOUT_MS).toBe(
+      "300000",
+    );
+  });
+
+  it("points every run at our own config, never the user's or the project's", () => {
+    // ~/.agent-browser/config.json can set executablePath, plugins, initScripts
+    // and the very knobs the env allowlist drops; naming a file skips it.
+    expect(sessionEnvFor("poseidon-x", "/p/agent-browser.json").AGENT_BROWSER_CONFIG).toBe(
+      "/p/agent-browser.json",
+    );
+    expect(ownConfigPath("/Users/someone/.poseidon")).toBe(
+      "/Users/someone/.poseidon/agent-browser.json",
+    );
   });
 
   it("hands the child an allowlist, not the server's whole environment", () => {
@@ -114,7 +129,7 @@ describe("agentBrowser", () => {
         POSEIDON_SERVER_TOKEN: "server-token",
         POSEIDON_HOME: "/Users/someone/.poseidon",
       },
-      sessionEnvFor("poseidon-x"),
+      sessionEnvFor("poseidon-x", "/Users/someone/.poseidon/agent-browser.json"),
     );
 
     expect(env).toEqual({
@@ -125,6 +140,7 @@ describe("agentBrowser", () => {
       LC_ALL: "en_GB.UTF-8",
       AGENT_BROWSER_IDLE_TIMEOUT_MS: "300000",
       AGENT_BROWSER_NAMESPACE: "poseidon-x",
+      AGENT_BROWSER_CONFIG: "/Users/someone/.poseidon/agent-browser.json",
     });
   });
 
@@ -212,6 +228,48 @@ describe("agentBrowser", () => {
   });
 
   describe("a session", () => {
+    it.effect("writes our own config before every run and points the child at it", () =>
+      Effect.gen(function* () {
+        const { runs, run } = capture();
+        const order: Array<string> = [];
+        const agentBrowser = makeAgentBrowser({
+          binary: "agent-browser",
+          version: "0.38.1",
+          bridge: null,
+          env: { PATH: "/usr/bin", POSEIDON_HOME: "/tmp/poseidon-home" },
+          prepare: (path) => Effect.sync(() => void order.push(`prepare ${path}`)),
+          run: (binary, args, options) =>
+            Effect.andThen(
+              Effect.sync(() => void order.push("run")),
+              run(binary, args, options),
+            ),
+        });
+        yield* agentBrowser.session("thread-1").exec(["get", "title"]);
+        yield* agentBrowser.session("thread-1").exec(["get", "url"]);
+
+        const path = "/tmp/poseidon-home/agent-browser.json";
+        expect(order).toEqual([`prepare ${path}`, "run", `prepare ${path}`, "run"]);
+        expect(runs.map((entry) => entry.env.AGENT_BROWSER_CONFIG)).toEqual([path, path]);
+      }),
+    );
+
+    it.effect("keeps our config at {} whatever was written over it", () =>
+      Effect.gen(function* () {
+        const dir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "poseidon-ab-config-"));
+        const path = NodePath.join(dir, "home", "agent-browser.json");
+        try {
+          yield* ensureOwnConfig(path);
+          expect(NodeFS.readFileSync(path, "utf8")).toBe("{}\n");
+          NodeFS.writeFileSync(path, JSON.stringify({ executablePath: "/tmp/not-chrome" }));
+          yield* ensureOwnConfig(path);
+          expect(JSON.parse(NodeFS.readFileSync(path, "utf8"))).toEqual({});
+          expect(NodeFS.readdirSync(NodePath.dirname(path))).toEqual(["agent-browser.json"]);
+        } finally {
+          NodeFS.rmSync(dir, { recursive: true, force: true });
+        }
+      }),
+    );
+
     it.effect("in-app, carries its bridge URL in the child's env and never in argv", () =>
       Effect.gen(function* () {
         const { runs, run } = capture();
