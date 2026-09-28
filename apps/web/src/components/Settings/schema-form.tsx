@@ -33,6 +33,7 @@ import {
 import { detectModKey, formatEventAsShortcut } from "@poseidon/client-runtime/keybindings";
 
 import { selectedOptionLabel } from "./select-label";
+import { SettingsRow as SectionRow } from "./settings-section";
 import { isObject, isString } from "effect/Predicate";
 import type * as Schema from "effect/Schema";
 import * as React from "react";
@@ -68,15 +69,9 @@ export function SettingsRow({
   readonly children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-3">
-      <div className="min-w-0">
-        <div className="text-sm font-medium">{field.label}</div>
-        {field.description === undefined ? null : (
-          <p className="mt-0.5 text-xs text-muted-foreground">{field.description}</p>
-        )}
-      </div>
-      <div className="w-72 shrink-0">{children}</div>
-    </div>
+    <SectionRow title={field.label} description={field.description}>
+      <div className="w-72">{children}</div>
+    </SectionRow>
   );
 }
 
@@ -256,10 +251,10 @@ export interface SchemaFormProps extends FormProps {
   readonly fields: ReadonlyArray<SettingsFormFieldDescriptor>;
 }
 
-/** Every non-hidden field descriptor, in the order given. */
+/** Every non-hidden field descriptor, in the order given, a hairline between rows. */
 export function SchemaForm({ fields, value, onFieldChange, optionsFor, skip }: SchemaFormProps) {
   return (
-    <div>
+    <div className="flex flex-col divide-y">
       {fields.map((field) => {
         const key = field.key;
         if (field.control === "hidden" || (skip !== undefined && skip.includes(key))) {
