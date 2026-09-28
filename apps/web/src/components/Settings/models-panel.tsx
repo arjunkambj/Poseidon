@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
 import { RUNTIME_MODE_LABELS } from "@/lib/runtime-modes";
 
+import { HarnessModelsSection } from "./harness-models-section";
 import { StructForm, type SelectOption } from "./schema-form";
 import { SettingsPageHeader, SettingsSection } from "./settings-section";
 
@@ -98,6 +99,8 @@ export function ModelsPanel() {
           }}
         />
       </SettingsSection>
+
+      <HarnessModelsSection />
     </div>
   );
 }
