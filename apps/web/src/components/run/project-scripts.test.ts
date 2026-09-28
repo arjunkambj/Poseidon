@@ -1,11 +1,12 @@
 import type { TerminalId } from "@poseidon/contracts/ids";
 import type { DetectedScript, ProjectScript } from "@poseidon/contracts/scripts";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { TerminalTab } from "@/components/terminal/drawer-state";
 
 import {
   hasUnwatchedScript,
+  launchOnce,
   nextScriptId,
   planRun,
   primaryScript,
@@ -195,5 +196,38 @@ describe("hasUnwatchedScript", () => {
 
   it("ignores plain shells and scripts that have exited", () => {
     expect(hasUnwatchedScript([tab(1), devTab(2, "exited")], null, false)).toBe(false);
+  });
+});
+
+describe("launchOnce", () => {
+  it("starts nothing while a launch of the same script is under way", async () => {
+    const pending = new Set<string>();
+    let answer = () => {};
+    const launch = vi.fn(() => new Promise<void>((resolve) => (answer = resolve)));
+
+    const first = launchOnce(pending, "dev", launch);
+    expect(first).not.toBeNull();
+    expect(launchOnce(pending, "dev", launch)).toBeNull();
+    expect(launch).toHaveBeenCalledTimes(1);
+
+    answer();
+    await first;
+    expect(pending.size).toBe(0);
+    await launchOnce(pending, "dev", async () => {});
+    expect(pending.size).toBe(0);
+  });
+
+  it("lets another script launch meanwhile, and frees the id after a failure", async () => {
+    const pending = new Set<string>();
+    const dev = launchOnce(pending, "dev", () => new Promise<void>(() => {}));
+    const build = vi.fn(async () => {});
+    await launchOnce(pending, "build", build);
+    expect(build).toHaveBeenCalledTimes(1);
+    expect(dev).not.toBeNull();
+
+    await expect(
+      launchOnce(pending, "test", () => Promise.reject(new Error("no"))),
+    ).rejects.toThrow("no");
+    expect(pending.has("test")).toBe(false);
   });
 });

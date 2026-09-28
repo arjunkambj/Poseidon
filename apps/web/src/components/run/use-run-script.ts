@@ -6,8 +6,10 @@
  * in a new tab titled with its name, and the drawer opens on it. Running a
  * script whose tab is still running brings that tab to the front instead;
  * one whose tab has exited gets a fresh tab, and the old one is closed
- * (`planRun`). Stop writes Ctrl-C (`@/components/terminal/use-stop-script`);
- * the tab's close button stays the hard kill.
+ * (`planRun`); a second Run of a script whose terminal is still being
+ * opened starts nothing (`launchOnce`). Stop writes Ctrl-C
+ * (`@/components/terminal/use-stop-script`); the tab's close button stays the
+ * hard kill.
  *
  * Only the tab in front has an xterm attached, so a script in another tab —
  * or in a drawer that is closed — is seen to exit only on a listing. The hook
@@ -39,6 +41,7 @@ import { useTerminalOpen } from "@/state/terminal-ui";
 
 import {
   hasUnwatchedScript,
+  launchOnce,
   planRun,
   runningTerminalOf,
   type RunnableScript,
@@ -59,6 +62,8 @@ export function useRunScript(ownerKey: string) {
   const refreshRunning = useAtomRefresh(atoms.runningTerminalsAtom);
   const tabsRef = React.useRef(state.tabs);
   tabsRef.current = state.tabs;
+  // Scripts whose `terminal.open` has not answered yet (`launchOnce`).
+  const launching = React.useRef(new Set<string>());
 
   const list = useAtomValue(atoms.terminalListAtom(ownerKey));
   const listed = AsyncResult.isSuccess(list) ? list.value : null;
@@ -89,28 +94,30 @@ export function useRunScript(ownerKey: string) {
         setOpen(true);
         return;
       }
-      const exit = await openTerminal({
-        ...owner,
-        terminalId: makeTerminalId(),
-        title: script.name,
-        cols: 80,
-        rows: 24,
-        script,
+      await launchOnce(launching.current, script.id, async () => {
+        const exit = await openTerminal({
+          ...owner,
+          terminalId: makeTerminalId(),
+          title: script.name,
+          cols: 80,
+          rows: 24,
+          script,
+        });
+        if (exit._tag !== "Success") {
+          toast.error(describeExitError(exit, `Could not run ${script.name}`));
+          return;
+        }
+        dispatch({ type: "opened", terminal: exit.value });
+        // Closed only once the new tab is in: closing it first could leave the
+        // drawer with no tabs for a moment, and an open drawer starts a shell.
+        if (plan.replace !== null) {
+          dispatch({ type: "closed", terminalId: plan.replace });
+          closeTerminal({ ...owner, terminalId: plan.replace });
+          forgetDevServer(plan.replace);
+        }
+        relist();
+        setOpen(true);
       });
-      if (exit._tag !== "Success") {
-        toast.error(describeExitError(exit, `Could not run ${script.name}`));
-        return;
-      }
-      dispatch({ type: "opened", terminal: exit.value });
-      // Closed only once the new tab is in: closing it first could leave the
-      // drawer with no tabs for a moment, and an open drawer starts a shell.
-      if (plan.replace !== null) {
-        dispatch({ type: "closed", terminalId: plan.replace });
-        closeTerminal({ ...owner, terminalId: plan.replace });
-        forgetDevServer(plan.replace);
-      }
-      relist();
-      setOpen(true);
     },
     [closeTerminal, dispatch, forgetDevServer, openTerminal, ownerKey, relist, setOpen],
   );

@@ -1,7 +1,7 @@
 /**
  * The pure half of the Run control: which saved script the main half runs,
  * what a draft of the list saves as, and whether running a script opens a
- * terminal or brings its running one to the front.
+ * terminal or brings its running one to the front — and never twice at once.
  *
  * `settings.update` replaces each key it carries, so the scripts are saved by
  * writing the whole `projectSettings` record — built here from the latest one,
@@ -175,6 +175,23 @@ export const planRun = (
     return { kind: "focus", terminalId: running.terminalId };
   }
   return { kind: "open", replace: own[0]?.terminalId ?? null };
+};
+
+/**
+ * Runs `launch` for script `id` unless a launch of the same script is still
+ * under way, in which case it starts nothing and returns null. A script's tab
+ * reaches the drawer only once `terminal.open` answers, so until then
+ * `planRun` cannot see it, and a second click (or a held Enter) would start
+ * the script twice. `pending` is the caller's own set of ids under way.
+ */
+export const launchOnce = (
+  pending: Set<string>,
+  id: string,
+  launch: () => Promise<void>,
+): Promise<void> | null => {
+  if (pending.has(id)) return null;
+  pending.add(id);
+  return launch().finally(() => pending.delete(id));
 };
 
 /** The terminal running `scriptId`, or null. */
