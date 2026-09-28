@@ -417,7 +417,7 @@ describe("transport", () => {
     ),
   );
 
-  it.live("the pull request reads answer over the wire without gh behind them", () =>
+  it.live("the pull request rpcs answer over the wire without gh behind them", () =>
     Effect.scoped(
       Effect.gen(function* () {
         const { url } = yield* testStack();
@@ -428,6 +428,19 @@ describe("transport", () => {
           reason: "git is not available on this server",
         });
         expect(yield* client["git.pullRequest.marks"]({ projectId })).toEqual({ marks: [] });
+        const action = yield* client["git.pullRequest.action"]({
+          projectId,
+          threadId,
+          number: 12,
+          action: { kind: "merge", method: "squash" },
+        }).pipe(Effect.flip);
+        expect(action).toMatchObject({ code: "unavailable" });
+        const fix = yield* client["git.pullRequest.fixContext"]({
+          projectId,
+          number: 12,
+          kind: "checks",
+        }).pipe(Effect.flip);
+        expect(fix).toMatchObject({ code: "unavailable" });
       }),
     ),
   );

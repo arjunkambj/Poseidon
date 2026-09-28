@@ -42,7 +42,12 @@ import type {
 } from "@poseidon/contracts/git";
 import type { GitBlame } from "@poseidon/contracts/git-review";
 import type { DetectedEditor, EditorId } from "@poseidon/contracts/editors";
-import type { PullRequestMarks, PullRequestView } from "@poseidon/contracts/pullRequest";
+import type {
+  PullRequestAction,
+  PullRequestFixContext,
+  PullRequestMarks,
+  PullRequestView,
+} from "@poseidon/contracts/pullRequest";
 import type { CheckpointSummary } from "@poseidon/contracts/orchestration";
 import type { MessageSearchHit } from "@poseidon/contracts/search";
 import { migrateLegacyKeybindingTable } from "@poseidon/contracts/keybindings";
@@ -247,6 +252,20 @@ export class GitService extends Context.Service<
     readonly pullRequestMarks: (
       projectId: ProjectId,
     ) => Effect.Effect<PullRequestMarks, PoseidonRpcError>;
+    /** Runs one gh write on the workspace's pull request and answers the view afterwards. */
+    readonly pullRequestAction: (
+      scope: WorkspaceScope,
+      request: {
+        readonly number: number;
+        readonly headRefOid?: string | undefined;
+        readonly action: PullRequestAction;
+      },
+    ) => Effect.Effect<PullRequestView, PoseidonRpcError>;
+    /** The failing-check logs or conflicting files a thread fixing the pull request starts from. */
+    readonly pullRequestFixContext: (
+      scope: WorkspaceScope,
+      request: { readonly number: number; readonly kind: "checks" | "conflicts" },
+    ) => Effect.Effect<PullRequestFixContext, PoseidonRpcError>;
     /**
      * Cuts a worktree for a new thread under the Poseidon home, on a branch
      * named from the settings' prefix and `name`, from `baseBranch` or the
@@ -299,6 +318,8 @@ export class GitService extends Context.Service<
       viewPullRequest: () =>
         Effect.succeed({ state: "unavailable" as const, reason: gitUnavailable.message }),
       pullRequestMarks: () => Effect.succeed({ marks: [] }),
+      pullRequestAction: () => Effect.fail(gitUnavailable),
+      pullRequestFixContext: () => Effect.fail(gitUnavailable),
       createWorktree: () => Effect.fail(gitUnavailable),
       listWorktrees: () => Effect.fail(gitUnavailable),
       removeWorktree: () => Effect.fail(gitUnavailable),

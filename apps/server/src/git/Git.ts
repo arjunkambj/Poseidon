@@ -5,12 +5,13 @@
  * unified patches split per file for the changes pane. Branch listing,
  * creation and switching live in `Branches.ts`, commit and push in
  * `Commits.ts`, discard and blame in `Review.ts`, opening pull requests in
- * `GitHubCli.ts` and reading them in `PullRequests.ts`, worktrees in
- * `Worktrees.ts` and the setup script in `SetupScript.ts`; this layer resolves
- * the root, reads the settings those need, and adds the guards that need the
- * read models — no switch or commit while a turn runs in the same root, no
- * removing a worktree a thread still works in. Each call runs in the thread's own root when it names a thread (see
- * `orchestration/workspaceRoot.ts`). A missing `projectId` or a non-repository
+ * `GitHubCli.ts`, reading them in `PullRequests.ts` and acting on them in
+ * `PullRequestActions.ts`, worktrees in `Worktrees.ts` and the setup script in
+ * `SetupScript.ts`; this layer resolves the root, reads the settings those
+ * need, and adds the guards that need the read models — no switch or commit
+ * while a turn runs in the same root, no removing a worktree a thread still
+ * works in. Each call runs in the thread's own root when it names a thread
+ * (see `orchestration/workspaceRoot.ts`). A missing `projectId` or a non-repository
  * root answers `isRepository: false` with empty results rather than an RPC
  * error, so the pane can say "not a git repository" instead of showing what
  * looks like a clean tree.
@@ -48,6 +49,7 @@ import { make as checkpointStore } from "./CheckpointStore";
 import { commit, push } from "./Commits";
 import { createPullRequest, GhRunner, pullRequestBlocker } from "./GitHubCli";
 import { GitError, isRepository, run } from "./process";
+import { pullRequestFixContext, runPullRequestAction } from "./PullRequestActions";
 import { pullRequestMarks, viewWorkspacePullRequest } from "./PullRequests";
 import { blame, discard, discardBase, repositoryTop } from "./Review";
 import { runSetupScript, setupsStopped } from "./SetupScript";
@@ -584,6 +586,19 @@ export const layer = Layer.effect(
           }
           return yield* viewWorkspacePullRequest(gh, root);
         }).pipe(Effect.mapError(asRpcError)),
+
+      // Neither touches the working tree, so a running turn does not block them.
+      pullRequestAction: (scope, request) =>
+        repositoryRoot(scope).pipe(
+          Effect.flatMap((root) => runPullRequestAction(gh, root, request)),
+          Effect.mapError(asRpcError),
+        ),
+
+      pullRequestFixContext: (scope, request) =>
+        repositoryRoot(scope).pipe(
+          Effect.flatMap((root) => pullRequestFixContext(gh, root, request)),
+          Effect.mapError(asRpcError),
+        ),
 
       pullRequestMarks: (projectId) =>
         Effect.gen(function* () {

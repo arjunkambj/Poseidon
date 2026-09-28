@@ -255,7 +255,7 @@ const lines = (stdout: string) =>
  * `origin`, else the repository's only remote. `.` (a branch tracking another
  * local branch) is not a remote to push to, so it falls through.
  */
-const remoteFor = (cwd: string, branch: string) =>
+export const remoteFor = (cwd: string, branch: string) =>
   Effect.gen(function* () {
     const remotes = lines((yield* run(cwd, ["remote"])).stdout);
     const configured = yield* run(cwd, ["config", "--get", `branch.${branch}.remote`], {
