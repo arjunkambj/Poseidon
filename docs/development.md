@@ -270,7 +270,13 @@ forwards props must pass `variant="bold"` through them. An icon handed around
 as a value — a `HoneyIcon` prop, an icon map, a nav item's `icon` — is outside
 the rule's reach; render it as `<item.icon variant="bold" />` too. Line-only
 icons such as arrows and chevrons draw the same in both variants and take the
-prop anyway, so no icon is a special case.
+prop anyway. The one exemption is brand colour logos: an element whose
+imported export ends in `Color` (`ZedColor`, `ClaudeCodeColor`, aliased or
+not) passes without the prop, because every `*Color` export is a brand
+`-color` logo that draws identically in both variants with the brand's own
+fills. Monochrome brand logos (`Zed`, `Github`) still take `variant="bold"`:
+most draw the same either way, but meta and instagram are outlines in linear
+and their official mark is the bold drawing.
 
 **Even padding.** An element reads as balanced when its vertical padding is
 smaller than its horizontal, so buttons, inputs, chips and badges, menu items,

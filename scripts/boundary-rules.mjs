@@ -344,13 +344,14 @@ const BOLD_ICON_FILE = /^(?:apps|packages)\/.+\.tsx$/;
 const HONEYICONS_IMPORT = /\bimport\s+(type\s+)?\{([^}]*)\}\s*from\s*["']@honeyicons\/react["']/g;
 
 /**
- * The local names a file binds to Honeyicons components: every value
- * specifier of an import from `@honeyicons/react`, under its alias when it
- * has one. Type-only imports and specifiers (`type HoneyIcon`) are not
- * components and are left out.
+ * The local names a file binds to Honeyicons components, each mapped to the
+ * export it imports: every value specifier of an import from
+ * `@honeyicons/react`, keyed by its alias when it has one (`Close as
+ * CloseIcon` maps `CloseIcon` to `Close`). Type-only imports and specifiers
+ * (`type HoneyIcon`) are not components and are left out.
  */
 export const honeyiconNames = (text) => {
-  const names = new Set();
+  const names = new Map();
   for (const match of text.matchAll(HONEYICONS_IMPORT)) {
     if (match[1] !== undefined) {
       continue;
@@ -360,16 +361,19 @@ export const honeyiconNames = (text) => {
       if (specifier === "" || /^type\s/.test(specifier)) {
         continue;
       }
-      names.add(
-        specifier
-          .split(/\s+as\s+/)
-          .at(-1)
-          .trim(),
-      );
+      const [imported, local = imported] = specifier.split(/\s+as\s+/).map((part) => part.trim());
+      names.set(local, imported);
     }
   }
   return names;
 };
+
+/**
+ * A brand logo in colour: every `*Color` export of the package is a brand
+ * `-color` logo, drawn identically in both variants with the brand's own
+ * fills, so the variant means nothing for it.
+ */
+const BRAND_COLOR_EXPORT = /Color$/;
 
 /**
  * The attribute text of the JSX opening that starts at `start` (just past the
@@ -410,6 +414,13 @@ const SPREAD_ATTRIBUTE = /\{\s*\.\.\./;
  * passes: the spread is where the caller's `variant="bold"` arrives. A tag is
  * any `<Name` that is not preceded by an identifier character, which keeps
  * type arguments such as `Record<string, Name>` out.
+ *
+ * Brand colour logos are exempt: an element whose imported export ends in
+ * `Color` (`ZedColor`, `ClaudeCodeColor`) passes without the prop, under an
+ * alias too, since it draws the same either way. The match is on the export,
+ * so an ordinary icon aliased to a `...Color` name is still read. Monochrome
+ * brand logos stay under the rule: some (meta, instagram) are outlines in
+ * linear and the official mark is the bold drawing.
  */
 export const boldIconLeaks = (relativePath, text) => {
   if (!BOLD_ICON_FILE.test(relativePath)) {
@@ -422,7 +433,8 @@ export const boldIconLeaks = (relativePath, text) => {
   const leaks = [];
   for (const match of text.matchAll(/(?<![\w$.])<([A-Z][\w$]*)(?=[\s/>])/g)) {
     const name = match[1];
-    if (!names.has(name)) {
+    const imported = names.get(name);
+    if (imported === undefined || BRAND_COLOR_EXPORT.test(imported)) {
       continue;
     }
     const attributes = openingAttributes(text, match.index + match[0].length);

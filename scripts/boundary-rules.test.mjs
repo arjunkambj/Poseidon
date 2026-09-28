@@ -208,6 +208,8 @@ describe("referenceNameLeaks", () => {
 describe("boldIconLeaks", () => {
   const file = "apps/web/src/components/a.tsx";
   const icons = 'import { type HoneyIcon, Bell, Close as CloseIcon } from "@honeyicons/react";\n';
+  const brands =
+    'import { Zed, ZedColor, ZedColor as Logo, Bell as BellColor } from "@honeyicons/react";\n';
 
   it("fails an imported icon rendered without the bold variant, and says what to do", () => {
     const leaks = boldIconLeaks(file, `${icons}const a = <Bell className="size-4" />;\n`);
@@ -250,7 +252,22 @@ describe("boldIconLeaks", () => {
     expect(
       boldIconLeaks(file, 'import type { HoneyIcon } from "@honeyicons/react";\n<HoneyIcon />;\n'),
     ).toEqual([]);
-    expect([...honeyiconNames(icons)]).toEqual(["Bell", "CloseIcon"]);
+    expect([...honeyiconNames(icons)]).toEqual([
+      ["Bell", "Bell"],
+      ["CloseIcon", "Close"],
+    ]);
+  });
+
+  it("passes a brand colour logo without the variant, under its own name or an alias", () => {
+    expect(boldIconLeaks(file, `${brands}const a = <ZedColor className="size-4" />;\n`)).toEqual(
+      [],
+    );
+    expect(boldIconLeaks(file, `${brands}const a = <Logo />;\n`)).toEqual([]);
+  });
+
+  it("still reads a monochrome brand logo and an ordinary icon aliased to a Color name", () => {
+    expect(lines(boldIconLeaks(file, `${brands}const a = <Zed />;\n`))).toEqual([2]);
+    expect(lines(boldIconLeaks(file, `${brands}const a = <BellColor />;\n`))).toEqual([2]);
   });
 
   it("reads only .tsx files under apps/ and packages/", () => {

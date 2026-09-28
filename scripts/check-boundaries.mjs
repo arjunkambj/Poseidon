@@ -35,7 +35,11 @@
  *  6. Bold icons. Every `.tsx` file under `apps/` or `packages/` renders the
  *     components it imports from `@honeyicons/react` with `variant="bold"`:
  *     the package defaults to linear and has no provider to change that, so
- *     the app-wide choice is spelled on each element.
+ *     the app-wide choice is spelled on each element. Brand colour logos (an
+ *     imported export ending in `Color`) are exempt: they draw the same in
+ *     both variants with the brand's own fills. Monochrome brand logos are
+ *     not, because some (meta, instagram) are outlines in linear and the
+ *     official mark is bold.
  *
  * Every violation is printed as `file:line` and the process exits 1.
  */
