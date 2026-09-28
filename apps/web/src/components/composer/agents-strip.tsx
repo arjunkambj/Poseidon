@@ -8,11 +8,16 @@
  * View asks the thread view for the Agents tab (`state/agents-reveal.ts`) and
  * opens the newest subagent's entry there. Nothing opens the dock unasked:
  * the strip only shows, and the tab opens on the click.
+ *
+ * Stop (`stop-subagent-button.tsx`) stops the subagent the strip names, and
+ * is there only when the thread's session says its harness can stop one
+ * (`capabilities.stopTask`).
  */
 
 import { Button } from "@poseidon/ui/components/button";
 import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
 
+import { StopSubagentButton } from "@/components/composer/stop-subagent-button";
 import { agentEntryRowId, agentsStripSummary } from "@/components/panes/agents/subagents";
 import { formatElapsed } from "@/lib/format";
 import { useNow } from "@/lib/use-now";
@@ -47,6 +52,7 @@ export function AgentsStrip({
     setDisclosures([agentEntryRowId(newest.item.itemId)], true);
     requestAgentsTab(threadId);
   };
+  const canStop = doc.session?.capabilities?.stopTask === true;
   return (
     <div
       className="flex h-7 w-full min-w-0 items-center gap-1.5 rounded-xl bg-card px-3 py-0.5 text-xs"
@@ -63,6 +69,7 @@ export function AgentsStrip({
       <Button type="button" variant="ghost" size="xs" className="shrink-0" onClick={view}>
         View
       </Button>
+      {canStop ? <StopSubagentButton threadId={doc.threadId} itemId={newest.item.itemId} /> : null}
     </div>
   );
 }

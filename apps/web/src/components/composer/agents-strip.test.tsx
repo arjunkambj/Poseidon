@@ -4,9 +4,15 @@ import { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 import * as Schema from "effect/Schema";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { AgentsStrip } from "./agents-strip";
+
+// Stop dispatches through the client runtime, which a static render has none of.
+vi.mock("@/components/sidebar/thread-actions", () => ({
+  threadCommandBase: () => ({}),
+  useThreadCommand: () => async () => true,
+}));
 
 const turnId = "0199c0de-0004-7000-8000-000000000001";
 
@@ -25,9 +31,36 @@ const task = (text: string, status: ItemSnapshot["status"]) => ({
   text,
 });
 
-const render = (items: ReadonlyArray<unknown>, running: boolean) => {
-  const doc = snapshot(items, running);
-  return renderToStaticMarkup(<AgentsStrip threadId={doc.threadId} doc={doc} />);
+const render = (
+  items: ReadonlyArray<unknown>,
+  running: boolean,
+  capabilities?: Record<string, unknown>,
+) => {
+  const base = snapshot(items, running);
+  const doc =
+    capabilities === undefined || base.session === null
+      ? base
+      : { ...base, session: { ...base.session, capabilities } };
+  return renderToStaticMarkup(
+    <AgentsStrip threadId={doc.threadId} doc={doc as ThreadDetailSnapshot} />,
+  );
+};
+
+const CAPABILITIES = {
+  modelSwitch: "per-turn",
+  effortSwitch: "per-turn",
+  steering: true,
+  planMode: true,
+  subagents: true,
+  images: true,
+  resume: true,
+  fork: false,
+  interrupt: "session",
+  rollback: false,
+  compaction: true,
+  questions: true,
+  runtimeModes: ["approval-required"],
+  attachments: "files",
 };
 
 describe("AgentsStrip", () => {
@@ -74,5 +107,15 @@ describe("AgentsStrip", () => {
     expect(html).toContain("2 agents working");
     expect(html).toContain('title="Check the docs"');
     expect(html).not.toContain("Write the tests");
+  });
+
+  it("offers Stop only when the session says its harness can stop a subagent", () => {
+    const working = [task("Write the tests", "in_progress")];
+    expect(render(working, true)).not.toMatch(/>Stop</);
+    expect(render(working, true, CAPABILITIES)).not.toMatch(/>Stop</);
+    expect(render(working, true, { ...CAPABILITIES, stopTask: false })).not.toMatch(/>Stop</);
+    expect(render(working, true, { ...CAPABILITIES, stopTask: true })).toMatch(
+      /<button[^>]*>Stop<\/button>/,
+    );
   });
 });
