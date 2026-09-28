@@ -1,8 +1,9 @@
 # Codex recordings
 
-**Every directory here is a real recording of the real Codex CLI.** Nothing in
-it is hand-written, reconstructed or synthesized. If the CLI changes, these are
-re-recorded — they are never edited by hand to make a test pass.
+**Every directory here but `session-files/` is a real recording of the real
+Codex CLI.** Nothing in them is hand-written, reconstructed or synthesized. If
+the CLI changes, these are re-recorded — they are never edited by hand to make
+a test pass.
 
 |             |                                                                         |
 | ----------- | ----------------------------------------------------------------------- |
@@ -57,6 +58,11 @@ wire, not the harness's — listing one tool shaped as the gateway lists
 `mcp-servers` sends no message to a model and reads no account; its scratch
 `CODEX_HOME` holds nothing of the operator's. `generate-text` is no session:
 its app-server names no Poseidon MCP server, so only the operator's own start.
+
+`session-files/` is the one directory that is not a recording: it is
+hand-built, session rollouts and a session index in the CLI's record shapes
+with made-up content, for the connector's sessions extension. It has no
+manifest, so `recordingNames` skips it; its own README says how it was made.
 
 ## Live check
 

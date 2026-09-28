@@ -1141,7 +1141,9 @@ Its extensions: `extensions/skills.ts` reads the skill roots the CLI loads
 (the project's `.codex/skills` and `.agents/skills`, `CODEX_HOME/skills`, and
 `~/.agents/skills`), and `extensions/mcpServers.ts` lists, adds and removes
 MCP servers through `codex mcp`, keeping the names Poseidon added in
-`CODEX_HOME/poseidon-mcp.json` since the CLI carries no ownership marker.
+`CODEX_HOME/poseidon-mcp.json` since the CLI carries no ownership marker, and
+`sessionFiles.ts` lists and reads the CLI's own rollouts under
+`CODEX_HOME/sessions` for an import.
 
 May import `connector-sdk`, `contracts` and `shared`; its tests also import
 `testkit`. It is the only place in the tree that knows `codex` exists, apart
@@ -2016,7 +2018,8 @@ read-only; it takes no `ExtensionScope`. Command Code carries `skills` and
 nothing lists which of its slash commands a headless run executes. Claude Code
 carries `commands`, read from the CLI's initialize handshake, and `plugins`,
 read from the CLI's own config files (`connector-claude/src/plugins.ts`).
-Every other extension takes an
+Claude Code and Codex carry `sessions`, read from the transcripts each CLI
+writes (`sessionFiles.ts` in each); Command Code has none. Every other extension takes an
 `ExtensionScope` — `{ workspaceRoot: string | null }`, the user scope plus one
 project — and fails with `ConnectorExtensionFailed { code, message }`, never an
 RPC error: the server (`settings/ConnectorExtensions.ts`) resolves the

@@ -59,6 +59,7 @@ describe("codexConnectorDefinition", () => {
       expect(instance.capabilities).toEqual(CODEX_CAPABILITIES);
       expect(instance.extensions?.skills).toBeDefined();
       expect(instance.extensions?.mcpServers).toBeDefined();
+      expect(instance.extensions?.sessions).toBeDefined();
       expect(instance.extensions?.plugins).toBeUndefined();
     }).pipe(Effect.scoped),
   );

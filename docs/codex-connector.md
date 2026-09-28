@@ -65,6 +65,7 @@ picks this instance. Adding it changed no existing install's routing.
 | `translate/usage.ts`       | a turn's usage from the thread's running total, and the context                  |
 | `extensions/skills.ts`     | the `skills` extension                                                           |
 | `extensions/mcpServers.ts` | the `mcpServers` extension, through `codex mcp`                                  |
+| `sessionFiles.ts`          | the `sessions` extension: the CLI's own rollouts, read for an import             |
 
 The package may import `connector-sdk`, `contracts` and `shared`; its tests
 also import `testkit`. The process-group code is its own rather than
@@ -603,7 +604,7 @@ approval case included.
 
 The Customize page and the composer's `/` menu read these through the
 connector-sdk's generic extensions. `CodexConnectorOptions.codexHome`
-(`BootOptions.codex` on the server) redirects both for tests; otherwise they
+(`BootOptions.codex` on the server) redirects all of them for tests; otherwise they
 use the instance's `codexHome`, else `~/.codex`.
 
 **Skills** (`extensions/skills.ts`) are read, never written, from the roots
@@ -637,6 +638,39 @@ end to end on a scratch `CODEX_HOME` holding one hand-written server.
 
 The per-thread `poseidon` server is not in this list: it is added per session
 through `-c` (see the launch), never written to the config.
+
+**Session files** (`sessionFiles.ts`) list the threads the CLI recorded on
+its own and read one back so it can be imported as a thread. The rollouts are
+opened read-only and nothing is written.
+
+- Rollouts are `CODEX_HOME/sessions/YYYY/MM/DD/rollout-<time>-<thread id>.jsonl`
+  — where `thread/resume` looks, so an imported thread carries the
+  conversation on. `list` takes the newest by last write, at most 200, and
+  reads only the first 256 KB of each: `session_meta` for the id, `cwd` and
+  start, and the messages for the first prompt and the count. A rollout whose
+  `source` names a `subagent` is not listed. A file longer than the head is
+  listed without a count rather than with a short one.
+- The title is the thread's name in `CODEX_HOME/session_index.jsonl` (`id`,
+  `thread_name`; the last line for an id wins), else the first prompt cut to
+  80 characters.
+- `read` reads the whole rollout a line at a time and keeps `response_item`
+  messages with role `user` or `assistant`, joining their `input_text` /
+  `output_text` blocks. It leaves out `developer` messages and injected user
+  context: the `AGENTS.md` preamble, a block wholly inside one tag
+  (`<environment_context>`, `<user_instructions>`, …) and an image's bare
+  frame; a prompt after the desktop app's file list is read from under
+  `## My request:`. A rollout with no such messages is read from its older
+  `event_msg` `user_message` / `agent_message` copies instead. Reasoning, tool
+  calls and every other record are skipped, and so are lines that are not
+  JSON. It keeps the newest 500 messages within a million characters and
+  counts them all.
+- The session reference it returns is `{ threadId, cwd }`, the shape
+  `sessionRef.ts` parses, so the thread's first turn resumes it; a thread the
+  CLI no longer has starts afresh (`threadOpen.ts`).
+
+The tests read `packages/testkit/fixtures/codex/session-files/`: hand-built
+rollouts in the CLI's record shapes with made-up content (its README says
+what each holds).
 
 ## Known CLI behaviour worth remembering
 

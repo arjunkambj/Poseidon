@@ -1,0 +1,6 @@
+{"timestamp":"2026-09-21T08:00:00.000Z","type":"session_meta","payload":{"session_id":"01990000-0000-7000-8000-00000000000b","id":"01990000-0000-7000-8000-00000000000b","timestamp":"2026-09-21T08:00:00.000Z","cwd":"<HOME>/code/beta","originator":"codex-tui","cli_version":"0.156.1","source":"cli","thread_source":"user","model_provider":"openai","base_instructions":{"text":"<scrubbed>"},"git":{"branch":"main"}}}
+{"timestamp":"2026-09-21T08:00:00.100Z","type":"response_item","payload":{"type":"message","id":null,"role":"user","content":[{"type":"input_text","text":"<user_instructions>\nPrefer small commits.\n</user_instructions>"}]}}
+{"timestamp":"2026-09-21T08:00:01.000Z","type":"event_msg","payload":{"type":"user_message","message":"<environment_context>\n  <cwd><HOME>/code/beta</cwd>\n</environment_context>","kind":"environment_context"}}
+{"timestamp":"2026-09-21T08:00:01.100Z","type":"event_msg","payload":{"type":"user_message","message":"Summarise the beta changelog","images":[]}}
+{"timestamp":"2026-09-21T08:00:03.000Z","type":"event_msg","payload":{"type":"agent_message","message":"Two releases: one fix and one feature."}}
+{"timestamp":"2026-09-21T08:00:03.100Z","type":"event_msg","payload":{"type":"token_count","info":null}}

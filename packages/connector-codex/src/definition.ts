@@ -1,10 +1,10 @@
 /**
  * The Codex connector definition: probe, instance creation, session start and
- * resume, one-shot text (`generateText.ts`), and the skills and MCP server
- * extensions. Everything else — the binary, the environment, the JSON-RPC
- * client, the handshake, the translation — lives in the sibling modules this
- * wires together. Sessions come back raw; the engine's SessionManager adds
- * the turn-scoped wrapper.
+ * resume, one-shot text (`generateText.ts`), and the skills, MCP server and
+ * session-file extensions. Everything else — the binary, the environment, the
+ * JSON-RPC client, the handshake, the translation — lives in the sibling
+ * modules this wires together. Sessions come back raw; the engine's
+ * SessionManager adds the turn-scoped wrapper.
  */
 
 import * as NodeOS from "node:os";
@@ -28,6 +28,7 @@ import { CODEX_KIND } from "./kind";
 import type { CodexModelFacts } from "./models";
 import { LOGIN_ARGS, NOT_FOUND, probe as probeBinary, readHandshake } from "./probe";
 import { makeCodexSession } from "./session";
+import { makeCodexSessionFiles } from "./sessionFiles";
 import { parseSessionRef, type CodexSessionRef } from "./sessionRef";
 
 /** What a thread is told when its stored reference is not one this connector made. */
@@ -37,8 +38,9 @@ export const UNREADABLE_REF_WARNING =
 export interface CodexConnectorOptions {
   /**
    * The `CODEX_HOME` the extensions read and write — the skills root, the
-   * `codex mcp` commands and Poseidon's MCP ledger. Omitted, it is the
-   * instance's own `codexHome`, else `~/.codex`. Sessions are unaffected.
+   * `codex mcp` commands, Poseidon's MCP ledger and the session rollouts an
+   * import reads. Omitted, it is the instance's own `codexHome`, else
+   * `~/.codex`. Live sessions are unaffected.
    * Tests pass a temporary directory so no real config is touched.
    */
   readonly codexHome?: string;
@@ -47,9 +49,9 @@ export interface CodexConnectorOptions {
 }
 
 /**
- * The skills and MCP server extensions for one instance. `writeMutex` is the
- * definition's, so instances that share a `CODEX_HOME` never interleave two
- * `codex mcp add` runs and their ledger writes.
+ * The skills, MCP server and session-file extensions for one instance.
+ * `writeMutex` is the definition's, so instances that share a `CODEX_HOME`
+ * never interleave two `codex mcp add` runs and their ledger writes.
  */
 const codexExtensions = (
   options: CodexConnectorOptions,
@@ -75,6 +77,7 @@ const codexExtensions = (
       codexHome,
       writeMutex,
     }),
+    sessions: makeCodexSessionFiles({ codexHome }),
   };
 };
 
