@@ -95,9 +95,10 @@ Stdout and stderr are the server's log; **fd 3 carries the handshake**.
 - the orchestration engine (`orchestration/Engine.ts`), the session manager
   and the reactors (`ProviderCommandReactor`, `CheckpointReactor`,
   `AttachmentReactor`, `makeSessionSupervisor`);
-- the connector registry, seeded with the Command Code and Claude Code
+- the connector registry, seeded with the Command Code, Claude Code and Codex
   definitions in that order (`packages/connector-cmd/src/definition.ts`,
-  `packages/connector-claude/src/definition.ts`), and the `ConnectorManager`
+  `packages/connector-claude/src/definition.ts`,
+  `packages/connector-codex/src/definition.ts`), and the `ConnectorManager`
   that reconciles it against the settings document;
 - permissions, git/files, attachments, the browser service and the MCP
   gateway;
