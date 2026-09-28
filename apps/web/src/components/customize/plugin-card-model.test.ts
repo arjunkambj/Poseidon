@@ -60,6 +60,14 @@ describe("poseidonPluginCard", () => {
     });
   });
 
+  it("carries the warnings of a plugin that loaded with problems", () => {
+    expect(poseidonPluginCard(plugin()).warnings).toEqual([]);
+    const warnings = ['skill "notes" has no description', 'MCP server "db" was skipped'];
+    expect(poseidonPluginCard(plugin({ warnings })).warnings).toEqual(warnings);
+    // An invalid plugin shows its error, not what it would have warned about.
+    expect(poseidonPluginCard(plugin({ warnings, error: "broken" })).warnings).toEqual([]);
+  });
+
   it("shows a disabled plugin as off", () => {
     expect(poseidonPluginCard(plugin({ enabled: false })).enabled).toBe(false);
   });
@@ -94,6 +102,7 @@ describe("harnessPluginCard", () => {
       sourceLabel: "Acme CLI",
       contents: "fixtures · project scope",
       enabled: false,
+      warnings: [],
       pluginId: null,
     });
     expect(card.key).toBe("acme-1:fixtures:project:commit-commands");

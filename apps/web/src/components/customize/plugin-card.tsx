@@ -1,7 +1,9 @@
 /**
  * One plugin on the Plugins page, on the stock `Card`: its name and source
  * badge, a one-line description, what it carries, and a switch. A plugin that
- * failed validation shows its error and cannot be turned on; a harness's own
+ * failed validation shows its error and cannot be turned on; one that loaded
+ * with warnings names the first under its contents, the rest in a tooltip; a
+ * harness's own
  * plugin shows its state with a switch that only that harness can change.
  */
 
@@ -18,7 +20,7 @@ import { Switch } from "@poseidon/ui/components/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 
 import type { PluginCardModel } from "./plugin-card-model";
-import { Puzzle } from "@honeyicons/react";
+import { AlertTriangle, Puzzle } from "@honeyicons/react";
 
 export function PluginCard({
   plugin,
@@ -81,11 +83,41 @@ export function PluginCard({
         <CardContent>
           <p className="line-clamp-3 text-xs text-destructive">{plugin.error}</p>
         </CardContent>
-      ) : plugin.contents === "" ? null : (
+      ) : plugin.contents === "" && plugin.warnings.length === 0 ? null : (
         <CardContent>
-          <p className="truncate text-xs text-muted-foreground">{plugin.contents}</p>
+          <div className="flex flex-col gap-0.5">
+            {plugin.contents === "" ? null : (
+              <p className="truncate text-xs text-muted-foreground">{plugin.contents}</p>
+            )}
+            <PluginWarnings warnings={plugin.warnings} />
+          </div>
         </CardContent>
       )}
     </Card>
+  );
+}
+
+/** The first warning on one line; all of them in a tooltip when there are more. */
+function PluginWarnings({ warnings }: { readonly warnings: ReadonlyArray<string> }) {
+  const [first, ...rest] = warnings;
+  if (first === undefined) return null;
+  const line = (
+    <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+      <AlertTriangle variant="bold" className="size-3 shrink-0" />
+      <span className="min-w-0 truncate">{first}</span>
+      {rest.length === 0 ? null : <span className="shrink-0">+{rest.length} more</span>}
+    </span>
+  );
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<p className="flex min-w-0" />}>{line}</TooltipTrigger>
+      <TooltipContent>
+        <ul className="flex flex-col gap-0.5">
+          {warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      </TooltipContent>
+    </Tooltip>
   );
 }

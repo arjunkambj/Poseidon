@@ -1,7 +1,7 @@
 /**
  * What one card on the Plugins page says, worked out apart from the markup so
  * it can be tested: the source badge, the contents line, whether the plugin
- * is broken, and whether its switch does anything.
+ * is broken, what went missing from it, and whether its switch does anything.
  *
  * Poseidon's own plugins (built-in and global) are toggled here through
  * `plugins.setEnabled`. A harness's own plugins, such as the ones a CLI
@@ -23,6 +23,11 @@ export interface PluginCardModel {
   readonly enabled: boolean;
   /** Why the plugin failed validation; the card shows it and cannot be turned on. */
   readonly error: string | undefined;
+  /**
+   * Problems that did not stop the plugin loading, such as a skill or MCP
+   * server it skipped: the reason a count is smaller than the folder suggests.
+   */
+  readonly warnings: ReadonlyArray<string>;
   /** The id the switch toggles, `null` when the switch is read-only. */
   readonly pluginId: PluginId | null;
 }
@@ -53,6 +58,7 @@ export const poseidonPluginCard = (plugin: PoseidonPlugin): PluginCardModel => (
   contents: plugin.error === undefined ? contentsLine(plugin.contents) : "",
   enabled: plugin.error === undefined && plugin.enabled,
   error: plugin.error,
+  warnings: plugin.error === undefined ? (plugin.warnings ?? []) : [],
   pluginId: plugin.pluginId,
 });
 
@@ -74,6 +80,7 @@ export const harnessPluginCard = (
     .join(" · "),
   enabled: plugin.enabled,
   error: undefined,
+  warnings: [],
   pluginId: null,
 });
 

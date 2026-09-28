@@ -94,7 +94,7 @@ The registry never crashes on a bad plugin; it lists it with an `error`:
 An invalid plugin is always off, cannot be switched on (`plugins.setEnabled`
 fails `invalid`), and is never handed to a session. Problems that do not stop
 a plugin loading, such as one bad skill or a skipped MCP server, are listed as
-`warnings`.
+`warnings` and shown on the plugin's card.
 
 ## Turning plugins on and off
 
@@ -228,7 +228,9 @@ Customize → Plugins (`/customize/plugins`, also in the command palette as
   badge (Built-in or Global), one-line description, contents ("2 skills · 1 MCP
   server · 3 commands", zero parts left out) and an on/off switch. An invalid
   plugin has an Invalid badge, its error in place of the contents, and a
-  disabled switch. With no global plugins, an empty state names the global
+  disabled switch. A plugin that loaded with warnings shows the first one under
+  its contents, with "+N more" and every warning in a tooltip, so a smaller
+  count than the folder suggests comes with its reason. With no global plugins, an empty state names the global
   folder with Copy path and Open folder.
 - One section per connector instance with its own plugins, read-only as above.
 
