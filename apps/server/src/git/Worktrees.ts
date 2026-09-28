@@ -19,6 +19,7 @@
 import { existsSync, mkdirSync, realpathSync } from "node:fs";
 import * as nodePath from "node:path";
 import type { GitWorktreeInfo, ThreadWorktree } from "@poseidon/contracts/git";
+import { branchSlug } from "@poseidon/shared/branchSlug";
 import { worktreesDir } from "@poseidon/shared/paths";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -27,7 +28,6 @@ import * as Layer from "effect/Layer";
 import { PoseidonRpcError } from "@poseidon/contracts/rpc";
 
 import { canonicalPath } from "../orchestration/workspaceRoot";
-import { branchSlug } from "./branchSlug";
 import { isSafeRefArg, listBranches, refExists, validRef } from "./Branches";
 import { run } from "./process";
 

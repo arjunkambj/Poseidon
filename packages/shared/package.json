@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./branchSlug": {
+      "types": "./src/branchSlug.ts",
+      "import": "./src/branchSlug.ts"
+    },
     "./browserBridge": {
       "types": "./src/browserBridge.ts",
       "import": "./src/browserBridge.ts"
