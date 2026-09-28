@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import { installAppAtoms } from "@/state/app-runtime";
 
+import { DockAddTabMenu } from "./dock-add-tab-menu";
+import { dockTabsFor } from "./dock-tab-meta";
 import { DockTabStrip, dockTabId } from "./dock-tab-strip";
-import type { DockPane, DockTab } from "./dock-toggle";
+import { unopenedDockTabs, type DockPane, type DockTab } from "./dock-toggle";
 
 // The tooltips' keys are read from the app's keybindings.
 installAppAtoms(null);
@@ -78,5 +80,48 @@ describe("DockTabStrip", () => {
     expect(tabs[0]).toContain('tabindex="0"');
     expect(tabs[0]).toContain('aria-selected="false"');
     expect(tabs[1]).toContain('tabindex="-1"');
+  });
+});
+
+// A closed menu renders only its trigger, so the items are checked through
+// `unopenedDockTabs`, the list the menu draws.
+describe("DockAddTabMenu", () => {
+  const menu = (offered: ReadonlyArray<DockTab>, open: ReadonlyArray<DockTab>) =>
+    renderToStaticMarkup(<DockAddTabMenu offeredTabs={offered} openTabs={open} onOpen={noop} />);
+
+  it("offers to open a tab while some kind is not open", () => {
+    expect(menu(dockTabsFor("thread"), ["changes"])).toContain('aria-label="Open a tab"');
+    expect(unopenedDockTabs(dockTabsFor("thread"), ["changes"])).toEqual(["browser", "files"]);
+  });
+
+  it("is gone once every offered kind is open", () => {
+    expect(menu(dockTabsFor("thread"), ["files", "changes", "browser"])).toBe("");
+    expect(menu(dockTabsFor("project"), ["changes", "files"])).toBe("");
+  });
+
+  it("is gone while no tab is open, where the launcher lists them all", () => {
+    expect(menu(dockTabsFor("thread"), [])).toBe("");
+  });
+
+  it("never offers the Browser beside a project", () => {
+    expect(unopenedDockTabs(dockTabsFor("project"), ["changes"])).toEqual(["files"]);
+    expect(unopenedDockTabs(dockTabsFor("project"), [])).not.toContain("browser");
+  });
+
+  it("sits in the strip after the tabs, before the close button", () => {
+    const html = renderToStaticMarkup(
+      <DockTabStrip
+        baseId="dock"
+        openTabs={["changes"]}
+        pane="changes"
+        onTabChange={noop}
+        onCloseTab={noop}
+      >
+        <DockAddTabMenu offeredTabs={dockTabsFor("thread")} openTabs={["changes"]} onOpen={noop} />
+      </DockTabStrip>,
+    );
+    const add = html.indexOf('aria-label="Open a tab"');
+    expect(add).toBeGreaterThan(html.indexOf('data-dock-tab="changes"'));
+    expect(add).toBeLessThan(html.indexOf('aria-label="Close dock"'));
   });
 });

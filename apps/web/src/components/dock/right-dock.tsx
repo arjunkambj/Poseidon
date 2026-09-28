@@ -32,7 +32,8 @@
  * open. It is a `tablist`: each tab controls the panel below it, and Left and
  * Right move along the open tabs (and open the tab they land on). Only the
  * active tab's pane is mounted; a closed tab is hidden exactly as switching
- * away from it hides it.
+ * away from it hides it. A "+" after the tabs (`./dock-add-tab-menu`) opens
+ * any kind this dock offers that is not open yet.
  *
  * With less than 640px beside the sidebar, the dock overlays the thread
  * column: two columns in that width leave neither readable, and simply
@@ -73,6 +74,7 @@ import {
   useDockWidth,
 } from "@/state/ui";
 
+import { DockAddTabMenu } from "./dock-add-tab-menu";
 import { DockLauncher } from "./dock-launcher";
 import { dockWidthForKey } from "./dock-resize";
 import { dockScopeKind, type DockScope } from "./dock-scope";
@@ -226,7 +228,9 @@ export function RightDock({
           pane={pane}
           onTabChange={onPaneChange}
           onCloseTab={onCloseTab}
-        />
+        >
+          <DockAddTabMenu offeredTabs={tabs} openTabs={openTabs} onOpen={onPick} />
+        </DockTabStrip>
         <div
           id={dockPanelId(baseId)}
           role={isDockTab(pane) ? "tabpanel" : undefined}

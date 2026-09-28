@@ -21,6 +21,9 @@
  * Left/Right move along the open tabs from the focused one, wrapping, opening
  * the tab they land on and keeping the focus on it (`adjacentDockTab`).
  *
+ * After the tabs sits whatever the dock puts there (`children`) — the "+"
+ * menu of the kinds not open yet.
+ *
  * The strip reads nothing of its own: a tab's content loads when it opens.
  */
 
