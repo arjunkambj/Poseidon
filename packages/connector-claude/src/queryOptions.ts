@@ -69,9 +69,14 @@ export const permissionModeFor = (settings: ThreadSettings): PermissionMode => {
   }
 };
 
-/** The SDK's effort for ours; `minimal` has no rung in the CLI and is left out. */
+/**
+ * The SDK's effort for ours. `minimal` and `ultra` have no rung in the CLI's
+ * `EffortLevel` and are left out, so the CLI default applies: `ultra` is
+ * Codex's multi-agent rung, and Claude Code's nearest mode (ultracode) is a
+ * session setting of its own, not an effort.
+ */
 export const sdkEffortFor = (effort: Effort | undefined): EffortLevel | undefined =>
-  effort === undefined || effort === "minimal" ? undefined : effort;
+  effort === undefined || effort === "minimal" || effort === "ultra" ? undefined : effort;
 
 /** The directory a thread's attachments are staged under. */
 export const attachmentsDirFor = (attachmentsDir: string, threadId: ThreadId): string =>

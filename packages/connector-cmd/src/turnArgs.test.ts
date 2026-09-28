@@ -48,6 +48,19 @@ describe("prepareTurn", () => {
     expect(prepared.args).not.toContain("minimal");
   });
 
+  it("leaves --effort out for ultra, a rung Command Code does not have", async () => {
+    expect(cmdEffort("ultra")).toBeUndefined();
+    const prepared = await prepareTurn({
+      turn: { text: "hi", attachments: [], mentions: [] },
+      settings: { ...settings("default"), effort: "ultra" },
+      attachmentsDir: NodePath.join(NodeFS.realpathSync(NodePath.resolve("/tmp")), "poseidon-none"),
+      threadId: makeThreadId(),
+      resumeSessionId: null,
+    });
+    expect(prepared.args).not.toContain("--effort");
+    expect(prepared.args).not.toContain("ultra");
+  });
+
   it("passes every other effort through unchanged", () => {
     for (const effort of ["low", "medium", "high", "xhigh", "max"] as const) {
       expect(cmdEffort(effort)).toBe(effort);

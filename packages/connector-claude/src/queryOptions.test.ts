@@ -2,7 +2,7 @@ import type { SessionPlugin } from "@poseidon/connector-sdk/plugins";
 import { describe, expect, it } from "vitest";
 
 import { pluginMcpKey } from "./pluginOptions";
-import { buildQueryOptions, type QueryOptionsInput } from "./queryOptions";
+import { buildQueryOptions, sdkEffortFor, type QueryOptionsInput } from "./queryOptions";
 import type { ToolGate } from "./toolGate";
 
 /** Never called: the options only wrap the gate's doors in closures. */
@@ -66,6 +66,26 @@ const tools: SessionPlugin = {
     { name: "poseidon", transport: "stdio", command: "/bin/true" },
   ],
 };
+
+describe("sdkEffortFor", () => {
+  it("passes the CLI's rungs through and leaves out the ones it lacks", () => {
+    for (const effort of ["low", "medium", "high", "xhigh", "max"] as const) {
+      expect(sdkEffortFor(effort)).toBe(effort);
+    }
+    expect(sdkEffortFor(undefined)).toBeUndefined();
+    expect(sdkEffortFor("minimal")).toBeUndefined();
+    expect(sdkEffortFor("ultra")).toBeUndefined();
+  });
+
+  it("never hands the CLI an ultra effort at launch", () => {
+    const options = buildQueryOptions({
+      ...input,
+      settings: { ...input.settings, effort: "ultra" },
+    });
+    expect(options.effort).toBeUndefined();
+    expect("effort" in options).toBe(false);
+  });
+});
 
 describe("buildQueryOptions plugins", () => {
   it("adds nothing when no plugin is enabled", () => {

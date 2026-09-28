@@ -4,9 +4,14 @@ import { describe, expect, it } from "vitest";
 import { EFFORT_LABELS, orderEfforts, stepEffort } from "./efforts";
 
 describe("orderEfforts", () => {
-  it("offers the whole ladder when the model states none", () => {
-    expect(orderEfforts(undefined)).toEqual(EFFORT_ORDER);
-    expect(orderEfforts(null)).toEqual(EFFORT_ORDER);
+  it("offers the whole ladder but ultra when the model states none", () => {
+    const everyday = EFFORT_ORDER.filter((effort) => effort !== "ultra");
+    expect(orderEfforts(undefined)).toEqual(everyday);
+    expect(orderEfforts(null)).toEqual(everyday);
+  });
+
+  it("offers ultra only where the model lists it", () => {
+    expect(orderEfforts(["ultra", "high", "max"])).toEqual(["high", "max", "ultra"]);
   });
 
   it("orders a model's rungs by the canonical ladder", () => {
@@ -43,6 +48,12 @@ describe("stepEffort", () => {
     expect(stepEffort("medium", ["low", "high"], -1)).toBe("low");
   });
 
+  it("never steps onto ultra, but steps down from it", () => {
+    expect(stepEffort("max", ["high", "max", "ultra"], 1)).toBe("max");
+    expect(stepEffort("ultra", ["high", "max", "ultra"], 1)).toBe("ultra");
+    expect(stepEffort("ultra", ["high", "max", "ultra"], -1)).toBe("max");
+  });
+
   it("does nothing with a single rung", () => {
     expect(stepEffort("high", ["high"], 1)).toBe("high");
     expect(stepEffort("high", ["high"], -1)).toBe("high");
@@ -58,6 +69,7 @@ describe("EFFORT_LABELS", () => {
       "High",
       "Extra high",
       "Max",
+      "Ultra",
     ]);
   });
 });

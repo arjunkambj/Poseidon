@@ -39,8 +39,14 @@ export type InteractionMode = typeof InteractionMode.Type;
  * The canonical reasoning-effort ladder, lowest rung first. Every harness's
  * effort names map onto these, and the effort picker orders by this list
  * whatever order a connector reports its rungs in.
+ *
+ * `ultra` sits past `max`: it is Codex's rung for maximum reasoning with
+ * automatic task delegation (proactive multi-agent work), offered only on the
+ * models whose `model/list` row advertises it. It spends many more tokens, and
+ * a harness without it never receives it — its connector leaves the effort to
+ * the CLI default instead.
  */
-export const EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"] as const;
+export const EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max", "ultra"] as const;
 
 /**
  * Reasoning effort. The ladder is per model: `ModelOption.efforts` lists the

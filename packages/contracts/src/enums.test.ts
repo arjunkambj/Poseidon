@@ -29,7 +29,15 @@ describe("closed vocabularies", () => {
         "full-access",
       ]);
       expect(literals.interactionMode).toEqual(["default", "plan"]);
-      expect(literals.effort).toEqual(["minimal", "low", "medium", "high", "xhigh", "max"]);
+      expect(literals.effort).toEqual([
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+        "ultra",
+      ]);
       expect(literals.approvalKind).toEqual([
         "command",
         "file_write",
@@ -81,7 +89,7 @@ describe("closed vocabularies", () => {
 describe("Effort", () => {
   it.effect("keeps decoding every effort a thread may already have stored", () =>
     Effect.gen(function* () {
-      const stored = ["low", "medium", "high", "xhigh", "max"];
+      const stored = ["minimal", "low", "medium", "high", "xhigh", "max"];
       const decoded = yield* Effect.succeed(
         stored.map((effort) => Schema.decodeUnknownSync(Effort)(effort)),
       );
@@ -94,7 +102,16 @@ describe("Effort", () => {
       const order = yield* Effect.succeed(EFFORT_ORDER);
       expect(Effort.literals).toEqual(order);
       expect(order[0]).toBe("minimal");
-      expect(order.at(-1)).toBe("max");
+      expect(order.at(-1)).toBe("ultra");
+      expect(order.indexOf("ultra")).toBe(order.indexOf("max") + 1);
+    }),
+  );
+
+  it.effect("decodes ultra and still refuses a rung nobody named", () =>
+    Effect.gen(function* () {
+      expect(Schema.decodeUnknownSync(Effort)("ultra")).toBe("ultra");
+      const exit = yield* Effect.sync(() => Schema.decodeUnknownExit(Effort)("turbo"));
+      expect(exit._tag).toBe("Failure");
     }),
   );
 });

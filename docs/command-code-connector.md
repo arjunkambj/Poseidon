@@ -1222,7 +1222,9 @@ never appears in a model's `efforts`, because nothing recorded shows the CLI
 accepting it. A thread can still carry it — a saved default, or the whole
 ladder offered while a model is not in the catalog — and the CLI exits 1 on an
 effort the model does not support, so `cmdEffort` (`turnArgs.ts`) sends
-`--effort low` for it instead.
+`--effort low` for it instead. The contract's `ultra` (Codex's multi-agent
+rung) has no counterpart at all, so for it `--effort` is left out and the CLI
+default applies.
 
 ### One turn at a time
 

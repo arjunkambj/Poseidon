@@ -946,9 +946,14 @@ deliberately an unconstrained string: adding a connector must not touch this
 package.
 
 `Effort` is the canonical reasoning ladder, `minimal`, `low`, `medium`, `high`,
-`xhigh`, `max`, exported in that order as `EFFORT_ORDER`. It is a superset: which
-rungs a model accepts is `ModelOption.efforts`, and a harness maps its own names
-onto these. The union only grows, so a stored thread's effort always decodes.
+`xhigh`, `max`, `ultra`, exported in that order as `EFFORT_ORDER`. It is a
+superset: which rungs a model accepts is `ModelOption.efforts`, and a harness
+maps its own names onto these. The union only grows, so a stored thread's effort
+always decodes. `ultra` is Codex's rung past `max`, maximum reasoning with
+automatic task delegation, offered only on a model whose `model/list` row lists
+it; the effort keys never step onto it, a model that states no ladder does not
+offer it, and a harness without it never receives it — Claude Code and Command
+Code leave their effort flag out for it, so the CLI default applies.
 
 `ModelOption.hidden` is optional: a connector may list a model it does not want
 offered by default. The settings document's `modelPicker` holds the user's

@@ -61,19 +61,20 @@ describe("toModelOptions", () => {
       expect(option.efforts.length).toBeGreaterThan(0);
       expect(option.efforts.every((effort) => offered.includes(effort))).toBe(true);
     }
-    // The recorded catalogue offers a rung above `max` that Poseidon has no
-    // name for; it is dropped, not guessed at.
+    // `ultra`, the recorded catalogue's rung above `max`, is one Poseidon
+    // names; a rung it has no name for is dropped, not guessed at.
     expect(
       toModelOptions([
         row({
           supportedReasoningEfforts: [
             { reasoningEffort: "ultra" },
+            { reasoningEffort: "turbo" },
             { reasoningEffort: "high" },
             { reasoningEffort: "low" },
           ],
         }),
       ])[0]?.efforts,
-    ).toEqual(["low", "high"]);
+    ).toEqual(["low", "high", "ultra"]);
   });
 
   it("carries each row's own description as secondary text", () => {

@@ -229,6 +229,12 @@ describe("generateTextArgs", () => {
     expect(args).not.toContain("--effort");
     expect(args.join(" ")).not.toContain("object");
   });
+
+  it("leaves --effort out for ultra, a rung Command Code does not have", () => {
+    const args = generateTextArgs({ prompt: "Title?", model: "m", effort: "ultra" });
+    expect(args).not.toContain("--effort");
+    expect(args).not.toContain("ultra");
+  });
 });
 
 describe("fitArgument", () => {

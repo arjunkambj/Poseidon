@@ -3,7 +3,8 @@
  *
  * A connector reports each model's ladder in whatever order its harness prints
  * it; the picker always reads bottom to top in the contract's `EFFORT_ORDER`.
- * A model that states no ladder offers every rung.
+ * A model that states no ladder offers every rung but `ultra`: that rung spends
+ * many more tokens, so it is offered only where a model lists it.
  */
 
 import { EFFORT_ORDER, type Effort } from "@poseidon/contracts/enums";
@@ -11,7 +12,9 @@ import { EFFORT_ORDER, type Effort } from "@poseidon/contracts/enums";
 export const orderEfforts = (
   efforts: ReadonlyArray<Effort> | null | undefined,
 ): ReadonlyArray<Effort> =>
-  efforts == null ? EFFORT_ORDER : EFFORT_ORDER.filter((effort) => efforts.includes(effort));
+  efforts == null
+    ? EFFORT_ORDER.filter((effort) => effort !== "ultra")
+    : EFFORT_ORDER.filter((effort) => efforts.includes(effort));
 
 /** What a settings select calls each rung, in place of the raw value (`xhigh`). */
 export const EFFORT_LABELS: Readonly<Record<Effort, string>> = {
@@ -21,6 +24,7 @@ export const EFFORT_LABELS: Readonly<Record<Effort, string>> = {
   high: "High",
   xhigh: "Extra high",
   max: "Max",
+  ultra: "Ultra",
 };
 
 /**
@@ -28,6 +32,8 @@ export const EFFORT_LABELS: Readonly<Record<Effort, string>> = {
  * effort keys. It stops at either end rather than wrapping — a key that jumped
  * from the top rung to the bottom would be a surprise mid-thread. A current
  * effort the model does not list moves to the nearest rung in that direction.
+ * The keys never step onto `ultra`, the costly multi-agent rung: it is picked
+ * on purpose or not at all, though stepping down from it works.
  */
 export const stepEffort = (
   current: Effort,
@@ -35,7 +41,7 @@ export const stepEffort = (
   step: 1 | -1,
 ): Effort => {
   const rank = EFFORT_ORDER.indexOf(current);
-  const ladder = orderEfforts(efforts);
+  const ladder = orderEfforts(efforts).filter((effort) => effort !== "ultra");
   const next =
     step === 1
       ? ladder.find((effort) => EFFORT_ORDER.indexOf(effort) > rank)

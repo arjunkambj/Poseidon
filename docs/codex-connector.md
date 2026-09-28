@@ -167,8 +167,9 @@ family "Codex". The row's `description` (for example "Frontier intelligence
 for the most demanding work.") is carried as the model's `description`, which
 the UI shows as secondary text; the protocol field is optional, so an
 app-server that sends none still decodes, and an absent or blank one is left
-out. Efforts are the row's `supportedReasoningEfforts` that
-Poseidon's ladder names; the protocol's effort is an open string, so a rung
+out. Efforts are the row's `supportedReasoningEfforts` that Poseidon's ladder
+names, `ultra` (maximum reasoning with automatic task delegation) included on
+the models that list it; the protocol's effort is an open string, so a rung
 Poseidon has no name for is dropped. Vision is read from the row's input
 modalities. The model id `default` means the CLI's own default: a thread on it
 names no model to `thread/start`, and its turns run on the model the CLI

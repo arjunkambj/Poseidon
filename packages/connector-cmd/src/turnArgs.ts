@@ -43,9 +43,11 @@ export interface PreparedTurn {
  * The contract's effort, as a rung Command Code takes. Its ladder starts at
  * `low`: no model it lists offers `minimal`, and the CLI exits 1 on an effort
  * the model does not support, so the contract's lowest rung maps onto its
- * lowest instead of failing the turn.
+ * lowest instead of failing the turn. `ultra` has no rung there at all, so it
+ * is `undefined` and `buildArgs` leaves `--effort` out for the CLI default.
  */
-export const cmdEffort = (effort: Effort): string => (effort === "minimal" ? "low" : effort);
+export const cmdEffort = (effort: Effort): string | undefined =>
+  effort === "ultra" ? undefined : effort === "minimal" ? "low" : effort;
 
 /**
  * A turn's skill and plugin references, as prompt lines and warnings.

@@ -277,7 +277,7 @@ options:
 | `forwardSubagentText`             | true: a subagent's text arrives, not only its tool calls            |
 | `permissionMode`                  | from the thread's modes (see [Runtime modes](#runtime-modes))       |
 | `allowDangerouslySkipPermissions` | true, which the SDK requires before `bypassPermissions` can be used |
-| `model`, `effort`                 | the thread's, left out for `default` and for `minimal` effort       |
+| `model`, `effort`                 | the thread's; left out for `default`, `minimal` or `ultra` effort   |
 | `mcpServers`                      | `poseidon`, over HTTP, with the per-thread bearer                   |
 | `plugins`                         | the enabled Poseidon plugins, only when there are some (below)      |
 | `additionalDirectories`           | the thread's attachments directory                                  |
@@ -718,8 +718,10 @@ shows a model the session is not using.
 
 The thread model `default` leaves the SDK's `model` option out altogether. On
 the recording account the CLI's `system/init` named what it resolved to, and
-that is the id each manifest's `model` records. Poseidon's `minimal` effort has
-no rung in the CLI and is left out, so the CLI's default effort applies.
+that is the id each manifest's `model` records. Poseidon's `minimal` and `ultra`
+efforts have no rung in the CLI and are left out, so the CLI's default effort
+applies (`ultra` is Codex's multi-agent rung; Claude Code's counterpart is the
+ultracode session mode, not an effort).
 
 ## Writing one piece of text
 
@@ -734,7 +736,7 @@ prompt and options that make it a single answer and nothing else:
 | `tools: []`, `allowedTools: []`           | no built-in tool at all (`--tools ""`)                                                   |
 | `mcpServers: {}`, `strictMcpConfig: true` | no MCP server, the user's own included                                                   |
 | `canUseTool`                              | denies whatever still asks: the call is read-only                                        |
-| `model`, `effort`                         | the request's; `default` and `minimal` are left out as for a turn                        |
+| `model`, `effort`                         | the request's; `default`, `minimal` and `ultra` are left out as for a turn               |
 | `systemPrompt`                            | the request's `system`, as the whole system prompt, when given                           |
 | `cwd`, `env`, `spawnClaudeCodeProcess`    | a fresh `poseidon-generate-*` temp directory, `childEnv`, and a process group of its own |
 
