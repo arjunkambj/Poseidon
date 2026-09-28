@@ -58,14 +58,23 @@ describe("DockTabStrip", () => {
     }
   });
 
-  it("keeps the active tab's close button in the Tab order and the others out", () => {
+  it("keeps the close buttons out of the tablist's tree and the Tab order", () => {
     const html = render(["changes", "files"], "files");
-    expect(html).toMatch(
-      /aria-label="Close Files"[^>]*tabindex="0"|tabindex="0"[^>]*aria-label="Close Files"/,
-    );
-    expect(html).toMatch(
-      /aria-label="Close Changes"[^>]*tabindex="-1"|tabindex="-1"[^>]*aria-label="Close Changes"/,
-    );
+    const closes = html.match(/<button[^>]*aria-label="Close (?:Files|Changes)"[^>]*>/g) ?? [];
+    expect(closes).toHaveLength(2);
+    for (const close of closes) {
+      expect(close).toContain('tabindex="-1"');
+    }
+    // Each close button sits in an aria-hidden span, beside its tab in a
+    // presentation wrapper: the tablist owns tabs and nothing else.
+    expect(html.match(/<span aria-hidden="true"[^>]*><button/g)).toHaveLength(2);
+    expect(html.match(/<div role="presentation"/g)).toHaveLength(2);
+  });
+
+  it("announces Delete and Backspace as the way to close a tab", () => {
+    for (const tab of tabsIn(render(["changes", "files"], "files"))) {
+      expect(tab).toContain('aria-keyshortcuts="Delete Backspace"');
+    }
   });
 
   it("has no tablist on the launcher once every tab is closed", () => {

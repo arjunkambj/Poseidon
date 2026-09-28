@@ -10,8 +10,12 @@
  *
  * Each tab has its own close button beside it — a sibling, never inside the
  * tab — shown on hover or focus and always on the active tab. A middle-click
- * on a tab, or a bare Delete or Backspace while it has the focus, closes it
- * too; with a modifier held the key is left to the app's chords.
+ * on a tab closes it too. A tablist holds only tabs, so the close buttons are
+ * for the pointer: out of the accessibility tree and the Tab order, each in a
+ * `presentation` wrapper with its tab. The keyboard closes the focused tab
+ * with a bare Delete or Backspace, which each tab announces
+ * (`aria-keyshortcuts`); with a modifier held the key is left to the app's
+ * chords.
  * Closing the active tab opens its right neighbour, else its left, else the
  * launcher (`closeDockTab`); the dock stays open either way, and the focus
  * goes to the tab that is now active.
@@ -68,7 +72,7 @@ function DockTabButton({
 }) {
   const meta = DOCK_TAB_META[tab];
   return (
-    <div className="group/dock-tab flex min-w-0 shrink-0 items-center">
+    <div role="presentation" className="group/dock-tab flex min-w-0 shrink-0 items-center">
       <Tooltip>
         <TooltipTrigger
           render={
@@ -79,6 +83,7 @@ function DockTabButton({
               data-dock-tab={tab}
               aria-selected={active}
               aria-controls={dockPanelId(baseId)}
+              aria-keyshortcuts="Delete Backspace"
               tabIndex={tabStop ? 0 : -1}
               variant={active ? "secondary" : "ghost"}
               tone={active ? "default" : "muted"}
@@ -108,8 +113,10 @@ function DockTabButton({
           <CommandKbd command={meta.command} />
         </TooltipContent>
       </Tooltip>
-      {/* Shown on hover or focus, and always on the active tab. */}
+      {/* Shown on hover or focus, and always on the active tab; the pointer's
+          alone, since a tablist holds only tabs. */}
       <span
+        aria-hidden="true"
         className={cn(
           "flex transition-opacity duration-150 ease-out",
           !active &&
@@ -125,7 +132,7 @@ function DockTabButton({
                 tone="muted"
                 size="icon-xs"
                 aria-label={`Close ${meta.label}`}
-                tabIndex={active ? 0 : -1}
+                tabIndex={-1}
                 onClick={() => onClose(tab)}
               />
             }
