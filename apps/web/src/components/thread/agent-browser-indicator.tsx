@@ -1,6 +1,9 @@
 /**
  * "Agent is using the browser — Show": the thread header's sign that the
  * agent is driving the thread's browser while its pane is not on screen.
+ * It pulses only while a `browser_*` call runs (and a few seconds after, so
+ * the gaps between one task's calls do not flicker); with only a tab the
+ * agent opened left, it says so and holds still.
  *
  * The browser pane never opens by default. The agent's first browser call
  * creates the thread's tab hidden (the browser host keeps it laid out, so the
@@ -13,9 +16,11 @@ import * as React from "react";
 import { useAtomValue } from "@effect/atom-react";
 import type { ThreadId } from "@poseidon/contracts/ids";
 import { Button } from "@poseidon/ui/components/button";
+import { cn } from "@poseidon/ui/lib/utils";
 import { AsyncResult } from "effect/unstable/reactivity";
 
 import {
+  agentCalling,
   agentUsingBrowser,
   noteUserDockChange,
   observeAgentUse,
@@ -82,15 +87,43 @@ export const useAgentBrowser = (
   return { indicator: showAgentIndicator(using, dockTab), noteUserDock };
 };
 
+/** How long the chip keeps saying "using" after a call ends. */
+const CALL_TAIL_MS = 4_000;
+
+/** Whether a `browser_*` call runs in the thread now, or ended moments ago. */
+const useAgentCalling = (threadId: ThreadId): boolean => {
+  const stateResult = useAtomValue(getAppAtoms().browserStateAtom(threadId));
+  const calling = agentCalling(AsyncResult.isSuccess(stateResult) ? stateResult.value : null);
+  const [recent, setRecent] = React.useState(calling);
+  React.useEffect(() => {
+    if (calling) {
+      setRecent(true);
+      return;
+    }
+    const timer = window.setTimeout(() => setRecent(false), CALL_TAIL_MS);
+    return () => window.clearTimeout(timer);
+  }, [calling]);
+  return calling || recent;
+};
+
 /** The chip itself: a status line and a Show button, never in the way. */
-export function AgentBrowserIndicator({ onShow }: { readonly onShow: () => void }) {
+export function AgentBrowserIndicator({
+  threadId,
+  onShow,
+}: {
+  readonly threadId: ThreadId;
+  readonly onShow: () => void;
+}) {
+  const calling = useAgentCalling(threadId);
   return (
     <span
       role="status"
       className="inline-flex min-w-0 shrink items-center gap-1.5 rounded-full bg-hover py-0.5 pr-1 pl-2 type-micro text-muted-foreground"
     >
-      <Globe variant="bold" className="size-3 shrink-0 animate-pulse" />
-      <span className="truncate">Agent is using the browser</span>
+      <Globe variant="bold" className={cn("size-3 shrink-0", calling && "animate-pulse")} />
+      <span className="truncate">
+        {calling ? "Agent is using the browser" : "Agent opened a browser tab"}
+      </span>
       <Button type="button" variant="ghost" size="xs" shape="pill" onClick={onShow}>
         Show
       </Button>

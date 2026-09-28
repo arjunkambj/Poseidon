@@ -2868,8 +2868,9 @@ The pane itself is closed by default too. Opening the app, a project or a
 thread opens no dock tab the user did not leave open, and an empty pane shows
 "No page open" with the address bar. When the agent's first call creates the
 thread's tab, the dock stays as it was: the thread header shows "Agent is
-using the browser — Show" for as long as a `browser_*` call runs or a tab the
-agent opened is open, and the pane is not on screen. Settings → Browser →
+using the browser — Show", pulsing, while a `browser_*` call runs (and a few
+seconds after), then a still "Agent opened a browser tab — Show" for as long
+as a tab the agent opened is open, whenever the pane is not on screen. Settings → Browser →
 "Open the browser pane when the agent starts using it"
 (`browser.openPaneOnAgentUse`, off by default) opens the pane instead, once per
 agent activity that starts while you are on the thread (arriving at a thread

@@ -605,9 +605,11 @@ comes back only because the user left the thread on it (`useDockMemory` in
 `apps/web/src/state/ui.ts`: per thread, in memory only, the dock's last tab
 and the tabs opened this session, `DockMemory.openTabs`).
 While the agent uses the browser — a `browser_*` call in flight, or a tab it
-opened — and the pane is not on screen, the thread header shows "Agent is
-using the browser" with a Show button
-(`apps/web/src/components/thread/agent-browser-indicator.tsx`). The
+opened — and the pane is not on screen, the thread header shows a chip with a
+Show button (`apps/web/src/components/thread/agent-browser-indicator.tsx`): a
+pulsing "Agent is using the browser" while a call runs and for 4 s after, so
+one task's calls do not flicker it, and a still "Agent opened a browser tab"
+when only the agent's tab is left. The
 `browser.openPaneOnAgentUse` setting (off by default) opens the pane once per
 agent activity that starts while the thread is on screen (the first sight of a
 thread is only a baseline), never over a pane the user closed while the agent

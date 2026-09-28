@@ -116,7 +116,9 @@ export function ThreadHeader({
       </div>
       <div className="flex-1" />
       <div className={cn("flex shrink-0 items-center gap-2", chrome && "app-region-no-drag")}>
-        {onShowBrowser === null ? null : <AgentBrowserIndicator onShow={onShowBrowser} />}
+        {onShowBrowser === null ? null : (
+          <AgentBrowserIndicator threadId={snapshot.threadId} onShow={onShowBrowser} />
+        )}
         <RunControl
           projectId={snapshot.projectId}
           threadId={snapshot.threadId}

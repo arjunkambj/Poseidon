@@ -7,6 +7,7 @@ import { idleActivity, type ThreadAgentActivity } from "@/state/browser-activity
 import type { BrowserTab, ThreadTabs } from "@/state/browser-tabs";
 
 import {
+  agentCalling,
   agentUsingBrowser,
   noteUserDockChange,
   observeAgentUse,
@@ -212,6 +213,17 @@ describe("arriving at a thread", () => {
       idleActivity,
     );
     expect(result.opens).toBe(1);
+  });
+});
+
+describe("agentCalling", () => {
+  it("is a call in flight only, never an agent tab left open", () => {
+    expect(agentCalling(state("browser_click"))).toBe(true);
+    expect(agentCalling(state(null))).toBe(false);
+    expect(agentCalling(state(""))).toBe(false);
+    expect(agentCalling(null)).toBe(false);
+    // The tab keeps the chip (and the activity), but not the "using" claim.
+    expect(agentUsingBrowser(state(null), tabs(tab("agent")))).toBe(true);
   });
 });
 
