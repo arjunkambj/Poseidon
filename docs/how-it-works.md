@@ -1878,8 +1878,8 @@ menu (see "Opening the workspace in an editor" below): open the file in the
 Files tab or an editor, reveal it, copy its path, or append a reference to it
 to the thread's composer draft. After them come the pane's own entries
 (`review-menu-items.tsx`): "Copy diff" copies the file's patch as git printed
-it, and is left out for a file with no patch. Nothing in the pane reverts a
-file. While the pane is
+it, and is left out for a file with no patch; "Discard changes…" follows
+(below). While the pane is
 shown it publishes `changesOpen`, and `Alt+ArrowDown` / `Alt+ArrowUp`
 (`changes.nextFile` / `previousFile`) open the next or previous file and
 scroll its header to the top. `Alt+U` (`changes.nextUnviewed`), and the eye
@@ -1954,8 +1954,27 @@ refetches when `currentTurnId` falls back to null. A refresh — those two and
 the refresh button — rereads every git read of the project, the same
 per-project revision a branch switch bumps, so the header follows along.
 
-The server also answers three review calls the pane does not offer yet.
-`git.diff` takes `ignoreWhitespace`, which adds `-w` to both the patch and
+A file's "Discard changes…" throws away its change in the comparison on
+screen, and never on one click: it opens the shared `ConfirmDialog`
+(`discard-dialog.tsx`), whose text says what is lost in that scope's terms
+(`discardDescription` in `discard.ts`). In Uncommitted the file's uncommitted
+edits are lost and it goes back to `HEAD`; in Branch it goes back to the
+branch's fork point from its base, undoing its uncommitted edits and the
+branch's changes to it in the working copy (the commits stay); in a turn it
+goes back to how it was before that turn. A file the base does not have is
+deleted — for an untracked file, for good — a deleted file comes back, and a
+rename names both paths. Only the dialog's Discard calls `git.discard`, with
+the scope's base (`reviewScopeFields`: a turn's `from` checkpoint as `source`,
+the first turn's none, i.e. `HEAD`; the branch's base as `mergeBase`) and the
+file's path and a rename's old path. The entry is disabled with the reason on
+hover while the pane is offline or a turn or a restore runs
+(`discardBlockedReason`; on the New task page, while a thread runs a turn in
+the project's folder). A refusal shows as a toast with the server's reason; a
+success refreshes every git read of the project, so the file leaves the list
+by itself. Where to act — project, thread, base, the reason — comes from a
+`ReviewScopeProvider` each pane puts around its list (`review-scope.tsx`).
+
+The server answers three review calls for the pane. `git.diff` takes `ignoreWhitespace`, which adds `-w` to both the patch and
 the counts: a whitespace-only change drops out, and a plain edit git still
 prints as a bare header comes back listed with an empty `diff` rather than a
 patch of raw headers; the client's range key includes the flag, so toggling it

@@ -955,6 +955,11 @@ Everything a client needs that is not React.
   remove; and the header's commit, push and pull request. Built on
   `gitAtoms`: a worktree write refreshes the project's branch list, a commit
   or push refetches every git read of the project.
+- `gitReview.ts` — the Changes pane's discard (a one-shot that refetches every
+  git read of the project) and blame (an atom per file and line range, read
+  through `gitAtoms` so a refresh rereads it). The renderer binds it per
+  client runtime next to the git reads (`useGitReview` in
+  `panes/changes/git-atoms.ts`).
 - `editors.ts` — `editorsAtom`, the server's `editors.list`, listed once per
   connected epoch and kept alive so the header and every file menu share one
   answer (a failed call is the empty list, which hides the "Open in" control);

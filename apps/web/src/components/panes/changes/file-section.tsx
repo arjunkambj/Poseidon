@@ -8,7 +8,8 @@
  * a viewed file's name dims, so what is left to read stands out. The "…"
  * menu after it holds the file's own actions (`./file-actions`), and a
  * right-click anywhere on the row opens the same entries, the review's own
- * (`./review-menu-items`) included.
+ * (`./review-menu-items`) included: Copy diff and Discard, whose dialog
+ * (`useFileReviewActions`) sits beside the menus.
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 import type { DiffStyle } from "@/state/ui";
 
 import { FileActions } from "./file-actions";
+import { useFileReviewActions } from "./file-review-actions";
 import { ReviewContextItems } from "./review-menu-items";
 
 import { type HoneyIcon, ChevronRight, Edit, FileAdd, FileRemove } from "@honeyicons/react";
@@ -92,6 +94,7 @@ export function FileSection({
   // git names the file from the repository's top level; the menu works from the root.
   const inside = workspacePath(file.path, prefix);
   const menu = { path: inside ?? file.path, exists, inWorkspace: inside !== null };
+  const review = useFileReviewActions(file);
   return (
     <section>
       <ContextMenu>
@@ -138,13 +141,14 @@ export function FileSection({
             />
             <TooltipContent>{viewed ? "Viewed" : "Mark as viewed"}</TooltipContent>
           </Tooltip>
-          <FileActions threadId={threadId} {...menu} file={file} />
+          <FileActions threadId={threadId} {...menu} file={file} actions={review.actions} />
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
           <FileContextItems {...menu} chatId={threadId} />
-          <ReviewContextItems file={file} />
+          <ReviewContextItems file={file} actions={review.actions} />
         </ContextMenuContent>
       </ContextMenu>
+      {review.overlays}
       {open && expandable ? (
         <div className="border-b border-border">
           <InlineDiff patch={file.diff} diffStyle={diffStyle} className="rounded-none" />

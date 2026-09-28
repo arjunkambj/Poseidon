@@ -16,6 +16,10 @@
  * not a thread, so the file menus get none: they open paths in the project's
  * folder and offer no "Open in Files tab".
  *
+ * Discard and blame act in the project's folder (`ReviewScopeProvider`), and
+ * Discard is disabled offline or while a thread of the project runs a turn in
+ * that folder (`projectFolderTurnRunning`).
+ *
  * Refresh rereads every git read of the project, so the header's git actions
  * follow along; they refetch on a return to the window too, which reaches this
  * pane the same way.
@@ -29,12 +33,15 @@ import * as React from "react";
 
 import { FileMenuScopeProvider } from "@/components/open-in/file-menu-scope";
 import { useKeybindingFlag } from "@/lib/shortcuts";
-import { useConnectionState } from "@/state/hooks";
+import { projectFolderTurnRunning } from "@/lib/turn";
+import { useConnectionState, useThreadList } from "@/state/hooks";
 import { useChangesScope, useDiffStyle } from "@/state/ui";
 
 import { BaseLine } from "./changes-header";
 import { ComparisonBody, queryValue } from "./changes-list";
+import { discardBlockedReason, reviewScopeFields } from "./discard";
 import { useGitAtoms } from "./git-atoms";
+import { ReviewScopeProvider, type ReviewScope } from "./review-scope";
 import { BRANCH, ScopeBar, UNCOMMITTED } from "./scope-bar";
 import { branchBaseFor, diffRangeFor, type ChangesSelection } from "./selection";
 
@@ -74,6 +81,17 @@ export function ProjectChangesPane({
       : { scope: "uncommitted" };
   const range = diffRangeFor(scope, selection);
 
+  const threads = useThreadList();
+  const reviewScope: ReviewScope = {
+    projectId,
+    ...reviewScopeFields(selection, ""),
+    discardDisabledReason: discardBlockedReason({
+      connected,
+      restoring: false,
+      turnRunning: projectFolderTurnRunning(threads, projectId),
+    }),
+  };
+
   const refresh = React.useCallback(
     () => atoms.refreshProject(registry, projectId),
     [atoms, registry, projectId],
@@ -102,18 +120,20 @@ export function ProjectChangesPane({
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {/* No thread yet: the file menus open paths in the project's folder. */}
         <FileMenuScopeProvider projectId={projectId} threadId={null}>
-          <ComparisonBody
-            threadId={draftId}
-            range={range}
-            branchList={branchList}
-            mergeBase={mergeBase}
-            status={status}
-            connected={connected}
-            diffStyle={diffStyle}
-            reveal={null}
-            onRevealed={noReveal}
-            onRetry={refresh}
-          />
+          <ReviewScopeProvider value={reviewScope}>
+            <ComparisonBody
+              threadId={draftId}
+              range={range}
+              branchList={branchList}
+              mergeBase={mergeBase}
+              status={status}
+              connected={connected}
+              diffStyle={diffStyle}
+              reveal={null}
+              onRevealed={noReveal}
+              onRetry={refresh}
+            />
+          </ReviewScopeProvider>
         </FileMenuScopeProvider>
       </div>
     </div>

@@ -16,6 +16,10 @@
  * disabled while a turn is running — the server rejects it anyway, but a
  * disabled button with a reason beats a rejection after the fact.
  *
+ * Discard and blame act in the comparison on screen (`ReviewScopeProvider`):
+ * a file goes back to that comparison's base, and Discard is disabled with a
+ * reason offline or while a turn or a restore runs, as Restore is.
+ *
  * Refresh — the button, a landed restore and a finished turn
  * (`use-changes-refresh.ts`) — rereads every git read of the project, so the
  * header's branch picker and git actions follow along with the pane.
@@ -44,8 +48,10 @@ import { useChangesScope, useDiffStyle } from "@/state/ui";
 import { BaseLine, RestoreProgress } from "./changes-header";
 import { ComparisonBody, queryValue } from "./changes-list";
 import { linkedTurnChoice } from "./deep-link";
+import { discardBlockedReason, reviewScopeFields } from "./discard";
 import { useGitAtoms } from "./git-atoms";
 import { RestoreCheckpointButton } from "./restore-dialog";
+import { ReviewScopeProvider, type ReviewScope } from "./review-scope";
 import { BRANCH, ScopeBar, UNCOMMITTED } from "./scope-bar";
 import {
   branchBaseFor,
@@ -171,6 +177,18 @@ export function ChangesPane({ snapshot }: { snapshot: ThreadDetailView }) {
           ? "A turn is running — stop it before restoring."
           : null;
 
+  const scopeFields = reviewScopeFields(selection, `Turn ${turnIndex + 1}`);
+  const reviewScope: ReviewScope = {
+    projectId,
+    threadId,
+    ...scopeFields,
+    discardDisabledReason: discardBlockedReason({
+      connected,
+      restoring: restoring !== null,
+      turnRunning: turnInFlight(snapshot),
+    }),
+  };
+
   const body = (
     <ComparisonBody
       threadId={threadId}
@@ -222,7 +240,7 @@ export function ChangesPane({ snapshot }: { snapshot: ThreadDetailView }) {
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <FileMenuScopeProvider projectId={projectId} threadId={threadId}>
-          {body}
+          <ReviewScopeProvider value={reviewScope}>{body}</ReviewScopeProvider>
         </FileMenuScopeProvider>
       </div>
     </div>

@@ -3,9 +3,9 @@
  * (`@/components/open-in/file-menu-items`) — open it in the Files tab or an
  * editor, reveal it in the file manager, copy its path, or add a reference to
  * it to the thread's draft — then the review's own entries
- * (`./review-menu-items`): copy the file's diff. The same entries open on a
- * right-click of the row. Nothing here touches the worktree: reverting a file
- * is not an action the pane offers.
+ * (`./review-menu-items`): copy the file's diff, and discard its change
+ * behind a confirmation. The same entries open on a right-click of
+ * the row.
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
@@ -19,7 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components
 
 import { FileDropdownItems } from "@/components/open-in/file-menu-items";
 
-import { ReviewDropdownItems } from "./review-menu-items";
+import { ReviewDropdownItems, type ReviewMenuActions } from "./review-menu-items";
 
 import { MoreHorizontal } from "@honeyicons/react";
 
@@ -29,6 +29,7 @@ export function FileActions({
   exists,
   inWorkspace,
   file,
+  actions,
 }: {
   threadId: string;
   /** Relative to the workspace root, or to the repository when not `inWorkspace`. */
@@ -38,6 +39,8 @@ export function FileActions({
   inWorkspace: boolean;
   /** The file as the diff lists it, for the review's own entries. */
   file: Pick<GitDiffFile, "path" | "diff">;
+  /** Discard, when the row is in a review scope. */
+  actions?: ReviewMenuActions | undefined;
 }) {
   return (
     <DropdownMenu>
@@ -60,7 +63,7 @@ export function FileActions({
           inWorkspace={inWorkspace}
           chatId={threadId}
         />
-        <ReviewDropdownItems file={file} />
+        <ReviewDropdownItems file={file} actions={actions} />
       </DropdownMenuContent>
     </DropdownMenu>
   );

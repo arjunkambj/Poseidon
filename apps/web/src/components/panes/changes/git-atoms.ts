@@ -12,6 +12,9 @@
  * context, and each call resolves with its own `Exit` even when another call
  * is in flight or the component that started it is gone.
  *
+ * `useGitReview` adds the pane's discard and blame (`makeGitReview`) on the
+ * client runtime in context, next to the reads they refresh.
+ *
  * The reads are built per client runtime, as the file atoms are
  * (`../files/file-atoms.ts`): in the app that is the one runtime above, and a
  * fixture page under its own `ClientRuntimeProvider` reads git — the timeline's
@@ -21,6 +24,7 @@
 import { RegistryContext } from "@effect/atom-react";
 import { makeGitAtoms, type GitAtoms } from "@poseidon/client-runtime/gitAtoms";
 import { makeGitCommands, type GitCommands } from "@poseidon/client-runtime/gitCommands";
+import { makeGitReview, type GitDiscard, type GitReview } from "@poseidon/client-runtime/gitReview";
 import * as React from "react";
 
 import { type ClientRuntime, useClientRuntime } from "@/lib/client-runtime";
@@ -58,6 +62,31 @@ export const useBranchWrites = () => {
         git.createBranch(registry, input),
     };
   }, [registry]);
+};
+
+const reviewByRuntime = new WeakMap<ClientRuntime["runtime"], GitReview>();
+
+/**
+ * The Changes pane's discard and blame (`makeGitReview`), on the client
+ * runtime in context like the reads, so a success refreshes the very atoms
+ * the pane shows; `discard` is bound to the registry in context.
+ */
+export const useGitReview = () => {
+  const runtime = useClientRuntime().runtime;
+  const registry = React.useContext(RegistryContext);
+  return React.useMemo(() => {
+    let review = reviewByRuntime.get(runtime);
+    if (review === undefined) {
+      review = makeGitReview(runtime, gitAtomsFor(runtime));
+      reviewByRuntime.set(runtime, review);
+    }
+    const { blameAtom } = review;
+    const discardWith = review.discard;
+    return {
+      discard: (input: GitDiscard) => discardWith(registry, input),
+      blameAtom,
+    };
+  }, [runtime, registry]);
 };
 
 /**
