@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveShell, terminalEnv } from "./shell";
+import { resolveShell, scriptShellCommand, terminalEnv } from "./shell";
 
 const everyFile = () => true;
 const noFile = () => false;
@@ -49,6 +49,50 @@ describe("resolveShell", () => {
       file: "powershell.exe",
       args: [],
     });
+  });
+});
+
+describe("scriptShellCommand", () => {
+  const command = "pnpm run dev";
+
+  it("hands a POSIX shell the command with -c, keeping -l on a login shell", () => {
+    expect(scriptShellCommand({ file: "/bin/zsh", args: ["-l"] }, command, "darwin")).toEqual({
+      file: "/bin/zsh",
+      args: ["-l", "-c", command],
+    });
+    expect(scriptShellCommand({ file: "/usr/bin/bash", args: ["-l"] }, command, "linux")).toEqual({
+      file: "/usr/bin/bash",
+      args: ["-l", "-c", command],
+    });
+    expect(scriptShellCommand({ file: "/bin/sh", args: [] }, command, "linux")).toEqual({
+      file: "/bin/sh",
+      args: ["-c", command],
+    });
+  });
+
+  it("runs cmd.exe with /d /s /c and PowerShell with -Command", () => {
+    const cmd = "C:\\Windows\\system32\\cmd.exe";
+    expect(scriptShellCommand({ file: cmd, args: [] }, command, "win32")).toEqual({
+      file: cmd,
+      args: ["/d", "/s", "/c", command],
+    });
+    expect(scriptShellCommand({ file: "powershell.exe", args: [] }, command, "win32")).toEqual({
+      file: "powershell.exe",
+      args: ["-NoLogo", "-Command", command],
+    });
+    expect(
+      scriptShellCommand(
+        { file: "C:\\Program Files\\PowerShell\\7\\pwsh.exe", args: [] },
+        command,
+        "win32",
+      ).args,
+    ).toEqual(["-NoLogo", "-Command", command]);
+  });
+
+  it("leaves the shell it was given unchanged", () => {
+    const shell = { file: "/bin/zsh", args: ["-l"] };
+    scriptShellCommand(shell, command, "darwin");
+    expect(shell).toEqual({ file: "/bin/zsh", args: ["-l"] });
   });
 });
 

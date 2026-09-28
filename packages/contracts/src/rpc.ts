@@ -64,6 +64,7 @@ import { THREAD_SEARCH_RPC_METHODS, ThreadsSearchMessagesRpc } from "./search";
 import {
   TERMINAL_WRITE_MAX_CHARS,
   TerminalOwner,
+  TerminalScriptLaunch,
   TerminalSize,
   TerminalStreamItem,
   TerminalSummary,
@@ -615,7 +616,9 @@ const KeybindingsUpdateRpc = Rpc.make(RPC_METHODS.keybindingsUpdate, {
  * owner — a thread, or a project that has no thread yet — as well as the
  * terminal, so the server can refuse a terminal that belongs to another owner.
  * `terminal.write` runs whatever it is sent in the user's shell; it rides the
- * same authenticated loopback socket as `orchestration.dispatch`.
+ * same authenticated loopback socket as `orchestration.dispatch`. A `script`
+ * on `terminal.open` runs its command the same way, over the same socket, so
+ * it lets a client do nothing `terminal.write` does not already.
  */
 const terminalRef = { terminalId: TerminalId };
 
@@ -628,6 +631,7 @@ const TerminalOpenRpc = Rpc.make(RPC_METHODS.terminalOpen, {
     ...terminalRef,
     ...TerminalSize.fields,
     title: Schema.optional(NonEmptyString),
+    script: Schema.optional(TerminalScriptLaunch),
   }),
   success: TerminalSummary,
   error: PoseidonRpcError,

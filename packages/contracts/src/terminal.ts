@@ -15,6 +15,14 @@
  * `terminal.adopt` hands the project's terminals to it, so a shell started
  * there carries on in the thread.
  *
+ * A terminal can instead run one named script — a project script, or one
+ * detected in a `package.json` — as its own process: the user's login shell
+ * with `-c <command>` rather than an interactive shell. Its `running` and
+ * `exited` are then the script's, the exit code is the script's own, and the
+ * summary carries the script's id and name (`TerminalScript`) so a client
+ * can tell which script a tab is running. The command itself is not kept in
+ * the summary.
+ *
  * Output is text, not bytes: the server decodes the pty's output as UTF-8 and
  * every length and offset here counts UTF-16 chars, the unit both ends' strings
  * are measured in.
@@ -52,6 +60,9 @@ export const TERMINALS_PER_OWNER = 8;
 
 /** The most chars one `terminal.write` may carry: a large paste fits, an unbounded frame does not. */
 export const TERMINAL_WRITE_MAX_CHARS = 1024 * 1024;
+
+/** The most chars a script's command may have: any real one-liner fits. */
+export const TERMINAL_SCRIPT_COMMAND_MAX_CHARS = 8 * 1024;
 
 // ── Owner ──────────────────────────────────────────────────────
 
@@ -112,6 +123,20 @@ export const TerminalSize = Schema.Struct({
 });
 export type TerminalSize = typeof TerminalSize.Type;
 
+/**
+ * The script a terminal runs as its own process: an id the client keys it by
+ * (a saved script's, or a detected one's) and the name its tab shows.
+ */
+export const TerminalScript = Schema.Struct({ id: NonEmptyString, name: NonEmptyString });
+export type TerminalScript = typeof TerminalScript.Type;
+
+/** A script as `terminal.open` is asked to launch it: its id and name, and the command to run. */
+export const TerminalScriptLaunch = Schema.Struct({
+  ...TerminalScript.fields,
+  command: NonEmptyString.check(Schema.isMaxLength(TERMINAL_SCRIPT_COMMAND_MAX_CHARS)),
+});
+export type TerminalScriptLaunch = typeof TerminalScriptLaunch.Type;
+
 const terminalSummaryFields = {
   title: NonEmptyString,
   cwd: NonEmptyString,
@@ -120,6 +145,8 @@ const terminalSummaryFields = {
   status: Schema.Literals(["running", "exited"]),
   exitCode: Schema.NullOr(Schema.Int),
   createdAt: IsoDateTime,
+  /** Set when the terminal runs a script rather than an interactive shell. */
+  script: Schema.optional(TerminalScript),
 };
 
 /**

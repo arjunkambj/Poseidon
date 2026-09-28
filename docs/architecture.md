@@ -2027,7 +2027,7 @@ the client in the terminal `incompatible` state.
 | `connectors.mcp.remove`       | call   | Removes one entry we own                                                             |
 | `keybindings.get`             | call   | The user's keybinding overrides, layered on `DEFAULT_KEYBINDINGS` by the renderer    |
 | `keybindings.update`          | call   | Replaces the overrides; a `-command` row unbinds that command                        |
-| `terminal.open`               | call   | Starts a shell under a client-minted id, or answers the one already running          |
+| `terminal.open`               | call   | Starts a shell (or runs a `script` through it) under a client-minted id; idempotent  |
 | `terminal.write`              | call   | Input for the shell: typed keys, a paste                                             |
 | `terminal.resize`             | call   | The terminal's grid in character cells                                               |
 | `terminal.close`              | call   | Kills the shell and forgets the terminal, output and all                             |

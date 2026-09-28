@@ -65,7 +65,7 @@ import { threadWorkspaceRoot } from "../orchestration/workspaceRoot";
 import { TerminalService } from "../rpc/services";
 import { spawnPty } from "./pty";
 import { makeSession, type TerminalSession } from "./session";
-import { resolveShell, terminalEnv, type ShellCommand } from "./shell";
+import { resolveShell, scriptShellCommand, terminalEnv, type ShellCommand } from "./shell";
 
 const DEFAULT_TITLE = "Terminal";
 
@@ -313,15 +313,19 @@ export const makeTerminalService = (
             });
           }
           const cwd = yield* injected.workspaceFor(owner);
+          const script = input.script;
           const title = input.title?.trim() ?? "";
           const session = yield* makeSession({
             owner,
             terminalId: input.terminalId,
-            title: title === "" ? DEFAULT_TITLE : title,
+            title: title !== "" ? title : (script?.name ?? DEFAULT_TITLE),
             cwd,
             cols: input.cols,
             rows: input.rows,
-            shell,
+            // A script runs as the shell's own process, so the terminal ends with it.
+            shell:
+              script === undefined ? shell : scriptShellCommand(shell, script.command, platform),
+            script: script === undefined ? undefined : { id: script.id, name: script.name },
             env,
             spawn,
             platform,

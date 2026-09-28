@@ -175,6 +175,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
           cols: payload.cols,
           rows: payload.rows,
           title: payload.title,
+          script: payload.script,
         }),
       "terminal.write": (payload) =>
         terminals

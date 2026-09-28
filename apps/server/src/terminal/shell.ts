@@ -46,6 +46,30 @@ const pickPosixShell = (
   return isFile("/bin/bash") ? "/bin/bash" : "/bin/sh";
 };
 
+/** Windows' Command Prompt, as `COMSPEC` names it. */
+const COMMAND_PROMPT = /^cmd(\.exe)?$/i;
+/** Windows PowerShell and PowerShell 7. */
+const POWERSHELL = /^(powershell|pwsh)(\.exe)?$/i;
+
+/**
+ * The shell that runs one script as its own process and ends with it: the
+ * terminal's shell handed the command to run instead of started interactive.
+ * A POSIX shell keeps its own args, so a login shell stays one (`-l -c`) and
+ * the script sees the PATH the user's profile sets. On Windows, `cmd.exe`
+ * takes `/d /s /c` (no AutoRun, the rest of the line as the command) and
+ * PowerShell `-Command`.
+ */
+export const scriptShellCommand = (
+  shell: ShellCommand,
+  command: string,
+  platform: NodeJS.Platform,
+): ShellCommand => {
+  const name = (platform === "win32" ? nodePath.win32 : nodePath.posix).basename(shell.file);
+  if (COMMAND_PROMPT.test(name)) return { file: shell.file, args: ["/d", "/s", "/c", command] };
+  if (POWERSHELL.test(name)) return { file: shell.file, args: ["-NoLogo", "-Command", command] };
+  return { file: shell.file, args: [...shell.args, "-c", command] };
+};
+
 /** Set by the AppImage runtime; meaningless, and misleading, to a program started from the terminal. */
 const APPIMAGE_VARS = ["APPIMAGE", "APPDIR", "ARGV0", "OWD"];
 

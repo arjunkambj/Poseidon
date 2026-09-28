@@ -10,6 +10,8 @@
  * - Resize reaches the shell; open is idempotent by id; the per-owner limit
  *   holds.
  * - An exited shell stays listed with its output until it is closed.
+ * - A script terminal runs its command through the shell's `-c`, carries the
+ *   script in its summary and exits with the script's own code.
  * - Close, thread.deleted, thread.archived and the service's scope closing
  *   each end the shell; a close interrupted part way still ends it. An
  *   archived thread refuses a new terminal.
@@ -307,6 +309,59 @@ describe.skipIf(process.platform === "win32")("TerminalService", () => {
         const items = (yield* late.collected).map(({ item }) => item);
         expect(items.map((item) => item.kind)).toEqual(["snapshot", "exited"]);
         expect(items[0]!.kind === "snapshot" && items[0]!.data).toMatch(line("bye-6"));
+      }),
+    ),
+  );
+
+  it.live("runs a script as the shell's own process and ends with it", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const stack = yield* buildStack;
+        const spawned: Array<{ file: string; args: ReadonlyArray<string> }> = [];
+        const capture: typeof spawnPty = (options) => {
+          spawned.push({ file: options.file, args: options.args });
+          return spawnPty(options);
+        };
+        const terminals = yield* stack.service(yield* Effect.scope, capture);
+        const threadId = yield* stack.thread;
+        const terminalId = makeTerminalId();
+        const command = "echo run-$((1+2)); exit 3";
+        const script = { id: "dev", name: "dev server" };
+        const opened = yield* terminals.open({
+          threadId,
+          terminalId,
+          ...SIZE,
+          script: { ...script, command },
+        });
+        expect(spawned).toEqual([{ file: "/bin/sh", args: ["-c", command] }]);
+        expect(opened).toMatchObject({ title: "dev server", script });
+        expect(opened).not.toHaveProperty("script.command");
+
+        const output = yield* watch(terminals.subscribe({ threadId }, terminalId));
+        const exited = (yield* awaitKind(output, "exited")).item;
+        expect(exited).toEqual({ kind: "exited", exitCode: 3, signal: null });
+        expect((yield* output.collected).at(-1)?.text).toMatch(line("run-3"));
+
+        const [summary] = yield* terminals.list({ threadId });
+        expect(summary).toMatchObject({ terminalId, script, status: "exited", exitCode: 3 });
+        // Opening the same id again answers the terminal that is there.
+        const again = yield* terminals.open({
+          threadId,
+          terminalId,
+          ...SIZE,
+          script: { ...script, command: "echo other" },
+        });
+        expect(again.pid).toBe(opened.pid);
+        expect(spawned).toHaveLength(1);
+      }),
+    ),
+  );
+
+  it.live("an interactive shell's summary names no script", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { opened } = yield* withTerminal;
+        expect(opened).not.toHaveProperty("script");
       }),
     ),
   );

@@ -2873,10 +2873,24 @@ fails to load makes that open fail `unavailable` ("terminal support failed to
 load: …") and is tried again on the next one; the rest of the server never
 notices. A shell that cannot be started fails `internal`, naming the file.
 
+A terminal can also run one named script as its own process. A
+`terminal.open` that carries `script` (`TerminalScriptLaunch`: an id, a name
+and a command of at most `TERMINAL_SCRIPT_COMMAND_MAX_CHARS`, 8K chars) starts
+the same shell with the command handed over instead of an interactive prompt
+(`scriptShellCommand` in `shell.ts`): `-c <command>` after the shell's own
+args, so a login shell runs it as `-l -c` with the user's profile read; on
+Windows `cmd.exe /d /s /c` or PowerShell's `-Command`. The terminal ends when
+the script does, so its `running` and `exited` are the script's and the exit
+code is the script's own. The tab is titled with the script's name unless the
+open names a title, and the summary carries `script` — its id and name, not
+the command — in every listing and snapshot. An open under an id already in
+use answers that terminal, as for any other.
+
 `terminal.write` runs whatever it is sent in the user's shell. It rides the
 same loopback, token-authenticated WebSocket that already accepts
 `orchestration.dispatch`, so it exposes nothing that socket did not already
-reach.
+reach. A script's command on `terminal.open` travels the same socket and runs
+the same way, so it adds nothing either.
 
 ### Output
 

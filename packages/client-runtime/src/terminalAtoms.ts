@@ -56,6 +56,7 @@ import {
   terminalOwnerKey,
   terminalOwnerOf,
   type TerminalOwner,
+  type TerminalScriptLaunch,
   type TerminalSize,
   type TerminalStreamItem,
   type TerminalSummary,
@@ -81,7 +82,12 @@ export type TerminalListQuery =
 /** One terminal, as every call after `open` names it: its owner, and its own id. */
 export type TerminalRef = TerminalOwner & { readonly terminalId: TerminalId };
 
-export type TerminalOpenArgs = TerminalRef & TerminalSize & { readonly title?: string | undefined };
+export type TerminalOpenArgs = TerminalRef &
+  TerminalSize & {
+    readonly title?: string | undefined;
+    /** Runs this script as the terminal's own process instead of an interactive shell. */
+    readonly script?: TerminalScriptLaunch | undefined;
+  };
 
 /** The ref alone, without whatever else the call carries. */
 const refOf = (args: TerminalRef): TerminalRef => ({
@@ -307,7 +313,7 @@ export const makeTerminalAtoms = (runtime: Atom.AtomRuntime<Connection | Connect
    */
   const openTerminal = (
     registry: AtomRegistry.AtomRegistry,
-    { title, ...args }: TerminalOpenArgs,
+    { title, script, ...args }: TerminalOpenArgs,
   ) =>
     runOneShot(runtime, registry, () =>
       Effect.gen(function* () {
@@ -315,6 +321,7 @@ export const makeTerminalAtoms = (runtime: Atom.AtomRuntime<Connection | Connect
         return yield* client["terminal.open"]({
           ...args,
           ...(title === undefined ? {} : { title }),
+          ...(script === undefined ? {} : { script }),
         });
       }).pipe(Effect.ensuring(refetch(registry, args))),
     );

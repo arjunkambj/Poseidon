@@ -49,6 +49,7 @@ import type { SettingsPatch } from "@poseidon/contracts/settings";
 import type { ConnectorInstanceId, ProjectId, TerminalId, ThreadId } from "@poseidon/contracts/ids";
 import type {
   TerminalOwner,
+  TerminalScriptLaunch,
   TerminalStreamItem,
   TerminalSummary,
 } from "@poseidon/contracts/terminal";
@@ -407,6 +408,7 @@ export class TerminalService extends Context.Service<
         readonly cols: number;
         readonly rows: number;
         readonly title?: string | undefined;
+        readonly script?: TerminalScriptLaunch | undefined;
       },
     ) => Effect.Effect<TerminalSummary, PoseidonRpcError>;
     readonly write: (

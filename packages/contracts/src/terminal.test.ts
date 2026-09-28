@@ -7,6 +7,7 @@ import { PoseidonRpcGroup, RPC_METHODS } from "./rpc";
 import {
   TERMINAL_BATCH_CHARS,
   TERMINAL_BATCH_MS,
+  TERMINAL_SCRIPT_COMMAND_MAX_CHARS,
   TERMINAL_SCROLLBACK_CHARS,
   TERMINAL_STREAM_BUDGET_BYTES,
   TERMINAL_STREAM_BUDGET_ITEMS,
@@ -62,6 +63,29 @@ describe("terminal.write", () => {
   );
 });
 
+describe("terminal.open", () => {
+  it.effect("takes an optional script whose command is non-empty and bounded", () =>
+    Effect.gen(function* () {
+      const rpc = PoseidonRpcGroup.requests.get(RPC_METHODS.terminalOpen);
+      expect(rpc).toBeDefined();
+      const decode = Schema.decodeUnknownExit(rpc!.payloadSchema as Schema.Codec<unknown>);
+      const base = { threadId: makeThreadId(), terminalId: makeTerminalId(), cols: 80, rows: 24 };
+      const script = (command: string) => ({
+        ...base,
+        script: { id: "dev", name: "dev", command },
+      });
+      const tags = yield* Effect.sync(() => [
+        decode(base)._tag,
+        decode(script("pnpm run dev"))._tag,
+        decode(script("x".repeat(TERMINAL_SCRIPT_COMMAND_MAX_CHARS)))._tag,
+        decode(script("x".repeat(TERMINAL_SCRIPT_COMMAND_MAX_CHARS + 1)))._tag,
+        decode(script(""))._tag,
+      ]);
+      expect(tags).toEqual(["Success", "Success", "Success", "Failure", "Failure"]);
+    }),
+  );
+});
+
 describe("the terminal owner", () => {
   const payloadOf = (method: string) => {
     const rpc = PoseidonRpcGroup.requests.get(method);
@@ -96,6 +120,35 @@ describe("the terminal owner", () => {
           "Failure",
         ]);
       }
+    }),
+  );
+
+  it.effect("decodes a summary without a script, and round-trips one with it", () =>
+    Effect.gen(function* () {
+      const summary = {
+        terminalId: makeTerminalId(),
+        threadId: makeThreadId(),
+        title: "dev",
+        cwd: "/repo",
+        pid: 1,
+        cols: 80,
+        rows: 24,
+        status: "exited",
+        exitCode: 3,
+        createdAt: "2026-09-24T12:00:00.000Z",
+      };
+      const decode = Schema.decodeUnknownSync(TerminalSummary);
+      const encode = Schema.encodeSync(TerminalSummary);
+      const withScript = { ...summary, script: { id: "dev", name: "dev" } };
+      const [plain, roundTrip, empty] = yield* Effect.sync(() => [
+        decode(summary),
+        encode(decode(withScript)),
+        Schema.decodeUnknownExit(TerminalSummary)({ ...summary, script: { id: "", name: "dev" } })
+          ._tag,
+      ]);
+      expect(plain).toEqual(summary);
+      expect(roundTrip).toEqual(withScript);
+      expect(empty).toBe("Failure");
     }),
   );
 

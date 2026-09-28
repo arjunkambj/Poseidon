@@ -15,6 +15,7 @@
 import type { TerminalId } from "@poseidon/contracts/ids";
 import type {
   TerminalOwner,
+  TerminalScript,
   TerminalStreamItem,
   TerminalSummary,
 } from "@poseidon/contracts/terminal";
@@ -49,6 +50,8 @@ export interface SessionOptions {
   readonly cols: number;
   readonly rows: number;
   readonly shell: ShellCommand;
+  /** The script the shell runs as its own process, named in the summary; unset for an interactive shell. */
+  readonly script?: TerminalScript | undefined;
   readonly env: Readonly<Record<string, string>>;
   readonly spawn?: typeof spawnPty;
   readonly platform?: NodeJS.Platform;
@@ -123,6 +126,9 @@ export const makeSession = (
       status: "running",
       exitCode: null,
       createdAt: new Date().toISOString(),
+      ...(options.script === undefined
+        ? {}
+        : { script: { id: options.script.id, name: options.script.name } }),
     };
     let exit: PtyExit | null = null;
 
