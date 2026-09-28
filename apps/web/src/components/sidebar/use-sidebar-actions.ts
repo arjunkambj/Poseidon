@@ -6,7 +6,8 @@
  *   unpins the ones that were pinned (archiving unpins), and toasts with an
  *   "Undo" that unarchives them, pins them again and — when the thread on
  *   screen was among them — opens it again.
- * - `setPinned`, `markUnread` and `rename` do what they say.
+ * - `setPinned`, `markUnread` and `rename` do what they say; `markUnread`
+ *   leaves the open thread out.
  *
  * Each pushes one entry on the undo stack (`./sidebar-undo`), so `Mod+Z`
  * takes back whichever came last. Dispatch and refusal toasts go through
@@ -98,7 +99,10 @@ export const useSidebarActions = () => {
     });
   };
 
-  const markUnread = (threads: ReadonlyArray<ThreadSummary>) => {
+  const markUnread = (picked: ReadonlyArray<ThreadSummary>) => {
+    // Never the open thread: it is being read, and its next event would stamp
+    // it seen again before the mark ever showed.
+    const threads = picked.filter((thread) => thread.threadId !== openThreadId);
     if (threads.length === 0) {
       return;
     }

@@ -149,7 +149,9 @@ export function ThreadMenuItems({
         {pinned ? "Unpin" : "Pin"}
         {keys("thread.pin")}
       </Item>
-      <Item disabled={markedUnread} onClick={() => actions.markUnread([thread])}>
+      {/* The open thread is being read: it shows no mark, and its next event
+          would stamp it seen again. */}
+      <Item disabled={markedUnread || active} onClick={() => actions.markUnread([thread])}>
         <Email variant="bold" />
         Mark unread
       </Item>
