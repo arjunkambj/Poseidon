@@ -67,6 +67,7 @@ const railFor = (current: ModelPick | null, locked = false): ReadonlyArray<Harne
   harnessRail(
     modelPickerGroups(catalog, { instanceId: current?.connectorInstanceId ?? null, locked }),
     current,
+    catalog,
   );
 
 const onA = pick("a", "deep-2");
@@ -129,6 +130,16 @@ describe("harnessRail", () => {
       ["Plain", "basic", undefined, false],
     ]);
     expect(rail[1]?.items[0]?.pick).toEqual(pick("b", "cove-mini"));
+  });
+
+  it("keeps each harness's monogram whichever harnesses the picker lists", () => {
+    // Only "Cedar Cove" and "Corvid" listed would settle as "CC" and "Co".
+    const shown = modelPickerGroups(catalog.slice(1), { instanceId: null, locked: false });
+    expect(harnessRail(shown, null, catalog).map((entry) => entry.monogram)).toEqual(["Ce", "Cd"]);
+    expect(harnessRail(shown, null, catalog.slice(1)).map((entry) => entry.monogram)).toEqual([
+      "CC",
+      "Co",
+    ]);
   });
 
   it("marks the other harnesses locked on a thread that cannot switch", () => {
@@ -197,6 +208,7 @@ describe("initialPickerState", () => {
         locked: index < 2,
       })),
       null,
+      catalog,
     );
     expect(initialPickerState(locked, null)).toEqual(state({ harness: 2 }));
   });

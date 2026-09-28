@@ -3713,7 +3713,9 @@ instance (`harness-models-section.tsx`, `harness-card.tsx`), in
 `modelCatalogAtom`'s order. A card's header is the instance's monogram avatar
 (`harnessMonograms` in `apps/web/src/lib/harness-monogram.ts`: the initials of
 the first two words, stepping down to other letters of the first word when two
-names collide), its name and connector kind, and a "Show in model pickers"
+names collide, settled over the whole catalog by `catalogMonograms` so a
+harness keeps its letters in Settings and every picker whatever is switched
+off), its name and connector kind, and a "Show in model pickers"
 switch; under it is a 28px row per model with its label, id, family, effort
 ladder (lowest first, "No effort levels" when it has none) and its own switch.
 Rows under a harness that is off are shown with their switches disabled, and

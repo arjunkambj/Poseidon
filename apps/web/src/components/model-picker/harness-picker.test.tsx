@@ -46,7 +46,7 @@ const catalog = [
 const current: ModelPick = { connectorInstanceId: id("a"), model: "deep-2" };
 
 const railFor = (locked = false) =>
-  harnessRail(modelPickerGroups(catalog, { instanceId: id("a"), locked }), current);
+  harnessRail(modelPickerGroups(catalog, { instanceId: id("a"), locked }), current, catalog);
 
 const render = (
   rail: ReturnType<typeof railFor>,

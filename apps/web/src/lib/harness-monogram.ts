@@ -15,7 +15,13 @@
  * name sharing it steps one rung down — no name wins a tie, so the result does
  * not depend on the order the names come in. A name out of rungs is its first
  * letter and its 1-based position in the list.
+ *
+ * Every surface takes a harness's letters from `catalogMonograms`, over the
+ * whole catalog: settled over only the harnesses a picker shows, the letters
+ * would change as harnesses are switched on and off.
  */
+
+import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 
 const words = (name: string): ReadonlyArray<string> =>
   name.split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 0);
@@ -60,4 +66,14 @@ export const harnessMonograms = (names: ReadonlyArray<string>): ReadonlyArray<st
       return current;
     }
   }
+};
+
+/** Each instance's monogram, settled over every instance in the catalog. */
+export const catalogMonograms = (
+  catalog: ReadonlyArray<ConnectorModels>,
+): ReadonlyMap<string, string> => {
+  const monograms = harnessMonograms(catalog.map(({ connector }) => connector.displayName));
+  return new Map(
+    catalog.map(({ connector }, index) => [connector.connectorInstanceId, monograms[index] ?? ""]),
+  );
 };

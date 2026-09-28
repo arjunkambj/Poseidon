@@ -26,7 +26,7 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import { toast } from "sonner";
 
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
-import { harnessMonograms } from "@/lib/harness-monogram";
+import { catalogMonograms } from "@/lib/harness-monogram";
 import { enableAll, resetVisibility } from "@/lib/model-visibility";
 import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
 import { Brain, CheckDouble, RotateCcw } from "@honeyicons/react";
@@ -46,7 +46,7 @@ export function HarnessModelsSection() {
     ? (settingsResult.value?.connectors ?? [])
     : [];
   const switchedOff = connectors.filter((connector) => !connector.enabled);
-  const monograms = harnessMonograms(catalog.map(({ connector }) => connector.displayName));
+  const monograms = catalogMonograms(catalog);
 
   const save = async (modelPicker: ModelPickerSettings) => {
     const exit = await updateSettings({ modelPicker });
@@ -93,12 +93,12 @@ export function HarnessModelsSection() {
               Reset to defaults
             </Button>
           </div>
-          {catalog.map((group, index) => (
+          {catalog.map((group) => (
             <HarnessCard
               key={group.connector.connectorInstanceId}
               group={group}
               catalog={catalog}
-              monogram={monograms[index] ?? "?"}
+              monogram={monograms.get(group.connector.connectorInstanceId) ?? "?"}
               prefs={prefs}
               onChange={(next) => void save(next)}
             />

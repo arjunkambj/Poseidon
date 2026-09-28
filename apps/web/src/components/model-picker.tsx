@@ -66,7 +66,7 @@ export function ModelPicker({
 
   // Only the harnesses and models Settings leaves on, and always the current pick.
   const visible = visibleCatalog(catalog, useModelPickerPrefs(), current);
-  const rail = harnessRail(modelPickerGroups(visible, { instanceId, locked }), current);
+  const rail = harnessRail(modelPickerGroups(visible, { instanceId, locked }), current, catalog);
   const own = rail.find((entry) => entry.current);
   const listed = own?.items.find((item) => item.current);
   // The current model may be absent from every list (a stale id, a catalog

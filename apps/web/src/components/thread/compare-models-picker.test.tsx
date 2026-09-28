@@ -65,7 +65,13 @@ const toggle = (compare: Pick<CompareModels, "enabled" | "setEnabled" | "unavail
 const body = (picks: ReadonlyArray<ModelPick>) =>
   renderToStaticMarkup(
     <TooltipProvider>
-      <CompareModelsBody catalog={catalog} picks={picks} onToggle={() => {}} onClose={() => {}} />
+      <CompareModelsBody
+        catalog={catalog}
+        full={catalog}
+        picks={picks}
+        onToggle={() => {}}
+        onClose={() => {}}
+      />
     </TooltipProvider>,
   );
 
@@ -150,7 +156,13 @@ describe("CompareModelsBody", () => {
 
   it("hands a tick to the toggle and keeps the picker open", () => {
     const onToggle = vi.fn<(pick: ModelPick) => void>();
-    const drawn = CompareModelsBody({ catalog, picks: [], onToggle, onClose: () => {} });
+    const drawn = CompareModelsBody({
+      catalog,
+      full: catalog,
+      picks: [],
+      onToggle,
+      onClose: () => {},
+    });
     const picker = (drawn.props as { children: ReadonlyArray<React.ReactElement> }).children[0];
     expect(picker?.type).toBe(HarnessPicker);
     const props = picker?.props as React.ComponentProps<typeof HarnessPicker>;

@@ -16,12 +16,13 @@
  * (`stepEffort`), so holding a key never jumps from the last row to the first.
  */
 
+import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 import type { ConnectorSummary } from "@poseidon/contracts/connectors";
 import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
 import { EFFORT_ORDER, type Effort } from "@poseidon/contracts/enums";
 
 import { orderEfforts } from "@/lib/efforts";
-import { harnessMonograms } from "@/lib/harness-monogram";
+import { catalogMonograms, harnessMonograms } from "@/lib/harness-monogram";
 import { decodeModelPick, type ModelPick, type ModelPickerGroup } from "@/lib/model-picks";
 
 export interface HarnessRailItem {
@@ -71,20 +72,27 @@ export const effortSummary = (efforts: ReadonlyArray<Effort> | undefined): strin
   return adjacent ? `${first}–${last}` : `${ladder.length} levels`;
 };
 
-/** One rail entry per picker section, in order, each with its models. */
+/**
+ * One rail entry per picker section, in order, each with its models. The
+ * sections are what the picker lists; `catalog` is the whole, unfiltered
+ * catalog, so a harness's monogram is the same on every surface whatever is
+ * switched off (`catalogMonograms`).
+ */
 export const harnessRail = (
   groups: ReadonlyArray<ModelPickerGroup>,
   current: ModelPick | null,
+  catalog: ReadonlyArray<ConnectorModels>,
 ): ReadonlyArray<HarnessRailEntry> => {
-  const monograms = harnessMonograms(groups.map((group) => group.connector.displayName));
-  return groups.map((group, index) => {
+  const monograms = catalogMonograms(catalog);
+  return groups.map((group) => {
     const instanceId = group.connector.connectorInstanceId;
     const isCurrent = current !== null && current.connectorInstanceId === instanceId;
     return {
       connector: group.connector,
       instanceId,
       label: group.connector.displayName,
-      monogram: monograms[index] ?? "",
+      monogram:
+        monograms.get(instanceId) ?? harnessMonograms([group.connector.displayName])[0] ?? "",
       locked: group.locked,
       current: isCurrent,
       items: group.items.flatMap((item) => {

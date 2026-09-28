@@ -1,6 +1,7 @@
+import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 import { describe, expect, it } from "vitest";
 
-import { harnessMonograms } from "./harness-monogram";
+import { catalogMonograms, harnessMonograms } from "./harness-monogram";
 
 // Two two-word names with the same initials, and a one-word name that spells
 // the first one's fallback: the shape of the shipped harnesses' names.
@@ -32,5 +33,22 @@ describe("harnessMonograms", () => {
   it("gives no two names the same monogram", () => {
     const names = [...TRIO, "Corvid (work)", "Cypress"];
     expect(new Set(harnessMonograms(names)).size).toBe(names.length);
+  });
+});
+
+describe("catalogMonograms", () => {
+  it("keys each instance's monogram by its id, settled over the whole catalog", () => {
+    const catalog = TRIO.map(
+      (displayName, index) =>
+        ({
+          connector: { connectorInstanceId: `i${index}`, displayName },
+          models: [],
+        }) as unknown as ConnectorModels,
+    );
+    expect([...catalogMonograms(catalog)]).toEqual([
+      ["i0", "Ct"],
+      ["i1", "Ce"],
+      ["i2", "Cd"],
+    ]);
   });
 });

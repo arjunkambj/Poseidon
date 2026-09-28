@@ -75,10 +75,13 @@ export const compareMenuGroups = (
  * The harness picker's rail for compare mode, with `compareMenuGroups`' state
  * on it: a model past the cap is disabled, and `checked` holds the ticked
  * picks (`encodeModelPick`). No harness is locked and none is current.
+ * `catalog` is what the picker lists; `full`, the unfiltered catalog the
+ * monograms are settled over (`harnessRail`).
  */
 export const compareRail = (
   catalog: ReadonlyArray<ConnectorModels>,
   picks: ReadonlyArray<ModelPick>,
+  full: ReadonlyArray<ConnectorModels> = catalog,
 ): {
   readonly rail: ReadonlyArray<HarnessRailEntry>;
   readonly checked: ReadonlySet<string>;
@@ -91,6 +94,7 @@ export const compareRail = (
   const rail = harnessRail(
     modelPickerGroups(catalog, { instanceId: null, locked: false }),
     null,
+    full,
   ).map((entry) => ({
     ...entry,
     items: entry.items.map((item) => ({
@@ -105,6 +109,7 @@ export const compareRail = (
 /** The popup's body, without the popup: the harness picker with checkboxes, then the cap. */
 export function CompareModelsBody({
   catalog,
+  full,
   picks,
   inputRef,
   onToggle,
@@ -112,12 +117,14 @@ export function CompareModelsBody({
 }: {
   /** What the pickers list — already filtered by Settings → Models. */
   readonly catalog: ReadonlyArray<ConnectorModels>;
+  /** The unfiltered catalog, for the monograms. */
+  readonly full: ReadonlyArray<ConnectorModels>;
   readonly picks: ReadonlyArray<ModelPick>;
   readonly inputRef?: React.Ref<HTMLInputElement>;
   readonly onToggle: (pick: ModelPick) => void;
   readonly onClose: () => void;
 }) {
-  const { rail, checked } = compareRail(catalog, picks);
+  const { rail, checked } = compareRail(catalog, picks, full);
   return (
     <>
       <HarnessPicker
@@ -161,6 +168,7 @@ export function CompareModelsPicker({
       <PopoverContent align="start" side="top" className="w-auto" initialFocus={inputRef}>
         <CompareModelsBody
           catalog={visible}
+          full={catalog}
           picks={compare.picks}
           inputRef={inputRef}
           onToggle={compare.toggle}
