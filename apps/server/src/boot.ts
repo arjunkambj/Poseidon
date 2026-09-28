@@ -21,6 +21,10 @@ import {
   type ClaudeConnectorOptions,
 } from "@poseidon/connector-claude/definition";
 import { makeCmdConnectorDefinition } from "@poseidon/connector-cmd/definition";
+import {
+  makeCodexConnectorDefinition,
+  type CodexConnectorOptions,
+} from "@poseidon/connector-codex/definition";
 import { eraseConnectorDefinition } from "@poseidon/connector-sdk/definition";
 import { makeRegistry } from "@poseidon/connector-sdk/registry";
 import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
@@ -102,6 +106,13 @@ export interface BootOptions {
    * unset.
    */
   readonly claudeCode?: ClaudeConnectorOptions;
+  /**
+   * Options for the Codex connector — chiefly `codexHome`, the `CODEX_HOME`
+   * its skills and MCP server extensions read and write, so a test that edits
+   * MCP servers from the Customize page never touches the operator's own
+   * `~/.codex`. Production leaves it unset.
+   */
+  readonly codex?: CodexConnectorOptions;
 }
 
 /** @public What a booted server tells a client (or the desktop shell) about itself. */
@@ -143,8 +154,8 @@ export const boot = (options: BootOptions) =>
     );
     // Order is routing order on a fresh install: every definition is seeded as
     // an instance in this order, and a thread that names none runs on the first
-    // enabled one. Command Code stays first, so adding Claude Code changes no
-    // existing default.
+    // enabled one. Command Code stays first, then Claude Code, so adding a
+    // connector changes no existing default.
     const registry = yield* makeRegistry([
       eraseConnectorDefinition(
         makeCmdConnectorDefinition(
@@ -152,6 +163,7 @@ export const boot = (options: BootOptions) =>
         ),
       ),
       eraseConnectorDefinition(makeClaudeConnectorDefinition(options.claudeCode ?? {})),
+      eraseConnectorDefinition(makeCodexConnectorDefinition(options.codex ?? {})),
     ]);
     // Routing follows the connectors page's own order, not the order instances
     // happened to be opened in — the same reading the engine seeds a new

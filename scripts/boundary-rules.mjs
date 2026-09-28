@@ -45,8 +45,8 @@ export const IMPORT_ALLOWLIST = new Map([
  * them from its tests and must never ship them, because apps/server is bundled
  * to `out/main.cjs` for packaging. `@poseidon/client-runtime` joins in
  * tests for the transport suite, which exercises the real client against the
- * real server over a WebSocket. `@poseidon/connector-cmd` and
- * `@poseidon/connector-claude` are here because a conformance or end-to-end
+ * real server over a WebSocket. `@poseidon/connector-cmd`,
+ * `@poseidon/connector-claude` and `@poseidon/connector-codex` are here because a conformance or end-to-end
  * test assembles a real connector the same way the composition root does.
  * Keeping them all out of the production list is what makes an accidental
  * import in `src/main.ts` fail the gate.
@@ -61,7 +61,10 @@ export const IMPORT_ALLOWLIST = new Map([
  * and the shell's entry points are bundled, so the rule keeps it out of them.
  */
 export const TEST_ONLY_ALLOWLIST = new Map([
-  ["apps/server", ["testkit", "client-runtime", "connector-cmd", "connector-claude"]],
+  [
+    "apps/server",
+    ["testkit", "client-runtime", "connector-cmd", "connector-claude", "connector-codex"],
+  ],
   ["packages/connector-claude", ["testkit"]],
   ["packages/connector-codex", ["testkit"]],
   ["apps/desktop", ["testkit"]],
@@ -75,7 +78,7 @@ export const TEST_ONLY_ALLOWLIST = new Map([
  * everything else in `apps/server` reaches connectors through the registry.
  */
 export const FILE_ALLOWLIST = new Map([
-  ["apps/server/src/boot.ts", ["connector-cmd", "connector-claude"]],
+  ["apps/server/src/boot.ts", ["connector-cmd", "connector-claude", "connector-codex"]],
 ]);
 
 /**

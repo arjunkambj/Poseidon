@@ -136,7 +136,7 @@ describe("boot", () => {
         // without probing anything: the form comes from the definition alone.
         const described = yield* rpc["connectors.describe"]({});
         // Command Code first: on a fresh install the order is routing order.
-        expect(described.map((descriptor) => descriptor.kind)).toEqual(["cmd", "claude"]);
+        expect(described.map((descriptor) => descriptor.kind)).toEqual(["cmd", "claude", "codex"]);
         expect(described[0]?.metadata.displayName).toBe("Command Code");
         expect(described[0]?.configFields.map((field) => field.key)).toEqual([
           "binaryPath",
@@ -147,6 +147,12 @@ describe("boot", () => {
         expect(described[1]?.configFields.map((field) => field.key)).toEqual([
           "binaryPath",
           "configDir",
+          "defaultModel",
+        ]);
+        expect(described[2]?.metadata.displayName).toBe("Codex");
+        expect(described[2]?.configFields.map((field) => field.key)).toEqual([
+          "binaryPath",
+          "codexHome",
           "defaultModel",
         ]);
       }),
