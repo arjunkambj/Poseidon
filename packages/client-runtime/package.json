@@ -24,6 +24,10 @@
       "types": "./src/gitCommands.ts",
       "import": "./src/gitCommands.ts"
     },
+    "./generationCommands": {
+      "types": "./src/generationCommands.ts",
+      "import": "./src/generationCommands.ts"
+    },
     "./oneShotCommands": {
       "types": "./src/oneShotCommands.ts",
       "import": "./src/oneShotCommands.ts"
