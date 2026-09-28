@@ -1,7 +1,7 @@
 /**
  * The line over a comparison's files (`ReviewList`): how many files, how many
- * lines, how many the user has viewed, the file tree's control and the toggle
- * that opens or closes them all at once.
+ * lines, how many the user has viewed, the review's navigation buttons, the
+ * file tree's control and the toggle that opens or closes them all at once.
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
@@ -22,12 +22,15 @@ export function ReviewSummary({
   viewed,
   allOpen,
   onAllOpenChange,
+  nav,
   tree,
 }: {
   files: ReadonlyArray<GitDiffFile>;
   viewed: number;
   allOpen: boolean;
   onAllOpenChange: (open: boolean) => void;
+  /** The review's navigation buttons (`ReviewNav`). */
+  nav?: ReactNode;
   /** The file tree's control: its toggle, or its dropdown in a narrow dock. */
   tree?: ReactNode;
 }) {
@@ -52,6 +55,7 @@ export function ReviewSummary({
       <span aria-hidden>·</span>
       <span className="shrink-0">{viewed} viewed</span>
       <div className="flex-1" />
+      {nav}
       {tree}
       <Tooltip>
         <TooltipTrigger

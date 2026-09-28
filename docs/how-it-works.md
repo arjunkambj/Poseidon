@@ -1879,7 +1879,11 @@ Files tab or an editor, reveal it, copy its path, or append a reference to it
 to the thread's composer draft; nothing in the pane reverts a file. While the pane is
 shown it publishes `changesOpen`, and `Alt+ArrowDown` / `Alt+ArrowUp`
 (`changes.nextFile` / `previousFile`) open the next or previous file and
-scroll its header to the top.
+scroll its header to the top. `Alt+U` (`changes.nextUnviewed`), and the eye
+button in the summary line, does the same for the first file after the
+current one that is not viewed as its patch is now, wrapping round to the top
+(`nextUnviewed` in `review.ts`); the button is disabled once every file is
+viewed.
 
 Beside the files sits a tree of them (`file-tree.ts` for the rules,
 `file-tree-view.tsx` for the tree): folders with chains of single folders
@@ -3321,6 +3325,8 @@ fields entirely.
 | View     | `font.increase` / `decrease` / `reset`                | `Mod+Alt+=` / `-` / `0`       |                                                                                        |
 | View     | `chatWidth.cycle`                                     | unbound                       |                                                                                        |
 | View     | `editor.openFavorite`                                 | `Mod+O`                       | `threadOpen`                                                                           |
+| View     | `changes.nextFile` / `previousFile`                   | `Alt+ArrowDown` / `Up`        | `changesOpen && !inputFocus && !dialogOpen`                                            |
+| View     | `changes.nextUnviewed`                                | `Alt+U`                       | the same                                                                               |
 | Timeline | `timeline.jumpToLatest`                               | `Mod+Shift+J`                 | `threadOpen`                                                                           |
 | Timeline | `timeline.collapseAll` / `expandAll`                  | `Mod+Alt+[` / `Mod+Alt+]`     | `threadOpen`                                                                           |
 | Timeline | `timeline.previousMessage` / `nextMessage`            | `Alt+Shift+ArrowUp` / `Down`  | `threadOpen && !inputFocus`                                                            |

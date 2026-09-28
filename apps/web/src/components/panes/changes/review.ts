@@ -90,8 +90,32 @@ export const viewedCount = (
   files: ReadonlyArray<{ readonly path: string; readonly hash: string }>,
 ): number => files.filter((file) => isViewed(review, file.path, file.hash)).length;
 
-/** How far off the top edge a header may sit and still count as parked there, in px. */
-const EDGE = 2;
+/**
+ * The file "Next unviewed" (`changes.nextUnviewed`) moves to, as an index: the
+ * first file after `cursor` not viewed as it is now, wrapping round to the
+ * top, and the cursor's own file last. `null` once every file is viewed.
+ * `cursor` is `-1` for none, which starts from the first file.
+ */
+export const nextUnviewed = (
+  files: ReadonlyArray<{ readonly path: string; readonly hash: string }>,
+  review: ChangesReview,
+  cursor: number,
+): number | null => {
+  for (let step = 1; step <= files.length; step += 1) {
+    const index = (Math.max(cursor, -1) + step + files.length) % files.length;
+    const file = files[index];
+    if (file !== undefined && !isViewed(review, file.path, file.hash)) {
+      return index;
+    }
+  }
+  return null;
+};
+
+/**
+ * How far off an edge a position may sit and still count as parked there, in
+ * px — a header at the top, or a change the keys last moved to.
+ */
+export const EDGE = 2;
 
 /**
  * The file `changes.nextFile` (`direction` 1) or `previousFile` (-1) moves to,

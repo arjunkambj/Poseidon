@@ -37,6 +37,7 @@ import {
   Code,
   Edit,
   Eraser,
+  Eye,
   FileCode,
   FolderAdd,
   GitBranch,
@@ -218,6 +219,9 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   // Changes — answered while the Changes pane lists files.
   command("View", "changes.nextFile", "Next changed file", ArrowDown),
   command("View", "changes.previousFile", "Previous changed file", ArrowUp),
+  command("View", "changes.nextUnviewed", "Next unviewed file", Eye, {
+    description: "Opens the next changed file you have not marked viewed",
+  }),
 
   // Git
   command("Git", "git.commit", "Commit", GitCommit),

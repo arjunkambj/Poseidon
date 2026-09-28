@@ -16,6 +16,10 @@
  * each of these goes through `revealFile`. In a list narrower than
  * `TREE_ASIDE_MIN_WIDTH` the tree folds into a dropdown in the summary line
  * (`FileJumpMenu`) instead (`treeLayout`).
+ *
+ * "Next unviewed" (`changes.nextUnviewed`, and its button in the summary line)
+ * reveals the first file after the cursor that is not viewed as it is now,
+ * wrapping round (`nextUnviewed`).
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
@@ -35,11 +39,13 @@ import {
   everyFileOpen,
   isOpen,
   isViewed,
+  nextUnviewed,
   patchHash,
   stepFile,
   withOpen,
   withViewed,
 } from "./review";
+import { ReviewNav } from "./review-nav";
 import { ReviewSummary, TreeToggle } from "./review-summary";
 import { useElementWidth } from "./use-element-width";
 
@@ -120,6 +126,19 @@ export function ReviewList({
   useKeybindingCommand("changes.nextFile", () => step(1));
   useKeybindingCommand("changes.previousFile", () => step(-1));
 
+  const revealUnviewed = () => {
+    const target = nextUnviewed(
+      hashed,
+      review,
+      files.findIndex((file) => file.path === cursor.current),
+    );
+    const file = target === null ? undefined : files[target];
+    if (file !== undefined) {
+      revealFile(file.path);
+    }
+  };
+  useKeybindingCommand("changes.nextUnviewed", revealUnviewed);
+
   // A file this comparison does not have is dropped all the same: the link has
   // been answered, and a later comparison that has it must not jump to it.
   React.useEffect(() => {
@@ -162,6 +181,12 @@ export function ReviewList({
             files.filter((file) => file.diff !== "").map((file) => file.path),
             open,
           )
+        }
+        nav={
+          <ReviewNav
+            allViewed={viewedPaths.size === files.length}
+            onNextUnviewed={revealUnviewed}
+          />
         }
         tree={
           layout === "dropdown" ? (

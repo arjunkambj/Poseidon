@@ -11,6 +11,7 @@ import {
   everyFileOpen,
   isOpen,
   isViewed,
+  nextUnviewed,
   patchHash,
   stepFile,
   viewedCount,
@@ -82,6 +83,38 @@ describe("changes review", () => {
       { path: "c.ts", hash: "h4" },
     ];
     expect(viewedCount(review, files)).toBe(1);
+  });
+
+  describe("next unviewed", () => {
+    const files = [
+      { path: "a.ts", hash: "ha" },
+      { path: "b.ts", hash: "hb" },
+      { path: "c.ts", hash: "hc" },
+    ];
+
+    it("finds the first unviewed file after the cursor, wrapping round", () => {
+      const review = withViewed(emptyChangesReview, "b.ts", "hb");
+      expect(nextUnviewed(files, review, -1)).toBe(0);
+      expect(nextUnviewed(files, review, 0)).toBe(2);
+      // Past the end it starts again from the top.
+      expect(nextUnviewed(files, review, 2)).toBe(0);
+    });
+
+    it("comes back to the cursor's own file when it is the only one left", () => {
+      const review = withViewed(withViewed(emptyChangesReview, "a.ts", "ha"), "c.ts", "hc");
+      expect(nextUnviewed(files, review, 1)).toBe(1);
+    });
+
+    it("counts a lapsed mark as unviewed and answers null once all are viewed", () => {
+      const all = ["a.ts", "b.ts", "c.ts"].reduce(
+        (review, path, index) => withViewed(review, path, files[index]!.hash),
+        emptyChangesReview,
+      );
+      expect(nextUnviewed(files, all, 0)).toBeNull();
+      // c.ts changed since it was marked.
+      expect(nextUnviewed([...files.slice(0, 2), { path: "c.ts", hash: "new" }], all, 0)).toBe(2);
+      expect(nextUnviewed([], emptyChangesReview, -1)).toBeNull();
+    });
   });
 
   describe("next and previous file", () => {
