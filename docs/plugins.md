@@ -105,7 +105,11 @@ decodes. The Customize → Plugins page (and the `plugins.setEnabled` RPC)
 writes it.
 
 A switch changes **sessions started after it**. A running session keeps the
-plugins, tools and skills it started with. When two enabled plugins share a
+plugins, tools and skills it started with. One exception is Command Code's MCP
+servers: the CLI reads them per project, so a plugin turned off while another
+session in the same project still runs with it keeps its MCP servers in the
+new session's turns until that session ends. The new session gets a warning
+naming the plugin the first time it happens. When two enabled plugins share a
 name, the built-in one wins, and among global plugins the first folder in
 sorted order wins.
 

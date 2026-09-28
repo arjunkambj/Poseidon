@@ -721,6 +721,56 @@ describe("mcp entry", () => {
       expect(refusing.calls().filter((argv) => argv[1] === "remove")).toEqual([]);
     }),
   );
+
+  it.effect("warns a session about plugin servers another session holds in its project", () =>
+    Effect.gen(function* () {
+      const root = yield* tempDir();
+      const stub = stubCmd(root);
+      const registration = { binaryPath: stub.binary, projectRoot: root, env: stubEnv };
+      const tools = {
+        name: "tools",
+        root: "/plugins/tools",
+        builtin: false,
+        skills: [],
+        skillsDirs: [],
+        mcpServers: [
+          { name: "search", transport: "http" as const, url: "https://search.example/mcp" },
+        ],
+      };
+      const open = (plugins: ReadonlyArray<typeof tools>, projectRoot = root) =>
+        registerSessionMcp({
+          registration: { ...registration, projectRoot },
+          services: { mcpEndpoint: () => Effect.succeed({ url: "", bearer: "" }) },
+          threadId: makeThreadId(),
+          plugins,
+          warn: () => Effect.void,
+        });
+
+      // Thread A starts with the plugin on; the user turns it off, then
+      // starts thread B in the same project, and C in another one.
+      const first = yield* open([tools]);
+      const second = yield* open([]);
+      const elsewhere = yield* open([], yield* tempDir());
+      const alsoOn = yield* open([tools]);
+
+      expect(yield* second.strayWarnings).toEqual([
+        'the MCP servers of the plugin "tools" are still registered in this project by another running session, so this session\'s turns can use them until that session ends: Command Code loads MCP servers per project',
+      ]);
+      // Said once, not on every turn.
+      expect(yield* second.strayWarnings).toEqual([]);
+      expect(yield* elsewhere.strayWarnings).toEqual([]);
+      expect(yield* alsoOn.strayWarnings).toEqual([]);
+      expect(yield* first.strayWarnings).toEqual([]);
+
+      yield* first.release;
+      yield* alsoOn.release;
+      const third = yield* open([]);
+      expect(yield* third.strayWarnings).toEqual([]);
+      yield* second.release;
+      yield* third.release;
+      yield* elsewhere.release;
+    }),
+  );
 });
 
 /**

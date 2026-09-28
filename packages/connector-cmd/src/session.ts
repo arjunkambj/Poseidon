@@ -654,7 +654,7 @@ export const makeCmdSession = (
                 plugins,
               }),
             );
-            for (const message of prepared.warnings) {
+            for (const message of [...prepared.warnings, ...(yield* sessionMcp.strayWarnings)]) {
               yield* warn(message);
             }
             const plan = prepared.plan;

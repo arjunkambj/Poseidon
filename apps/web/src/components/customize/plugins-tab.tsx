@@ -125,7 +125,8 @@ function PoseidonPlugins({ query }: { readonly query: string }) {
             Poseidon
           </h2>
           <p className="text-xs text-muted-foreground">
-            Loaded into every harness. Changes apply to sessions started after them.
+            Loaded into every harness. Changes apply to sessions started after them. On Command
+            Code, a plugin's MCP servers stay while a session in the same project still uses them.
           </p>
         </div>
         {hasGlobal ? (

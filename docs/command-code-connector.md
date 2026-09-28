@@ -1242,6 +1242,15 @@ thread of a project shares one file; the first thread to close must not remove
 it under a second one still running turns. The **name** is the ownership
 marker, so a server the user added under any other name is untouched.
 
+That file is the project's, and every `cmd -p` in the project loads all of it;
+no flag narrows a run to some of its servers. So a plugin turned off after
+another thread in the project started with it on still reaches a new thread's
+turns until the other thread closes. Before each turn `sessionMcp.ts` checks
+the entries every other live session holds in the same project, and a plugin
+this session did not start with gets one `session.warning`: `the MCP servers
+of the plugin "<name>" are still registered in this project by another running
+session, …`.
+
 Both project-level files are reverted by the session that installed them, and
 the server's session manager closes every open session at shutdown — otherwise
 the finalizers never ran and every server exit left a hook block and an
