@@ -41,6 +41,7 @@ import type { GitStatus } from "@poseidon/contracts/rpc";
 
 import { FileMenuScopeProvider } from "@/components/open-in/file-menu-scope";
 import { useKeybindingFlag } from "@/lib/shortcuts";
+import { useDiffView } from "@/lib/use-diff-view";
 import { turnInFlight } from "@/lib/turn";
 import { useConnectionState } from "@/state/hooks";
 import { useChangesScope, useDiffStyle } from "@/state/ui";
@@ -71,6 +72,7 @@ export function ChangesPane({ snapshot }: { snapshot: ThreadDetailView }) {
   const checkpoints = snapshot.checkpoints;
   const [changesScope, setChangesScope] = useChangesScope();
   const [diffStyle, setDiffStyle] = useDiffStyle();
+  const [diffView, setDiffView] = useDiffView();
   // Mounted only while the dock shows this tab, so the file keys
   // (`changes.nextFile` / `previousFile`) are live exactly as long.
   useKeybindingFlag("changesOpen", true);
@@ -127,7 +129,7 @@ export function ChangesPane({ snapshot }: { snapshot: ThreadDetailView }) {
       : shownScope === "branch"
         ? { scope: "branch", mergeBase: mergeBase ?? null }
         : { scope: "uncommitted" };
-  const range = diffRangeFor(scope, selection);
+  const range = diffRangeFor(scope, selection, diffView.ignoreWhitespace);
 
   const refresh = React.useCallback(
     () => atoms.refreshProject(registry, projectId),
@@ -198,6 +200,7 @@ export function ChangesPane({ snapshot }: { snapshot: ThreadDetailView }) {
       status={status}
       connected={connected}
       diffStyle={diffStyle}
+      diffView={diffView}
       reveal={reveal}
       onRevealed={onRevealed}
       onRetry={refresh}
@@ -230,6 +233,8 @@ export function ChangesPane({ snapshot }: { snapshot: ThreadDetailView }) {
         }
         diffStyle={diffStyle}
         onDiffStyleChange={setDiffStyle}
+        diffView={diffView}
+        onDiffViewChange={setDiffView}
         onRefresh={refresh}
       />
       {/* Only while a restore runs or after git refused one — never at rest. */}

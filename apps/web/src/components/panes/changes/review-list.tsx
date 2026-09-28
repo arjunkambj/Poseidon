@@ -26,6 +26,7 @@
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
+import type { DiffViewSettings } from "@poseidon/contracts/settings";
 import * as React from "react";
 
 import { scrollWithin } from "@/lib/scroll-within";
@@ -61,6 +62,7 @@ export function ReviewList({
   files,
   prefix,
   diffStyle,
+  diffView,
   reveal,
   onRevealed,
 }: {
@@ -69,6 +71,7 @@ export function ReviewList({
   /** `GitDiff.prefix`, for the file menus. */
   prefix: string;
   diffStyle: DiffStyle;
+  diffView: DiffViewSettings;
   reveal: string | null;
   onRevealed: () => void;
 }) {
@@ -242,6 +245,7 @@ export function ReviewList({
                     updateReview((current) => withViewed(current, file.path, viewed ? hash : null))
                   }
                   diffStyle={diffStyle}
+                  diffView={diffView}
                 />
               ))}
             </div>

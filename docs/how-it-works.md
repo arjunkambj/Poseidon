@@ -1946,6 +1946,18 @@ scope and the diff style are remembered for every thread in localStorage
 (`useChangesScope`, `useDiffStyle` in `state/ui.ts`); a stored value the pane
 does not know reads as the default.
 
+The View menu after it (`view-menu.tsx`, a sliders button, Tooltip "View
+options") holds two checkboxes, both off by default and kept in the settings
+document's `diffView` for every thread and window (`useDiffView` in
+`lib/use-diff-view.ts`). "Ignore whitespace" adds `ignoreWhitespace: true` to
+the `git.diff` range (`diffRangeFor`), so git answers again with `-w`; the
+range is left as it was while the option is off, so its cached answer is the
+same one. A plain edit whose every change was whitespace then drops out of
+the list, or, where git still names it, comes back with no patch: that row
+cannot open, reads "whitespace only" in muted text, and carries no counts. "Wrap lines" passes `wrap` to `InlineDiff`, which asks
+`@pierre/diffs` to wrap long lines instead of scrolling them sideways; the
+timeline's own rows never wrap.
+
 Nothing refetches on a command receipt, because both writes that move the
 worktree finish _after_ the command that started them. The pane watches the
 thread snapshot instead (`use-changes-refresh.ts`): a restore records the
@@ -3280,6 +3292,7 @@ Settings
   git                { branchPrefix }           what a new worktree's branch starts with
   projectSettings    { [projectId]: { setupScript?, scripts? } }
   browser            { openPaneOnAgentUse }     off by default
+  diffView           { ignoreWhitespace, wrapLines }  the Changes pane's View menu, both off
   notifications      { finished, failed, needsYou, sound, dockBadge, keepAwake }
   preferredEditor    string?                    the "Open in" button's editor; unset until picked
 ```
@@ -3289,8 +3302,8 @@ Settings
 A project's `scripts` are its saved runnable scripts (`ProjectScript`: `id`,
 `name`, `command` and an optional `primary`, the one the Run button starts);
 the key is optional, so a project entry from before it decodes without one. So is
-`browser`, whose `openPaneOnAgentUse` comes back as `false`, and `chatWidth`,
-which comes back as `comfortable`.
+`browser`, whose `openPaneOnAgentUse` comes back as `false`, `diffView`, whose
+two options come back off, and `chatWidth`, which comes back as `comfortable`.
 `notifications` is defaulted the same way: every alert, the Dock badge and
 keep-awake on, the sound off. `preferredEditor`
 is a plain string, not the editor id enum, so an id a later build drops still

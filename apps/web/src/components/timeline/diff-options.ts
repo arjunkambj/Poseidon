@@ -1,8 +1,8 @@
 /**
  * The `@pierre/diffs` options every `InlineDiff` and markdown code block
  * renders with, apart from the components so the choice is testable without a
- * DOM. Timeline rows never pass a diff style and stay unified; only the
- * Changes pane offers split.
+ * DOM. Timeline rows never pass a diff style or `wrap`, so they stay unified
+ * and scroll sideways; only the Changes pane offers split and wrapped lines.
  */
 
 import type { FileDiffOptions, FileOptions } from "@pierre/diffs/react";
@@ -16,12 +16,13 @@ export const DIFF_THEMES = { light: "pierre-light", dark: "pierre-dark" } as con
 export const inlineDiffOptions = (
   themeType: "light" | "dark",
   diffStyle: DiffStyle = "unified",
+  wrap = false,
 ): FileDiffOptions<undefined, undefined> => ({
   theme: DIFF_THEMES,
   themeType,
   diffStyle,
   disableFileHeader: true,
-  overflow: "scroll",
+  overflow: wrap ? "wrap" : "scroll",
 });
 
 /**

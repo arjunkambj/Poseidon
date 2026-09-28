@@ -15,6 +15,13 @@ describe("inlineDiffOptions", () => {
     expect(inlineDiffOptions("light", "split").diffStyle).toBe("split");
     expect(inlineDiffOptions("light", "unified").diffStyle).toBe("unified");
   });
+
+  it("scrolls long lines unless asked to wrap them", () => {
+    expect(inlineDiffOptions("light").overflow).toBe("scroll");
+    expect(inlineDiffOptions("light", "split", false).overflow).toBe("scroll");
+    expect(inlineDiffOptions("light", "split", true).overflow).toBe("wrap");
+    expect(inlineDiffOptions("dark", "unified", true).overflow).toBe("wrap");
+  });
 });
 
 describe("codeFileOptions", () => {

@@ -12,7 +12,9 @@
  * - **Uncommitted** — the working tree against `HEAD`: both ends omitted.
  *
  * `diffRangeFor` is the single place that translates a selection into the RPC
- * payload, so every scope is one code path.
+ * payload, so every scope is one code path. It also carries the View menu's
+ * "Ignore whitespace", only when it is on, so the default range (and its
+ * cached answer) is the same as before the option existed.
  */
 
 import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
@@ -80,11 +82,13 @@ export type ChangesSelection =
 export const diffRangeFor = (
   where: { readonly projectId: ProjectId; readonly threadId?: ThreadId | undefined },
   selection: ChangesSelection,
+  ignoreWhitespace = false,
 ): GitDiffRange | null => {
-  const scope =
-    where.threadId === undefined
-      ? { projectId: where.projectId }
-      : { projectId: where.projectId, threadId: where.threadId };
+  const scope = {
+    projectId: where.projectId,
+    ...(where.threadId === undefined ? {} : { threadId: where.threadId }),
+    ...(ignoreWhitespace ? { ignoreWhitespace: true } : {}),
+  };
   switch (selection.scope) {
     case "turn":
       return {

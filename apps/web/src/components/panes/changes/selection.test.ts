@@ -52,6 +52,31 @@ describe("changes pane selection", () => {
     expect(range).not.toHaveProperty("mergeBase");
   });
 
+  it("asks git to ignore whitespace only when the option is on", () => {
+    const scope = { projectId: makeProjectId(), threadId: makeThreadId() };
+    // Off: the same range, and so the same cached answer, as without the option.
+    expect(diffRangeFor(scope, { scope: "uncommitted" }, false)).toEqual(scope);
+    expect(diffRangeFor(scope, { scope: "uncommitted" }, false)).not.toHaveProperty(
+      "ignoreWhitespace",
+    );
+    expect(diffRangeFor(scope, { scope: "uncommitted" }, true)).toEqual({
+      ...scope,
+      ignoreWhitespace: true,
+    });
+    expect(diffRangeFor(scope, { scope: "branch", mergeBase: "main" }, true)).toEqual({
+      ...scope,
+      mergeBase: "main",
+      ignoreWhitespace: true,
+    });
+    expect(diffRangeFor(scope, { scope: "turn", from: null, to: "refs/x" }, true)).toEqual({
+      ...scope,
+      to: "refs/x",
+      ignoreWhitespace: true,
+    });
+    // No base for Branch stays nothing to compare, whatever the option.
+    expect(diffRangeFor(scope, { scope: "branch", mergeBase: null }, true)).toBeNull();
+  });
+
   it("compares a worktree thread with its own base, else the default branch", () => {
     expect(branchBaseFor("origin/release", "main")).toBe("origin/release");
     expect(branchBaseFor(undefined, "main")).toBe("main");

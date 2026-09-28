@@ -11,6 +11,7 @@ import {
   everyFileOpen,
   isOpen,
   isViewed,
+  isWhitespaceOnly,
   nextUnviewed,
   patchHash,
   stepFile,
@@ -145,5 +146,21 @@ describe("changes review", () => {
     it("has nothing to step through in an empty list", () => {
       expect(stepFile([], 250, -1, 1)).toBeNull();
     });
+  });
+});
+
+describe("whitespace-only rows", () => {
+  const edit = { kind: "edit" as const, diff: "" };
+
+  it("marks a plain edit with no patch only while whitespace is ignored", () => {
+    expect(isWhitespaceOnly(edit, true)).toBe(true);
+    expect(isWhitespaceOnly(edit, false)).toBe(false);
+  });
+
+  it("leaves a real patch, a rename and a created or deleted file alone", () => {
+    expect(isWhitespaceOnly({ ...edit, diff: "@@ -1 +1 @@\n-a\n+b\n" }, true)).toBe(false);
+    expect(isWhitespaceOnly({ ...edit, oldPath: "old.ts" }, true)).toBe(false);
+    expect(isWhitespaceOnly({ ...edit, kind: "create" }, true)).toBe(false);
+    expect(isWhitespaceOnly({ ...edit, kind: "delete" }, true)).toBe(false);
   });
 });

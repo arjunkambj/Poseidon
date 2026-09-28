@@ -33,6 +33,7 @@ import * as React from "react";
 
 import { FileMenuScopeProvider } from "@/components/open-in/file-menu-scope";
 import { useKeybindingFlag } from "@/lib/shortcuts";
+import { useDiffView } from "@/lib/use-diff-view";
 import { projectFolderTurnRunning } from "@/lib/turn";
 import { useConnectionState, useThreadList } from "@/state/hooks";
 import { useChangesScope, useDiffStyle } from "@/state/ui";
@@ -60,6 +61,7 @@ export function ProjectChangesPane({
   const connected = useConnectionState().status === "connected";
   const [changesScope, setChangesScope] = useChangesScope();
   const [diffStyle, setDiffStyle] = useDiffStyle();
+  const [diffView, setDiffView] = useDiffView();
   // Mounted only while the dock shows this tab, so the file keys
   // (`changes.nextFile` / `previousFile`) are live exactly as long.
   useKeybindingFlag("changesOpen", true);
@@ -79,7 +81,7 @@ export function ProjectChangesPane({
     shownScope === "branch"
       ? { scope: "branch", mergeBase: mergeBase ?? null }
       : { scope: "uncommitted" };
-  const range = diffRangeFor(scope, selection);
+  const range = diffRangeFor(scope, selection, diffView.ignoreWhitespace);
 
   const threads = useThreadList();
   const reviewScope: ReviewScope = {
@@ -115,6 +117,8 @@ export function ProjectChangesPane({
         restore={null}
         diffStyle={diffStyle}
         onDiffStyleChange={setDiffStyle}
+        diffView={diffView}
+        onDiffViewChange={setDiffView}
         onRefresh={refresh}
       />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -129,6 +133,7 @@ export function ProjectChangesPane({
               status={status}
               connected={connected}
               diffStyle={diffStyle}
+              diffView={diffView}
               reveal={null}
               onRevealed={noReveal}
               onRetry={refresh}

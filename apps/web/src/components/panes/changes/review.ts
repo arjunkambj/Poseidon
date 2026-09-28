@@ -145,3 +145,15 @@ export const stepFile = (
       : tops.findLastIndex((top) => top < -EDGE);
   return target >= 0 && target < tops.length ? target : null;
 };
+
+/**
+ * Whether a row has nothing to open only because whitespace is ignored: with
+ * `-w` the server sends a plain edit whose every change was whitespace with an
+ * empty patch (a rename or a binary edit keeps its own), so the row says so
+ * instead of reading as an edit that changed nothing.
+ */
+export const isWhitespaceOnly = (
+  file: Pick<GitDiffFile, "kind" | "oldPath" | "diff">,
+  ignoreWhitespace: boolean,
+): boolean =>
+  ignoreWhitespace && file.kind === "edit" && file.oldPath === undefined && file.diff === "";

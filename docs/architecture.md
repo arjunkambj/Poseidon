@@ -533,7 +533,9 @@ Presentation state that never reaches the server lives in
 `apps/web/src/state/ui.ts` and the browser's own storage — row disclosure, dock
 width, the per-thread dock tab, the last pull request link of each thread's
 branch, the Changes pane's scope and diff style and, in memory only, each
-thread's review there (which files are open and which are marked viewed), the
+thread's review there (which files are open and which are marked viewed; the
+pane's View menu options are the settings document's `diffView`, through
+`apps/web/src/lib/use-diff-view.ts`), the
 "last seen" stamp behind the unread dot and the sidebar's pinned threads
 (`apps/web/src/components/sidebar/thread-pins.ts`)
 — in `apps/web/src/state/changes-view.ts`, in memory only, whether the Changes

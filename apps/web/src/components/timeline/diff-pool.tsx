@@ -39,19 +39,22 @@ export interface DiffLineNumberClick {
 }
 
 /**
- * `diffStyle` defaults to unified; only the Changes pane offers split, and
- * only it passes `onLineNumberClick` (its per-line blame). The callback is
+ * `diffStyle` defaults to unified and `wrap` to off; only the Changes pane
+ * offers split and wrapped lines, and only it passes `onLineNumberClick` (its
+ * per-line blame). The callback is
  * read through a ref, so a new one each render does not rebuild the options.
  */
 export function InlineDiff({
   patch,
   className,
   diffStyle,
+  wrap,
   onLineNumberClick,
 }: {
   patch: string;
   className?: string;
   diffStyle?: DiffStyle;
+  wrap?: boolean;
   onLineNumberClick?: ((click: DiffLineNumberClick) => void) | undefined;
 }) {
   const { resolvedTheme } = useTheme();
@@ -59,7 +62,7 @@ export function InlineDiff({
   clickRef.current = onLineNumberClick;
   const clickable = onLineNumberClick !== undefined;
   const options = React.useMemo(() => {
-    const base = inlineDiffOptions(resolvedTheme === "dark" ? "dark" : "light", diffStyle);
+    const base = inlineDiffOptions(resolvedTheme === "dark" ? "dark" : "light", diffStyle, wrap);
     return clickable
       ? {
           ...base,
@@ -75,7 +78,7 @@ export function InlineDiff({
             }),
         }
       : base;
-  }, [resolvedTheme, diffStyle, clickable]);
+  }, [resolvedTheme, diffStyle, wrap, clickable]);
   // `PatchDiff` renders an empty element for a patch it cannot parse, which
   // reads exactly like "no changes". Show the text the server actually sent
   // instead — a malformed or truncated patch is information, not silence.

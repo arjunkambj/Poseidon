@@ -11,10 +11,13 @@
  * (`./review-menu-items`) included: Copy diff, Show blame and Discard, whose
  * popover and dialog (`useFileReviewActions`) sit beside the menus. In the
  * scopes that show the working file, a line number of the new side opens
- * that line's blame.
+ * that line's blame. The View menu's options (`diffView`) wrap the patch's
+ * lines, and mark a row whose only changes were whitespace while whitespace
+ * is ignored.
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
+import type { DiffViewSettings } from "@poseidon/contracts/settings";
 import { Checkbox } from "@poseidon/ui/components/checkbox";
 import {
   ContextMenu,
@@ -32,6 +35,7 @@ import type { DiffStyle } from "@/state/ui";
 
 import { FileActions } from "./file-actions";
 import { useFileReviewActions } from "./file-review-actions";
+import { isWhitespaceOnly } from "./review";
 import { ReviewContextItems } from "./review-menu-items";
 
 import { type HoneyIcon, ChevronRight, Edit, FileAdd, FileRemove } from "@honeyicons/react";
@@ -79,6 +83,7 @@ export function FileSection({
   viewed,
   onViewedChange,
   diffStyle,
+  diffView,
 }: {
   threadId: string;
   file: GitDiffFile;
@@ -89,6 +94,7 @@ export function FileSection({
   viewed: boolean;
   onViewedChange: (viewed: boolean) => void;
   diffStyle: DiffStyle;
+  diffView: DiffViewSettings;
 }) {
   const Glyph = KIND_ICON[file.kind];
   const expandable = file.diff !== "";
@@ -134,6 +140,9 @@ export function FileSection({
                 <FilePath path={file.path} viewed={viewed} />
               </span>
             )}
+            {isWhitespaceOnly(file, diffView.ignoreWhitespace) ? (
+              <span className="shrink-0 text-xs text-muted-foreground">whitespace only</span>
+            ) : null}
             <LineCounts additions={file.additions} deletions={file.deletions} />
           </button>
           <Tooltip>
@@ -161,6 +170,7 @@ export function FileSection({
           <InlineDiff
             patch={file.diff}
             diffStyle={diffStyle}
+            wrap={diffView.wrapLines}
             className="rounded-none"
             onLineNumberClick={review.onLineNumberClick}
           />

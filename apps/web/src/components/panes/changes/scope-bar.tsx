@@ -10,11 +10,14 @@
  * - **A turn** — what that turn changed, newest first. Restore joins the
  *   actions here, and puts the worktree back to how the turn left it.
  *
- * The split toggle puts old and new side by side. The scope and the layout are
- * remembered (`useChangesScope`, `useDiffStyle`) for every thread; which turn
- * is picked is the pane's own, and follows the latest turn until one is.
+ * The split toggle puts old and new side by side, and the View menu
+ * (`./view-menu`) ignores whitespace or wraps lines. The scope and the layout
+ * are remembered (`useChangesScope`, `useDiffStyle`) for every thread, the
+ * view options in the settings document; which turn is picked is the pane's
+ * own, and follows the latest turn until one is.
  */
 
+import type { DiffViewSettings } from "@poseidon/contracts/settings";
 import type { ReactNode } from "react";
 
 import { Button } from "@poseidon/ui/components/button";
@@ -32,6 +35,8 @@ import { Toggle } from "@poseidon/ui/components/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 
 import type { DiffStyle } from "@/state/ui";
+
+import { ViewMenu } from "./view-menu";
 
 import { Columns, Refresh } from "@honeyicons/react";
 
@@ -55,6 +60,8 @@ export function ScopeBar({
   restore,
   diffStyle,
   onDiffStyleChange,
+  diffView,
+  onDiffViewChange,
   onRefresh,
 }: {
   /** `uncommitted`, `branch`, or the shown turn's checkpoint ref. */
@@ -68,6 +75,8 @@ export function ScopeBar({
   restore: ReactNode;
   diffStyle: DiffStyle;
   onDiffStyleChange: (next: DiffStyle) => void;
+  diffView: DiffViewSettings;
+  onDiffViewChange: (next: Partial<DiffViewSettings>) => void;
   onRefresh: () => void;
 }) {
   return (
@@ -142,6 +151,7 @@ export function ScopeBar({
         </TooltipTrigger>
         <TooltipContent>Show old and new side by side</TooltipContent>
       </Tooltip>
+      <ViewMenu diffView={diffView} onDiffViewChange={onDiffViewChange} />
     </div>
   );
 }

@@ -21,6 +21,7 @@ import { useAtomValue } from "@effect/atom-react";
 import { isRepoless, type GitDiffRange, type GitQuery } from "@poseidon/client-runtime/gitAtoms";
 import type { GitBranchList } from "@poseidon/contracts/git";
 import type { GitDiff, GitStatus } from "@poseidon/contracts/rpc";
+import type { DiffViewSettings } from "@poseidon/contracts/settings";
 import { Button } from "@poseidon/ui/components/button";
 import { AsyncResult } from "effect/unstable/reactivity";
 
@@ -65,6 +66,7 @@ export function ChangesList({
   status,
   connected,
   diffStyle,
+  diffView,
   reveal,
   onRevealed,
   onRetry,
@@ -75,6 +77,7 @@ export function ChangesList({
   status: PaneQuery<GitStatus> | null;
   connected: boolean;
   diffStyle: DiffStyle;
+  diffView: DiffViewSettings;
   /** A file a link asked to open and scroll to once the files are in, or `null`. */
   reveal: string | null;
   onRevealed: () => void;
@@ -121,6 +124,7 @@ export function ChangesList({
       files={diff.value.files}
       prefix={diff.value.prefix ?? ""}
       diffStyle={diffStyle}
+      diffView={diffView}
       reveal={reveal}
       onRevealed={onRevealed}
     />
