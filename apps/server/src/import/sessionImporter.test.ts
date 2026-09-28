@@ -41,7 +41,6 @@ import { ConnectorRegistryService } from "../settings/ConnectorManager";
 import { ConnectorModels, OpenConnectors } from "../settings/connectorRouting";
 import { ledgerKey } from "./ledger";
 import { SessionImporter } from "./SessionImporter";
-import { sessionBoundEvent } from "./transcriptEvents";
 
 const FIXTURE = NodePath.join(fixturesRoot("claude"), "session-files");
 const ALPHA_ID = "0b6f3c1e-5a2d-4c8e-9f10-2a3b4c5d6e01";
@@ -228,51 +227,58 @@ describe("SessionImporter", () => {
     ),
   );
 
-  it.effect("imports a session as a thread holding its transcript, bound to resume", () =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const { importer, engine, resuming, files, before } = yield* fixture();
-        const result = yield* importer.importSession(resuming, ALPHA_ID);
-        expect(result.resumes).toBe(true);
+  it.effect(
+    "imports a session as a thread holding its transcript, to resume on its first turn",
+    () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const { importer, engine, resuming, files, before } = yield* fixture();
+          const result = yield* importer.importSession(resuming, ALPHA_ID);
+          expect(result.resumes).toBe(true);
 
-        const projects = yield* engine.listProjects();
-        expect(projects).toHaveLength(1);
-        expect(projects[0]).toMatchObject({
-          projectId: result.projectId,
-          name: "alpha",
-          workspaceRoot: files.alpha,
-        });
+          const projects = yield* engine.listProjects();
+          expect(projects).toHaveLength(1);
+          expect(projects[0]).toMatchObject({
+            projectId: result.projectId,
+            name: "alpha",
+            workspaceRoot: files.alpha,
+          });
 
-        const doc = yield* engine.threadDoc(result.threadId);
-        expect(doc).not.toBeNull();
-        expect(doc!.title).toBe("Alpha README");
-        expect(doc!.projectId).toBe(result.projectId);
-        expect(doc!.worktree ?? null).toBeNull();
-        expect(doc!.settings.connectorInstanceId).toBe(resuming);
-        expect(doc!.status).toBe("idle");
-        expect(doc!.items.map((item) => [item.kind, item.status, item.text])).toEqual([
-          ["user_message", "completed", "Add a README to the alpha project"],
-          ["assistant_message", "completed", "I'll add a short README."],
-          ["assistant_message", "completed", "README.md is in place."],
-          ["user_message", "completed", "Also mention the licence"],
-          ["assistant_message", "completed", "Added a licence line."],
-        ]);
-        // Each user message opens a turn; the replies after it share it.
-        const turns = doc!.items.map((item) => item.turnId);
-        expect(turns[0]).toBeDefined();
-        expect(turns[1]).toBe(turns[0]);
-        expect(turns[2]).toBe(turns[0]);
-        expect(turns[3]).not.toBe(turns[0]);
-        expect(turns[4]).toBe(turns[3]);
+          const doc = yield* engine.threadDoc(result.threadId);
+          expect(doc).not.toBeNull();
+          expect(doc!.title).toBe("Alpha README");
+          expect(doc!.projectId).toBe(result.projectId);
+          expect(doc!.worktree ?? null).toBeNull();
+          expect(doc!.settings.connectorInstanceId).toBe(resuming);
+          expect(doc!.status).toBe("idle");
+          expect(doc!.items.map((item) => [item.kind, item.status, item.text])).toEqual([
+            ["user_message", "completed", "Add a README to the alpha project"],
+            ["assistant_message", "completed", "I'll add a short README."],
+            ["assistant_message", "completed", "README.md is in place."],
+            ["user_message", "completed", "Also mention the licence"],
+            ["assistant_message", "completed", "Added a licence line."],
+          ]);
+          // Each user message opens a turn; the replies after it share it.
+          const turns = doc!.items.map((item) => item.turnId);
+          expect(turns[0]).toBeDefined();
+          expect(turns[1]).toBe(turns[0]);
+          expect(turns[2]).toBe(turns[0]);
+          expect(turns[3]).not.toBe(turns[0]);
+          expect(turns[4]).toBe(turns[3]);
 
-        expect(doc!.session).toEqual({
-          connectorInstanceId: resuming,
-          connectorKind: "fake-resuming",
-          sessionRef: { sessionId: ALPHA_ID, cwd: files.alpha },
-        });
-        expect(snapshot(files.config)).toEqual(before);
-      }),
-    ),
+          // Recorded, not bound: the boot scan resumes only bound sessions.
+          expect(doc!.session).toBeNull();
+          expect(doc!.imported).toEqual({
+            connectorKind: "fake-resuming",
+            sourceId: ALPHA_ID,
+            session: {
+              connectorInstanceId: resuming,
+              sessionRef: { sessionId: ALPHA_ID, cwd: files.alpha },
+            },
+          });
+          expect(snapshot(files.config)).toEqual(before);
+        }),
+      ),
   );
 
   it.effect("reuses the folder's project and leaves a non-resuming thread unbound", () =>
@@ -286,6 +292,7 @@ describe("SessionImporter", () => {
         expect(yield* engine.listProjects()).toHaveLength(1);
         const doc = yield* engine.threadDoc(second.threadId);
         expect(doc!.session).toBeNull();
+        expect(doc!.imported).toEqual({ connectorKind: "fake-fresh", sourceId: NOISY_ID });
         expect(doc!.items.map((item) => item.text)).toEqual([
           "Explain how the retry loop in the fetch helper decides when to stop, and whether it waits between attempts at all",
           "It stops after three attempts,\n\nand it doubles the wait between them.",
@@ -321,6 +328,14 @@ describe("SessionImporter", () => {
           (entry) => entry.sourceId === ALPHA_ID && entry.connectorInstanceId !== resuming,
         );
         expect(other?.importedThreadId).toBeNull();
+        // The thread's own record of the import names it without the ledger.
+        NodeFS.rmSync(ledgerPath);
+        expect(
+          (yield* importer.importable).find(
+            (entry) => entry.sourceId === ALPHA_ID && entry.connectorInstanceId === resuming,
+          )?.importedThreadId,
+        ).toBe(first.threadId);
+        expect(yield* importer.importSession(resuming, ALPHA_ID)).toEqual(first);
 
         // Once the thread is deleted the session is importable again.
         yield* engine.dispatch({
@@ -368,15 +383,19 @@ describe("SessionImporter", () => {
         });
         const env = yield* EngineEnv;
         yield* engine.appendThreadEvents(threadId, [
-          sessionBoundEvent(
-            threadId,
-            {
+          {
+            eventId: env.nextEventId(),
+            streamKind: "thread",
+            streamId: threadId,
+            occurredAt: env.now(),
+            actor: "connector",
+            type: "thread.session.bound",
+            payload: {
               connectorInstanceId: resuming,
               connectorKind: "fake-resuming",
               sessionRef: { sessionId: ALPHA_ID, cwd: files.alpha },
             },
-            env,
-          ),
+          },
         ]);
 
         const listed = yield* importer.importable;

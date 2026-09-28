@@ -56,9 +56,10 @@ export const ImportableSessionEntry = Schema.Struct({
 export type ImportableSessionEntry = typeof ImportableSessionEntry.Type;
 
 /**
- * What an import made. `resumes` is true when the thread is bound to the
- * harness's own session, so its next turn carries that conversation on; false
- * when the instance cannot resume and the thread starts a fresh session.
+ * What an import made. `resumes` is true when the thread's first turn will
+ * resume the harness's own session (or the thread already runs one); false
+ * when the instance cannot resume, and the first turn starts a fresh session
+ * with the imported messages as its context.
  */
 export const SessionImportResult = Schema.Struct({
   threadId: ThreadId,

@@ -7,10 +7,11 @@
  * extension answers: it lists every open instance's sessions, and imports one
  * with ordinary commands and events — `project.create` when no project is open
  * on the session's folder yet, `thread.create` for a local thread there (a
- * resume must run where the session ran), one `thread.item.upserted` per
- * message, and `thread.session.bound` when the instance can resume, so the
- * first turn carries the harness's own conversation on through the session
- * manager's usual resume path.
+ * resume must run where the session ran) that records the import, and one
+ * `thread.item.upserted` per message. No session is bound: the thread's first
+ * turn resumes the harness's session when the instance can, and otherwise
+ * sends the imported rows as a transcript (`orchestration/nativeFork.ts`), so
+ * the boot scan never resumes a thread nobody has run.
  *
  * The source files are only ever read. Which thread each session became is
  * kept in a small ledger (`ledger.ts`), so importing it again answers that
@@ -54,7 +55,7 @@ import type { ThreadDoc } from "../orchestration/state";
 import { ConnectorCatalog } from "../rpc/services";
 import { ConnectorRegistryService } from "../settings/ConnectorManager";
 import { LEDGER_FILE, ledgerKey, readLedger, writeLedger } from "./ledger";
-import { sessionBoundEvent, transcriptEvents } from "./transcriptEvents";
+import { transcriptEvents } from "./transcriptEvents";
 
 export interface SessionImporterOptions {
   /** Where the ledger lives; `POSEIDON_HOME/session-imports.json` by default. */
@@ -144,15 +145,23 @@ export class SessionImporter extends Context.Service<
          * would list as a session to import. Matched on the connector kind,
          * not the instance: two instances of a kind reading one folder list
          * the same sessions, and a session id names one session either way.
+         * An imported thread counts by the session it was imported from as
+         * well as the one it runs now, which differs once it started afresh.
          */
         const threadsRunning = (instance: ConnectorInstance, docs: ReadonlyArray<ThreadDoc>) => {
           const sourceIdOf = sessionsOf(instance)?.sourceIdOf;
           const running = new Map<string, ThreadDoc>();
-          if (sourceIdOf === undefined) return running;
           for (const doc of docs) {
-            if (doc.deleted || doc.session?.connectorKind !== instance.kind) continue;
-            const sourceId = sourceIdOf(doc.session.sessionRef);
-            if (sourceId !== undefined && !running.has(sourceId)) running.set(sourceId, doc);
+            if (doc.deleted) continue;
+            const sourceIds = [
+              doc.imported?.connectorKind === instance.kind ? doc.imported.sourceId : undefined,
+              doc.session?.connectorKind === instance.kind
+                ? sourceIdOf?.(doc.session.sessionRef)
+                : undefined,
+            ];
+            for (const sourceId of sourceIds) {
+              if (sourceId !== undefined && !running.has(sourceId)) running.set(sourceId, doc);
+            }
           }
           return running;
         };
@@ -234,39 +243,16 @@ export class SessionImporter extends Context.Service<
           });
 
         /** Everything after `thread.create`; a failure here deletes the thread. */
-        const fillThread = (
-          instance: ConnectorInstance,
-          threadId: ThreadId,
-          transcript: ImportedTranscript,
-          key: string,
-        ) =>
+        const fillThread = (threadId: ThreadId, transcript: ImportedTranscript, key: string) =>
           Effect.gen(function* () {
             const env = yield* EngineEnv;
-            const resumes = instance.capabilities.resume && transcript.sessionRef != null;
-            const events = [
-              ...transcriptEvents(threadId, transcript.messages, env),
-              ...(resumes
-                ? [
-                    sessionBoundEvent(
-                      threadId,
-                      {
-                        connectorInstanceId: instance.instanceId,
-                        connectorKind: instance.kind,
-                        sessionRef: transcript.sessionRef,
-                      },
-                      env,
-                    ),
-                  ]
-                : []),
-            ];
             yield* engine
-              .appendThreadEvents(threadId, events)
+              .appendThreadEvents(threadId, transcriptEvents(threadId, transcript.messages, env))
               .pipe(Effect.catch(internal("write the transcript")));
             const ledger = yield* readLedger(options.ledgerPath);
             yield* writeLedger(options.ledgerPath, { ...ledger, [key]: threadId }).pipe(
               Effect.catch(internal("record the import")),
             );
-            return resumes;
           });
 
         const importSession = (connectorInstanceId: ConnectorInstanceId, sourceId: string) =>
@@ -300,7 +286,7 @@ export class SessionImporter extends Context.Service<
                 return {
                   threadId: earlier.threadId,
                   projectId: earlier.projectId,
-                  resumes: earlier.session !== null,
+                  resumes: earlier.session !== null || earlier.imported?.session !== undefined,
                 };
               }
 
@@ -310,6 +296,8 @@ export class SessionImporter extends Context.Service<
               const projectId: ProjectId = yield* ensureProject(transcript.session.cwd);
               const env = yield* EngineEnv;
               const threadId = makeThreadId();
+              // The session is recorded, not bound: the first turn resumes it.
+              const resumes = instance.capabilities.resume && transcript.sessionRef != null;
               yield* dispatch({
                 type: "thread.create",
                 commandId: makeCommandId(),
@@ -318,8 +306,15 @@ export class SessionImporter extends Context.Service<
                 projectId,
                 title: transcript.session.title,
                 settings: { connectorInstanceId },
+                imported: {
+                  connectorKind: instance.kind,
+                  sourceId,
+                  ...(resumes
+                    ? { session: { connectorInstanceId, sessionRef: transcript.sessionRef } }
+                    : {}),
+                },
               });
-              const resumes = yield* fillThread(instance, threadId, transcript, key).pipe(
+              yield* fillThread(threadId, transcript, key).pipe(
                 Effect.onError(() =>
                   dispatch({
                     type: "thread.delete",

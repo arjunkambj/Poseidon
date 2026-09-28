@@ -190,7 +190,8 @@ nothing, beside them or anywhere.
   counts them all.
 - The session reference it returns is `{ sessionId, cwd }`, the shape
   `sessionRef.ts` parses, so the thread's first turn resumes the conversation;
-  if the CLI no longer has it, the session starts a new one and says so.
+  if the CLI no longer has it, the session starts a new one and says so, and
+  the server sends the imported messages with the first turn instead.
 - `sourceIdOf` answers the `sessionId` of a thread's persisted reference, so
   the list names the sessions Poseidon's own threads run as those threads
   rather than as sessions to import.

@@ -11,13 +11,7 @@
  */
 
 import type { ImportedMessage } from "@poseidon/connector-sdk/extensions";
-import type {
-  ConnectorInstanceId,
-  EventId,
-  ItemId,
-  ThreadId,
-  TurnId,
-} from "@poseidon/contracts/ids";
+import type { EventId, ItemId, ThreadId, TurnId } from "@poseidon/contracts/ids";
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 
 import type { PlannedEvent } from "../persistence/EventStore";
@@ -62,22 +56,3 @@ export const transcriptEvents = (
     };
   });
 };
-
-/**
- * Binds the thread to the harness's own session, so its first turn resumes
- * that conversation instead of starting one. No capabilities ride along: the
- * connector announces them when the session actually starts.
- */
-export const sessionBoundEvent = (
-  threadId: ThreadId,
-  session: {
-    readonly connectorInstanceId: ConnectorInstanceId;
-    readonly connectorKind: string;
-    readonly sessionRef: unknown;
-  },
-  env: Env,
-): PlannedEvent => ({
-  ...envelope(threadId, env),
-  type: "thread.session.bound",
-  payload: session,
-});

@@ -874,13 +874,17 @@ through the instance, finds the project whose root is the session's `cwd` or
 dispatches `project.create` there (refusing, `not-found`, when that folder no
 longer exists), and dispatches `thread.create` for a local thread on it with
 the instance as its connector, since a resume must run where the session ran.
-It then appends, as the system, one completed `thread.item.upserted` per
-message, a new turn at each user message and the replies after it sharing it,
-and, when the instance's `capabilities.resume` is true, `thread.session.bound`
-with the connector's `sessionRef` and no capabilities. No command or event
-type is new. A bound imported thread is then like any thread whose session
-went away: its next turn goes through the session manager's `resumeSession`
-path, and the supervisor's boot scan resumes it like any other bound thread.
+The command carries `imported: { connectorKind, sourceId, session? }`, with
+`session: { connectorInstanceId, sessionRef }` when the instance's
+`capabilities.resume` is true and the reader gave a `sessionRef`. It then
+appends, as the system, one completed `thread.item.upserted` per message, a
+new turn at each user message and the replies after it sharing it. No
+session is bound: the supervisor's boot scan resumes only bound threads, so
+an imported thread nobody has run never spawns a harness. Its first turn
+continues the conversation the way a native fork does (see the fork section
+under Contracts): it resumes the recorded session, or starts fresh with the
+imported rows as a transcript. A never-run imported thread also counts, by
+its `imported.sourceId`, as the thread that holds that session.
 Which thread each `<instanceId>:<sourceId>` became is kept in
 `session-imports.json` under the Poseidon home, replaced through a temporary
 file and a rename; importing a session whose thread still exists, or that a
@@ -1688,6 +1692,21 @@ the transcript goes ahead of the first message as for any other fork. Every othe
 running source, another harness or workspace, a harness without `fork` —
 is a copy.
 
+`thread.create` may instead record an import (`imported: ThreadImport`, from
+`sessions.import`): the connector kind, the session's `sourceId`, and the
+harness session to continue when the instance can resume. `thread.created`
+carries it and the document keeps it; it is optional, so older events decode
+unchanged, and it stays off the wire. The imported thread's first session
+comes from `resumeSession({ sessionRef })` on the recorded instance
+(`pendingImportResume`), without `fork`, while the thread has no session, is
+on its first turn, and still names that instance in its settings — a thread
+moved to another harness never resumes a foreign session. When there is no
+session to resume, the resume fails, or the connector started afresh in its
+place (its session's `sourceIdOf` names another session), the session manager
+uses a fresh session and the first message carries the thread's items before
+that turn as a transcript, with a line saying the conversation continues one
+the harness recorded (`withForkContext`). Later turns carry nothing extra.
+
 A plan's "Implement in new thread" goes through the same dialog but is not a
 fork: the renderer sends `thread.create` with the source's settings out of plan
 mode and no `fork`, sends the plan as the first turn, and, while the plan is
@@ -1768,15 +1787,15 @@ more watcher of its own, subscribed the same eager way inside its layer: on
 `thread.deleted` or `thread.archived` it kills that thread's shells.
 
 **`ProviderCommandReactor`.** `turn.requested` → ensure the session and
-`handle.send(turnId, turn)`. A fork's first turn — no session of the fork bound in
+`handle.send(turnId, turn)`. A fork's or an imported thread's first turn — no session of the thread bound in
 an earlier turn (the fold records the turn one first binds in as
 `forkSeededIn`), so a first turn that failed before reaching the harness
-leaves the next one first — is sent with the source's transcript and a line saying what
+leaves the next one first — is sent with the earlier conversation's transcript and a line saying what
 it is ahead of the user's text (`withForkContext`), here and in the mid-turn
 resend after `session.bound`; the user's row keeps only what they typed, so
-the transcript never reaches the timeline or message search. A fork whose
-session the harness forked natively goes without it: the session manager says
-so (`forkedNatively`), for the sessions this process started. `turn.steered` →
+the transcript never reaches the timeline or message search. A session the
+harness forked natively, or an imported session resumed, goes without it: the
+session manager says so (`forkedNatively`), for the sessions this process started. `turn.steered` →
 `handle.steer(turnId, turn)`, then the user's `user_message` row on that turn
 once it is delivered; when there is no live handle or the steer fails, no row
 is written there and the message is dispatched
@@ -2486,7 +2505,7 @@ the client in the terminal `incompatible` state.
 | `threads.listSubscribe`       | stream | The thread list, same shape                                                                                                             |
 | `threads.searchMessages`      | call   | Threads whose user or assistant text contains a query, at most 50, archived marked                                                      |
 | `sessions.importable`         | call   | Sessions the harnesses recorded on their own, newest first, with their project and any earlier import                                   |
-| `sessions.import`             | call   | Brings one in as a thread with its transcript; binds the harness session when the instance resumes; idempotent                          |
+| `sessions.import`             | call   | Brings one in as a thread with its transcript; its first turn resumes the harness session when the instance can; idempotent             |
 | `connectors.list`             | call   | Configured connectors with their cached probes; `refresh` re-probes                                                                     |
 | `connectors.models`           | call   | The model picker's options for one instance                                                                                             |
 | `connectors.describe`         | call   | Every connector the build ships: metadata and config form, configured or not                                                            |
