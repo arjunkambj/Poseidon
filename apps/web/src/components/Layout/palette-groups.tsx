@@ -20,7 +20,7 @@ import { useThreadTargets } from "@/components/sidebar/use-thread-targets";
 import { CommandKbd } from "@/lib/shortcuts";
 import { useCreateThread } from "@/lib/use-create-thread";
 import { useProjects, useThreadList } from "@/state/hooks";
-import { Add, Archive, Chat, Server, Sparkles, SquarePen } from "@honeyicons/react";
+import { Add, Archive, Chat, Puzzle, Server, Sparkles, SquarePen } from "@honeyicons/react";
 
 type GroupProps = { readonly onDone: () => void };
 
@@ -29,6 +29,7 @@ const navigationItems = [
   { to: "/", icon: SquarePen, label: "New task", command: "thread.new" },
   { to: "/customize/skills", icon: Sparkles, label: "Skills", command: "skills.open" },
   { to: "/customize/mcp", icon: Server, label: "MCP servers", command: "mcp.open" },
+  { to: "/customize/plugins", icon: Puzzle, label: "Plugins", command: "plugins.open" },
 ] as const;
 
 /** A row's chord, right-aligned; nothing when the command is unbound. */

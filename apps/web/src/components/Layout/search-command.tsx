@@ -47,7 +47,7 @@ function useSearch() {
  * Mounted once at the app root, not inside a layout: these commands are
  * route-independent, and while they were claimed inside `HomeLayout` the
  * palette, New task and Settings chords all did nothing on `/settings/*`.
- * The same goes for Skills and MCP servers, which open their Customize pages.
+ * The same goes for Skills, MCP servers and Plugins, which open their Customize pages.
  * `sidebar.toggle` is the exception — it belongs to whichever
  * sidebar is on screen, so each layout claims it through
  * `SidebarToggleShortcut` and this file only *fires* it.
@@ -61,10 +61,11 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
   // and the one listener above the routes (@/lib/shortcuts). The palette is a
   // modal dialog over the route, so every navigating handler closes it first.
   const go = React.useCallback(
-    (to: "/" | "/customize/skills" | "/customize/mcp" | "/settings") => () => {
-      setOpen(false);
-      void navigate({ to });
-    },
+    (to: "/" | "/customize/skills" | "/customize/mcp" | "/customize/plugins" | "/settings") =>
+      () => {
+        setOpen(false);
+        void navigate({ to });
+      },
     [navigate],
   );
 
@@ -77,6 +78,7 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
   useKeybindingCommand("thread.new", go("/"));
   useKeybindingCommand("skills.open", go("/customize/skills"));
   useKeybindingCommand("mcp.open", go("/customize/mcp"));
+  useKeybindingCommand("plugins.open", go("/customize/plugins"));
   useKeybindingCommand("settings.open", go("/settings"));
 
   return (

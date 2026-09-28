@@ -54,6 +54,13 @@ describe("COMMAND_CATALOG", () => {
     expect(DEFAULT_KEYBINDINGS.filter((row) => row.command === "dock.agents")).toEqual([]);
   });
 
+  it("lists the plugins page with no default chord, reached from Navigation", () => {
+    const entry = COMMAND_CATALOG.find((c) => c.id === "plugins.open");
+    expect(entry?.area).toBe("General");
+    expect(entry?.palette).toBe(false);
+    expect(DEFAULT_KEYBINDINGS.filter((row) => row.command === "plugins.open")).toEqual([]);
+  });
+
   it("files find in thread under Timeline", () => {
     const find = COMMAND_CATALOG.find((entry) => entry.id === "timeline.find");
     expect(find?.area).toBe("Timeline");

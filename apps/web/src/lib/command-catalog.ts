@@ -55,6 +55,7 @@ import {
   Paperclip,
   Pin,
   Play,
+  Puzzle,
   Refresh,
   Rocket,
   Search,
@@ -127,6 +128,7 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   command("General", "settings.open", "Settings", Settings, { palette: false }),
   command("General", "skills.open", "Skills", Sparkles, { palette: false }),
   command("General", "mcp.open", "MCP servers", Server, { palette: false }),
+  command("General", "plugins.open", "Plugins", Puzzle, { palette: false }),
   command("General", "project.add", "Add project", FolderAdd),
   command("General", "sidebar.undo", "Undo sidebar action", Undo, {
     description: "Archive, pin, rename, mark unread",
