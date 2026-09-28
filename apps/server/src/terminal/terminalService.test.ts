@@ -506,6 +506,24 @@ describe.skipIf(process.platform === "win32")("TerminalService, owned by a proje
     ),
   );
 
+  it.live("lists every thread's running terminals, and no project's or exited one", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { terminals, threadId, terminalId, projectId } = yield* withTerminal;
+        yield* terminals.open({ projectId, terminalId: makeTerminalId(), ...SIZE });
+        const done = makeTerminalId();
+        yield* terminals.open({ threadId, terminalId: done, ...SIZE });
+        const finished = yield* watch(terminals.subscribe({ threadId }, done));
+        yield* terminals.write({ threadId }, done, "exit 0\n");
+        yield* awaitKind(finished, "exited");
+
+        const running = yield* terminals.listRunning();
+        expect(running.map((summary) => summary.terminalId)).toEqual([terminalId]);
+        expect(running[0]).toMatchObject({ threadId, status: "running" });
+      }),
+    ),
+  );
+
   it.live("holds a project to the same terminal limit", () =>
     Effect.scoped(
       Effect.gen(function* () {

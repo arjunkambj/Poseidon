@@ -832,7 +832,8 @@ Everything a client needs that is not React.
   interrupt a call still in flight when the next one starts and hand the first
   caller the second's result; two threads committing at once, or two deleted
   threads removing their worktrees, must not.
-- `terminalAtoms.ts` — a thread's terminal list, the open/write/resize/close
+- `terminalAtoms.ts` — a thread's terminal list, every thread's running
+  terminals in one listing (`runningTerminalsAtom`), the open/write/resize/close
   calls, and `terminalAttachAtom`, which hands one terminal's output to a
   callback item by item. It is a `runtime.fn`, not an atom over the stream,
   because an atom built from a stream keeps only the last item of each chunk.
@@ -1860,6 +1861,7 @@ the client in the terminal `incompatible` state.
 | `terminal.resize`             | call   | The terminal's grid in character cells                                              |
 | `terminal.close`              | call   | Kills the shell and forgets the terminal, output and all                            |
 | `terminal.list`               | call   | A thread's terminals, exited ones included, oldest first                            |
+| `terminal.listRunning`        | call   | Every thread's terminals still running a shell, for the sidebar rows' marks         |
 | `terminal.subscribe`          | stream | One terminal: a snapshot of its scrollback, then live output, then its exit         |
 
 Reads that must stay fresh are streams rather than polls, and every stream can

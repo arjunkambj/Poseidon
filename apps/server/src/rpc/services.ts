@@ -361,6 +361,8 @@ export class TerminalService extends Context.Service<
     readonly list: (
       owner: TerminalOwner,
     ) => Effect.Effect<ReadonlyArray<TerminalSummary>, PoseidonRpcError>;
+    /** Every thread's terminals that still run a shell, across all threads. */
+    readonly listRunning: () => Effect.Effect<ReadonlyArray<TerminalSummary>>;
     readonly subscribe: (
       owner: TerminalOwner,
       terminalId: TerminalId,
@@ -385,6 +387,7 @@ export class TerminalService extends Context.Service<
       resize: () => Effect.fail(terminalUnavailable()),
       close: () => Effect.fail(terminalUnavailable()),
       list: () => Effect.succeed([]),
+      listRunning: () => Effect.succeed([]),
       subscribe: () => Stream.empty,
       teardownThread: () => Effect.void,
       adopt: () => Effect.succeed([]),

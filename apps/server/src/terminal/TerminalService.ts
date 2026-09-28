@@ -503,6 +503,12 @@ export const makeTerminalService = (
             session.summary(),
           ),
         ),
+      listRunning: () =>
+        Effect.sync(() =>
+          [...registry.values()]
+            .flatMap((sessions) => [...sessions.values()].map((session) => session.summary()))
+            .filter((summary) => isThreadOwner(summary) && summary.status === "running"),
+        ),
       subscribe,
       teardownThread: (threadId) => teardown({ threadId }),
       adopt,

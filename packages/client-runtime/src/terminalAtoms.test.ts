@@ -89,6 +89,7 @@ interface Script {
   readonly subscriptions: Array<Subscription>;
   subscribeCalls: number;
   listCalls: number;
+  runningCalls: number;
   readonly terminals: Array<TerminalSummary>;
   /** `terminal.write` and `terminal.resize` payloads, in the order they arrived. */
   readonly input: Array<string>;
@@ -108,6 +109,7 @@ const newScript = (subscriptions: Array<Subscription> = []): Script => ({
   subscriptions,
   subscribeCalls: 0,
   listCalls: 0,
+  runningCalls: 0,
   terminals: [],
   input: [],
   writeFailures: [],
@@ -154,6 +156,24 @@ const fakeClient = (script: Script): PoseidonRpcClient =>
               script.listCalls += 1;
               const key = terminalOwnerKey(payload);
               return script.terminals.filter((terminal) => terminalOwnerKey(terminal) === key);
+            });
+        case "terminal.close":
+          return (payload: TerminalRef) =>
+            Effect.sync(() => {
+              const index = script.terminals.findIndex(
+                (terminal) => terminal.terminalId === payload.terminalId,
+              );
+              if (index >= 0) script.terminals.splice(index, 1);
+              return {};
+            });
+        case "terminal.listRunning":
+          // Every thread's running terminals, whichever thread.
+          return () =>
+            Effect.sync(() => {
+              script.runningCalls += 1;
+              return script.terminals.filter(
+                (terminal) => terminal.threadId !== undefined && terminal.status === "running",
+              );
             });
         case "terminal.open":
           return (payload: TerminalRef) =>
@@ -365,6 +385,42 @@ describe("terminal atoms", () => {
       yield* SubscriptionRef.set(stateRef, CONNECTED);
       yield* Effect.promise(() => awaitValue(registry, list, isOk(2)));
       expect(script.listCalls).toBe(3);
+    }),
+  );
+
+  it.live("the running listing covers every thread at once and refetches on each change", () =>
+    Effect.gen(function* () {
+      const first = newRef();
+      const second = newRef();
+      const script = newScript();
+      const { registry, runningTerminalsAtom, openTerminal, closeTerminal } =
+        yield* runtimeWith(script);
+      registry.mount(runningTerminalsAtom);
+      registry.mount(closeTerminal);
+
+      const count = (length: number) => (query: TerminalListQuery) =>
+        query._tag === "ok" && query.terminals.length === length;
+      yield* Effect.promise(() => awaitValue(registry, runningTerminalsAtom, count(0)));
+      void openTerminal(registry, { ...first, cols: 80, rows: 24 });
+      yield* Effect.promise(() => awaitValue(registry, runningTerminalsAtom, count(1)));
+      // A project's terminal is not a thread row's.
+      yield* Effect.promise(() =>
+        openTerminal(registry, { ...newProjectRef(), cols: 80, rows: 24 }),
+      );
+      void openTerminal(registry, { ...second, cols: 80, rows: 24 });
+      const both = yield* Effect.promise(() =>
+        awaitValue(registry, runningTerminalsAtom, count(2)),
+      );
+      expect(both._tag === "ok" && both.terminals.map((terminal) => terminal.threadId)).toEqual([
+        first.threadId,
+        second.threadId,
+      ]);
+
+      registry.set(closeTerminal, first);
+      const left = yield* Effect.promise(() =>
+        awaitValue(registry, runningTerminalsAtom, count(1)),
+      );
+      expect(left._tag === "ok" && left.terminals[0]?.terminalId).toBe(second.terminalId);
     }),
   );
 

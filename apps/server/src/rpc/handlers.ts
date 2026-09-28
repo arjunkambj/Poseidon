@@ -174,6 +174,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
       "terminal.close": (payload) =>
         terminals.close(terminalOwnerOf(payload), payload.terminalId).pipe(Effect.as({})),
       "terminal.list": (payload) => terminals.list(terminalOwnerOf(payload)),
+      "terminal.listRunning": () => terminals.listRunning(),
       "terminal.subscribe": (payload) =>
         terminals.subscribe(terminalOwnerOf(payload), payload.terminalId),
       "terminal.adopt": ({ projectId, threadId }) => terminals.adopt(projectId, threadId),

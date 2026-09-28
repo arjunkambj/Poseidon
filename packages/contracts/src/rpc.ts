@@ -302,6 +302,7 @@ export const RPC_METHODS = {
   terminalResize: "terminal.resize",
   terminalClose: "terminal.close",
   terminalList: "terminal.list",
+  terminalListRunning: "terminal.listRunning",
   terminalSubscribe: "terminal.subscribe",
   terminalAdopt: "terminal.adopt",
 } as const;
@@ -701,6 +702,13 @@ const TerminalListRpc = Rpc.make(RPC_METHODS.terminalList, {
   error: PoseidonRpcError,
 });
 
+/** Every thread's terminals still running a shell, in one call: the sidebar rows' marks. */
+const TerminalListRunningRpc = Rpc.make(RPC_METHODS.terminalListRunning, {
+  payload: empty,
+  success: Schema.Array(TerminalSummary),
+  error: PoseidonRpcError,
+});
+
 /** A snapshot with the recent scrollback, then live output; see `TerminalStreamItem`. */
 const TerminalSubscribeRpc = Rpc.make(RPC_METHODS.terminalSubscribe, {
   payload: terminalOwned(terminalRef),
@@ -777,6 +785,7 @@ export const PoseidonRpcGroup = RpcGroup.make(
   TerminalResizeRpc,
   TerminalCloseRpc,
   TerminalListRpc,
+  TerminalListRunningRpc,
   TerminalSubscribeRpc,
   TerminalAdoptRpc,
 );

@@ -7,6 +7,10 @@
  *   `openTerminal` / `closeTerminal`. A failure is a value
  *   (`TerminalListQuery`), not the atom's error channel, so the drawer can say
  *   what went wrong and the next reconnect still has a stream to refetch on.
+ * - `runningTerminalsAtom` — `terminal.listRunning`: every thread's terminals
+ *   still running a shell, one listing for the whole sidebar rather than one
+ *   per thread row. Refetched like the owner lists, and after every open,
+ *   close and hand-over whatever the owner.
  * - `openTerminal` — `terminal.open`, a one-shot call (`./oneShot`) on the
  *   caller's registry that resolves with its own `Exit`.
  * - `writeTerminal`, `resizeTerminal`, `closeTerminal` — the other three
@@ -255,15 +259,14 @@ export const makeTerminalAtoms = (runtime: Atom.AtomRuntime<Connection | Connect
     );
   }).pipe(Stream.unwrap);
 
-  /** Keyed by `terminalOwnerKey`: a thread's bare id, or a project's key. */
-  const terminalListAtom = Atom.family((ownerKey: string) =>
+  /** A listing, taken again on every connected epoch, with a failure as a value. */
+  const listingAtom = (
+    listing: Effect.Effect<ReadonlyArray<TerminalSummary>, TerminalRpcError, Connection>,
+  ) =>
     runtime.atom(
       connectedEpochs.pipe(
         Stream.mapEffect(() =>
-          Effect.gen(function* () {
-            const client = yield* (yield* Connection).client;
-            return yield* client["terminal.list"](decodeTerminalOwnerKey(ownerKey));
-          }).pipe(
+          listing.pipe(
             Effect.map((terminals): TerminalListQuery => ({ _tag: "ok", terminals })),
             Effect.catch((error) =>
               Effect.succeed<TerminalListQuery>({ _tag: "error", message: error.message }),
@@ -271,8 +274,31 @@ export const makeTerminalAtoms = (runtime: Atom.AtomRuntime<Connection | Connect
           ),
         ),
       ),
+    );
+
+  /** Keyed by `terminalOwnerKey`: a thread's bare id, or a project's key. */
+  const terminalListAtom = Atom.family((ownerKey: string) =>
+    listingAtom(
+      Effect.gen(function* () {
+        const client = yield* (yield* Connection).client;
+        return yield* client["terminal.list"](decodeTerminalOwnerKey(ownerKey));
+      }),
     ),
   );
+
+  const runningTerminalsAtom = listingAtom(
+    Effect.gen(function* () {
+      const client = yield* (yield* Connection).client;
+      return yield* client["terminal.listRunning"]({});
+    }),
+  );
+
+  /** Rereads an owner's list and the running listing after a call that changed them. */
+  const refetch = (registry: AtomRegistry.AtomRegistry, ...owners: ReadonlyArray<TerminalOwner>) =>
+    Effect.sync(() => {
+      for (const owner of owners) registry.refresh(terminalListAtom(terminalOwnerKey(owner)));
+      registry.refresh(runningTerminalsAtom);
+    });
 
   /**
    * Starts the shell, or answers the one already running under this id, and
@@ -290,11 +316,7 @@ export const makeTerminalAtoms = (runtime: Atom.AtomRuntime<Connection | Connect
           ...args,
           ...(title === undefined ? {} : { title }),
         });
-      }).pipe(
-        Effect.ensuring(
-          Effect.sync(() => registry.refresh(terminalListAtom(terminalOwnerKey(args)))),
-        ),
-      ),
+      }).pipe(Effect.ensuring(refetch(registry, args))),
     );
 
   /** Kills the shell and forgets it; the list is refetched whatever the outcome. */
@@ -303,11 +325,7 @@ export const makeTerminalAtoms = (runtime: Atom.AtomRuntime<Connection | Connect
       Effect.gen(function* () {
         const client = yield* (yield* Connection).client;
         yield* client["terminal.close"](refOf(ref));
-      }).pipe(
-        Effect.ensuring(
-          Effect.sync(() => get.registry.refresh(terminalListAtom(terminalOwnerKey(ref)))),
-        ),
-      ),
+      }).pipe(Effect.ensuring(refetch(get.registry, ref))),
     { concurrent: true },
   );
 
@@ -327,10 +345,7 @@ export const makeTerminalAtoms = (runtime: Atom.AtomRuntime<Connection | Connect
         });
       }).pipe(
         Effect.ensuring(
-          Effect.sync(() => {
-            get.registry.refresh(terminalListAtom(terminalOwnerKey({ projectId: args.projectId })));
-            get.registry.refresh(terminalListAtom(terminalOwnerKey({ threadId: args.threadId })));
-          }),
+          refetch(get.registry, { projectId: args.projectId }, { threadId: args.threadId }),
         ),
       ),
   );
@@ -375,6 +390,7 @@ export const makeTerminalAtoms = (runtime: Atom.AtomRuntime<Connection | Connect
 
   return {
     terminalListAtom,
+    runningTerminalsAtom,
     openTerminal,
     writeTerminal,
     resizeTerminal,
