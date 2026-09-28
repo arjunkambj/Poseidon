@@ -44,7 +44,7 @@ import {
 } from "./Branches";
 import { make as checkpointStore } from "./CheckpointStore";
 import { commit, push } from "./Commits";
-import { createPullRequest, GhRunner } from "./GitHubCli";
+import { createPullRequest, GhRunner, pullRequestBlocker } from "./GitHubCli";
 import { GitError, isRepository, run } from "./process";
 import { runSetupScript, setupsStopped } from "./SetupScript";
 import {
@@ -502,6 +502,13 @@ export const layer = Layer.effect(
             body: options.body,
           });
         }).pipe(Effect.mapError(asRpcError)),
+
+      pullRequestReadiness: (scope) =>
+        Effect.gen(function* () {
+          const root = yield* workspaceRoot(scope);
+          // No folder, no repository: the header offers no git action at all.
+          return { reason: root === null ? null : yield* pullRequestBlocker(gh, root) };
+        }).pipe(Effect.mapError(toRpcError)),
 
       createWorktree: (projectId, options) =>
         Effect.gen(function* () {

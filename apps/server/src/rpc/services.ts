@@ -32,6 +32,7 @@ import { FsBrowseError, PoseidonRpcError } from "@poseidon/contracts/rpc";
 import type {
   GitBranchList,
   GitCommitResult,
+  GitPullRequestReadiness,
   GitPullRequestResult,
   GitPushResult,
   GitWorktreeInfo,
@@ -203,6 +204,10 @@ export class GitService extends Context.Service<
       scope: WorkspaceScope,
       options: { readonly title: string; readonly body: string; readonly base?: string },
     ) => Effect.Effect<GitPullRequestResult, PoseidonRpcError>;
+    /** Why `gh` cannot open a pull request from the workspace, `null` when it can. */
+    readonly pullRequestReadiness: (
+      scope: WorkspaceScope,
+    ) => Effect.Effect<GitPullRequestReadiness, PoseidonRpcError>;
     /**
      * Cuts a worktree for a new thread under the Poseidon home, on a branch
      * named from the settings' prefix and `name`, from `baseBranch` or the
@@ -249,6 +254,7 @@ export class GitService extends Context.Service<
       commit: () => Effect.fail(gitUnavailable),
       push: () => Effect.fail(gitUnavailable),
       createPullRequest: () => Effect.fail(gitUnavailable),
+      pullRequestReadiness: () => Effect.fail(gitUnavailable),
       createWorktree: () => Effect.fail(gitUnavailable),
       listWorktrees: () => Effect.fail(gitUnavailable),
       removeWorktree: () => Effect.fail(gitUnavailable),

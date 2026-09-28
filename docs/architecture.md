@@ -1875,58 +1875,59 @@ except `fs.browse`, which has its own error because the picker offers a
 different next step for each reason. `PROTOCOL_VERSION` is 3; a mismatch puts
 the client in the terminal `incompatible` state.
 
-| Method                        | Kind   | What it does                                                                        |
-| ----------------------------- | ------ | ----------------------------------------------------------------------------------- |
-| `server.hello`                | call   | Protocol version and `serverInstanceId` — a new id means cached snapshots are stale |
-| `orchestration.dispatch`      | call   | Takes the whole `Command` union, returns a `CommandReceipt`                         |
-| `projects.list`               | call   | Project rows for the sidebar                                                        |
-| `threads.list`                | call   | Thread summaries, optionally per project, optionally with archived                  |
-| `threads.subscribe`           | stream | One thread: snapshot or catch-up from `afterSequence`, then live                    |
-| `threads.listSubscribe`       | stream | The thread list, same shape                                                         |
-| `connectors.list`             | call   | Configured connectors with their cached probes; `refresh` re-probes                 |
-| `connectors.models`           | call   | The model picker's options for one instance                                         |
-| `connectors.describe`         | call   | Every connector the build ships: metadata and config form, configured or not        |
-| `files.search`                | call   | The composer's `#` file search; `threadId` searches the thread's root               |
-| `files.read`                  | call   | A window of one file, with a `truncated` flag                                       |
-| `files.stat`                  | call   | Which of up to 100 paths exist inside the root; the others are left out, not errors |
-| `fs.browse`                   | call   | Subfolders of one directory on the server's machine, for the folder picker          |
-| `attachments.stage`           | call   | Uploads one composer image; returns a reference, never echoes bytes                 |
-| `attachments.read`            | call   | Reads a staged image back for a thumbnail                                           |
-| `git.status`                  | call   | Branch, ahead/behind and changed paths; `threadId` reads the thread's root          |
-| `git.diff`                    | call   | Worktree against HEAD or a `mergeBase`, or between two refs; `threadId` as above    |
-| `git.branches`                | call   | Local and remote branches, the current and default branch, the remotes              |
-| `git.branch.create`           | call   | Cuts an untracked branch, optionally switching to it; answers the new list          |
-| `git.checkout`                | call   | Switches branch; `conflict` on a dirty tracked tree or a running turn in that root  |
-| `git.commit`                  | call   | Commits all changes or chosen paths as the user; `conflict` on nothing staged       |
-| `git.push`                    | call   | Pushes the current branch, `-u` to its remote on the first push                     |
-| `git.pullRequest.create`      | call   | Opens (or finds) the branch's pull request with `gh`; `unavailable` without gh      |
-| `git.worktree.create`         | call   | Cuts a new thread's worktree and branch under the Poseidon home                     |
-| `git.worktree.list`           | call   | The repository's worktrees, the project's own checkout first                        |
-| `git.worktree.remove`         | call   | Removes one, keeping its branch; `conflict` on unsaved work unless `force`          |
-| `git.worktree.setup`          | stream | Runs the project's setup script (from settings) in a worktree, streaming its output |
-| `checkpoints.list`            | call   | Checkpoints that still exist as refs, read in the thread's root                     |
-| `browser.subscribe`           | stream | The browser pane's state, and frames when the browser is ours                       |
-| `browser.humanInput`          | call   | A human gesture into the browser the agent is driving                               |
-| `browser.discoverServers`     | call   | The dev servers running under the thread's project, for the address bar             |
-| `settings.get`                | call   | The settings document                                                               |
-| `settings.update`             | call   | Applies a patch, returns the new document                                           |
-| `settings.subscribe`          | stream | The settings document as it changes                                                 |
-| `connectors.skills.list`      | call   | Skills one instance loads, user scope plus an optional project                      |
-| `connectors.skills.available` | call   | Shared-folder skills that instance does not load yet; empty when it offers none     |
-| `connectors.skills.link`      | call   | Links one of those into the instance's user skills                                  |
-| `connectors.plugins.list`     | call   | Plugins one instance has installed, user scope plus an optional project             |
-| `connectors.mcp.list`         | call   | MCP servers in one instance's harness config, user and project scope                |
-| `connectors.mcp.add`          | call   | Adds or replaces one entry we own; refuses one we do not                            |
-| `connectors.mcp.remove`       | call   | Removes one entry we own                                                            |
-| `keybindings.get`             | call   | The user's keybinding overrides, layered on `DEFAULT_KEYBINDINGS` by the renderer   |
-| `keybindings.update`          | call   | Replaces the overrides; a `-command` row unbinds that command                       |
-| `terminal.open`               | call   | Starts a shell under a client-minted id, or answers the one already running         |
-| `terminal.write`              | call   | Input for the shell: typed keys, a paste                                            |
-| `terminal.resize`             | call   | The terminal's grid in character cells                                              |
-| `terminal.close`              | call   | Kills the shell and forgets the terminal, output and all                            |
-| `terminal.list`               | call   | A thread's terminals, exited ones included, oldest first                            |
-| `terminal.listRunning`        | call   | Every thread's terminals still running a shell, for the sidebar rows' marks         |
-| `terminal.subscribe`          | stream | One terminal: a snapshot of its scrollback, then live output, then its exit         |
+| Method                        | Kind   | What it does                                                                         |
+| ----------------------------- | ------ | ------------------------------------------------------------------------------------ |
+| `server.hello`                | call   | Protocol version and `serverInstanceId` — a new id means cached snapshots are stale  |
+| `orchestration.dispatch`      | call   | Takes the whole `Command` union, returns a `CommandReceipt`                          |
+| `projects.list`               | call   | Project rows for the sidebar                                                         |
+| `threads.list`                | call   | Thread summaries, optionally per project, optionally with archived                   |
+| `threads.subscribe`           | stream | One thread: snapshot or catch-up from `afterSequence`, then live                     |
+| `threads.listSubscribe`       | stream | The thread list, same shape                                                          |
+| `connectors.list`             | call   | Configured connectors with their cached probes; `refresh` re-probes                  |
+| `connectors.models`           | call   | The model picker's options for one instance                                          |
+| `connectors.describe`         | call   | Every connector the build ships: metadata and config form, configured or not         |
+| `files.search`                | call   | The composer's `#` file search; `threadId` searches the thread's root                |
+| `files.read`                  | call   | A window of one file, with a `truncated` flag                                        |
+| `files.stat`                  | call   | Which of up to 100 paths exist inside the root; the others are left out, not errors  |
+| `fs.browse`                   | call   | Subfolders of one directory on the server's machine, for the folder picker           |
+| `attachments.stage`           | call   | Uploads one composer image; returns a reference, never echoes bytes                  |
+| `attachments.read`            | call   | Reads a staged image back for a thumbnail                                            |
+| `git.status`                  | call   | Branch, ahead/behind and changed paths; `threadId` reads the thread's root           |
+| `git.diff`                    | call   | Worktree against HEAD or a `mergeBase`, or between two refs; `threadId` as above     |
+| `git.branches`                | call   | Local and remote branches, the current and default branch, the remotes               |
+| `git.branch.create`           | call   | Cuts an untracked branch, optionally switching to it; answers the new list           |
+| `git.checkout`                | call   | Switches branch; `conflict` on a dirty tracked tree or a running turn in that root   |
+| `git.commit`                  | call   | Commits all changes or chosen paths as the user; `conflict` on nothing staged        |
+| `git.push`                    | call   | Pushes the current branch, `-u` to its remote on the first push                      |
+| `git.pullRequest.create`      | call   | Opens (or finds) the branch's pull request with `gh`; `unavailable` without gh       |
+| `git.pullRequest.readiness`   | call   | Why `gh` cannot open a pull request (missing, signed out); `null` reason when it can |
+| `git.worktree.create`         | call   | Cuts a new thread's worktree and branch under the Poseidon home                      |
+| `git.worktree.list`           | call   | The repository's worktrees, the project's own checkout first                         |
+| `git.worktree.remove`         | call   | Removes one, keeping its branch; `conflict` on unsaved work unless `force`           |
+| `git.worktree.setup`          | stream | Runs the project's setup script (from settings) in a worktree, streaming its output  |
+| `checkpoints.list`            | call   | Checkpoints that still exist as refs, read in the thread's root                      |
+| `browser.subscribe`           | stream | The browser pane's state, and frames when the browser is ours                        |
+| `browser.humanInput`          | call   | A human gesture into the browser the agent is driving                                |
+| `browser.discoverServers`     | call   | The dev servers running under the thread's project, for the address bar              |
+| `settings.get`                | call   | The settings document                                                                |
+| `settings.update`             | call   | Applies a patch, returns the new document                                            |
+| `settings.subscribe`          | stream | The settings document as it changes                                                  |
+| `connectors.skills.list`      | call   | Skills one instance loads, user scope plus an optional project                       |
+| `connectors.skills.available` | call   | Shared-folder skills that instance does not load yet; empty when it offers none      |
+| `connectors.skills.link`      | call   | Links one of those into the instance's user skills                                   |
+| `connectors.plugins.list`     | call   | Plugins one instance has installed, user scope plus an optional project              |
+| `connectors.mcp.list`         | call   | MCP servers in one instance's harness config, user and project scope                 |
+| `connectors.mcp.add`          | call   | Adds or replaces one entry we own; refuses one we do not                             |
+| `connectors.mcp.remove`       | call   | Removes one entry we own                                                             |
+| `keybindings.get`             | call   | The user's keybinding overrides, layered on `DEFAULT_KEYBINDINGS` by the renderer    |
+| `keybindings.update`          | call   | Replaces the overrides; a `-command` row unbinds that command                        |
+| `terminal.open`               | call   | Starts a shell under a client-minted id, or answers the one already running          |
+| `terminal.write`              | call   | Input for the shell: typed keys, a paste                                             |
+| `terminal.resize`             | call   | The terminal's grid in character cells                                               |
+| `terminal.close`              | call   | Kills the shell and forgets the terminal, output and all                             |
+| `terminal.list`               | call   | A thread's terminals, exited ones included, oldest first                             |
+| `terminal.listRunning`        | call   | Every thread's terminals still running a shell, for the sidebar rows' marks          |
+| `terminal.subscribe`          | stream | One terminal: a snapshot of its scrollback, then live output, then its exit          |
 
 Reads that must stay fresh are streams rather than polls, and every stream can
 end in `resnapshot-required`.

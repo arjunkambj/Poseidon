@@ -162,6 +162,19 @@ describe("availableActions", () => {
     expect(onMain["commit-push"]).toBeNull();
     expect(onMain["commit-push-pr"]).toMatch(/default branch, main/);
   });
+
+  it("does not open a pull request when gh cannot, and says why", () => {
+    const noGh = availableActions({
+      status: CHANGED,
+      branches: BRANCHES,
+      turnRunning: false,
+      pullRequestBlocker:
+        "gh is not authenticated: run gh auth login in a terminal, then try again.",
+    });
+    expect(noGh.commit).toBeNull();
+    expect(noGh["commit-push"]).toBeNull();
+    expect(noGh["commit-push-pr"]).toMatch(/gh auth login/);
+  });
 });
 
 describe("gitStartOf", () => {

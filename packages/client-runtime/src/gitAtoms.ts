@@ -9,6 +9,9 @@
  *   turn checkpoint"; supplying both diffs checkpoint to checkpoint, and
  *   `mergeBase` diffs the working tree against where the branch forked.
  * - `gitBranchesAtom(scope)` — `git.branches`, the branch picker's list.
+ * - `gitPullRequestReadinessAtom(scope)` — `git.pullRequest.readiness`, why
+ *   `gh` cannot open a pull request there, which the header's git button reads
+ *   before it offers Create PR.
  * - `checkpointsAtom(key)` — `checkpoints.list`, the thread's checkpoints that
  *   still exist in the repository, which the timeline intersects with its own
  *   fold before it offers a restore.
@@ -239,6 +242,13 @@ export const makeGitAtoms = (runtime: Atom.AtomRuntime<Connection | ConnectionSt
     return gitRead(scope.projectId, (client) => client["git.branches"](scopePayload(scope)));
   });
 
+  const gitPullRequestReadinessByKeyAtom = Atom.family((key: string) => {
+    const scope = decodeGitScope(key);
+    return gitRead(scope.projectId, (client) =>
+      client["git.pullRequest.readiness"](scopePayload(scope)),
+    );
+  });
+
   const checkpointsByKeyAtom = Atom.family((key: string) => {
     const { projectId, threadId } = decodeCheckpointsKey(key);
     return gitRead<ReadonlyArray<CheckpointSummary>>(projectId, (client) =>
@@ -250,6 +260,8 @@ export const makeGitAtoms = (runtime: Atom.AtomRuntime<Connection | ConnectionSt
   const gitStatusAtom = (scope: GitScope) => gitStatusByKeyAtom(encodeGitScope(scope));
   const gitDiffAtom = (range: GitDiffRange) => gitDiffByKeyAtom(encodeDiffRange(range));
   const gitBranchesAtom = (scope: GitScope) => gitBranchesByKeyAtom(encodeGitScope(scope));
+  const gitPullRequestReadinessAtom = (scope: GitScope) =>
+    gitPullRequestReadinessByKeyAtom(encodeGitScope(scope));
   const checkpointsAtom = (key: CheckpointsKey) => checkpointsByKeyAtom(encodeCheckpointsKey(key));
 
   /**
@@ -298,6 +310,7 @@ export const makeGitAtoms = (runtime: Atom.AtomRuntime<Connection | ConnectionSt
     gitStatusAtom,
     gitDiffAtom,
     gitBranchesAtom,
+    gitPullRequestReadinessAtom,
     checkpointsAtom,
     createBranch,
     checkout,

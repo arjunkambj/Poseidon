@@ -42,6 +42,7 @@ const step = (
     readonly branches?: GitBranchList;
     readonly turnRunning?: boolean;
     readonly pullRequestUrl?: string | null;
+    readonly pullRequestBlocker?: string | null;
   } = {},
 ) =>
   nextGitStep({
@@ -49,7 +50,10 @@ const step = (
     branches: options.branches ?? BRANCHES,
     turnRunning: options.turnRunning ?? false,
     pullRequestUrl: options.pullRequestUrl ?? null,
+    pullRequestBlocker: options.pullRequestBlocker ?? null,
   });
+
+const NO_GH = "gh not available: install the GitHub CLI and run gh auth login";
 
 describe("nextGitStep", () => {
   it("commits a dirty tree, with the changed-file count as the badge", () => {
@@ -102,6 +106,16 @@ describe("nextGitStep", () => {
       badge: null,
       reason: null,
     });
+  });
+
+  it("disables Create PR with gh's reason when gh cannot open one", () => {
+    expect(step(PUSHED, { pullRequestBlocker: NO_GH })).toMatchObject({
+      step: "create-pr",
+      label: "Create PR",
+      reason: NO_GH,
+    });
+    // A known pull request needs no gh to view.
+    expect(step(PUSHED, { pullRequestUrl: PR_URL, pullRequestBlocker: NO_GH }).reason).toBeNull();
   });
 
   it("views the known pull request, even while a turn runs", () => {

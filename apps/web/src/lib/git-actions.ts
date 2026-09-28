@@ -98,6 +98,11 @@ export const availableActions = (input: {
   readonly status: GitStatus;
   readonly branches: GitBranchList;
   readonly turnRunning: boolean;
+  /**
+   * Why `gh` cannot open a pull request (`git.pullRequest.readiness`); absent
+   * or `null` while that is not known, and the server's refusal says it then.
+   */
+  readonly pullRequestBlocker?: string | null;
 }): GitActionAvailability => {
   const { status, branches } = input;
   const everywhere =
@@ -135,7 +140,7 @@ export const availableActions = (input: {
       pushing("commit-push-pr") ??
       (status.branch === branches.defaultBranch
         ? `This is the default branch, ${status.branch} — a pull request needs a branch of its own.`
-        : null),
+        : (input.pullRequestBlocker ?? null)),
   };
 };
 

@@ -6,9 +6,10 @@
  * with something to do.
  *
  * Every disabled reason comes from `availableActions`, so the button's
- * tooltip says exactly what the commit dialog's buttons say. Whether `gh` is
- * installed and signed in is not known here: a pull request that `gh` cannot
- * open surfaces as the server's error toast.
+ * tooltip says exactly what the commit dialog's buttons say — including why
+ * `gh` cannot open a pull request, when the server has said so. Until it has,
+ * Create PR is offered and a `gh` that cannot open one surfaces as the
+ * server's error toast.
  */
 
 import type { GitBranchList } from "@poseidon/contracts/git";
@@ -34,6 +35,7 @@ export const nextGitStep = (input: {
   readonly branches: GitBranchList;
   readonly turnRunning: boolean;
   readonly pullRequestUrl: string | null;
+  readonly pullRequestBlocker?: string | null;
 }): GitNextStepView => {
   const { status, branches } = input;
   const availability = availableActions(input);

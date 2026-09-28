@@ -5,7 +5,8 @@
  * behind `GhRunner`: the real layer spawns it, a test hands in a runner that
  * answers with gh's own wording. `createPullRequest` is the whole flow — is
  * gh there, is it signed in, open the pull request, or find the one that is
- * already open — and classifies each way it can end.
+ * already open — and classifies each way it can end; `pullRequestBlocker` is
+ * its first half alone, for the header to ask before it offers Create PR.
  *
  * Every call is argv form, never a shell, so a title or body is only ever an
  * argument.
@@ -116,6 +117,25 @@ const runGh = (args: ReadonlyArray<string>, cwd: string): Effect.Effect<GhOutput
 
 const unavailable = (message: string) => new PoseidonRpcError({ code: "unavailable", message });
 
+const NOT_AUTHENTICATED =
+  "gh is not authenticated: run gh auth login in a terminal, then try again.";
+
+/**
+ * Why gh cannot open a pull request from `cwd`, or `null` when it is
+ * installed and signed in. The header asks before it offers Create PR, and
+ * `createPullRequest` asks again, since gh can be signed out in between.
+ */
+export const pullRequestBlocker = (
+  gh: GhRunner["Service"],
+  cwd: string,
+): Effect.Effect<string | null> =>
+  Effect.gen(function* () {
+    const version = yield* gh.run(["--version"], cwd);
+    if (version.exitCode !== 0) return NOT_AVAILABLE;
+    const auth = yield* gh.run(["auth", "status"], cwd);
+    return auth.exitCode === 0 ? null : NOT_AUTHENTICATED;
+  }).pipe(Effect.catchTag("GhMissing", () => Effect.succeed(NOT_AVAILABLE)));
+
 /** The last pull-request URL in some gh output, e.g. `https://github.com/o/r/pull/12`. */
 const pullRequestUrl = (text: string): string | null => {
   const matches = text.match(/https?:\/\/\S+\/pull\/\d+/g);
@@ -142,15 +162,9 @@ export const createPullRequest = (
   },
 ): Effect.Effect<GitPullRequestResult, PoseidonRpcError> =>
   Effect.gen(function* () {
-    const version = yield* gh.run(["--version"], cwd);
-    if (version.exitCode !== 0) {
-      return yield* Effect.fail(unavailable(NOT_AVAILABLE));
-    }
-    const auth = yield* gh.run(["auth", "status"], cwd);
-    if (auth.exitCode !== 0) {
-      return yield* Effect.fail(
-        unavailable("gh is not authenticated: run gh auth login in a terminal, then try again."),
-      );
+    const blocker = yield* pullRequestBlocker(gh, cwd);
+    if (blocker !== null) {
+      return yield* Effect.fail(unavailable(blocker));
     }
     const created = yield* gh.run(
       [

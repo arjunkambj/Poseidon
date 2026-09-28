@@ -101,6 +101,15 @@ export const GitPullRequestResult = Schema.Struct({
 });
 export type GitPullRequestResult = typeof GitPullRequestResult.Type;
 
+/**
+ * Whether a pull request can be opened from here: `reason` says why not — the
+ * GitHub CLI missing or not signed in — and is `null` when it can.
+ */
+export const GitPullRequestReadiness = Schema.Struct({
+  reason: Schema.NullOr(NonEmptyString),
+});
+export type GitPullRequestReadiness = typeof GitPullRequestReadiness.Type;
+
 // ── Worktrees ──────────────────────────────────────────────────
 
 /**
@@ -144,6 +153,7 @@ export const GIT_RPC_METHODS = {
   gitCommit: "git.commit",
   gitPush: "git.push",
   gitPullRequestCreate: "git.pullRequest.create",
+  gitPullRequestReadiness: "git.pullRequest.readiness",
   gitWorktreeCreate: "git.worktree.create",
   gitWorktreeList: "git.worktree.list",
   gitWorktreeRemove: "git.worktree.remove",
@@ -232,6 +242,17 @@ export const GitPullRequestCreateRpc = Rpc.make(GIT_RPC_METHODS.gitPullRequestCr
     base: Schema.optional(NonEmptyString),
   }),
   success: GitPullRequestResult,
+  error: PoseidonRpcError,
+});
+
+/**
+ * Asks `gh` whether it is installed and signed in, so the header can offer
+ * Create PR only when it can run. Reads nothing of the repository; the scope
+ * says where `gh` runs.
+ */
+export const GitPullRequestReadinessRpc = Rpc.make(GIT_RPC_METHODS.gitPullRequestReadiness, {
+  payload: Schema.Struct({ projectId: ProjectId, threadId: Schema.optional(ThreadId) }),
+  success: GitPullRequestReadiness,
   error: PoseidonRpcError,
 });
 

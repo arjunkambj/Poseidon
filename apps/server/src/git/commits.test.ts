@@ -715,3 +715,28 @@ describe("git.pullRequest.create", () => {
     ),
   );
 });
+
+describe("git.pullRequest.readiness", () => {
+  it.live("says why gh cannot open a pull request, and nothing once it can", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        const readiness = (gh: GhRunner["Service"]) =>
+          Effect.gen(function* () {
+            const { projectId, git: service } = yield* stack(root, gh);
+            return (yield* service.pullRequestReadiness({ projectId })).reason;
+          });
+
+        expect(yield* readiness(fakeGh(() => "missing").runner)).toContain("gh not available");
+        const signedOut = fakeGh((args) =>
+          args[0] === "--version" ? GH_VERSION : GH_NOT_AUTHENTICATED,
+        );
+        expect(yield* readiness(signedOut.runner)).toContain("gh auth login");
+        const signedIn = signedInGh(GH_NOT_AUTHENTICATED);
+        expect(yield* readiness(signedIn.runner)).toBeNull();
+        // Asking opens nothing: only the two probes ran.
+        expect(signedIn.calls).toEqual([["--version"], ["auth", "status"]]);
+      }),
+    ),
+  );
+});

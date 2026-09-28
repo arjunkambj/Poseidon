@@ -1909,8 +1909,11 @@ argv, opens the pull request from the current branch. The base is the
 payload's, else the branch the thread's worktree was cut from, else the
 default branch, with a remote prefix (`origin/main`) dropped. When a pull
 request already exists its URL comes from gh's refusal, or from `gh pr view`,
-with `created: false`. Tests swap in a fake runner that answers with gh's own
-wording; nothing talks to GitHub.
+with `created: false`. `git.pullRequest.readiness` runs only the first two
+checks (`pullRequestBlocker`) and answers their reason, or `reason: null` when
+gh is installed and signed in, so the header can say why before a click. Tests
+swap in a fake runner that answers with gh's own wording; nothing talks to
+GitHub.
 
 The thread header's git actions control
 (`apps/web/src/components/git/git-actions-control.tsx`) is the client of these
@@ -1923,9 +1926,12 @@ changed, with the changed-file count as a badge; Push while the branch has no
 upstream yet or is ahead of it, with `↑N` commits ahead as the badge; View PR
 once a pull request for the branch is remembered (below), which opens it; and
 Create PR for a pushed branch that is not the default one and has a remote.
-With none of these it is Commit, disabled as "no changes". Whether `gh` is
-installed and signed in is not probed for the button: a Create PR that `gh`
-cannot open fails with the server's message in its toast. Beside it a chevron
+With none of these it is Commit, disabled as "no changes". Create PR is
+disabled with gh's reason when `git.pullRequest.readiness` says gh is missing
+or signed out; that read is refetched with the others, so signing in from a
+terminal enables it on return to the window. Until it answers (or from a
+server without it) Create PR is offered, and a `gh` that cannot open one fails
+with the server's message in its toast. Beside it a chevron
 opens a menu with Commit, Commit & push, and Commit & create PR, and View pull
 request when a link is known. An action is a stack of steps, planned from the
 root's status and branch list (`planGitAction` in
@@ -1937,7 +1943,8 @@ why — in the button's tooltip, or as a second line under its menu item: no
 changes and nothing to push, a turn running (every action is disabled while
 this thread's turn runs, or while a git run is going; View PR, which runs
 nothing, stays), not a repository, a detached HEAD, no remote, the branch
-behind its upstream, or a pull request from the default branch. An enabled
+behind its upstream, a pull request from the default branch, or one `gh`
+cannot open. An enabled
 button's tooltip says what it does instead: `Push 2 commits to origin/<branch>`,
 `Create a pull request for <branch>`. Files also change outside a turn, in an
 editor or a terminal, so the control rereads every git read of the project

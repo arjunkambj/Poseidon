@@ -7,7 +7,10 @@
  * pushed feature branch, and View PR once a pull request for the branch is
  * remembered (`usePullRequestLink`), which opens it. A badge shows the
  * changed-file count or the commits ahead. The menu offers Commit, Commit &
- * push and Commit & create PR, each with its reason when it cannot run.
+ * push and Commit & create PR, each with its reason when it cannot run —
+ * for a pull request, also when `gh` is missing or signed out, as
+ * `git.pullRequest.readiness` answers (refetched with the rest of the git
+ * reads, so signing in from a terminal enables it on return).
  *
  * With a thread (`snapshot`) it works in the thread's workspace — its
  * worktree, when it has one. Without one it works in the project's own
@@ -53,7 +56,7 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
 
 import type { GitQuery } from "@poseidon/client-runtime/gitAtoms";
-import type { GitBranchList } from "@poseidon/contracts/git";
+import type { GitBranchList, GitPullRequestReadiness } from "@poseidon/contracts/git";
 import type { ProjectId } from "@poseidon/contracts/ids";
 import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
 import type { GitStatus } from "@poseidon/contracts/rpc";
@@ -126,13 +129,20 @@ export function GitActionsControl({
   /** The thread whose workspace this acts on; absent, the project's own folder. */
   snapshot?: ThreadDetailSnapshot | undefined;
 }) {
-  const { gitStatusAtom, gitBranchesAtom, refreshProject } = useGitAtoms();
+  const { gitStatusAtom, gitBranchesAtom, gitPullRequestReadinessAtom, refreshProject } =
+    useGitAtoms();
   const registry = React.useContext(RegistryContext);
   const connected = useConnectionState().status === "connected";
   const scope = snapshot === undefined ? { projectId } : { projectId, threadId: snapshot.threadId };
   const statusAtom = gitStatusAtom(scope);
   const status = readOf<GitStatus>(useAtomValue(statusAtom), connected);
   const branches = readOf<GitBranchList>(useAtomValue(gitBranchesAtom(scope)), connected);
+  const readiness = readOf<GitPullRequestReadiness>(
+    useAtomValue(gitPullRequestReadinessAtom(scope)),
+    connected,
+  );
+  // Not known yet (or an older server): offered, and the server says why not.
+  const pullRequestBlocker = readiness._tag === "ok" ? readiness.value.reason : null;
   const refreshStatus = useAtomRefresh(statusAtom);
   const { run, pullRequestUrl } = useGitActions(
     scope,
@@ -191,7 +201,8 @@ export function GitActionsControl({
           : turnRunning
             ? TURN_RUNNING_REASON
             : null;
-  const availability = ready === null ? null : availableActions({ ...ready, turnRunning });
+  const availability =
+    ready === null ? null : availableActions({ ...ready, turnRunning, pullRequestBlocker });
   const reasonFor = (action: GitAction): string | null => blocked ?? availability?.[action] ?? null;
 
   /** Plans from the status as it is now, not as it was when the dialog opened. */
@@ -244,7 +255,7 @@ export function GitActionsControl({
   const next: GitNextStepView =
     ready === null
       ? { step: "commit", action: "commit", label: "Commit", badge: null, reason: blocked }
-      : nextGitStep({ ...ready, turnRunning, pullRequestUrl });
+      : nextGitStep({ ...ready, turnRunning, pullRequestUrl, pullRequestBlocker });
 
   return (
     <div className="inline-flex shrink-0 items-center gap-0.5">
