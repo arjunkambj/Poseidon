@@ -462,6 +462,12 @@ click uses:
 A picker the connector locks until restart does not open, and a locked effort
 does not step. The plan button's tooltip and the attach button's show their
 current keys.
+
+The row itself (`ThreadSettingsControls` in `header-controls.tsx`) holds, in
+order, the runtime-mode picker, the plan toggle, the Ultracode toggle (§6)
+where it is offered, the model and effort pickers and the context meter. On an
+open thread each pick is a `thread.settings.update`; on the start screen it
+goes into the local settings that `thread.create` carries.
 `use-send-draft.ts` uploads any attachments first (a browser `File` has no
 filesystem path, so the server must hold the bytes before the command can name
 them) and latches so one Enter cannot start two real turns. While a turn is in
@@ -1566,6 +1572,31 @@ reaches the session as `setPermissionMode`, and "Implement the approved plan
 at `<path>`" names the CLI's own plan file, which the implementation turn can
 read. Task and its subagents are refused in a plan turn by the same rung that
 refuses writes.
+
+### Ultracode
+
+Ultracode is Claude Code's `xhigh` effort plus standing multi-agent workflow
+orchestration (docs/claude-code-connector.md, "Ultracode"). The composer's
+Ultracode toggle sits beside the plan toggle
+(`apps/web/src/components/ultracode-toggle.tsx`): an icon while off, whose
+tooltip notes that it uses many more tokens, and "Ultracode" while on. It is
+offered only where the instance's capabilities carry `ultracode` and the model
+lists an `xhigh` rung (`ultracodeOffered` in `apps/web/src/lib/ultracode.ts`),
+so never for Codex or Command Code; while it is on it stays drawn anywhere, so
+it can be switched off. It is off by default, per thread, and has no key and no
+Settings default.
+
+A click sends `{ ultracode: true, effort: "xhigh" }` or `{ ultracode: false }`
+as a `thread.settings.update`, and the server's rules keep the pair consistent
+(docs/architecture.md, `ThreadSettings.ultracode`), so the effort picker reads
+`xhigh` once it is on. The row passes every other pick through
+`settleUltracode`, which adds `ultracode: false` to an effort pick and to a
+model it is not offered on — the same rules, so the start screen's local
+settings, which reach the server only with `thread.create`, read the same.
+
+Without the toggle, the word "ultracode" in a prompt opts that one turn into
+Claude Code's Workflow tool: the CLI's own keyword trigger, which Poseidon
+passes through as plain text.
 
 ### Questions
 

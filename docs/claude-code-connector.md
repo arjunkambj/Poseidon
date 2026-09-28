@@ -796,6 +796,11 @@ What the connector does:
   `workflow_name`) are kept as `event.unmapped` until a recording shows how
   they map ([Subagents](#subagents)).
 
+The switch the user sees is the composer's Ultracode toggle, beside the plan
+toggle, offered where these capabilities carry `ultracode` and the model lists
+`xhigh`; picking a model without `xhigh` while it is on also switches it off
+([how-it-works.md](how-it-works.md), "Ultracode").
+
 ## Writing one piece of text
 
 `generateText` (`generateText.ts`) writes a commit message, a pull request's
@@ -1099,7 +1104,9 @@ the CLI's bundle with unit tests on the options and calls only:
 - Whether the headless CLI holds its `result` until a workflow finishes, or
   closes the Poseidon turn early — the Workflow tool returns at once with a
   task id and reports back in a later task notification.
-- A model switch while ultracode is on, to a model without xhigh.
+- A model switch while ultracode is on, to a model without xhigh (the composer
+  sends `ultracode: false` with such a pick; the CLI's own behaviour is
+  unknown).
 
 ### Owner commands
 
