@@ -2,8 +2,9 @@
  * A small terminal mark beside a thread row's title while any of the
  * thread's own terminals still runs a shell, with the count when more than
  * one does. The tooltip names them by title — a terminal summary carries no
- * foreground command. The listing comes from `./use-running-terminals`, the
- * same one the thread's drawer and the project badge read.
+ * foreground command. The row picks them out of the one listing of every
+ * thread's running terminals (`useThreadRunningTerminals` in
+ * `./use-running-terminals`), so the sidebar does not list thread by thread.
  */
 
 import type { TerminalSummary } from "@poseidon/contracts/terminal";

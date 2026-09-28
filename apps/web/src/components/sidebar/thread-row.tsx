@@ -38,7 +38,7 @@ import { selectGestureOf, type SelectGesture } from "@/components/sidebar/thread
 import { threadStatusMark } from "@/components/sidebar/thread-status";
 import { recedes, workingLabel } from "@/components/sidebar/working-time";
 import { ThreadTerminalsMark } from "@/components/terminal/thread-terminals-mark";
-import { useRunningTerminals } from "@/components/terminal/use-running-terminals";
+import { useThreadRunningTerminals } from "@/components/terminal/use-running-terminals";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { GitFork } from "@honeyicons/react";
@@ -101,7 +101,7 @@ export function ThreadRow({
   const working = receding ? workingLabel(thread, now) : null;
   // "1h 4m" is wider than "3h", so the title keeps further from the corner.
   const clearTime = working === null ? "mr-6" : "mr-12";
-  const terminals = useRunningTerminals({ threadId });
+  const terminals = useThreadRunningTerminals(threadId);
   // The last inline piece keeps clear of the corner: the fork mark, else the
   // terminal mark, else the title.
   const lastPiece =

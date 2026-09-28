@@ -119,6 +119,7 @@ export function TerminalDrawer({
   const connected = useConnectionState().status === "connected";
   const list = useAtomValue(atoms.terminalListAtom(ownerKey));
   const refreshList = useAtomRefresh(atoms.terminalListAtom(ownerKey));
+  const refreshRunning = useAtomRefresh(atoms.runningTerminalsAtom);
   const openTerminal = useOpenTerminal();
   const [state, dispatch] = useDrawerState(ownerKey);
   const drawerRef = React.useRef<HTMLDivElement>(null);
@@ -186,14 +187,15 @@ export function TerminalDrawer({
     gridRef.current = size;
     setMeasured(true);
   }, []);
-  // The listing is reread too, so a count of running shells (the project's
-  // badge) drops with the exit.
+  // The listings are reread too, so a count of running shells (the project's
+  // badge, a thread row's mark) drops with the exit.
   const onExited = React.useCallback(
     (terminalId: TerminalId, exitCode: number | null) => {
       dispatch({ type: "exited", terminalId, exitCode });
       refreshList();
+      refreshRunning();
     },
-    [dispatch, refreshList],
+    [dispatch, refreshList, refreshRunning],
   );
   const onGone = React.useCallback(
     (terminalId: TerminalId) => dispatch({ type: "closed", terminalId }),

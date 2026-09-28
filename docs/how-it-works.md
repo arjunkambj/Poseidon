@@ -2519,9 +2519,13 @@ A thread's own running shells show on its sidebar row instead:
 `ThreadTerminalsMark` (`thread-terminals-mark.tsx`) puts a small terminal
 icon beside the title, with the count when more than one runs, and a tooltip
 naming them by title ("Running: Terminal 1, Terminal 2") — a terminal summary
-carries no foreground command. Both read their owner's listing through one
-hook, `useRunningTerminals` (`use-running-terminals.ts`), so the row shares the
-thread drawer's list atom. Each visible row reads its own thread's listing.
+carries no foreground command. The rows do not list their threads one by one:
+they all read `terminal.listRunning`, every thread's running terminals in one
+call, through `useThreadRunningTerminals` (`use-running-terminals.ts`), which
+picks each row's out of it. That one listing is reread on the same triggers as
+the project's — an open, close or hand-over of any owner's terminal, an exit
+the drawer sees, a reconnect, a return to the window — so a long sidebar costs
+one call per refetch, not one per row.
 
 The shell comes from `resolveShell` in
 `apps/server/src/terminal/shell.ts`: `$SHELL` when it is an absolute path,
