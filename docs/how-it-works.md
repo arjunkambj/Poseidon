@@ -3259,6 +3259,7 @@ fields entirely.
 | View     | `dock.toggle`                                         | `Mod+Alt+B`                   | `threadOpen \|\| newTaskOpen`                                                          |
 | View     | `dock.changes` / `dock.files`                         | `Mod+Shift+D` / `Mod+P`       | `threadOpen \|\| newTaskOpen`                                                          |
 | View     | `browserPane.toggle`                                  | `Mod+Shift+B`                 |                                                                                        |
+| View     | `dock.agents`                                         | unbound                       |                                                                                        |
 | View     | `terminal.toggle`                                     | `Mod+J`                       |                                                                                        |
 | View     | `font.increase` / `decrease` / `reset`                | `Mod+Alt+=` / `-` / `0`       |                                                                                        |
 | View     | `chatWidth.cycle`                                     | unbound                       |                                                                                        |

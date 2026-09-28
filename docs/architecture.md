@@ -341,21 +341,23 @@ this session, in opening order, each with a close button and a "+" menu for
 the kinds not open yet. The kinds come from a small registry in
 `apps/web/src/components/dock/` (`DOCK_TABS` in `dock-toggle.ts`,
 `DOCK_TAB_META` in `dock-tab-meta.ts`, `DOCK_TAB_PANES` in
-`dock-tab-panes.tsx`); there are three today: **changes** (`git.diff` in three scopes
+`dock-tab-panes.tsx`); there are four today: **changes** (`git.diff` in three scopes
 — this turn's checkpoints with the restore controls, the branch against its
 base through `mergeBase`, and the uncommitted working tree — with a
-split/unified toggle), **browser** (the pane) and **files** (a search over
+split/unified toggle), **browser** (the pane), **files** (a search over
 `files.search` that drills into directories and previews a file through
 `files.read`, paged by line offset because a window is capped by characters,
 not lines; a file chip in the timeline opens it on a file at a line, through
 a per-thread request in `state/file-reveal.ts` that the thread view answers by
-writing the file into the thread's Files view and opening the dock on Files). When less than 640px remains beside the sidebar, the dock overlays
+writing the file into the thread's Files view and opening the dock on Files) and
+**agents** (the thread's subagents from its snapshot's task rows, grouped
+Working / Done / Failed; thread docks only). When less than 640px remains beside the sidebar, the dock overlays
 the thread so its tabs stay reachable. Wider rows fit a thread column of at least 360px beside the dock.
 The dock has keys of its own, answered by the thread view: `dock.toggle`
 (Mod+Alt+B) closes it or reopens it on the tab it was closed on, and
 `dock.changes` (Mod+Shift+D), `browserPane.toggle` (Mod+Shift+B) and
 `dock.files` (Mod+P) open their tab, or close the dock when it already shows
-that tab. Opening Files by its key also puts the cursor in the Files search.
+that tab; `dock.agents` does the same for Agents and is unbound by default. Opening Files by its key also puts the cursor in the Files search.
 Every other opener — a file chip, "Open in Files tab", the agent-browser Show
 button — adds its tab if it is absent and activates it. Closing a tab only
 hides its pane, as switching away does; closing the last one shows the
