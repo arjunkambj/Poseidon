@@ -5,9 +5,10 @@
  * - **Activity.** Whether the agent was using the thread's browser when last
  *   seen, and whether the user closed the pane on it; the rules that read it
  *   are `@/components/panes/browser/auto-open`. Kept per thread across thread
- *   switches, so returning to a thread does not count as the agent starting,
- *   and the first sight of a thread is only a baseline (`seen`), so arriving
- *   at one does not either.
+ *   switches, so the user's refusal outlives a visit; each visit's first
+ *   sight of a thread is only a baseline (`seen`, reset when the thread
+ *   leaves the screen), so neither arriving at a thread nor coming back to it
+ *   counts as the agent starting.
  * - **Reveal requests.** `openInThreadBrowser` asks for a thread's pane from
  *   outside the thread view (a terminal link); the thread view shows it and
  *   clears the request, now or when that thread is next on screen.
@@ -25,9 +26,10 @@ export interface ThreadAgentActivity {
   /** The user closed the pane while the agent was active, and has not reopened it. */
   readonly closedByUser: boolean;
   /**
-   * The thread has been on screen since the window opened. Only a thread on
-   * screen is observed, so the first observation is a baseline, not a start:
-   * arriving at a thread whose agent already uses the browser opens nothing.
+   * The thread is on screen and has been observed on this visit. Only a
+   * thread on screen is observed, so each visit's first observation is a
+   * baseline, not a start: arriving at a thread whose agent already uses the
+   * browser opens nothing.
    */
   readonly seen: boolean;
 }

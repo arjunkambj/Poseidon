@@ -617,9 +617,10 @@ pulsing "Agent is using the browser" while a call runs and for 4 s after, so
 one task's calls do not flicker it, and a still "Agent opened a browser tab"
 when only the agent's tab is left. The
 `browser.openPaneOnAgentUse` setting (off by default) opens the pane once per
-agent activity that starts while the thread is on screen (the first sight of a
-thread is only a baseline), never over a pane the user closed while the agent
-was active, and without remembering it as the thread's dock tab; the rules are pure
+agent activity that starts while the thread is on screen (each visit's first
+sight of a thread, taken once the server's browser state has arrived, is only
+a baseline), never over a pane the user closed while the agent was active, and
+without remembering it as the thread's dock tab; the rules are pure
 (`apps/web/src/components/panes/browser/auto-open.ts`) and the per-thread
 record is in `apps/web/src/state/browser-activity.ts`, in memory only. Other
 surfaces open a page through one entry point, `openInThreadBrowser(threadId,

@@ -22,6 +22,7 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import {
   agentCalling,
   agentUsingBrowser,
+  leaveThread,
   noteUserDockChange,
   observeAgentUse,
   shouldAutoOpen,
@@ -54,6 +55,9 @@ export const useAgentBrowser = (
     settingsResult.value !== null &&
     settingsResult.value.browser.openPaneOnAgentUse;
   const using = agentUsingBrowser(state, useThreadTabs(threadId));
+  // Not an observation until the server's state arrives: the atom starts
+  // empty on every visit, and a call in flight would read as idle.
+  const observed = state === null ? null : using;
   const [, updateActivity] = useThreadAgentActivity(threadId);
 
   // Only a change in the agent's use is an observation; the dock, the setting
@@ -66,17 +70,20 @@ export const useAgentBrowser = (
     // The update runs synchronously against the stored record, so a second
     // run of this effect sees the first one's record and does not reopen.
     updateActivity((current) => {
-      const observed = observeAgentUse(current, using);
+      const next = observeAgentUse(current, observed);
       open = shouldAutoOpen({
         setting: latest.current.setting,
         dockTab: latest.current.dockTab,
-        closedByUserWhileAgentActive: observed.activity.closedByUser,
-        agentJustStarted: observed.agentJustStarted,
+        closedByUserWhileAgentActive: next.activity.closedByUser,
+        agentJustStarted: next.agentJustStarted,
       });
-      return observed.activity;
+      return next.activity;
     });
     if (open) latest.current.autoOpen();
-  }, [using, updateActivity]);
+  }, [observed, updateActivity]);
+
+  // Leaving the thread (or switching to another) ends the visit.
+  React.useEffect(() => () => updateActivity(leaveThread), [updateActivity]);
 
   const noteUserDock = React.useCallback(
     (from: string | undefined, to: string | undefined) =>

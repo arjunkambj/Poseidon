@@ -11,6 +11,9 @@
  *   opened — and lasts while either is true. The agent's tabs outlive its
  *   calls, so one task's many calls are one activity. Only a start seen while
  *   the thread is on screen counts: opening a thread never opens its pane.
+ *   Each visit's first observation is taken from the server's browser state
+ *   once it has arrived, never from the empty state before it, and it is only
+ *   a baseline.
  * - **Never over the user.** Closing the pane (or leaving it for another dock
  *   tab) while the agent is active means "not now" for that thread, until the
  *   user opens the pane again themselves.
@@ -37,14 +40,19 @@ export const showAgentIndicator = (using: boolean, dockTab: string | undefined):
 
 /**
  * A new observation of the agent: the next record, and whether an activity
- * just began. The first observation of a thread only sets the baseline: an
- * activity already under way when the thread came on screen did not start
- * now.
+ * just began. `using` is `null` while the thread's browser state has not
+ * arrived yet, which is no observation at all: read then, a call already in
+ * flight would look idle, and its arrival like a start. The first real
+ * observation of a visit only sets the baseline: an activity already under
+ * way when the thread came on screen did not start now.
  */
 export const observeAgentUse = (
   previous: ThreadAgentActivity,
-  using: boolean,
+  using: boolean | null,
 ): { readonly activity: ThreadAgentActivity; readonly agentJustStarted: boolean } => {
+  if (using === null) {
+    return { activity: previous, agentJustStarted: false };
+  }
   if (!previous.seen) {
     return { activity: { ...previous, seen: true, active: using }, agentJustStarted: false };
   }
@@ -53,6 +61,14 @@ export const observeAgentUse = (
     agentJustStarted: using && !previous.active,
   };
 };
+
+/**
+ * The thread left the screen: its next visit starts from a new baseline, so
+ * an activity that began while it was away does not open the pane on return.
+ * The user's refusal is kept.
+ */
+export const leaveThread = (previous: ThreadAgentActivity): ThreadAgentActivity =>
+  previous.seen ? { ...previous, seen: false } : previous;
 
 /**
  * The user moved the dock from `from` to `to` (`undefined` is closed).

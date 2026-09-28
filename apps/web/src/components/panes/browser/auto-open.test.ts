@@ -9,6 +9,7 @@ import type { BrowserTab, ThreadTabs } from "@/state/browser-tabs";
 import {
   agentCalling,
   agentUsingBrowser,
+  leaveThread,
   noteUserDockChange,
   observeAgentUse,
   shouldAutoOpen,
@@ -52,7 +53,10 @@ const tabs = (...list: ReadonlyArray<BrowserTab>): ThreadTabs => ({
  * the window remembered before the first step.
  */
 type Step =
-  | { readonly agent: boolean }
+  /** `null`: the thread's browser state has not arrived yet. */
+  | { readonly agent: boolean | null }
+  /** The thread leaves the screen. */
+  | { readonly leave: true }
   | { readonly user: string | undefined }
   | { readonly dock: string | undefined };
 
@@ -82,6 +86,8 @@ const run = (
         opens += 1;
         dockTab = "browser";
       }
+    } else if ("leave" in step) {
+      activity = leaveThread(activity);
     } else if ("user" in step) {
       activity = noteUserDockChange(activity, dockTab, step.user);
       dockTab = step.user;
@@ -205,6 +211,36 @@ describe("arriving at a thread", () => {
     expect(result.activity).toMatchObject({ seen: true, active: true });
   });
 
+  it("waits for the browser state before taking the baseline, so a call in flight opens nothing", () => {
+    // The state atom starts empty; the server's snapshot then shows a call running.
+    const result = run(true, undefined, [{ agent: null }, { agent: true }], idleActivity);
+    expect(result.opens).toBe(0);
+    expect(result.activity).toMatchObject({ seen: true, active: true });
+  });
+
+  it("takes a new baseline on every visit, so coming back mid-call opens nothing", () => {
+    const result = run(
+      true,
+      undefined,
+      [
+        { agent: null },
+        { agent: false },
+        { leave: true },
+        // Back on screen: empty until the snapshot lands, which shows a call running.
+        { agent: null },
+        { agent: true },
+      ],
+      idleActivity,
+    );
+    expect(result.opens).toBe(0);
+  });
+
+  it("keeps the user's refusal across visits", () => {
+    const refused: ThreadAgentActivity = { active: true, closedByUser: true, seen: true };
+    expect(leaveThread(refused)).toEqual({ active: true, closedByUser: true, seen: false });
+    expect(leaveThread(idleActivity)).toBe(idleActivity);
+  });
+
   it("opens for the next activity that starts while the thread is on screen", () => {
     const result = run(
       true,
@@ -244,5 +280,11 @@ describe("observeAgentUse", () => {
     expect(second.agentJustStarted).toBe(false);
     // Unchanged records keep their identity, so the atom does not churn.
     expect(second.activity).toBe(first.activity);
+  });
+
+  it("does not observe before the browser state arrives", () => {
+    const pending = observeAgentUse(idleActivity, null);
+    expect(pending).toEqual({ activity: idleActivity, agentJustStarted: false });
+    expect(observeAgentUse(onScreen, null).activity).toBe(onScreen);
   });
 });
