@@ -218,7 +218,10 @@ export function DockTabStrip({
           aria-label="Dock tabs"
           aria-orientation="horizontal"
           onKeyDown={onKeyDown}
-          className="flex min-w-0 items-center gap-0.5 overflow-x-auto"
+          // A scroller clips what paints outside it, so the padding leaves
+          // room for the tabs' focus rings; the negative margin keeps the
+          // tabs where the row's own padding puts them.
+          className="-mx-1.5 flex min-w-0 items-center gap-0.5 overflow-x-auto px-1.5 py-1"
         >
           {openTabs.map((tab) => (
             <DockTabButton
