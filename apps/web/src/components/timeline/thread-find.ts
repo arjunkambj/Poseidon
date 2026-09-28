@@ -254,6 +254,12 @@ export const locateItem = (
   return undefined;
 };
 
+/** Whether the query occurs in `text`, ignoring case; false without a query. */
+export const hasMatch = (text: string, query: string): boolean => {
+  const normalized = normalizeQuery(query);
+  return normalized !== undefined && text.search(matcher(normalized)) !== -1;
+};
+
 /** `text` cut into marked and unmarked runs for the query; one unmarked run without one. */
 export const splitHighlights = (text: string, query: string): ReadonlyArray<FindSegment> => {
   const normalized = normalizeQuery(query);

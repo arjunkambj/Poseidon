@@ -10,6 +10,7 @@ import {
   findMatches,
   locateItem,
   normalizeQuery,
+  hasMatch,
   splitHighlights,
   stepMatch,
 } from "./thread-find";
@@ -223,5 +224,13 @@ describe("splitHighlights", () => {
   it("keeps text whole without a query and yields nothing for empty text", () => {
     expect(splitHighlights("plain", " ")).toEqual([{ text: "plain", match: false }]);
     expect(splitHighlights("", "x")).toEqual([]);
+  });
+});
+
+describe("hasMatch", () => {
+  it("finds the query ignoring case, and nothing without one", () => {
+    expect(hasMatch("Deploy the service", "SERVICE")).toBe(true);
+    expect(hasMatch("Deploy the service", "a.b")).toBe(false);
+    expect(hasMatch("Deploy", "  ")).toBe(false);
   });
 });

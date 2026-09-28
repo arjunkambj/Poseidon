@@ -17,6 +17,7 @@ import {
 } from "@/components/timeline/file-change-badge";
 import { PathChip, PathChipsProvider } from "@/components/timeline/path-chips";
 import { DisclosureRow } from "@/components/timeline/row-shell";
+import { FindText } from "@/components/timeline/thread-find-context";
 import { diffStats } from "@/lib/diff-stats";
 import { useRowDisclosure } from "@/state/ui";
 import { Edit } from "@honeyicons/react";
@@ -67,7 +68,11 @@ export function FileChangeRow({ item }: { item: ItemSnapshot }) {
           <>
             <PathChip
               path={fileChange.path}
-              fallback={<span className="font-mono text-xs">{fileChange.path}</span>}
+              fallback={
+                <span className="font-mono text-xs">
+                  <FindText text={fileChange.path} />
+                </span>
+              }
             />
             <FileChangeKindBadge kind={fileChange.kind} />
           </>

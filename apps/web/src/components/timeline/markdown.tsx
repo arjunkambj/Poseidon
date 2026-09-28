@@ -27,6 +27,10 @@
  * thread's workspace confirms renders as a file chip (`markdown-paths.tsx`).
  * The URL filter lets a path with a line (`README.md:12`) and a `file://` URL
  * through to that check, since it would otherwise read them as schemes.
+ *
+ * While the find bar searches, a block holding its query parses again with
+ * the query marked (`rehype-find-marks.ts`); every other block, and every
+ * block while the bar is closed, keeps its memoised render.
  */
 
 import * as React from "react";
@@ -41,7 +45,10 @@ import { splitMarkdownBlocks } from "./markdown-blocks";
 import { InlineCode, MarkdownLink } from "./markdown-paths";
 import { PathChipsProvider } from "./path-chips";
 import { collectPathCandidates, parsePathLink } from "./path-links";
+import { rehypeFindMarks } from "./rehype-find-marks";
 import { remarkHtmlAsText, remarkSoftBreaks } from "./remark-user-text";
+import { hasMatch } from "./thread-find";
+import { useFindHighlight } from "./thread-find-context";
 
 interface BlockContext {
   readonly id: string | undefined;
@@ -185,20 +192,28 @@ const MarkdownBlock = React.memo(function MarkdownBlock({
   base,
   openFrom,
   variant,
+  find,
 }: {
   readonly source: string;
   readonly id: string | undefined;
   readonly base: number;
   readonly openFrom: number | undefined;
   readonly variant: VariantName;
+  /** The find bar's query, only on a block that holds it. */
+  readonly find: string | undefined;
 }) {
   const context = React.useMemo(() => ({ id, base, openFrom }), [id, base, openFrom]);
   const config = VARIANTS[variant];
+  const rehypePlugins = React.useMemo(
+    () => (find === undefined ? undefined : [rehypeFindMarks(find)]),
+    [find],
+  );
   return (
     <MarkdownBlockContext.Provider value={context}>
       <ReactMarkdown
         remarkPlugins={config.remarkPlugins}
         components={config.components}
+        rehypePlugins={rehypePlugins}
         urlTransform={urlTransform}
       >
         {source}
@@ -225,6 +240,8 @@ export function MarkdownBody({
 }) {
   const { blocks, definitions } = React.useMemo(() => splitMarkdownBlocks(text), [text]);
   const config = VARIANTS[variant];
+  // Only a block holding the find bar's query parses again when the query changes.
+  const findQuery = useFindHighlight()?.query;
   // Only an agent's text is asked about: what a person typed stays as typed.
   const candidates = React.useMemo(
     () => (variant === "agent" ? collectPathCandidates(text) : []),
@@ -256,6 +273,9 @@ export function MarkdownBody({
             base={block.start}
             openFrom={streaming ? block.openFrom : undefined}
             variant={variant}
+            find={
+              findQuery !== undefined && hasMatch(block.source, findQuery) ? findQuery : undefined
+            }
           />
         ))}
       </PathChipsProvider>

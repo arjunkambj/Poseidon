@@ -32,8 +32,13 @@ import * as React from "react";
 import { disclosureIds } from "@/components/timeline/disclosure";
 import { ALL_FOLDS_OPEN, buildTimeline } from "@/components/timeline/fold";
 import { JumpToLatest } from "@/components/timeline/jump-to-latest";
-import { TimelineThreadProvider } from "@/components/timeline/thread-context";
+import { type TimelineThread, TimelineThreadProvider } from "@/components/timeline/thread-context";
 import { ThreadFindBar } from "@/components/timeline/thread-find-bar";
+import {
+  type FindHighlight,
+  FindRowMark,
+  ThreadFindHighlightProvider,
+} from "@/components/timeline/thread-find-context";
 import { TimelineRowView } from "@/components/timeline/timeline-item";
 import { turnEndTimes } from "@/components/timeline/turn-checkpoints";
 import { TurnRail, useTurnNavigation } from "@/components/timeline/turn-rail-view";
@@ -95,13 +100,15 @@ export function Timeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
 
   const renderItem = React.useCallback(
     ({ item }: { item: (typeof projection.rows)[number] }) => (
-      <TimelineRowView row={item} childrenByParent={projection.childrenByParent} />
+      <FindRowMark rowId={item.id}>
+        <TimelineRowView row={item} childrenByParent={projection.childrenByParent} />
+      </FindRowMark>
     ),
     [projection],
   );
 
   return (
-    <TimelineThreadProvider value={thread}>
+    <TimelineScope thread={thread} highlight={find.highlight}>
       <div className="relative flex min-h-0 flex-1 flex-col">
         <LegendList
           ref={listRef}
@@ -139,6 +146,23 @@ export function Timeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
         <TurnRail listRef={listRef} navigation={navigation} />
         {find.open ? <ThreadFindBar find={find} /> : null}
       </div>
+    </TimelineScope>
+  );
+}
+
+/** What every row reads: the thread it belongs to, and what the find bar marks. */
+function TimelineScope({
+  thread,
+  highlight,
+  children,
+}: {
+  thread: TimelineThread;
+  highlight: FindHighlight | null;
+  children: React.ReactNode;
+}) {
+  return (
+    <TimelineThreadProvider value={thread}>
+      <ThreadFindHighlightProvider value={highlight}>{children}</ThreadFindHighlightProvider>
     </TimelineThreadProvider>
   );
 }

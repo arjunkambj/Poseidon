@@ -1082,6 +1082,17 @@ open selects its query. While the bar is closed nothing is searched, and
 while it is open the search reads a deferred copy of the items, so a streamed
 delta is never held up by it.
 
+While the bar searches, the rows on screen mark the query in a `<mark>` on the
+theme's primary tint, and the row holding the current match carries a ring
+(`timeline/thread-find-context.tsx`). Plain-text rows — a reasoning body, a
+command line, a tool's name and target, a changed file's path, a search query
+— mark it as they render; a markdown body marks it with a rehype plugin that
+runs only on the blocks holding the query (`timeline/rehype-find-marks.ts`).
+Fenced code is counted but not marked, since it renders through the code
+block's highlighter, and a match the source splits with markup (`**de**ploy`)
+is not marked either. The marks come from a context that is `null` while the
+bar is closed, so a closed bar adds no element and no parse to any row.
+
 ### Closing the turn
 
 `run_end` produces `turn.completed` with a `stopReason` of `end_turn`,

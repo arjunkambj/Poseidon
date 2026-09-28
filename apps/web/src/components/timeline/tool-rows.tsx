@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 import { browserToolLabel } from "@/components/timeline/browser-tool";
 import { PathChip, PathChipsProvider } from "@/components/timeline/path-chips";
 import { DisclosureRow, JsonBlock, MonoBlock } from "@/components/timeline/row-shell";
+import { FindText } from "@/components/timeline/thread-find-context";
 import { toolPathTarget, toolTarget } from "@/components/timeline/tool-target";
 import { cn } from "@/lib/utils";
 import { Globe, Hammer, Lightbulb, Server, Terminal } from "@honeyicons/react";
@@ -49,7 +50,11 @@ function ToolTarget({ input }: { input: unknown }) {
   if (target === undefined) {
     return null;
   }
-  const text = <span className="ml-1.5 font-mono text-xs text-muted-foreground">{target}</span>;
+  const text = (
+    <span className="ml-1.5 font-mono text-xs text-muted-foreground">
+      <FindText text={target} />
+    </span>
+  );
   const path = toolPathTarget(input);
   return path === undefined ? text : <PathChip path={path} fallback={text} className="ml-1.5" />;
 }
@@ -101,7 +106,9 @@ export function ReasoningRow({ item }: { item: ItemSnapshot }) {
       label={inProgress ? "Thinking…" : "Reasoning"}
       status={item.status}
     >
-      <p className="whitespace-pre-wrap">{item.text ?? ""}</p>
+      <p className="whitespace-pre-wrap">
+        <FindText text={item.text ?? ""} />
+      </p>
     </DisclosureRow>
   );
 }
@@ -130,7 +137,11 @@ export function CommandExecutionRow({ item }: { item: ItemSnapshot }) {
     <DisclosureRow
       rowId={item.itemId}
       icon={Terminal}
-      label={<span className="font-mono text-xs">{cmd}</span>}
+      label={
+        <span className="font-mono text-xs">
+          <FindText text={cmd} />
+        </span>
+      }
       status={item.status}
       meta={
         <>
@@ -157,7 +168,7 @@ export function ToolCallRow({ item }: { item: ItemSnapshot }) {
           icon={Hammer}
           label={
             <>
-              {name}
+              <FindText text={name} />
               <ToolTarget input={tool?.input} />
             </>
           }
@@ -195,7 +206,7 @@ export function McpToolCallRow({ item }: { item: ItemSnapshot }) {
                   {tool.server}
                 </span>
               ) : null}
-              {name}
+              <FindText text={name} />
               <ToolTarget input={tool?.input} />
             </>
           }
@@ -216,7 +227,12 @@ export function WebSearchRow({ item }: { item: ItemSnapshot }) {
     <ToolPayload input={item.tool?.input} output={item.tool?.output} />
   ) : undefined;
   return (
-    <DisclosureRow rowId={item.itemId} icon={Globe} label={query} status={item.status}>
+    <DisclosureRow
+      rowId={item.itemId}
+      icon={Globe}
+      label={<FindText text={query} />}
+      status={item.status}
+    >
       {body}
     </DisclosureRow>
   );

@@ -30,6 +30,7 @@ import { useSetRowDisclosures } from "@/state/ui";
 import { ALL_FOLDS_OPEN, type BuildTimelineOptions, buildTimeline } from "./fold";
 import type { TimelineProjection } from "./fold";
 import { prefersReducedMotion } from "./list-hold";
+import type { FindHighlight } from "./thread-find-context";
 import {
   currentMatchIndex,
   type FindMatch,
@@ -49,12 +50,6 @@ const FIND_VIEW_POSITION = 0.3;
 
 const NO_MATCHES: ReadonlyArray<FindMatch> = [];
 
-/** What the rows mark while the bar is open with a query; null otherwise. */
-export interface FindHighlight {
-  readonly query: string;
-  readonly activeItemId: string | undefined;
-}
-
 export interface ThreadFind {
   readonly open: boolean;
   readonly query: string;
@@ -68,6 +63,7 @@ export interface ThreadFind {
   readonly close: () => void;
   /** Bumped by `timeline.find` while open, for the bar to refocus its input. */
   readonly focusKey: number;
+  /** What the rows mark while the bar is open with a query; null otherwise. */
   readonly highlight: FindHighlight | null;
 }
 
@@ -204,9 +200,17 @@ export function useThreadFind({
   };
 
   const activeItemId = matches[index]?.itemId;
+  // The row holding an item is the same whichever folds are open.
+  const activeRowId = React.useMemo(
+    () =>
+      allOpen === undefined || activeItemId === undefined
+        ? undefined
+        : locateItem(allOpen, allOpen, activeItemId)?.rowId,
+    [allOpen, activeItemId],
+  );
   const highlight = React.useMemo(
-    () => (searching ? { query: debouncedQuery, activeItemId } : null),
-    [searching, debouncedQuery, activeItemId],
+    () => (searching ? { query: debouncedQuery, activeItemId, activeRowId } : null),
+    [searching, debouncedQuery, activeItemId, activeRowId],
   );
 
   return {
