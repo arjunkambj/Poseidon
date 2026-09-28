@@ -1,7 +1,7 @@
 /**
- * The rows `buildTimeline` (`fold.ts`) makes out of a settled turn's items:
- * the `turn-fold` row that stands for the turn's work, the `work-group` fold
- * over a run of work, and the `turn-summary` card of the files a turn changed
+ * The rows `buildTimeline` (`fold.ts`) makes out of a turn's items: the
+ * `turn-fold` row that stands for a settled turn's work, the `work-group` fold
+ * over a run of work (settled or still running), and the `turn-summary` card of the files a turn changed
  * — plus the span of time a turn's items cover, which the fold row and the
  * final answer's footer both report.
  *
@@ -18,13 +18,20 @@ import { uuidV7Millis } from "@poseidon/shared/ids";
 import { countFailed, mergeKind, workSentence } from "@/components/timeline/work-summary";
 import { diffStats } from "@/lib/diff-stats";
 
-/** One folded run of work rows. Its label is `workGroupLabel` over `items`. */
+/**
+ * One folded run of work rows. Its label is `workGroupLabel` over `items`.
+ * Its id is its first item's, so a burst in the running turn keeps its key as
+ * steps stream in and matches the group the same run becomes in an opened
+ * settled fold.
+ */
 export interface TimelineWorkGroupRow {
   readonly kind: "work-group";
   readonly id: string;
   readonly items: ReadonlyArray<ItemSnapshot>;
   readonly failedCount: number;
   readonly durationMs: number | undefined;
+  /** True only for the trailing burst of the running turn: the work still going on. */
+  readonly live: boolean;
 }
 
 /**
@@ -75,7 +82,10 @@ export const FOLDABLE_KINDS: ReadonlySet<ItemKind> = new Set([
   "skill",
 ]);
 
-export const workGroupRow = (items: ReadonlyArray<ItemSnapshot>): TimelineWorkGroupRow => {
+export const workGroupRow = (
+  items: ReadonlyArray<ItemSnapshot>,
+  live = false,
+): TimelineWorkGroupRow => {
   const firstMs = uuidV7Millis(items[0].itemId);
   const lastMs = uuidV7Millis(items[items.length - 1].itemId);
   const durationMs =
@@ -86,6 +96,7 @@ export const workGroupRow = (items: ReadonlyArray<ItemSnapshot>): TimelineWorkGr
     items,
     failedCount: countFailed(items),
     durationMs,
+    live,
   };
 };
 

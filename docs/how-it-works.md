@@ -769,8 +769,13 @@ turns the flat item list into rows:
   of splitting it in two. Rows without a turn id fall back to position: they
   belong to the turn the last user message opened. Rows before the first user
   message form a leading turn of their own;
-- the live turn (the last one, while a turn runs) renders every row inline,
-  as it arrives, then the `working` row;
+- the live turn (the last one, while a turn runs) folds each maximal run of
+  work kinds, reasoning included, into a `work-group` burst from its first
+  step, keyed `work-group:<first item id>` so the row keeps its key as steps
+  stream in (and matches the group the same run becomes in an opened settled
+  fold). Narration, todos, plans, errors, compactions, steered messages and
+  decision records stay inline and split the runs; the trailing burst, when
+  nothing follows it, is marked `live`. The `working` row comes last;
 - a settled turn shows its user message, then one `turn-fold` row standing
   for its work: "Worked for 2m 3s · Ran 3 commands, edited 2 files, read 4
   files", with "1 failed" beside it in the destructive colour when something

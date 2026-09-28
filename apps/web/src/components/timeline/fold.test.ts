@@ -92,7 +92,7 @@ describe("buildTimeline", () => {
     expect(workGroups(opened)[0].items).toHaveLength(3);
   });
 
-  it("keeps the live segment unfolded and appends a working row", () => {
+  it("folds the live turn's work into a burst and appends a working row", () => {
     const items = [
       item("user_message"),
       item("tool_call"),
@@ -106,7 +106,7 @@ describe("buildTimeline", () => {
       "turn-fold",
       "assistant_message",
       "user_message",
-      "tool_call",
+      "work-group",
       "working",
     ]);
   });
@@ -410,7 +410,7 @@ describe("buildTimeline decisions", () => {
     });
     expect(labels(rows)).toEqual([
       "user_message",
-      "tool_call",
+      "work-group",
       "decision:req-1",
       "decision:req-2",
       "working",
@@ -662,7 +662,7 @@ describe("buildTimeline turn folds", () => {
     expect(workGroups(other.rows)).toEqual([]);
   });
 
-  it("leaves the live turn as it is: every row inline, then the working row", () => {
+  it("folds the live turn's work into bursts, then the working row", () => {
     const turn = settledTurn();
     const { rows } = buildTimeline(turn.items, {
       turnActive: true,
@@ -670,12 +670,10 @@ describe("buildTimeline turn folds", () => {
     });
     expect(folds(rows)).toEqual([]);
     expect(summaries(rows)).toEqual([]);
-    expect(labels(rows)).toEqual([
-      ...turn.items.slice(0, 6).map((i) => i.kind),
-      "decision:plan-1",
-      ...turn.items.slice(6).map((i) => i.kind),
-      "working",
-    ]);
+    expect(labels(rows).join(" ")).toBe(
+      "user_message work-group assistant_message work-group todo plan decision:plan-1 " +
+        "work-group error work-group assistant_message working",
+    );
   });
 
   it("keeps a steered message inside its turn: one fold, one card", () => {

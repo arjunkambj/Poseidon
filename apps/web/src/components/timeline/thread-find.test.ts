@@ -245,6 +245,28 @@ describe("locateItem", () => {
     });
   });
 
+  it("opens the live burst holding a match in a running turn, and the reasoning for its body", () => {
+    const earlier = item("user_message", { text: "first" });
+    const earlierWork = item("command_execution", { command: { cmd: "ls" } });
+    const earlierReply = item("assistant_message", { text: "done" });
+    const user = item("user_message", { text: "go" });
+    const reasoning = item("reasoning", { text: "look at parser.ts" });
+    const command = item("command_execution", { command: { cmd: "pnpm test parser" } });
+    const { open, closed } = projections(
+      [earlier, earlierWork, earlierReply, user, reasoning, command],
+      true,
+    );
+    const burst = `work-group:${reasoning.itemId}`;
+    expect(locateItem(open, closed, command.itemId, "command")).toEqual({
+      rowId: burst,
+      open: [burst],
+    });
+    expect(locateItem(open, closed, reasoning.itemId, "body")).toEqual({
+      rowId: burst,
+      open: [burst, reasoning.itemId],
+    });
+  });
+
   it("opens a long user message clamped under its fade", () => {
     const long = item("user_message", {
       text: Array.from({ length: 14 }, (_, i) => `line ${i}`).join("\n"),

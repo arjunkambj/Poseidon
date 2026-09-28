@@ -27,7 +27,7 @@ const decision: ResolvedDecision = {
 };
 
 describe("disclosureIds", () => {
-  it("lists tool rows and plans in a live turn, and skips messages and the working row", () => {
+  it("lists a live turn's bursts, the rows inside them and plans, and skips messages", () => {
     const user = item("user_message");
     const reasoning = item("reasoning");
     const command = item("command_execution");
@@ -42,13 +42,16 @@ describe("disclosureIds", () => {
       [user, reasoning, command, change, mcp, search, plan, todo, skill, reply],
       { turnActive: true },
     );
+    // the running work folds into bursts keyed by their first step; a skill has no disclosure
     expect(disclosureIds(projection)).toEqual([
+      `work-group:${reasoning.itemId}`,
       reasoning.itemId,
       command.itemId,
       change.itemId,
       mcp.itemId,
       search.itemId,
       plan.itemId,
+      `work-group:${skill.itemId}`,
     ]);
   });
 
@@ -103,6 +106,7 @@ describe("disclosureIds", () => {
       turnActive: true,
     });
     expect(disclosureIds(projection)).toEqual([
+      `work-group:${task.itemId}`,
       task.itemId,
       child.itemId,
       inner.itemId,
