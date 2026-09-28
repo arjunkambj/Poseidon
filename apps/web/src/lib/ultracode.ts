@@ -5,7 +5,8 @@
  * Ultracode is a harness session mode: `xhigh` effort plus standing
  * multi-agent workflow orchestration. The toggle is offered where the harness
  * says it can switch it (`capabilities.ultracode`) and the model has an
- * `xhigh` rung — the harness's own gate, since ultracode runs at `xhigh`. The patches follow the rules the server keeps
+ * `xhigh` rung — the harness's own gate, since ultracode runs at `xhigh`.
+ * The patches follow the rules the server keeps
  * (`apps/server/src/orchestration/settingsRules.ts`), so New task's local
  * settings, which only reach the server with `thread.create`, read the same:
  * on sets `xhigh`, off keeps the effort, an effort pick turns it off.
