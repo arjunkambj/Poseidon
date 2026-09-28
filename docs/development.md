@@ -151,7 +151,10 @@ the server is spawned with `POSEIDON_SERVER_BROWSER_BRIDGE=disabled`. Any other
 value is ignored, as is the retired `POSEIDON_BROWSER_PANE`. With it set the
 browser tools answer that the in-app browser is disabled; the desktop never
 falls back to a headless browser. A server started on its own
-(`pnpm -F server dev`, no shell) runs agent-browser's own headless Chrome. The
+(`pnpm -F server dev`, no shell) runs agent-browser's own headless Chrome,
+launched with `--use-mock-keychain` and `--password-store=basic`, so no macOS
+keychain ("Chromium Safe Storage") or Linux keyring prompt appears; the in-app
+path passes no launch args. The
 agent-browser child never inherits your own `AGENT_BROWSER_*` or `CHROME_*`
 variables, and runs in the namespace `poseidon-<8 hex of POSEIDON_HOME>`, so a
 scratch home's daemons are apart from `~/.poseidon`'s and from yours. The shell never opens Chromium's remote-debugging port,
@@ -464,7 +467,8 @@ POSEIDON_LIVE_CMD=1 pnpm exec vitest run apps/server/src/hooks/cmdLiveConformanc
 
 `POSEIDON_LIVE_CMD_MODEL` overrides the model, `POSEIDON_LIVE_CMD_DEBUG=1` adds
 output. The browser equivalent is `POSEIDON_LIVE_BROWSER=1` over
-`apps/server/src/browser/live.test.ts`, which spawns a real Chromium.
+`apps/server/src/browser/live.test.ts`, which spawns a real headless Chromium
+with a mock keychain, so it raises no keychain prompt.
 
 ### The Claude Code end-to-end suite
 

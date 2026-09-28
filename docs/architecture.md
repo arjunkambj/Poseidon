@@ -2608,7 +2608,11 @@ first agent call:
 - **owned-chromium** — no desktop: the web renderer, or the server run on its
   own. `ownedDriver.ts` has agent-browser run its own headless Chrome, streams
   JPEG frames over the session's WebSocket and forwards the pane's gestures and
-  toolbar into it.
+  toolbar into it. `launchEnvFor` gives every command but `close` the
+  environment `AGENT_BROWSER_ARGS=--use-mock-keychain,--password-store=basic`
+  (`OWNED_CHROME_ARGS`), so that Chrome never raises a keychain or keyring
+  prompt; `close` goes without, since agent-browser sends a launch ahead of any
+  command that carries args. In-app and disabled set no launch args.
 
 In-app, the server reads the bridge's origin and launch key once and deletes
 both from its own `process.env`, so nothing it spawns later — a harness, a

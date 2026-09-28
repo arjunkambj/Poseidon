@@ -3069,7 +3069,12 @@ the desktop shell handed over (`apps/server/src/browser/agentBrowser.ts`):
   come back and forwards gestures and toolbar actions into it. When that
   stream ends — the daemon reaped itself after 300 s idle, or crashed — the
   session drops the driver and shows `stopped`, and the next agent call or
-  toolbar navigation opens a fresh one with a stream of its own.
+  toolbar navigation opens a fresh one with a stream of its own. Every
+  command but `close` runs with
+  `AGENT_BROWSER_ARGS=--use-mock-keychain,--password-store=basic`, so that
+  Chrome never asks for the macOS keychain ("Chromium Safe Storage") or a
+  Linux keyring, and it stays headless (agent-browser adds `--headless=new`
+  itself).
 
 The desktop side of the in-app browser is the bridge
 (`apps/desktop/src/main/browser/`, see
@@ -3153,7 +3158,11 @@ pane's tabs survive it. Every daemon runs in the agent-browser namespace
 `poseidon-<8 hex of POSEIDON_HOME>`, so the app's sessions never mix with your
 own agent-browser use and two homes never share one. The child's environment is an allowlist that keeps the
 operator's own `AGENT_BROWSER_*` and `CHROME_*` out; the thread's bridge URL
-reaches it as `AGENT_BROWSER_CDP`, never in argv.
+reaches it as `AGENT_BROWSER_CDP`, never in argv, which makes the CLI skip its
+own launch config, so in-app sets no launch args. Owned Chromium's launch args
+come only from `launchEnvFor`: `AGENT_BROWSER_ARGS` on every command but
+`close`, because agent-browser sends a launch ahead of any command that carries
+args, and a `close` after the idle reap would start a Chrome just to close it.
 
 A pinned session whose tab the pane closed fails `tab_gone`; the agent reads
 "the browser tab you were driving was closed in the pane; the next call uses
