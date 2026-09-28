@@ -14,6 +14,11 @@
  * while it is not. A mod-clicked link opens in the thread's browser pane
  * (`./use-open-link`); the New task page has no browser pane, so there it
  * opens in the system browser.
+ *
+ * A printed `path:line[:col]` the owner's root holds is a link too
+ * (`./use-file-links`): a plain click shows it in the thread's Files tab, a
+ * mod-click opens it in the favourite editor. The New task page has no Files
+ * tab to answer, so there only the mod-click does anything.
  */
 
 import { useAtomSet } from "@effect/atom-react";
@@ -24,6 +29,7 @@ import * as React from "react";
 import { useTerminalAtoms } from "@/components/terminal/terminal-atoms";
 import { TerminalBar } from "@/components/terminal/terminal-bar";
 import { TerminalDrawer } from "@/components/terminal/terminal-drawer";
+import { useFileLinks } from "@/components/terminal/use-file-links";
 import { useOpenInBrowserPane } from "@/components/terminal/use-open-link";
 import { openExternal } from "@/lib/desktop";
 import { TERMINAL_TOGGLE_COMMAND } from "@/lib/keybindings";
@@ -37,13 +43,19 @@ import { useTerminalOpen } from "@/state/terminal-ui";
  */
 function OwnedTerminal({
   ownerKey,
+  projectId,
+  threadId,
   draftId,
   onOpenLink,
 }: {
   ownerKey: string;
+  /** The root file links resolve in: the thread's workspace, else the project's folder. */
+  projectId: ProjectId;
+  threadId?: ThreadId;
   draftId: ThreadId;
   onOpenLink: (url: string) => void;
 }) {
+  const fileLinks = useFileLinks({ projectId, threadId });
   const [open, setOpen] = useTerminalOpen(ownerKey);
   const [focusRequest, bumpFocus] = React.useReducer((count: number) => count + 1, 0);
   // Mounted here, not in the drawer: closing the last tab hides the drawer,
@@ -71,6 +83,7 @@ function OwnedTerminal({
       onHide={() => setOpen(false)}
       onClose={(terminalId) => closeTerminal({ ...decodeTerminalOwnerKey(ownerKey), terminalId })}
       onOpenLink={onOpenLink}
+      fileLinks={fileLinks}
     />
   );
 }
@@ -82,15 +95,19 @@ function OwnedTerminal({
  */
 export function ThreadTerminal({
   threadId,
+  projectId,
   onShowBrowser,
 }: {
   threadId: ThreadId;
+  projectId: ProjectId;
   onShowBrowser: () => void;
 }) {
   const openLink = useOpenInBrowserPane(threadId, onShowBrowser);
   return (
     <OwnedTerminal
       ownerKey={terminalOwnerKey({ threadId })}
+      projectId={projectId}
+      threadId={threadId}
       draftId={threadId}
       onOpenLink={openLink}
     />
@@ -112,6 +129,7 @@ export function ProjectTerminal({
   return (
     <OwnedTerminal
       ownerKey={terminalOwnerKey({ projectId })}
+      projectId={projectId}
       draftId={draftId}
       onOpenLink={openExternal}
     />

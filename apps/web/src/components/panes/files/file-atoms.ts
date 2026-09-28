@@ -7,9 +7,15 @@
  * the app instead of opening a second connection. A fixture page substitutes
  * its own runtime through `ClientRuntimeProvider`, and gets file atoms over
  * its scripted client.
+ *
+ * `useStatFiles` is `files.stat` as a one-shot on the registry in context, for
+ * the terminal's file links, which ask as the pointer moves and keep their own
+ * answers.
  */
 
+import { RegistryContext } from "@effect/atom-react";
 import { makeFileAtoms, type FileAtoms } from "@poseidon/client-runtime/fileAtoms";
+import * as React from "react";
 
 import { type ClientRuntime, useClientRuntime } from "@/lib/client-runtime";
 
@@ -23,4 +29,13 @@ export const useFileAtoms = (): FileAtoms => {
     byRuntime.set(runtime, atoms);
   }
   return atoms;
+};
+
+/** `files.stat` as a one-shot call, bound to the registry in context. */
+export const useStatFiles = (): ((
+  key: Parameters<FileAtoms["statFiles"]>[1],
+) => ReturnType<FileAtoms["statFiles"]>) => {
+  const registry = React.useContext(RegistryContext);
+  const { statFiles } = useFileAtoms();
+  return React.useCallback((key) => statFiles(registry, key), [registry, statFiles]);
 };

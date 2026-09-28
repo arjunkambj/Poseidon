@@ -261,6 +261,7 @@ export function ThreadView({
           <ThreadTerminal
             key={threadId}
             threadId={threadId}
+            projectId={snapshot.projectId}
             onShowBrowser={() => setDockTab("browser")}
           />
         ) : null}

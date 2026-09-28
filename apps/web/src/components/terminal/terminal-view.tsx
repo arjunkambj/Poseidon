@@ -15,8 +15,9 @@
  * The drawer's toolbar reaches the xterm only through the `TerminalHandle`
  * this view hands up while it is mounted — selection and find (xterm's search
  * addon, highlighted in colours mixed from our tokens). A mod-click on a
- * printed http(s) link goes to `onOpenLink` (`./terminal-links`); a plain
- * click only selects.
+ * printed http(s) link goes to `onOpenLink` (`./terminal-links`). A printed
+ * `path:line[:col]` that `files.stat` confirms is a link on a plain click too
+ * (`fileLinks`, `./file-link-provider`); any other plain click only selects.
  *
  * Keys: the chord bound to `terminal.toggle` is refused to xterm through
  * `attachCustomKeyEventHandler`, so it bubbles to the app's one keybinding
@@ -40,6 +41,7 @@ import * as React from "react";
 
 import { useTheme } from "@/components/theme-provider";
 import { useTerminalAtoms } from "@/components/terminal/terminal-atoms";
+import { type FileLinkHandlers, registerFileLinks } from "@/components/terminal/file-link-provider";
 import { makeTerminalFeed } from "@/components/terminal/terminal-feed";
 import type { TerminalHandle } from "@/components/terminal/terminal-handle";
 import { linkToOpen } from "@/components/terminal/terminal-links";
@@ -164,6 +166,7 @@ export default function TerminalView({
   onGone,
   onHandle,
   onOpenLink,
+  fileLinks,
 }: {
   /** The terminal's owner, a thread or a project, by `terminalOwnerKey`. */
   ownerKey: string;
@@ -184,6 +187,8 @@ export default function TerminalView({
   onHandle: (handle: TerminalHandle | null) => void;
   /** A link the user mod-clicked, already checked to be http(s). */
   onOpenLink: (url: string) => void;
+  /** Confirms and opens the file references the terminal prints. */
+  fileLinks?: FileLinkHandlers | undefined;
 }) {
   const hostRef = React.useRef<HTMLDivElement>(null);
   const [xterm, setXterm] = React.useState<Xterm | null>(null);
@@ -200,6 +205,8 @@ export default function TerminalView({
   settlingRef.current = settling;
   const onOpenLinkRef = React.useRef(onOpenLink);
   onOpenLinkRef.current = onOpenLink;
+  const fileLinksRef = React.useRef(fileLinks);
+  fileLinksRef.current = fileLinks;
   // Find's highlight colours, re-read with the theme.
   const decorationsRef = React.useRef<SearchDecorations | null>(null);
 
@@ -239,6 +246,10 @@ export default function TerminalView({
     );
     const search = new SearchAddon();
     terminal.loadAddon(search);
+    const files = registerFileLinks(terminal, {
+      resolve: (paths) => fileLinksRef.current?.resolve(paths) ?? Promise.resolve([]),
+      activate: (...args) => fileLinksRef.current?.activate(...args),
+    });
 
     const inTerminal = (name: string) =>
       name === "terminalFocus" ? true : name === "composerFocus" ? false : undefined;
@@ -266,6 +277,7 @@ export default function TerminalView({
       observer.disconnect();
       cancelAnimationFrame(frame);
       setXterm(null);
+      files.dispose();
       terminal.dispose();
     };
   }, []);

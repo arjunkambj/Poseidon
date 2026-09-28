@@ -8,7 +8,8 @@
  * for the tab in front, a fresh one per tab, and a toolbar that acts on that
  * xterm — "Add selection to chat" quotes its selection into the composer draft
  * on screen (`draftId`), and Find (`./terminal-find`) searches the xterm's
- * output. A mod-clicked link goes to `onOpenLink`.
+ * output. A mod-clicked link goes to `onOpenLink`, a printed file reference
+ * to `fileLinks`.
  *
  * Which terminals exist is the server's to say: the drawer folds each
  * `terminal.list` into its tab state (`./drawer-state`). Opening a drawer that
@@ -43,6 +44,7 @@ import {
   TerminalTabStrip,
 } from "@/components/terminal/drawer-parts";
 import { nextTitle, useDrawerState } from "@/components/terminal/drawer-state";
+import type { FileLinkHandlers } from "@/components/terminal/file-link-provider";
 import { useOpenTerminal, useTerminalAtoms } from "@/components/terminal/terminal-atoms";
 import { TerminalFind } from "@/components/terminal/terminal-find";
 import type { TerminalHandle } from "@/components/terminal/terminal-handle";
@@ -104,6 +106,7 @@ export function TerminalDrawer({
   onHide,
   onClose,
   onOpenLink,
+  fileLinks,
 }: {
   /** The owner, a thread or a project, by `terminalOwnerKey`. */
   ownerKey: string;
@@ -114,6 +117,7 @@ export function TerminalDrawer({
   onHide: () => void;
   onClose: (terminalId: TerminalId) => void;
   onOpenLink: (url: string) => void;
+  fileLinks: FileLinkHandlers;
 }) {
   const atoms = useTerminalAtoms();
   const connected = useConnectionState().status === "connected";
@@ -261,6 +265,7 @@ export function TerminalDrawer({
           onGone={onGone}
           onHandle={setHandle}
           onOpenLink={onOpenLink}
+          fileLinks={fileLinks}
         />
       </React.Suspense>
     );

@@ -77,7 +77,7 @@ const splitLineSuffix = (value: string): PathLink => {
 };
 
 /** Whether what is left after the position is a plausible path at all. */
-const plausiblePath = (path: string): boolean =>
+export const plausiblePath = (path: string): boolean =>
   path !== "" &&
   path !== "." &&
   path !== ".." &&

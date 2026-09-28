@@ -3012,11 +3012,28 @@ instead of reaching the shell — off macOS `Ctrl+J` would otherwise be a line
 feed.
 
 A printed http(s) link opens on a mod-click (`Cmd` on macOS, `Ctrl`
-elsewhere) and nowhere else: a plain click in a terminal places the selection.
-It opens in the thread's own browser pane — the dock switches to its Browser
-tab and the pane is sent a human `navigate`, as its address bar would send
+elsewhere) and nowhere else: a plain click on one places the selection. It
+opens in the thread's own browser pane — the dock switches to its Browser tab
+and the pane is sent a human `navigate`, as its address bar would send
 (`use-open-link.ts`, `terminal-links.ts`). On the New task page there is no
 thread, so no browser pane: a link opens in the system browser.
+
+A printed file reference is a link as well: `path:line[:col]`, relative to the
+workspace or absolute inside it, a stack frame's `(/abs/a.ts:10:5)`, a
+`file://` URL with a position, or tsc's `src/a.ts(12,3)` (`file-links.ts`).
+The path needs a `/` or an extension, so a clock time or a `host:port` never
+qualifies, and nothing inside an http(s) URL is looked at. xterm asks for a
+row's links as the pointer reaches it; the row's candidates go out in one
+`files.stat` in the owner's root, and only a confirmed file — never a
+directory, a missing path or one outside the root — is underlined
+(`file-link-provider.ts`). Every answer is kept for the xterm's life, so a
+file created after its path was first hovered links once the tab is next
+mounted, and a reference the terminal wrapped across two rows is not a link.
+A plain click opens the file in the thread's Files tab at that line, through
+the same request a timeline file chip makes; a mod-click opens it at that line
+in the favourite editor (`editors.open`), or in the Files tab when no editor
+was found (`use-file-links.ts`). On the New task page there is no Files tab to
+answer, so a plain click does nothing and only the mod-click opens the editor.
 
 Find is a row under the drawer's toolbar (`terminal-find.tsx`) that searches
 the xterm in front as the user types: Enter for the next match, Shift+Enter for
