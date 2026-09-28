@@ -113,9 +113,9 @@ describe("DockAddTabMenu", () => {
       menu(dockTabsFor("thread"), ["files", "changes", "browser", "agents", "pullRequest"]),
     ).toBe("");
     // Before the branch has a pull request (`offeredDockTabs`, tested beside it).
-    expect(
-      menu(offeredDockTabs("thread", false), ["files", "changes", "browser", "agents"]),
-    ).toBe("");
+    expect(menu(offeredDockTabs("thread", false), ["files", "changes", "browser", "agents"])).toBe(
+      "",
+    );
     expect(menu(dockTabsFor("project"), ["changes", "files"])).toBe("");
   });
 
