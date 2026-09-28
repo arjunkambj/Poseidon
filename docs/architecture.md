@@ -991,8 +991,9 @@ context) and `translator.ts` (turns, errors, warnings, MCP status, and the
 approval gate (`toolGate.ts`, `approvals.ts`): each request becomes a `Shell`
 command (the script inside the CLI's login-shell wrapper) or one `Edit` per
 path the file change's item named, the ladder decides, and a prompt opens a
-card on a fiber of its own. Allow and allow always answer `accept`, allow for
-the session `acceptForSession`, deny `decline`; Stop answers an open card
+card on a fiber of its own. Allow, allow always and allow for the session
+answer `accept` (the session is Poseidon's rule, so the CLI keeps asking and
+the ladder answers), deny `decline`; Stop answers an open card
 `cancel`, closing answers nothing, and a request the CLI withdraws
 (`serverRequest/resolved`, or its turn ending) resolves its card `deny`. A
 turn in which a file change, or a command outside the CLI's known-safe reads,

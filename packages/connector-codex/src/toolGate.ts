@@ -10,17 +10,18 @@
  * opens a card and waits for the user. The ladder's and the card's answers
  * read to the CLI as:
  *
- * - allow (the rules), allow once, allow always → `accept`. "Always" is
- *   Poseidon's rule, which the server has already saved; nothing is written
- *   to the CLI's own configuration.
- * - allow for the session → `acceptForSession`, so the CLI does not ask about
- *   the same call again in this thread.
+ * - allow (the rules), allow once, allow always, allow for the session →
+ *   `accept`. "Always" and "for the session" are Poseidon's rules, which the
+ *   server has already saved; nothing is written to the CLI's own
+ *   configuration. The CLI's own `acceptForSession` is never sent: the CLI
+ *   would then run the same call unasked, past the ladder — and the recorded
+ *   command approvals do not offer it (`availableDecisions`). So the CLI asks
+ *   again, and the session rule answers at once with no card.
  * - deny → `decline`: the call does not run, and the model is told so. An
  *   open card answered by Stop is `cancel`, which also ends the CLI's turn.
  *
  * A file change touching several paths is one card per path; the change runs
- * only if every path is allowed, and is accepted for the session only if every
- * path was.
+ * only if every path is allowed.
  *
  * An MCP tool call is asked about as an elicitation (`mcpApprovals.ts`): the
  * gate answers it the same way, in the elicitation's own words — `accept`,
@@ -72,8 +73,8 @@ import {
 import type { RpcId, RpcOutcome, RpcServerRequest } from "./rpc";
 import { asArray, asRecord, asString, type Notification } from "./translate/pending";
 
-/** How the CLI spells each answer to a command or file-change approval. */
-export type CodexApprovalAnswer = "accept" | "acceptForSession" | "decline" | "cancel";
+/** How the CLI spells each answer Poseidon gives to a command or file-change approval. */
+export type CodexApprovalAnswer = "accept" | "decline" | "cancel";
 
 /** The approval requests the gate answers. */
 const GATED_METHODS: ReadonlySet<string> = new Set([COMMAND_APPROVAL, FILE_CHANGE_APPROVAL]);
@@ -86,26 +87,19 @@ export const isGatedRequest = (request: RpcServerRequest): boolean =>
 /** The wire answer to `request` for one of the gate's answers. */
 const outcomeFor = (request: RpcServerRequest, answer: CodexApprovalAnswer): RpcOutcome =>
   request.method === MCP_ELICITATION
-    ? elicitationOutcome(answer === "acceptForSession" ? "accept" : answer)
+    ? elicitationOutcome(answer)
     : { result: { decision: answer } };
 
 /** What one verdict of the gate answers the CLI. */
-export const answerFor = (verdict: ApprovalVerdict): CodexApprovalAnswer => {
-  if (!verdict.allowed) return "decline";
-  return verdict.decision === "allow-session" ? "acceptForSession" : "accept";
-};
+export const answerFor = (verdict: ApprovalVerdict): CodexApprovalAnswer =>
+  verdict.allowed ? "accept" : "decline";
 
 /**
  * The answer to a request the gate decided in parts — a file change, one card
- * per path: any refusal declines it, and it is accepted for the session only
- * when every part was.
+ * per path: any refusal declines it.
  */
-export const combineAnswers = (
-  answers: ReadonlyArray<CodexApprovalAnswer>,
-): CodexApprovalAnswer => {
-  if (answers.length === 0 || answers.some((answer) => answer === "decline")) return "decline";
-  return answers.every((answer) => answer === "acceptForSession") ? "acceptForSession" : "accept";
-};
+export const combineAnswers = (answers: ReadonlyArray<CodexApprovalAnswer>): CodexApprovalAnswer =>
+  answers.length === 0 || answers.some((answer) => answer === "decline") ? "decline" : "accept";
 
 /**
  * The commands the CLI runs without asking under `untrusted`, by first word:

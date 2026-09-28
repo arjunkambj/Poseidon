@@ -340,17 +340,20 @@ applies to the next one. It fails closed: a defect answers `decline`.
 
 ### The answers
 
-| Poseidon's verdict                      | The CLI is told    |
-| --------------------------------------- | ------------------ |
-| allow (rules), allow once, allow always | `accept`           |
-| allow for the session                   | `acceptForSession` |
-| deny                                    | `decline`          |
-| Stop, with the card open                | `cancel`           |
-| close, or the CLI withdrew the request  | nothing            |
+| Poseidon's verdict                                     | The CLI is told |
+| ------------------------------------------------------ | --------------- |
+| allow (rules), allow once, allow always, allow session | `accept`        |
+| deny                                                   | `decline`       |
+| Stop, with the card open                               | `cancel`        |
+| close, or the CLI withdrew the request                 | nothing         |
 
-A file change runs only if every path is allowed, and is accepted for the
-session only if every path was. "Always" is Poseidon's rule; nothing is
-written to the CLI's own configuration. A request the CLI withdraws —
+A file change runs only if every path is allowed. "Always" and "for the
+session" are Poseidon's rules; nothing is written to the CLI's own
+configuration. The CLI's `acceptForSession` is never sent: with it the CLI
+would run the same call again unasked, past the ladder (and the session's
+check for ungated calls would count it), and the recorded command approvals
+do not offer it in `availableDecisions`. So the CLI asks again, and the
+session rule the card saved answers at once, with no card. A request the CLI withdraws —
 `serverRequest/resolved` for one still open, or its turn completing — aborts
 its card, which resolves `deny` with nothing sent (`approval-stop`: one card
 ended by Stop, one by close, each resolved once).

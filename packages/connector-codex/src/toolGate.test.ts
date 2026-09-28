@@ -110,17 +110,15 @@ describe("the decision table", () => {
     expect(answerFor({ allowed: false, via: "rules" })).toBe("decline");
     expect(answerFor({ allowed: true, decision: "allow-once", via: "user" })).toBe("accept");
     expect(answerFor({ allowed: true, decision: "allow-always", via: "user" })).toBe("accept");
-    expect(answerFor({ allowed: true, decision: "allow-session", via: "user" })).toBe(
-      "acceptForSession",
-    );
+    // The session is Poseidon's rule: the CLI keeps asking, and the ladder answers.
+    expect(answerFor({ allowed: true, decision: "allow-session", via: "user" })).toBe("accept");
     expect(answerFor({ allowed: false, decision: "deny", via: "user" })).toBe("decline");
   });
 
-  it("combines a change's parts: any refusal declines, the session only when all were", () => {
+  it("combines a change's parts: any refusal declines", () => {
     expect(combineAnswers([])).toBe("decline");
     expect(combineAnswers(["accept", "decline"])).toBe("decline");
-    expect(combineAnswers(["acceptForSession", "accept"])).toBe("accept");
-    expect(combineAnswers(["acceptForSession", "acceptForSession"])).toBe("acceptForSession");
+    expect(combineAnswers(["accept", "accept"])).toBe("accept");
   });
 
   it.effect("answers the ladder's allow and deny at once, with no card", () =>
@@ -136,7 +134,7 @@ describe("the decision table", () => {
   it.effect.each([
     ["allow-once", "accept"],
     ["allow-always", "accept"],
-    ["allow-session", "acceptForSession"],
+    ["allow-session", "accept"],
     ["deny", "decline"],
   ] as const)("answers a card's %s as %s", ([decision, answer]) =>
     Effect.gen(function* () {
@@ -185,7 +183,7 @@ describe("a file change", () => {
     }),
   );
 
-  it.effect("is accepted for the session only when every path was", () =>
+  it.effect("is accepted, never for the CLI's session, when every path was allowed for it", () =>
     Effect.gen(function* () {
       const context = yield* setup(() => Effect.succeed("prompt"));
       yield* context.toolGate.observe(
@@ -201,7 +199,7 @@ describe("a file change", () => {
       const fiber = yield* Effect.forkChild(context.toolGate.answer(fileChange(0, "f1")));
       yield* answerCard(context, "allow-session", 0);
       yield* answerCard(context, "allow-session", 1);
-      expect(decisionOf(yield* Fiber.join(fiber))).toBe("acceptForSession");
+      expect(decisionOf(yield* Fiber.join(fiber))).toBe("accept");
     }),
   );
 });
