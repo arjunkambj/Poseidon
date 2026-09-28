@@ -19,8 +19,9 @@ The pieces these rules are about are described in
 [architecture.md](architecture.md), what they do at runtime in
 [how-it-works.md](how-it-works.md), the commands in
 [development.md](development.md), and each harness's own behaviour in
-[command-code-connector.md](command-code-connector.md) and
-[claude-code-connector.md](claude-code-connector.md).
+[command-code-connector.md](command-code-connector.md),
+[claude-code-connector.md](claude-code-connector.md) and
+[codex-connector.md](codex-connector.md).
 
 ## 1. The harness is the source of truth
 
@@ -54,8 +55,9 @@ recording under `packages/testkit/fixtures/cmd/` rather than a constant. If you
 find yourself writing the harness's own logic a second time — a path rule, a
 config format, a plan index — look for the command that does it instead. What
 each CLI has been observed to do is written down once, in
-[command-code-connector.md](command-code-connector.md) and
-[claude-code-connector.md](claude-code-connector.md).
+[command-code-connector.md](command-code-connector.md),
+[claude-code-connector.md](claude-code-connector.md) and
+[codex-connector.md](codex-connector.md).
 
 ## 2. Contracts are the seam
 
@@ -404,7 +406,10 @@ message left unmapped, the `sdk-stream` replayer exits 97 the moment the
 connector sends a line the recorded run was not sent, and
 `POSEIDON_LIVE_CLAUDE=1` runs `src/liveConformance.test.ts` and
 `apps/server/test/e2e-claude` against the operator's own `claude`, on its
-default model only.
+default model only. Codex's are kept honest the same way:
+`packages/connector-codex/src/recordedFrames.test.ts`, the `stdio-jsonrpc`
+replayer's exit 97, and `POSEIDON_LIVE_CODEX=1` running
+`src/liveConformance.test.ts` against the operator's own `codex`.
 
 `apps/server/test/e2e/harness.ts` is where this pays off: it boots the real
 server graph from `apps/server/src/boot.ts`, dials it with the real client over a
@@ -484,17 +489,17 @@ on its own, is in [development.md](development.md#the-gate).
 
 ## Where each rule is enforced
 
-| Principle                         | Enforced by                                                                                                                                                           |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Contracts are the seam            | `packages/contracts/test/fixtures.test.ts`                                                                                                                            |
-| Connector promises                | `packages/connector-sdk/src/conformance.ts`                                                                                                                           |
-| Renderer neutrality               | `scripts/check-boundaries.mjs` (string and filename grep over `apps/web/src`)                                                                                         |
-| No harness named above the SDK    | `scripts/check-boundaries.mjs` (connector imports and kind literals)                                                                                                  |
-| Reference products never named    | `scripts/check-boundaries.mjs` (encoded names over the whole tree)                                                                                                    |
-| Package boundaries, no barrels    | `scripts/check-boundaries.mjs`                                                                                                                                        |
-| File sizes                        | `scripts/check-file-sizes.mjs`                                                                                                                                        |
-| Migration lineage                 | `apps/server/src/persistence/migrations.test.ts`                                                                                                                      |
-| Permission ladder                 | `apps/server/src/permissions/permissions.test.ts`, `permissionService.test.ts`                                                                                        |
-| No timers in tests                | `.oxlintrc.json` (`no-restricted-globals`, `no-restricted-properties`)                                                                                                |
-| Recordings describe the CLI       | `recordedArgs.test.ts`, each connector's `recordedFrames.test.ts`, the replayer's divergence exit (97), the `POSEIDON_LIVE_CMD=1` and `POSEIDON_LIVE_CLAUDE=1` suites |
-| The whole product still assembles | `apps/server/test/e2e`                                                                                                                                                |
+| Principle                         | Enforced by                                                                                                                                                                                    |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contracts are the seam            | `packages/contracts/test/fixtures.test.ts`                                                                                                                                                     |
+| Connector promises                | `packages/connector-sdk/src/conformance.ts`                                                                                                                                                    |
+| Renderer neutrality               | `scripts/check-boundaries.mjs` (string and filename grep over `apps/web/src`)                                                                                                                  |
+| No harness named above the SDK    | `scripts/check-boundaries.mjs` (connector imports and kind literals)                                                                                                                           |
+| Reference products never named    | `scripts/check-boundaries.mjs` (encoded names over the whole tree)                                                                                                                             |
+| Package boundaries, no barrels    | `scripts/check-boundaries.mjs`                                                                                                                                                                 |
+| File sizes                        | `scripts/check-file-sizes.mjs`                                                                                                                                                                 |
+| Migration lineage                 | `apps/server/src/persistence/migrations.test.ts`                                                                                                                                               |
+| Permission ladder                 | `apps/server/src/permissions/permissions.test.ts`, `permissionService.test.ts`                                                                                                                 |
+| No timers in tests                | `.oxlintrc.json` (`no-restricted-globals`, `no-restricted-properties`)                                                                                                                         |
+| Recordings describe the CLI       | `recordedArgs.test.ts`, each connector's `recordedFrames.test.ts`, the replayer's divergence exit (97), the `POSEIDON_LIVE_CMD=1`, `POSEIDON_LIVE_CLAUDE=1` and `POSEIDON_LIVE_CODEX=1` suites |
+| The whole product still assembles | `apps/server/test/e2e`                                                                                                                                                                         |
