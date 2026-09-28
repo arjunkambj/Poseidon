@@ -856,6 +856,31 @@ Directories, relative to `apps/server/`:
 | `src/attachments/`   | the staging store and its reactor                                                                                               |
 | `src/generation/`    | generated text: the writer resolver, prompts and answer parsing, the git reads, the `TextGeneration` service and title reactor  |
 | `src/plugins/`       | the plugin registry, manifest and MCP config reading, the built-in plugins and writing them at boot                             |
+| `src/import/`        | the session importer (`sessions.importable`, `sessions.import`), its ledger, a transcript as timeline events                    |
+
+`SessionImporter` (`src/import/`) brings sessions a harness recorded on its
+own in as threads. It never reads a harness file itself: `sessions.importable`
+asks every open instance that carries a `sessions` extension for its newest
+sessions (an instance whose list fails is logged and skipped), marks each with
+the project already open on its `cwd` and the thread an earlier import made of
+it, and sorts them newest first. `sessions.import` reads the transcript
+through the instance, finds the project whose root is the session's `cwd` or
+dispatches `project.create` there (refusing, `not-found`, when that folder no
+longer exists), and dispatches `thread.create` for a local thread on it with
+the instance as its connector, since a resume must run where the session ran.
+It then appends, as the system, one completed `thread.item.upserted` per
+message, a new turn at each user message and the replies after it sharing it,
+and, when the instance's `capabilities.resume` is true, `thread.session.bound`
+with the connector's `sessionRef` and no capabilities. No command or event
+type is new. A bound imported thread is then like any thread whose session
+went away: its next turn goes through the session manager's `resumeSession`
+path, and the supervisor's boot scan resumes it like any other bound thread.
+Which thread each `<instanceId>:<sourceId>` became is kept in
+`session-imports.json` under the Poseidon home, replaced through a temporary
+file and a rename; importing a session whose thread still exists answers that
+thread, and `importable` names it only while it does. Imports run one at a
+time. A failure after `thread.create` dispatches `thread.delete`, so a retry
+starts clean; a project the import added stays.
 
 Public seam: the RPC group in `packages/contracts/src/rpc.ts` and the three
 loopback HTTP routes. May import `contracts`, `connector-sdk` and `shared`;
@@ -3014,6 +3039,7 @@ anything resolves a path, and connector children inherit it.
 | `~/.poseidon/worktrees/<project>/<slug>` | a thread's own git worktree                 |
 | `~/.poseidon/plugins/<name>/`            | a global Poseidon plugin                    |
 | `~/.poseidon/builtin-plugins/<name>/`    | a built-in plugin, written at boot          |
+| `~/.poseidon/session-imports.json`       | which thread each imported session became   |
 | `~/.poseidon/dev/connection.json`        | the dev handshake, 0600, dev mode only      |
 
 Attachments are references, never bytes, in the event log: an inlined screenshot

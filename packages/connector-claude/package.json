@@ -7,6 +7,10 @@
     "./definition": {
       "types": "./src/definition.ts",
       "import": "./src/definition.ts"
+    },
+    "./sessionFiles": {
+      "types": "./src/sessionFiles.ts",
+      "import": "./src/sessionFiles.ts"
     }
   },
   "scripts": {

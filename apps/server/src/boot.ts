@@ -42,6 +42,7 @@ import { AgentBrowser } from "./browser/agentBrowser";
 import { layer as browserServiceLayer } from "./browser/BrowserService";
 import { layer as devServerDiscoveryLayer } from "./browser/discovery";
 import { HookBridge } from "./hooks/HookBridge";
+import { SessionImporter } from "./import/SessionImporter";
 import { McpGateway } from "./mcp/McpGateway";
 import { CheckpointReactor } from "./orchestration/CheckpointReactor";
 import { OrchestrationEngine } from "./orchestration/Engine";
@@ -287,6 +288,14 @@ export const boot = (options: BootOptions) =>
           TextGeneration.layer.pipe(Layer.provide(Layer.mergeAll(persistence, sharedSettings))),
         ),
         Layer.provide(Layer.mergeAll(engine, sharedSettings)),
+      ),
+      // Over the one engine and catalog, so an import's commands reach the
+      // same subscribers as the client's, and its list names instances as
+      // the connectors page does.
+      SessionImporter.layer.pipe(
+        Layer.provide(
+          Layer.mergeAll(engine, sharedSettings, Layer.succeed(ConnectorRegistryService, registry)),
+        ),
       ),
     );
 

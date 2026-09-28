@@ -12,6 +12,7 @@ import * as Stream from "effect/Stream";
 
 import { AttachmentStore } from "../attachments/AttachmentStore";
 import { TextGeneration } from "../generation/TextGeneration";
+import { SessionImporter } from "../import/SessionImporter";
 import { ConcurrencyConflict } from "../persistence/EventStore";
 import { ScriptDetection } from "../scripts/ScriptDetection";
 import { OrchestrationEngine } from "../orchestration/Engine";
@@ -63,6 +64,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
     const scripts = yield* ScriptDetection;
     const plugins = yield* PluginRegistry;
     const generation = yield* TextGeneration;
+    const sessionImporter = yield* SessionImporter;
 
     return {
       "server.hello": () =>
@@ -97,6 +99,9 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
         ),
 
       "threads.searchMessages": ({ query, limit }) => messageSearch.search(query, limit),
+      "sessions.importable": () => sessionImporter.importable,
+      "sessions.import": ({ connectorInstanceId, sourceId }) =>
+        sessionImporter.importSession(connectorInstanceId, sourceId),
 
       "connectors.list": ({ refresh }) => connectors.list(refresh ?? false),
       "connectors.models": ({ instanceId }) => connectors.models(instanceId),

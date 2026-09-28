@@ -1172,6 +1172,7 @@ Everything Poseidon owns hangs off `configDir()` — `~/.poseidon`, or
 ├── worktrees/<project>/<slug>/  threads' own git worktrees
 ├── plugins/<name>/         global Poseidon plugins (Claude Code plugin layout)
 ├── builtin-plugins/<name>/ built-in plugins, written at boot
+├── session-imports.json    which thread each imported harness session became
 ├── bin/
 │   ├── cmd-hook.mjs        generated PreToolUse hook script
 │   └── tickets/<id>.ticket per-session bearer, mode 0600

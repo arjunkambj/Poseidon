@@ -68,6 +68,7 @@ import { testLayer as sqliteTestLayer } from "../persistence/Sqlite";
 import { ScriptDetection } from "../scripts/ScriptDetection";
 import { ConnectorRegistryService } from "../settings/ConnectorManager";
 import { PluginRegistry } from "../plugins/PluginRegistry";
+import { SessionImporter } from "../import/SessionImporter";
 import { serverLayer, ServerToken } from "./server";
 import {
   BrowserService,
@@ -162,6 +163,7 @@ const testStack = (
       messageSearchLayer.pipe(Layer.provide(persistence)),
       ScriptDetection.empty,
       PluginRegistry.empty,
+      SessionImporter.empty,
       AttachmentStore.layerAt(mkdtempSync(NodePath.join(NodeOS.tmpdir(), "poseidon-transport-"))),
       settingsLayer,
       TextGeneration.layer.pipe(
