@@ -21,6 +21,12 @@
  * message, or the action's own reason (`reasons`, from the control's
  * `availableActions`).
  *
+ * Generate, in the message field's corner (`./generate-button`), writes the
+ * message from the ticked files' diff and it counts as edited; it runs once as
+ * the dialog opens when Settings → Git drafts by generating
+ * (`./use-generate-commit-message`). A commit with the generated message left
+ * unchanged is `generated` in its choice.
+ *
  * The control mounts a fresh dialog (a new `key`) for each opening, so each
  * opening starts from the draft with every file ticked. The dialog scrolls on
  * a short window.
@@ -40,6 +46,7 @@ import {
 import { Label } from "@poseidon/ui/components/label";
 import { Textarea } from "@poseidon/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
+import type { GitScope } from "@poseidon/client-runtime/gitAtoms";
 import type { GitFileChange } from "@poseidon/contracts/rpc";
 
 import { DialogActions } from "@/components/dialog-actions";
@@ -47,6 +54,8 @@ import { DialogBody } from "@/components/dialog-body";
 import { GIT_ACTIONS, type GitAction } from "@/lib/git-actions";
 
 import { CommitFileList } from "./commit-file-list";
+import { GenerateButton, type GenerateControl } from "./generate-button";
+import { useGenerateCommitMessage } from "./use-generate-commit-message";
 import {
   commitBlockedReason,
   commitButtonLabel,
@@ -74,9 +83,21 @@ interface CommitDialogProps {
   readonly onSubmit: (action: GitAction, choice: CommitChoice) => void;
 }
 
-export function CommitDialog(props: CommitDialogProps) {
+export function CommitDialog(props: CommitDialogProps & { readonly scope: GitScope }) {
   const [picker, setPicker] = React.useState(initialPicker);
-  return <CommitDialogView {...props} picker={picker} onPickerChange={setPicker} />;
+  const generation = useGenerateCommitMessage({
+    scope: props.scope,
+    paths: commitPick(picker, props.threadTitle, props.files).choice.paths,
+    setPicker,
+  });
+  return (
+    <CommitDialogView
+      {...props}
+      picker={picker}
+      onPickerChange={setPicker}
+      generation={generation}
+    />
+  );
 }
 
 /** The dialog with its pick held by the caller — `CommitDialog` holds it in state. */
@@ -91,9 +112,11 @@ export function CommitDialogView({
   onSubmit,
   picker,
   onPickerChange,
+  generation,
 }: CommitDialogProps & {
   readonly picker: CommitPickerState;
   readonly onPickerChange: (picker: CommitPickerState) => void;
+  readonly generation: GenerateControl;
 }) {
   const primary = React.useRef<HTMLButtonElement>(null);
   const { message, ticked, choice } = commitPick(picker, threadTitle, files);
@@ -128,7 +151,10 @@ export function CommitDialogView({
         </DialogHeader>
         <DialogBody className="flex min-w-0 flex-col gap-4">
           <div className="flex min-w-0 flex-col gap-1.5">
-            <Label htmlFor="commit-message">Message</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="commit-message">Message</Label>
+              <GenerateButton label="Generate message" control={generation} />
+            </div>
             <Textarea
               id="commit-message"
               value={message}

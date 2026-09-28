@@ -7,6 +7,8 @@ import {
   commitButtonLabel,
   commitPick,
   editMessage,
+  fillGenerated,
+  generatedCommitMessage,
   initialPicker,
   isSubmitChord,
   middleTruncate,
@@ -112,6 +114,23 @@ describe("the picker", () => {
     const pick = commitPick(togglePath(edited, "src/a.ts", false), "t", FILES);
     expect(pick.message).toBe("  My message\n");
     expect(pick.choice.message).toBe("My message");
+    expect(pick.choice.generated).toBe(false);
+  });
+
+  it("marks a generated message until the user changes it", () => {
+    const message = generatedCommitMessage({ subject: " Fix login ", body: "- Keep next\n" });
+    expect(message).toBe("Fix login\n\n- Keep next");
+    expect(generatedCommitMessage({ subject: "Fix login", body: "  " })).toBe("Fix login");
+
+    const filled = fillGenerated(initialPicker(), message);
+    const pick = commitPick(filled, "t", FILES);
+    expect(pick.message).toBe(message);
+    expect(pick.choice).toEqual({ message, generated: true });
+    // Ticks keep it; a keystroke makes it the user's own.
+    expect(commitPick(togglePath(filled, "notes.md", false), "t", FILES).choice.generated).toBe(
+      true,
+    );
+    expect(commitPick(editMessage(filled, `${message}!`), "t", FILES).choice.generated).toBe(false);
   });
 });
 

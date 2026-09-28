@@ -8,6 +8,11 @@
  * refetches the status as it opens) starts ticked like the rest. The message
  * follows the draft for the ticked files (`commitSelection`) until the user
  * types; from the first keystroke their text wins and nothing replaces it.
+ *
+ * A generated message (`fillGenerated`) counts as edited too: it stops
+ * following the draft. It is marked `generated` until the user changes it,
+ * and a commit made with it unchanged says so in its choice, which is what
+ * lets a pull request in the same run be generated as well.
  */
 
 import type { ModKey } from "@poseidon/client-runtime/keybindings";
@@ -15,10 +20,14 @@ import type { GitFileChange } from "@poseidon/contracts/rpc";
 
 import { commitSelection, type GitAction } from "@/lib/git-actions";
 
-/** What the dialog commits: `paths` is absent when every file is ticked. */
+/**
+ * What the dialog commits: `paths` is absent when every file is ticked.
+ * `generated` is true when the message was generated and not edited after.
+ */
 export interface CommitChoice {
   readonly message: string;
   readonly paths?: ReadonlyArray<string>;
+  readonly generated: boolean;
 }
 
 export interface CommitPickerState {
@@ -26,9 +35,15 @@ export interface CommitPickerState {
   readonly excluded: ReadonlySet<string>;
   /** The user's message; `null` until they type, while it follows the draft. */
   readonly edited: string | null;
+  /** Whether `edited` is a generated message the user has not changed since. */
+  readonly generated: boolean;
 }
 
-export const initialPicker = (): CommitPickerState => ({ excluded: new Set(), edited: null });
+export const initialPicker = (): CommitPickerState => ({
+  excluded: new Set(),
+  edited: null,
+  generated: false,
+});
 
 export const togglePath = (
   state: CommitPickerState,
@@ -56,6 +71,22 @@ export const toggleAll = (
 export const editMessage = (state: CommitPickerState, message: string): CommitPickerState => ({
   ...state,
   edited: message,
+  generated: false,
+});
+
+/** The message box's text for a generated subject and body. */
+export const generatedCommitMessage = (generated: {
+  readonly subject: string;
+  readonly body: string;
+}): string => {
+  const body = generated.body.trim();
+  return body === "" ? generated.subject.trim() : `${generated.subject.trim()}\n\n${body}`;
+};
+
+/** Puts a generated message in the box: edited, like typing, and marked generated. */
+export const fillGenerated = (state: CommitPickerState, message: string): CommitPickerState => ({
+  ...editMessage(state, message),
+  generated: true,
 });
 
 /** The message in the box, the ticked count, and what a submit sends. */
@@ -72,6 +103,7 @@ export const commitPick = (
     choice: {
       message: message.trim(),
       ...(selection.paths === undefined ? {} : { paths: selection.paths }),
+      generated: state.edited !== null && state.generated,
     },
   };
 };

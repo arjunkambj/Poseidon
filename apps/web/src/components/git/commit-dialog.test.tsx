@@ -5,8 +5,19 @@ import { describe, expect, it, vi } from "vitest";
 import type { GitFileChange } from "@poseidon/contracts/rpc";
 
 import { CommitDialogView } from "@/components/git/commit-dialog";
-import { initialPicker, type CommitPickerState } from "@/components/git/commit-picker";
+import { commitPick, initialPicker, type CommitPickerState } from "@/components/git/commit-picker";
+import {
+  COMMIT_DRAFT_FAILED,
+  generateCommitInto,
+  makeOpenDraft,
+  type CommitGeneration,
+} from "@/components/git/use-generate-commit-message";
 import type { GitAction } from "@/lib/git-actions";
+import {
+  GENERATION_UNAVAILABLE,
+  makeGenerationRunner,
+  type GenerationOutcome,
+} from "@/lib/generation-run";
 
 // The handlers the last render handed out, so a test can press a button,
 // tick a box, type or press a key without a DOM.
@@ -52,16 +63,20 @@ vi.mock("@poseidon/ui/components/button", () => ({
     children,
     disabled,
     onClick,
+    "aria-label": label,
   }: {
     readonly children?: React.ReactNode;
     readonly disabled?: boolean;
     readonly onClick?: () => void;
+    readonly "aria-label"?: string;
   }) => {
-    if (typeof children === "string" && onClick !== undefined) {
-      handlers.clicks.set(children, onClick);
+    // A labelled button by its label, else by its text.
+    const name = label ?? (typeof children === "string" ? children : undefined);
+    if (name !== undefined && onClick !== undefined) {
+      handlers.clicks.set(name, onClick);
     }
     return (
-      <button type="button" disabled={disabled}>
+      <button type="button" disabled={disabled} aria-label={label}>
         {children}
       </button>
     );
@@ -118,17 +133,47 @@ const NONE: Record<GitAction, string | null> = {
   "commit-push-pr": null,
 };
 
-/** Holds the pick the way `CommitDialog` does, re-rendering after each change. */
+type Generated = GenerationOutcome<{ readonly subject: string; readonly body: string }>;
+
+/**
+ * Holds the pick the way `CommitDialog` does, re-rendering after each change,
+ * and wires Generate the way `useGenerateCommitMessage` does, to `generate`.
+ */
 const mount = (
   options: {
     readonly initialAction?: GitAction;
     readonly reasons?: Record<GitAction, string | null>;
+    readonly generate?: (
+      paths: ReadonlyArray<string> | undefined,
+      signal: AbortSignal,
+    ) => Promise<Generated>;
+    readonly generationReason?: string | null;
   } = {},
 ) => {
   let picker: CommitPickerState = initialPicker();
   const onSubmit = vi.fn();
   const onOpenChange = vi.fn();
+  const toastError = vi.fn();
   let markup = "";
+  let running = false;
+  const runner = makeGenerationRunner((next) => {
+    running = next;
+    render();
+  });
+  const deps: CommitGeneration = {
+    runner,
+    generate:
+      options.generate ??
+      (async () => ({ ok: true, value: { subject: "Fix the login", body: "- Keep next" } })),
+    update: (change) => {
+      picker = change(picker);
+      render();
+    },
+    toastError,
+    notice: () => {},
+  };
+  const generate = (auto: boolean) =>
+    generateCommitInto(deps, commitPick(picker, "Fix the bug", FILES).choice.paths, auto);
   const render = () => {
     handlers.clicks.clear();
     handlers.checks.clear();
@@ -147,11 +192,17 @@ const mount = (
           picker = next;
           render();
         }}
+        generation={{
+          running,
+          reason: options.generationReason ?? null,
+          onGenerate: () => void generate(false),
+          onCancel: runner.cancel,
+        }}
       />,
     );
   };
   render();
-  return { markup: () => markup, onSubmit, onOpenChange };
+  return { markup: () => markup, onSubmit, onOpenChange, toastError, generate };
 };
 
 const button = (markup: string, label: string) =>
@@ -169,6 +220,7 @@ describe("CommitDialog", () => {
     handlers.clicks.get("Commit 3 files & push")?.();
     expect(dialog.onSubmit).toHaveBeenCalledWith("commit-push", {
       message: expect.stringMatching(/^Fix the bug\n/),
+      generated: false,
     });
     expect(dialog.onOpenChange).toHaveBeenCalledWith(false);
   });
@@ -185,6 +237,7 @@ describe("CommitDialog", () => {
     expect(dialog.onSubmit).toHaveBeenCalledWith("commit", {
       message: expect.any(String),
       paths: ["src/a.ts", "src/b.ts"],
+      generated: false,
     });
   });
 
@@ -210,6 +263,7 @@ describe("CommitDialog", () => {
     expect(dialog.onSubmit).toHaveBeenCalledWith("commit", {
       message: "My own message",
       paths: ["src/b.ts", "notes.md"],
+      generated: false,
     });
   });
 
@@ -242,6 +296,7 @@ describe("CommitDialog", () => {
     expect(dialog.onSubmit).toHaveBeenCalledWith("commit-push-pr", {
       message: expect.any(String),
       paths: ["src/a.ts", "notes.md"],
+      generated: false,
     });
   });
 
@@ -256,5 +311,105 @@ describe("CommitDialog", () => {
       preventDefault: vi.fn(),
     });
     expect(dialog.onSubmit).not.toHaveBeenCalled();
+  });
+
+  describe("Generate", () => {
+    it("fills the message from the ticked files and marks it generated", async () => {
+      const generate = vi.fn(async (): Promise<Generated> => ({
+        ok: true,
+        value: { subject: "Fix the login redirect", body: "- Keep the next param" },
+      }));
+      const dialog = mount({ generate });
+      handlers.checks.get("notes.md")?.(false);
+      await dialog.generate(false);
+
+      expect(generate).toHaveBeenCalledWith(["src/a.ts", "src/b.ts"], expect.any(AbortSignal));
+      expect(textarea(dialog.markup())).toBe("Fix the login redirect\n\n- Keep the next param");
+      // A tick no longer redrafts it: it counts as edited.
+      handlers.checks.get("notes.md")?.(true);
+      expect(textarea(dialog.markup())).toBe("Fix the login redirect\n\n- Keep the next param");
+      handlers.clicks.get("Commit 3 files")?.();
+      expect(dialog.onSubmit).toHaveBeenCalledWith("commit", {
+        message: "Fix the login redirect\n\n- Keep the next param",
+        generated: true,
+      });
+    });
+
+    it("shows a spinner while it runs, and Cancel stops it and drops the late answer", async () => {
+      let answer: (outcome: Generated) => void = () => {};
+      let seen: AbortSignal | null = null;
+      const dialog = mount({
+        generate: (_paths, signal) => {
+          seen = signal;
+          return new Promise((resolve) => {
+            answer = resolve;
+          });
+        },
+      });
+      const template = textarea(dialog.markup());
+      handlers.clicks.get("Generate message")?.();
+      expect(dialog.markup()).toContain('aria-label="Cancel generating"');
+      expect(dialog.markup()).toContain("animate-spin");
+
+      handlers.clicks.get("Cancel generating")?.();
+      expect(seen!.aborted).toBe(true);
+      expect(dialog.markup()).toContain('aria-label="Generate message"');
+      answer({ ok: true, value: { subject: "Too late", body: "" } });
+      await Promise.resolve();
+      expect(textarea(dialog.markup())).toBe(template);
+    });
+
+    it("drafts once as the dialog opens when the setting says Generate", async () => {
+      const draft = vi.fn();
+      const onOpen = makeOpenDraft(draft);
+      onOpen("template", null);
+      onOpen("generate", GENERATION_UNAVAILABLE);
+      expect(draft).not.toHaveBeenCalled();
+      onOpen("generate", null);
+      onOpen("generate", null);
+      expect(draft).toHaveBeenCalledOnce();
+
+      const dialog = mount();
+      await dialog.generate(true);
+      expect(textarea(dialog.markup())).toBe("Fix the login\n\n- Keep next");
+    });
+
+    it("never replaces what the user typed while the on-open draft ran", async () => {
+      let answer: (outcome: Generated) => void = () => {};
+      const dialog = mount({
+        generate: () =>
+          new Promise((resolve) => {
+            answer = resolve;
+          }),
+      });
+      const drafting = dialog.generate(true);
+      handlers.typing?.("My own message");
+      answer({ ok: true, value: { subject: "Generated", body: "" } });
+      await drafting;
+      expect(textarea(dialog.markup())).toBe("My own message");
+    });
+
+    it("keeps the template and says so when the on-open draft fails", async () => {
+      const dialog = mount({
+        generate: async () => ({ ok: false, message: "The harness timed out." }),
+      });
+      const template = textarea(dialog.markup());
+      await dialog.generate(true);
+      expect(textarea(dialog.markup())).toBe(template);
+      expect(dialog.toastError).toHaveBeenCalledWith(COMMIT_DRAFT_FAILED);
+
+      await dialog.generate(false);
+      expect(dialog.toastError).toHaveBeenLastCalledWith(
+        "Couldn't write a commit message: The harness timed out.",
+      );
+    });
+
+    it("is disabled with the reason when nothing can write", () => {
+      const dialog = mount({ generationReason: GENERATION_UNAVAILABLE });
+      const markup = dialog.markup();
+      expect(markup).toMatch(/<button type="button" disabled="" aria-label="Generate message">/);
+      expect(markup).toContain(GENERATION_UNAVAILABLE);
+      expect(GENERATION_UNAVAILABLE).toContain("Settings → Connectors");
+    });
   });
 });

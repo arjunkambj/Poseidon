@@ -273,6 +273,7 @@ export function GitActionsControl({
       {dialog?.kind === "commit" ? (
         <CommitDialog
           key={dialog.key}
+          scope={scope}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           initialAction={dialog.action}
