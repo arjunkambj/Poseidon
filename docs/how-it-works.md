@@ -587,10 +587,15 @@ connector does, in the words its harness understands ([The spawn](#the-spawn)).
 The model picker, on the start screen and in the thread header, has one
 section per enabled connector instance (`modelCatalogAtom`), headed by the
 instance's name and its connector's generic icon, in the connectors page's
-order. Picking a model picks its instance too: the start screen sends both on
-`thread.create`, the header on `thread.settings.update`. Until the user picks,
-a new thread shows the saved default model under the first instance that lists
-it, else the first enabled instance's first model. Once the thread has run
+order. It lists only the harnesses and models switched on in Settings → Models
+(`visibleCatalog` in `apps/web/src/lib/model-visibility.ts`), and always the
+thread's current pick: a thread on a harness or model switched off keeps
+showing it, keeps it as current and keeps working. Picking a model picks its
+instance too: the start screen sends both on `thread.create`, the header on
+`thread.settings.update`. Until the user picks, a new thread shows the saved
+default model under the first instance that lists it, else the first model the
+pickers offer (`newTaskModelPick`), so a switched-off harness is never the
+implicit seed. Once the thread has run
 anything (`threadLocksConnector`), the other instances' sections stay listed but
 disabled, with a tooltip saying to start a new thread, and a pick in the
 thread's own section sends the model alone. The instance a thread runs on, or
@@ -3625,6 +3630,7 @@ Settings
   notifications      { finished, failed, needsYou, sound, dockBadge, keepAwake }
   preferredEditor    string?                    the "Open in" button's editor; unset until picked
   autoDoneAfterDays  positive int | null?       days idle before a thread moves to Done; absent or null is off
+  modelPicker        { harnesses, models }      which harnesses and models the pickers offer
 ```
 
 `git` and `projectSettings`, like the two font sizes, are defaulted on decode
@@ -3681,6 +3687,27 @@ schema, annotates its fields the same way, and the server describes the
 resulting form (with the connector's name, icon key and docs link) over
 `connectors.describe`. A new connector needs no connector-specific markup and
 no change to the contracts package.
+
+Settings → Models (`apps/web/src/components/Settings/models-panel.tsx`) has
+the `defaults` form — its default-model options filtered like the pickers,
+keeping the saved default — and under it one card per enabled connector
+instance (`harness-models-section.tsx`, `harness-card.tsx`), in
+`modelCatalogAtom`'s order. A card's header is the instance's monogram avatar
+(`harnessMonograms` in `apps/web/src/lib/harness-monogram.ts`: the initials of
+the first two words, stepping down to other letters of the first word when two
+names collide), its name and connector kind, and a "Show in model pickers"
+switch; under it is a 28px row per model with its label, id, family, effort
+ladder (lowest first, "No effort levels" when it has none) and its own switch.
+Rows under a harness that is off are shown with their switches disabled, and
+the switch that would leave the pickers with no model is disabled with a
+tooltip. "Enable all" stores every harness and model on, a model its connector
+marks `hidden` included; "Reset to defaults" stores no switch at all, so every
+harness is on and every model is on unless its connector hides it. The
+switches are `modelPicker`, keyed by connector instance id, and filter the
+pickers only: they are not the Connectors page's `enabled`, which stops an
+instance and takes it out of `modelCatalogAtom` — such instances get no card,
+only a muted line naming them. With no instance enabled the section is an
+empty state linking to Connectors.
 
 `permissions` is a projection, not a second store: the `permission_rules` table
 is the single source of truth, and a settings update that carries a
