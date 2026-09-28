@@ -134,6 +134,7 @@ export function ThreadRow({
           <Link
             to="/t/$threadId"
             params={{ threadId }}
+            data-thread-id={threadId}
             aria-current={active ? "page" : undefined}
             aria-selected={selecting ? selected : undefined}
             onClick={(event) => {

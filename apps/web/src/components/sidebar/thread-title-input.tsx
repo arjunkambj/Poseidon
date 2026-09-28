@@ -5,7 +5,9 @@
  * It opens prefilled with the title, all of it selected. Enter sends
  * `thread.rename` when the trimmed draft is a new, non-empty title (through
  * `./use-sidebar-actions`, so `Mod+Z` takes it back); Escape and a click away
- * keep the old title. Either way the row goes back to its link.
+ * keep the old title. Either way the row goes back to its link, and after
+ * Enter or Escape focus goes back to that link too — the field that held it is
+ * gone, and a keyboard user would otherwise start again from the top.
  *
  * Opened from a row menu, the field mounts while that menu is still closing,
  * and base-ui then hands focus back to the menu's trigger — a blur that would
@@ -50,11 +52,20 @@ export function ThreadTitleInput({
     return () => cancelAnimationFrame(frame);
   }, [grab]);
 
-  const finish = (draft: string | null) => {
+  const finish = (draft: string | null, refocus: boolean) => {
     if (done.current) {
       return;
     }
     done.current = true;
+    if (refocus) {
+      // The row's link replaces this field once `onDone` has re-rendered it,
+      // in the same list: pinned threads leave their project, so it is the
+      // only row for this thread there.
+      const list = ref.current?.closest("ul") ?? document;
+      requestAnimationFrame(() =>
+        list.querySelector<HTMLElement>(`[data-thread-id="${thread.threadId}"]`)?.focus(),
+      );
+    }
     onDone();
     const title = draft === null ? null : renameTarget(thread.title, draft);
     if (title !== null) {
@@ -74,13 +85,13 @@ export function ThreadTitleInput({
         if (event.key === "Enter") {
           event.preventDefault();
           event.stopPropagation();
-          finish(event.currentTarget.value);
+          finish(event.currentTarget.value, true);
         } else if (event.key === "Escape") {
           // Kept from the window listeners: `thread.interrupt` and the
           // selection's Escape answer there.
           event.preventDefault();
           event.stopPropagation();
-          finish(null);
+          finish(null, true);
         }
       }}
       onBlur={() => {
@@ -88,7 +99,7 @@ export function ThreadTitleInput({
           requestAnimationFrame(grab);
           return;
         }
-        finish(null);
+        finish(null, false);
       }}
       // The browser's own menu (cut, paste) rather than the row's.
       onContextMenu={(event) => event.stopPropagation()}
