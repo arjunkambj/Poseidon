@@ -354,6 +354,20 @@ describe("calls that ran without the gate", () => {
     }),
   );
 
+  it.effect("warns for a file the turn's diff wrote with no file-change item for it", () =>
+    Effect.gen(function* () {
+      // A patch applied from inside the CLI's `exec` tool: no request, no item.
+      const context = yield* setup(() => Effect.succeed("allow"));
+      yield* context.toolGate.turnStarted;
+      yield* context.toolGate.observe({
+        method: "turn/diff/updated",
+        params: { diff: "diff --git a/x.txt b/x.txt\n--- /dev/null\n+++ b/x.txt\n" },
+      });
+      expect(context.toolGate.ungated()).toBe(ungatedWarning(0, 1));
+      expect(ungatedWarning(0, 1)).toMatch(/^1 file\(s\) were written without reaching/);
+    }),
+  );
+
   it.effect("counts afresh each turn", () =>
     Effect.gen(function* () {
       const context = yield* setup(() => Effect.succeed("allow"));

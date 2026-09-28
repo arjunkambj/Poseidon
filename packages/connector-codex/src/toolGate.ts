@@ -44,9 +44,12 @@
  * applies, those reads never reach the ladder. So every item that ran with no
  * request for it is counted: a file change, or a command that is not one of
  * those reads (`isKnownSafeCommand`), ends the turn with a `session.warning`
- * saying the turn was not fully gated (`ungatedWarning`). A known-safe read
- * that ran unasked is not warned about: that is the gap left open, and it
- * is the CLI's to close, not the ladder's.
+ * saying the turn was not fully gated (`ungatedWarning`). So is a file the
+ * turn's diff shows written with no file-change item for it (`turnWrites.ts`):
+ * a patch the CLI applied from inside its scripted `exec` tool once did that,
+ * with no request and no item. A known-safe read that ran unasked is not
+ * warned about: that is the gap left open, and it is the CLI's to close, not
+ * the ladder's.
  */
 
 import type { ApprovalGate, ApprovalVerdict } from "@poseidon/connector-sdk/approvalGate";
@@ -72,6 +75,7 @@ import {
 } from "./mcpApprovals";
 import type { RpcId, RpcOutcome, RpcServerRequest } from "./rpc";
 import { asArray, asRecord, asString, type Notification } from "./translate/pending";
+import { makeTurnWrites } from "./turnWrites";
 
 /** How the CLI spells each answer Poseidon gives to a command or file-change approval. */
 export type CodexApprovalAnswer = "accept" | "decline" | "cancel";
@@ -148,9 +152,17 @@ export const isKnownSafeCommand = (command: string): boolean =>
       return KNOWN_SAFE_COMMANDS.has(first);
     });
 
-/** What the thread is told when a turn's calls ran without reaching the gate. */
-export const ungatedWarning = (ran: number): string =>
-  `${ran} call(s) ran without reaching Poseidon's approval gate — Codex ran them without asking, so this turn was not fully gated`;
+/**
+ * What the thread is told when a turn's calls ran without reaching the gate,
+ * or its diff wrote files no file change was asked about.
+ */
+export const ungatedWarning = (ran: number, written = 0): string => {
+  const what = [
+    ...(ran > 0 ? [`${ran} call(s) ran`] : []),
+    ...(written > 0 ? [`${written} file(s) were written`] : []),
+  ].join(" and ");
+  return `${what} without reaching Poseidon's approval gate — Codex did not ask, so this turn was not fully gated`;
+};
 
 export interface CodexToolGate {
   /** Reads a notification before it is translated. */
@@ -186,6 +198,7 @@ export const makeCodexToolGate = (options: {
 }): CodexToolGate => {
   const paths = makeFileChangePaths();
   const mcpCalls = makeMcpToolCalls();
+  const writes = makeTurnWrites();
   /** Each request still waiting on the gate, by its JSON-RPC id. */
   const open = new Map<string, AbortController>();
   /**
@@ -281,6 +294,7 @@ export const makeCodexToolGate = (options: {
       const params = asRecord(notification.params);
       paths.observe(notification.method, params);
       mcpCalls.observe(notification.method, params);
+      writes.observe(notification.method, params);
       switch (notification.method) {
         case "item/completed":
           countUngated(asRecord(params.item));
@@ -315,7 +329,11 @@ export const makeCodexToolGate = (options: {
       ranUngated = 0;
       paths.clear();
       mcpCalls.clear();
+      writes.clear();
     }),
-    ungated: () => (ranUngated === 0 ? undefined : ungatedWarning(ranUngated)),
+    ungated: () => {
+      const written = writes.unaccounted();
+      return ranUngated === 0 && written === 0 ? undefined : ungatedWarning(ranUngated, written);
+    },
   };
 };

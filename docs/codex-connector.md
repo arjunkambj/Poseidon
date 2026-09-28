@@ -402,7 +402,10 @@ about first (nine items in seven recordings). The CLI does keep a list of
 known-safe reads it may run without asking, though, and where that exemption
 applies a read never reaches the ladder. So the session counts every item that ran without a
 request for it: a file change, or a command that is not one of those reads,
-ends the turn with a `session.warning` that the turn was not fully gated. A
+ends the turn with a `session.warning` that the turn was not fully gated. So
+does a file the turn's diff (`turn/diff/updated`) shows written with no
+`fileChange` item naming it (`turnWrites.ts`): on the recordings only file
+changes reach that diff, so a path in it with no item came some other way. A
 known-safe read that ran unasked is the gap left open; it is not warned about.
 
 ## Plan mode
