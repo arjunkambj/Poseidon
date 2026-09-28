@@ -1,8 +1,8 @@
 /**
  * The General page: the theme cards, the main and sidebar font sizes, the chat
- * width, when idle threads move to the sidebar's Done section, whether
- * deleting a thread asks first, a reset that puts every appearance choice
- * back to its default, and a way back into first-run setup. New-thread defaults (model,
+ * width, when idle threads move to the sidebar's Done section, whether deleting
+ * a thread asks first, a reset that puts every appearance choice back to its
+ * default, and a way back into first-run setup. New-thread defaults (model,
  * effort, runtime mode) live on the Models page.
  */
 

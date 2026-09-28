@@ -1818,38 +1818,39 @@ more watcher of its own, subscribed the same eager way inside its layer: on
 `thread.deleted` or `thread.archived` it kills that thread's shells.
 
 **`ProviderCommandReactor`.** `turn.requested` → ensure the session and
-`handle.send(turnId, turn)`. A fork's or an imported thread's first turn — no session of the thread bound in
-an earlier turn (the fold records the turn one first binds in as
-`forkSeededIn`), so a first turn that failed before reaching the harness
-leaves the next one first — is sent with the earlier conversation's transcript and a line saying what
-it is ahead of the user's text (`withForkContext`), here and in the mid-turn
-resend after `session.bound`; the user's row keeps only what they typed, so
-the transcript never reaches the timeline or message search. A session the
-harness forked natively, or an imported session resumed, goes without it: the
-session manager says so (`forkedNatively`), for the sessions this process started. `turn.steered` →
+`handle.send(turnId, turn)`. A fork's or an imported thread's first turn — no
+session of the thread bound in an earlier turn (the fold records the turn one
+first binds in as `forkSeededIn`), so a first turn that failed before reaching
+the harness leaves the next one first — is sent with the earlier conversation's
+transcript and a line saying what it is ahead of the user's text
+(`withForkContext`), here and in the mid-turn resend after `session.bound`; the
+user's row keeps only what they typed, so the transcript never reaches the
+timeline or message search. A session the harness forked natively, or an
+imported session resumed, goes without it: the session manager says so
+(`forkedNatively`), for the sessions this process started. `turn.steered` →
 `handle.steer(turnId, turn)`, then the user's `user_message` row on that turn
-once it is delivered; when there is no live handle or the steer fails, no row
-is written there and the message is dispatched
-again as `thread.turn.start { queued: true }` — a new turn if the running one
-has ended, the queue if not — and put on the queue directly if even that is
-refused, so it is never lost. `turn.interrupted` → `handle.interrupt(turnId)`,
-and the turn stays in flight until the connector settles it — this fiber settles
-it itself only when there is no live session left to do so.
-`approval.resolved` / `userInput.resolved` / `plan.responded` → the matching
-`respond*` on the live handle, plus the plan follow-up (a `handoff` answer only
-leaves plan mode and starts no turn: the plan went to a new thread). `settings.updated` →
+once it is delivered; when there is no live handle or the steer fails, no row is
+written there and the message is dispatched again as
+`thread.turn.start { queued: true }` — a new turn if the running one has ended,
+the queue if not — and put on the queue directly if even that is refused, so it
+is never lost. `turn.interrupted` → `handle.interrupt(turnId)`, and the turn
+stays in flight until the connector settles it — this fiber settles it itself
+only when there is no live session left to do so. `approval.resolved` /
+`userInput.resolved` / `plan.responded` → the matching `respond*` on the live
+handle, plus the plan follow-up (a `handoff` answer only leaves plan mode and
+starts no turn: the plan went to a new thread). `settings.updated` →
 `handle.updateSettings`. `turn.completed` → dequeue the head of the queue and
-dispatch it as a new turn, whatever its `stopReason`. After an interrupt that
-is on purpose: a message sent while an interrupt settles is queued so it runs
-once the connector is free, which is how interrupt-then-correct works. After a
-failed turn (`stopReason: "error"`) it is a known gap, not a design choice:
-when the connector keeps failing — auth, rate limit, a dead connector — each
-queued message is sent into the same failure in turn. Pausing there would need
-a resume command through the contracts, decider and reactor, and there is no
-paused queue yet. A failing side effect records `thread.error` — and a
-synthetic `turn.completed` when a turn was mid-flight — rather than leaving a
-thread wedged in `running`. Four of the five errors it can see are tagged errors
-with no message, so it falls back to the tag: "removed connector" reads very
+dispatch it as a new turn, whatever its `stopReason`. After an interrupt that is
+on purpose: a message sent while an interrupt settles is queued so it runs once
+the connector is free, which is how interrupt-then-correct works. After a failed
+turn (`stopReason: "error"`) it is a known gap, not a design choice: when the
+connector keeps failing — auth, rate limit, a dead connector — each queued
+message is sent into the same failure in turn. Pausing there would need a resume
+command through the contracts, decider and reactor, and there is no paused queue
+yet. A failing side effect records `thread.error` — and a synthetic
+`turn.completed` when a turn was mid-flight — rather than leaving a thread
+wedged in `running`. Four of the five errors it can see are tagged errors with
+no message, so it falls back to the tag: "removed connector" reads very
 differently from "session closed", and writing `""` onto `thread.error` produced
 a row the union could not decode.
 
@@ -2098,33 +2099,32 @@ whole file) and reads one back (`read` — an `ImportedTranscript`: the session,
 its newest user and assistant messages as text, and a `sessionRef` the
 connector's own `resumeSession` accepts), opening the harness's files
 read-only, and may name the session a thread's persisted `sessionRef` points
-at (`sourceIdOf`); it takes no `ExtensionScope`. Command Code carries `skills` and
-`mcpServers` but no `plugins`, since it has none, and no `commands`, since
+at (`sourceIdOf`); it takes no `ExtensionScope`. Command Code carries `skills`
+and `mcpServers` but no `plugins`, since it has none, and no `commands`, since
 nothing lists which of its slash commands a headless run executes. Claude Code
 carries `commands`, read from the CLI's initialize handshake, and `plugins`,
-read from the CLI's own config files (`connector-claude/src/plugins.ts`).
-Claude Code and Codex carry `sessions`, read from the transcripts each CLI
-writes (`sessionFiles.ts` in each); Command Code has none. Every other extension takes an
-`ExtensionScope` — `{ workspaceRoot: string | null }`, the user scope plus one
-project — and fails with `ConnectorExtensionFailed { code, message }`, never an
-RPC error: the server (`settings/ConnectorExtensions.ts`) resolves the
+read from the CLI's own config files (`connector-claude/src/plugins.ts`). Claude
+Code and Codex carry `sessions`, read from the transcripts each CLI writes
+(`sessionFiles.ts` in each); Command Code has none. Every other extension takes
+an `ExtensionScope` — `{ workspaceRoot: string | null }`, the user scope plus
+one project — and fails with `ConnectorExtensionFailed { code, message }`, never
+an RPC error: the server (`settings/ConnectorExtensions.ts`) resolves the
 `projectId` to a workspace root, calls the open instance's extension, maps the
 failure's code across, and answers `unavailable` for an instance that is not
 open or has no such extension. `ConnectorSummary.extensions` tells the renderer
 which instances have which, so it shows a Customize section only for those, and
 the composer's `/`, `@` and `$` menus ask the thread's own instance for its
-skills, and `@` for its plugins too. The client runtime's `pluginsAtom` asks
-one instance for its plugins and reads an `unavailable` answer, like no
-instance at all, as an empty list, so an instance without plugins is not an
-error and `@` just lists Poseidon's own plugins (`poseidonPluginsAtom`, over
-`plugins.list`, listed first on every harness) and its skills.
-`harnessCommandsAtom` reads `connectors.commands.list` the same way, so an
-instance without a commands extension lists none, and the `/` menu
-(`slash-menu.tsx`) shows what it lists last, under a Harness heading, leaving
-out names Poseidon offers itself and the harness's `/clear`; a pick inserts
-`/name ` as plain text. There is no `commands` flag on
-`ConnectorSummary.extensions`: the renderer only ever asks the thread's own
-instance.
+skills, and `@` for its plugins too. The client runtime's `pluginsAtom` asks one
+instance for its plugins and reads an `unavailable` answer, like no instance at
+all, as an empty list, so an instance without plugins is not an error and `@`
+just lists Poseidon's own plugins (`poseidonPluginsAtom`, over `plugins.list`,
+listed first on every harness) and its skills. `harnessCommandsAtom` reads
+`connectors.commands.list` the same way, so an instance without a commands
+extension lists none, and the `/` menu (`slash-menu.tsx`) shows what it lists
+last, under a Harness heading, leaving out names Poseidon offers itself and the
+harness's `/clear`; a pick inserts `/name ` as plain text. There is no
+`commands` flag on `ConnectorSummary.extensions`: the renderer only ever asks
+the thread's own instance.
 
 Instances
 are per configuration, not per thread. The registry (`registry.ts`) routes by

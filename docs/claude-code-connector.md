@@ -184,11 +184,11 @@ nothing, beside them or anywhere.
   string, or an array's `text` blocks) and the `text` blocks of `assistant`
   replies, joining the records of one reply by `message.id`. It skips `isMeta`
   and `isSidechain` records, a compaction's summary (`isCompactSummary`, the
-  CLI's text rather than the user's; the messages it sums up stay in the
-  file), tool results, the CLI's own wrappers (`<command-name>`,
+  CLI's text rather than the user's; the messages it sums up stay in the file),
+  tool results, the CLI's own wrappers (`<command-name>`,
   `<local-command-stdout>`, task notifications, …), the `<synthetic>` model's
-  replies, every other record type, and lines that are not JSON. It keeps the newest 500 messages within a million characters and
-  counts them all.
+  replies, every other record type, and lines that are not JSON. It keeps the
+  newest 500 messages within a million characters and counts them all.
 - The session reference it returns is `{ sessionId, cwd }`, the shape
   `sessionRef.ts` parses, so the thread's first turn resumes the conversation;
   if the CLI no longer has it, the session starts a new one and says so, and

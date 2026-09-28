@@ -1,6 +1,7 @@
 /**
  * Which thread each imported session became, kept in
- * `POSEIDON_HOME/session-imports.json` as `{ "<instanceId>:<sourceId>": threadId }`.
+ * `POSEIDON_HOME/session-imports.json` as
+ * `{ "<instanceId>:<sourceId>": threadId }`.
  *
  * It is how a second import of the same session answers the thread the first
  * one made, and how the list marks a session as already imported. It holds

@@ -4,10 +4,11 @@
  * Some harnesses keep user-facing configuration of their own — skills in a
  * skills directory, installed plugins, MCP servers in a JSON file — and the
  * Customize page and the composer's menus read and edit it — and the session
- * files it records, which an import reads. The file formats and locations belong to the harness, so the code that
- * reads and writes them lives in the connector, behind these interfaces. An
- * instance that has none of it leaves `extensions` out, and the server answers
- * the matching RPCs with `unavailable`.
+ * files it records, which an import reads. The file formats and locations
+ * belong to the harness, so the code that reads and writes them lives in the
+ * connector, behind these interfaces. An instance that has none of it leaves
+ * `extensions` out, and the server answers the matching RPCs with
+ * `unavailable`.
  *
  * Extensions know nothing about projects or RPCs: the server resolves a
  * project to its workspace root before calling, and maps

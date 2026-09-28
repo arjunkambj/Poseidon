@@ -16,8 +16,8 @@
  * `terminalOwnerKey`), and the strip with its show button (`./terminal-bar`)
  * while it is not. A mod-clicked link opens in the thread's browser pane
  * (`./use-open-link`); the New task page and home have no browser pane, so
- * there it opens in the system browser. A dev server a script printed opens the way
- * the Run menu opens one: a tab of the thread's in-app browser
+ * there it opens in the system browser. A dev server a script printed opens the
+ * way the Run menu opens one: a tab of the thread's in-app browser
  * (`openInThreadBrowser`), or on the New task page the system browser.
  *
  * A printed `path:line[:col]` the owner's root holds is a link too

@@ -609,8 +609,8 @@ approval case included.
 
 The Customize page and the composer's `/` menu read these through the
 connector-sdk's generic extensions. `CodexConnectorOptions.codexHome`
-(`BootOptions.codex` on the server) redirects all of them for tests; otherwise they
-use the instance's `codexHome`, else `~/.codex`.
+(`BootOptions.codex` on the server) redirects all of them for tests; otherwise
+they use the instance's `codexHome`, else `~/.codex`.
 
 **Skills** (`extensions/skills.ts`) are read, never written, from the roots
 0.156.1 itself loads — checked against its app-server's `skills/list` on a

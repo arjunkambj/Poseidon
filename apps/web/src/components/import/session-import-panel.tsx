@@ -2,13 +2,14 @@
  * Importing harness sessions: the list `sessions.importable` answers, the
  * selection, and a run that imports the selected rows one at a time.
  *
- * The list loads when this mounts and is not read anywhere else, so opening
- * the page is what reads the harnesses' session files. A run keeps going
- * past a failed row, which keeps its message and a Retry; Stop lets the row
- * in flight finish and puts the queued ones back. Closing the page, or the
- * setup dialog holding it, stops the run the same way, and a toast says how
- * many sessions that left out, since nothing on screen is left to. Rows a thread already holds link to it; `onOpenThread`
- * runs as one is followed, for a dialog to close so the thread shows.
+ * The list loads when this mounts and is not read anywhere else, so opening the
+ * page is what reads the harnesses' session files. A run keeps going past a
+ * failed row, which keeps its message and a Retry; Stop lets the row in flight
+ * finish and puts the queued ones back. Closing the page, or the setup dialog
+ * holding it, stops the run the same way, and a toast says how many sessions
+ * that left out, since nothing on screen is left to. Rows a thread already
+ * holds link to it; `onOpenThread` runs as one is followed, for a dialog to
+ * close so the thread shows.
  */
 
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";

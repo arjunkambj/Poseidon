@@ -13,11 +13,11 @@
  * sends the imported rows as a transcript (`orchestration/nativeFork.ts`), so
  * the boot scan never resumes a thread nobody has run.
  *
- * The source files are only ever read. Which thread each session became is
- * kept in a small ledger (`ledger.ts`), so importing it again answers that
- * thread instead of a copy; a session one of Poseidon's own threads runs is
- * answered with that thread the same way. A failure after the thread exists deletes it, so a
- * retry starts clean; a project the import added stays, like any other.
+ * The source files are only ever read. Which thread each session became is kept
+ * in a small ledger (`ledger.ts`), so importing it again answers that thread
+ * instead of a copy; a session one of Poseidon's own threads runs is answered
+ * with that thread the same way. A failure after the thread exists deletes it,
+ * so a retry starts clean; a project the import added stays, like any other.
  */
 
 import { stat } from "node:fs/promises";
