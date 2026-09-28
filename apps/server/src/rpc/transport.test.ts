@@ -56,6 +56,7 @@ import { layer as messageSearchLayer } from "../persistence/MessageSearch";
 import { ReadModelStore } from "../persistence/ReadModels";
 import { testLayer as sqliteTestLayer } from "../persistence/Sqlite";
 import { ScriptDetection } from "../scripts/ScriptDetection";
+import { PluginRegistry } from "../plugins/PluginRegistry";
 import { serverLayer, ServerToken } from "./server";
 import {
   BrowserService,
@@ -137,6 +138,7 @@ const testStack = (browserLayer: Layer.Layer<BrowserService> = BrowserService.em
       EditorLauncher.empty,
       messageSearchLayer.pipe(Layer.provide(persistence)),
       ScriptDetection.empty,
+      PluginRegistry.empty,
       AttachmentStore.layerAt(mkdtempSync(NodePath.join(NodeOS.tmpdir(), "poseidon-transport-"))),
       SettingsStore.layer.pipe(Layer.provide(sqlite)),
     );

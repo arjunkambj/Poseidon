@@ -37,6 +37,8 @@ export interface HostEndpoints {
   readonly registerHookHandler?: NonNullable<ConnectorServices["registerHookHandler"]>;
   readonly unregisterHookHandler?: NonNullable<ConnectorServices["unregisterHookHandler"]>;
   readonly permissions: ConnectorServices["permissions"];
+  /** The plugin registry's enabled plugins; a host without one hands sessions none. */
+  readonly sessionPlugins?: NonNullable<ConnectorServices["sessionPlugins"]>;
 }
 
 const notWired = (what: string) =>
@@ -93,6 +95,12 @@ export class ConnectorHost extends Context.Service<
             real?.unregisterHookHandler === undefined
               ? Effect.void
               : real.unregisterHookHandler(threadId),
+          ),
+        // Always present, like the hook members: before `install`, or on a
+        // host with no registry, a session simply loads no plugins.
+        sessionPlugins: (threadId) =>
+          Effect.flatMap(endpoints, (real) =>
+            real?.sessionPlugins === undefined ? Effect.succeed([]) : real.sessionPlugins(threadId),
           ),
         permissions: {
           // Safest default until the ladder is installed: everything asks.

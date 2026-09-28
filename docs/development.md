@@ -973,6 +973,8 @@ Everything Poseidon owns hangs off `configDir()` — `~/.poseidon`, or
 ├── state.sqlite            event log, projections, settings, permissions
 ├── attachments/            staged uploads
 ├── worktrees/<project>/<slug>/  threads' own git worktrees
+├── plugins/<name>/         global Poseidon plugins (Claude Code plugin layout)
+├── builtin-plugins/<name>/ built-in plugins, written at boot
 ├── bin/
 │   ├── cmd-hook.mjs        generated PreToolUse hook script
 │   └── tickets/<id>.ticket per-session bearer, mode 0600

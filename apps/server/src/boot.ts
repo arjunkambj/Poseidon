@@ -49,6 +49,7 @@ import { EventStore } from "./persistence/EventStore";
 import { ReadModelStore } from "./persistence/ReadModels";
 import { defaultLayer as sqliteLayer } from "./persistence/Sqlite";
 import { PermissionService } from "./permissions/PermissionService";
+import { PluginRegistry } from "./plugins/PluginRegistry";
 import { layer as editorLauncherLayer } from "./editors/EditorLauncher";
 import { layer as messageSearchLayer } from "./persistence/MessageSearch";
 import { layer as directoryBrowserLayer } from "./fs/Directories";
@@ -257,6 +258,9 @@ export const boot = (options: BootOptions) =>
       // SettingsStore is not listed here: `sharedSettings` already merges the one
       // instance the manager watches and the RPC handlers mutate.
       permissions,
+      // Over the same settings store, so a plugin switched on the plugins page
+      // reaches `settings.subscribe` like any other setting.
+      PluginRegistry.layer.pipe(Layer.provide(sharedSettings)),
     );
 
     // ── Shutting down with clients attached ──
@@ -339,8 +343,14 @@ export const boot = (options: BootOptions) =>
     const permissionService = Context.get(appContext, PermissionService);
     const gateway = Context.get(appContext, McpGateway);
     const connectorHost = Context.get(appContext, ConnectorHost);
+    const plugins = Context.get(appContext, PluginRegistry);
+
+    // Written here, not when the registry's layer is built: tests build the
+    // layers, and the built-in folder lives under `POSEIDON_HOME`.
+    yield* plugins.materializeBuiltins;
 
     yield* connectorHost.install({
+      sessionPlugins: plugins.sessionPlugins,
       mcpEndpoint: gateway.endpoint,
       hookEndpoint: (threadId) => bridge.endpointFor(threadId),
       registerHookHandler: (threadId, handler) => bridge.register(threadId, handler),

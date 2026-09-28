@@ -770,7 +770,9 @@ which is the moment the first client may connect. Two things about it are load-b
   opens instances while the graph is still building, before the HTTP server
   listens or the hook bridge exists, so the `ConnectorServices` it hands them is
   a façade that `install` fills in with the real MCP endpoint, hook endpoint,
-  hook handler registry and permission ladder. `boot` then waits on
+  hook handler registry, permission ladder and the plugin registry's
+  `sessionPlugins`. Just before it, `boot` writes the built-in plugins into
+  `builtin-plugins/` (never at layer build, which tests do). `boot` then waits on
   `ConnectorManager.ready` so no client is admitted while `ConnectorSelection`
   would still answer `NoConnector`.
 
@@ -792,6 +794,7 @@ Directories, relative to `apps/server/`:
 | `src/scripts/`       | package.json script detection: workspace patterns, package manager, run commands (`scripts.detect`)              |
 | `src/settings/`      | settings store users, connector manager and host, connector extension routing                                    |
 | `src/attachments/`   | the staging store and its reactor                                                                                |
+| `src/plugins/`       | the plugin registry, manifest and MCP config reading, the built-in plugins and writing them at boot              |
 
 Public seam: the RPC group in `packages/contracts/src/rpc.ts` and the three
 loopback HTTP routes. May import `contracts`, `connector-sdk` and `shared`;
@@ -2053,6 +2056,9 @@ the client in the terminal `incompatible` state.
 | `connectors.mcp.list`         | call   | MCP servers in one instance's harness config, user and project scope                 |
 | `connectors.mcp.add`          | call   | Adds or replaces one entry we own; refuses one we do not                             |
 | `connectors.mcp.remove`       | call   | Removes one entry we own                                                             |
+| `plugins.list`                | call   | Built-in and global Poseidon plugins, invalid ones with their error                  |
+| `plugins.setEnabled`          | call   | Turns one plugin on or off for new sessions; stored in the settings document         |
+| `plugins.openFolder`          | call   | Creates the global plugins folder when missing and opens it in the file manager      |
 | `keybindings.get`             | call   | The user's keybinding overrides, layered on `DEFAULT_KEYBINDINGS` by the renderer    |
 | `keybindings.update`          | call   | Replaces the overrides; a `-command` row unbinds that command                        |
 | `terminal.open`               | call   | Starts a shell (or runs a `script` through it) under a client-minted id; idempotent  |
@@ -2512,6 +2518,8 @@ anything resolves a path, and connector children inherit it.
 | `~/.poseidon/bin/tickets/<id>.ticket`    | a session's hook bearer, 0600               |
 | `~/.poseidon/attachments/<threadId>/`    | staged composer images                      |
 | `~/.poseidon/worktrees/<project>/<slug>` | a thread's own git worktree                 |
+| `~/.poseidon/plugins/<name>/`            | a global Poseidon plugin                    |
+| `~/.poseidon/builtin-plugins/<name>/`    | a built-in plugin, written at boot          |
 | `~/.poseidon/dev/connection.json`        | the dev handshake, 0600, dev mode only      |
 
 Attachments are references, never bytes, in the event log: an inlined screenshot

@@ -13,7 +13,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -149,6 +149,37 @@ describe("boot", () => {
           "configDir",
           "defaultModel",
         ]);
+      }),
+    ),
+  );
+
+  it.live("writes the built-in plugins at boot and serves the plugin rpcs", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const home = makeHome();
+        yield* seedSettings(home, []);
+        const server = yield* booted(home);
+        const rpc = yield* client(server);
+
+        // The Browser plugin is on disk only because the boot wrote it there.
+        expect(
+          existsSync(
+            join(home.poseidon, "builtin-plugins", "browser", "skills", "browser", "SKILL.md"),
+          ),
+        ).toBe(true);
+
+        const listed = yield* rpc["plugins.list"]({});
+        expect(listed.globalDir).toBe(join(home.poseidon, "plugins"));
+        expect(
+          listed.plugins.map(({ pluginId, source, enabled }) => ({ pluginId, source, enabled })),
+        ).toEqual([{ pluginId: "builtin:browser", source: "builtin", enabled: true }]);
+
+        const off = yield* rpc["plugins.setEnabled"]({
+          pluginId: "builtin:browser",
+          enabled: false,
+        });
+        expect(off.plugins[0]?.enabled).toBe(false);
+        expect((yield* rpc["settings.get"]({})).plugins).toEqual({ "builtin:browser": false });
       }),
     ),
   );

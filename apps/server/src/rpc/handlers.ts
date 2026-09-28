@@ -14,6 +14,7 @@ import { AttachmentStore } from "../attachments/AttachmentStore";
 import { ConcurrencyConflict } from "../persistence/EventStore";
 import { ScriptDetection } from "../scripts/ScriptDetection";
 import { OrchestrationEngine } from "../orchestration/Engine";
+import { PluginRegistry } from "../plugins/PluginRegistry";
 import {
   BrowserService,
   ConnectorCatalog,
@@ -41,11 +42,6 @@ const toRpcError = (error: unknown): PoseidonRpcError =>
         // learns that something failed.
         new PoseidonRpcError({ code: "internal", message: "internal error" });
 
-const pluginsUnavailable = new PoseidonRpcError({
-  code: "unavailable",
-  message: "the plugin registry is not available",
-});
-
 /** The RPC handler layer — every method in the group, one implementation each. */
 export const handlersLayer = PoseidonRpcGroup.toLayer(
   Effect.gen(function* () {
@@ -64,6 +60,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
     const editors = yield* EditorLauncher;
     const messageSearch = yield* MessageSearch;
     const scripts = yield* ScriptDetection;
+    const plugins = yield* PluginRegistry;
 
     return {
       "server.hello": () =>
@@ -167,10 +164,11 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
       "connectors.mcp.remove": ({ instanceId, projectId, scope, name }) =>
         extensions.mcpRemove(instanceId, projectId, scope, name),
 
-      // Answered `unavailable` until the plugin registry lands behind them.
-      "plugins.list": () => Effect.fail(pluginsUnavailable),
-      "plugins.setEnabled": () => Effect.fail(pluginsUnavailable),
-      "plugins.openFolder": () => Effect.fail(pluginsUnavailable),
+      "plugins.list": () => plugins.list,
+      "plugins.setEnabled": ({ pluginId, enabled }) =>
+        plugins.setEnabled(pluginId, enabled).pipe(Effect.mapError(toRpcError)),
+      "plugins.openFolder": () =>
+        plugins.openFolder.pipe(Effect.mapError(toRpcError), Effect.as({})),
 
       "keybindings.get": () => Effect.map(settings.get, (doc) => doc.keybindings),
       "keybindings.update": ({ keybindings }) =>

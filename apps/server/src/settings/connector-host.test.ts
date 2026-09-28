@@ -12,6 +12,7 @@ import { join } from "node:path";
 
 import { makeRequestId, makeThreadId } from "@poseidon/contracts/ids";
 import type { ApprovalRequest } from "@poseidon/contracts/runtime";
+import type { SessionPlugin } from "@poseidon/connector-sdk/plugins";
 import { POSEIDON_HOME_ENV } from "@poseidon/shared/paths";
 import { describe, expect, it } from "@effect/vitest";
 import * as Context from "effect/Context";
@@ -112,6 +113,41 @@ describe("ConnectorHost", () => {
             interactionMode: "default",
           }),
         ).toBe("deny");
+      }),
+    ),
+  );
+
+  it.effect("sessionPlugins answers none before install and delegates after it", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const service = yield* host;
+        const { services } = service;
+        const threadId = makeThreadId();
+        const plugin: SessionPlugin = {
+          name: "browser",
+          root: "/plugins/browser",
+          builtin: true,
+          skills: [{ name: "browser", path: "/plugins/browser/skills/browser" }],
+          skillsDirs: ["/plugins/browser/skills"],
+          mcpServers: [],
+        };
+
+        expect(yield* services.sessionPlugins!(threadId)).toEqual([]);
+
+        const asked: Array<string> = [];
+        yield* service.install({
+          mcpEndpoint: (id) => Effect.succeed({ url: `http://mcp/${id}`, bearer: "m" }),
+          hookEndpoint: (id) => Effect.succeed({ url: `http://hook/${id}`, bearer: "h" }),
+          permissions: { decide: () => Effect.succeed("deny") },
+          sessionPlugins: (id) =>
+            Effect.sync(() => {
+              asked.push(id);
+              return [plugin];
+            }),
+        });
+
+        expect(yield* services.sessionPlugins!(threadId)).toEqual([plugin]);
+        expect(asked).toEqual([threadId]);
       }),
     ),
   );
