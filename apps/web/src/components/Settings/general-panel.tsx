@@ -1,19 +1,20 @@
 /**
- * The General page: the theme cards, the main and sidebar font sizes, and a reset that puts
- * every appearance choice back to its default. New-thread defaults (model,
+ * The General page: the theme cards, the main and sidebar font sizes, the chat
+ * width, and a reset that puts every appearance choice back to its default. New-thread defaults (model,
  * effort, runtime mode) live on the Models page.
  */
 
 import { useAtomSet } from "@effect/atom-react";
 
 import { Button } from "@poseidon/ui/components/button";
-import { DEFAULT_FONT_SIZE } from "@poseidon/contracts/settings";
+import { DEFAULT_CHAT_WIDTH, DEFAULT_FONT_SIZE } from "@poseidon/contracts/settings";
 
 import { useTheme } from "@/components/theme-provider";
 import { useAppAtoms } from "@/lib/app-runtime";
 import { applyFontSizes } from "@/lib/font-size";
 import { useResetLayoutWidths } from "@/state/ui";
 
+import { ChatWidthToggle } from "./chat-width-toggle";
 import { FontSizeSteppers } from "./font-size-steppers";
 import { ThemeCards } from "./theme-cards";
 
@@ -30,6 +31,7 @@ function ResetAppearance() {
       theme: "system",
       mainFontSize: DEFAULT_FONT_SIZE,
       sidebarFontSize: DEFAULT_FONT_SIZE,
+      chatWidth: DEFAULT_CHAT_WIDTH,
     });
     resetLayoutWidths();
   };
@@ -38,7 +40,7 @@ function ResetAppearance() {
     <div>
       <h2 className="mb-1 text-sm font-medium">Reset appearance</h2>
       <p className="mb-2 text-sm text-muted-foreground">
-        Theme, font sizes, and the sidebar and dock widths go back to their defaults.
+        Theme, font sizes, chat width, and the sidebar and dock widths go back to their defaults.
       </p>
       <Button variant="outline" onClick={reset}>
         Reset to defaults
@@ -57,6 +59,7 @@ export function GeneralPanel() {
 
       <ThemeCards />
       <FontSizeSteppers />
+      <ChatWidthToggle />
       <ResetAppearance />
     </div>
   );

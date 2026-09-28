@@ -17,9 +17,12 @@
  *   text sizes together, through the same settings write as the Appearance
  *   steppers (`useFontSizes`). Their chords carry Alt (`Mod+Alt+=` and so on)
  *   because the Electron default menu keeps `Mod+=`/`-`/`0` for page zoom.
+ * - `chatWidth.cycle` steps the chat width (Comfortable, Wide, Full, and round
+ *   again) through the same settings write as the General page toggle. It has
+ *   no default chord; the palette and the cheatsheet list it, and it can be bound.
  *
  * A command is claimed only while it has something to act on — no threads, no
- * stepping; no project, no new thread; no settings yet, no font steps — so the palette never offers a row
+ * stepping; no project, no new thread; no settings yet, no font or width steps — so the palette never offers a row
  * that does nothing. The numbered jumps stay claimed and a number past the end
  * does nothing; the palette shows each one on its thread's row instead of
  * listing it as a command.
@@ -31,11 +34,14 @@ import * as React from "react";
 import { THREAD_JUMP_COMMANDS } from "@poseidon/contracts/keybindings";
 import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
+import type { ChatWidth } from "@poseidon/contracts/settings";
 
 import { neighbourThread, nthThread } from "@/components/sidebar/thread-order";
 import { useThreadTargets } from "@/components/sidebar/use-thread-targets";
+import { nextChatWidth } from "@/lib/chat-width";
 import { stepFontSizes, type FontSizes } from "@/lib/font-size";
 import { useKeybindingCommand } from "@/lib/shortcuts";
+import { useChatWidth } from "@/lib/use-chat-width";
 import { useFontSizes } from "@/lib/use-font-sizes";
 import { useCreateThread } from "@/lib/use-create-thread";
 
@@ -122,10 +128,22 @@ function FontShortcuts({
   return null;
 }
 
+function ChatWidthShortcut({
+  width,
+  setWidth,
+}: {
+  readonly width: ChatWidth;
+  readonly setWidth: (next: ChatWidth) => void;
+}) {
+  useKeybindingCommand("chatWidth.cycle", () => setWidth(nextChatWidth(width)));
+  return null;
+}
+
 export function AppShortcuts() {
   const navigate = useNavigate();
   const { order, openThreadId, newThreadProject } = useThreadTargets();
   const { sizes, setSizes } = useFontSizes();
+  const chatWidth = useChatWidth();
 
   const open = React.useCallback<OpenThread>(
     (threadId) => void navigate({ to: "/t/$threadId", params: { threadId } }),
@@ -151,6 +169,9 @@ export function AppShortcuts() {
         <NewInProjectShortcut projectId={newThreadProject.projectId} />
       )}
       {sizes === null ? null : <FontShortcuts sizes={sizes} setSizes={setSizes} />}
+      {chatWidth.loaded ? (
+        <ChatWidthShortcut width={chatWidth.width} setWidth={chatWidth.setWidth} />
+      ) : null}
     </>
   );
 }

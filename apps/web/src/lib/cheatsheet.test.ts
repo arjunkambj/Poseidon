@@ -69,6 +69,7 @@ describe("cheatsheetSections", () => {
   it("shows an unbound command with no chords", () => {
     const sections = cheatsheetSections(COMMAND_CATALOG, defaults, "", "meta");
     expect(row(sections, "mcp.open")?.chords).toEqual([]);
+    expect(row(sections, "chatWidth.cycle")?.chords).toEqual([]);
     const removed = effectiveKeybindings([{ command: "-sidebar.toggle", shortcut: "Mod+B" }]);
     expect(
       row(cheatsheetSections(COMMAND_CATALOG, removed, "", "meta"), "sidebar.toggle")?.chords,

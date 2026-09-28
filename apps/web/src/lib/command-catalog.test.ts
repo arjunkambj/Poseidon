@@ -39,6 +39,13 @@ describe("COMMAND_CATALOG", () => {
     expect(offered).toContain("project.add");
     expect(offered).toContain("sidebar.toggle");
   });
+
+  it("offers the chat width cycle in the palette with no default chord", () => {
+    const entry = COMMAND_CATALOG.find((c) => c.id === "chatWidth.cycle");
+    expect(entry?.palette).toBe(true);
+    expect(entry?.area).toBe("View");
+    expect(DEFAULT_KEYBINDINGS.filter((row) => row.command === "chatWidth.cycle")).toEqual([]);
+  });
 });
 
 describe("FIXED_KEYS", () => {

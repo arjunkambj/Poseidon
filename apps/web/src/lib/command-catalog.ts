@@ -5,7 +5,7 @@
  * The keymap itself (`DEFAULT_KEYBINDINGS`) says which chord fires a command;
  * this says what the command is called and where it is listed. The palette
  * offers the entries marked `palette` whose surface is mounted, grouped by
- * area. A command with no default chord (`mcp.open`) is still here, so it can
+ * area. A command with no default chord (`mcp.open`, `chatWidth.cycle`) is still here, so it can
  * be found and bound.
  *
  * `palette: false` is for a command the palette already reaches another way,
@@ -47,6 +47,7 @@ import {
   ListChecks,
   ListOrdered,
   Lock,
+  Maximize,
   OctagonX,
   Paperclip,
   Play,
@@ -176,6 +177,7 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   command("View", "font.increase", "Larger text", ZoomIn),
   command("View", "font.decrease", "Smaller text", ZoomOut),
   command("View", "font.reset", "Reset text size", TextSize),
+  command("View", "chatWidth.cycle", "Cycle chat width", Maximize),
 
   // Timeline
   command("Timeline", "timeline.jumpToLatest", "Jump to latest", ChevronsDown),
