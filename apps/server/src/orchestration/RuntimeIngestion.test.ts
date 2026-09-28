@@ -197,4 +197,28 @@ describe("ingestSession", () => {
       });
     }),
   );
+
+  it.effect("carries the ultracode a model.changed reports, and leaves it out otherwise", () =>
+    Effect.gen(function* () {
+      const changed = (payload: Record<string, unknown>) =>
+        ({
+          eventId: makeEventId(),
+          connectorInstanceId,
+          threadId,
+          createdAt: NOW,
+          type: "model.changed",
+          payload,
+        }) as RuntimeEvent;
+      const appended = yield* ingest([
+        changed({ model: "claude/sonnet", ultracode: false }),
+        changed({ model: "claude/opus", effort: "high" }),
+      ]);
+      expect(appended.map((event) => event.type)).toEqual([
+        "thread.settings.updated",
+        "thread.settings.updated",
+      ]);
+      expect(appended[0]?.payload).toEqual({ model: "claude/sonnet", ultracode: false });
+      expect(appended[1]?.payload).toEqual({ model: "claude/opus", effort: "high" });
+    }),
+  );
 });

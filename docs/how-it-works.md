@@ -814,6 +814,10 @@ connector-neutral events into the log:
 | `runtime.error`                                         | `thread.error`, plus an `error` row when fatal  |
 | `session.ended`, `mcp.status.updated`, `event.unmapped` | nothing logged                                  |
 
+`model.changed` carries the model and, when the harness reports them, the
+effort and Claude Code's ultracode flag; the stored settings take them as
+reported.
+
 `content.delta` frames fold into the item they belong to, so the log holds
 whole `item.upserted` snapshots rather than a delta stream, and streamed text
 is coalesced on a 50 ms window on the way in. Without that, an answer of N

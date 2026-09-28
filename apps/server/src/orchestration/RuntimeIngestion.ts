@@ -276,6 +276,9 @@ const translateRuntimeEvent = (
           payload: {
             model: event.payload.model,
             ...(event.payload.effort === undefined ? {} : { effort: event.payload.effort }),
+            ...(event.payload.ultracode === undefined
+              ? {}
+              : { ultracode: event.payload.ultracode }),
           },
         },
       ];
