@@ -2345,13 +2345,15 @@ Int) adds the review threads and the repository's allowed merge methods; if it
 fails the view keeps everything else, with no threads and every method
 allowed. Checks are bucketed into fail, pending, pass and skipped, a re-run
 replaces the run before it, and failing ones come first; an Actions check
-carries its job id from its URL. `git.pullRequest.marks` runs one
-`gh pr list --state all --limit 50` in the project's folder and matches each
-live thread's branch — its worktree's, or the project folder's for a local
-thread, each root read once — skipping the default branch and detached HEADs,
-preferring an open pull request, then the newest. When no thread is on a
-branch of its own, gh is not asked at all; gh missing, signed out or failing
-is an empty list.
+carries its job id from its URL. `git.pullRequest.marks` reads each live
+thread's branch — its worktree's, or the project folder's for a local thread,
+each root read once — skipping the default branch and detached HEADs. It then
+runs one `gh pr list --state all --head=<branch> --limit 20` per distinct
+branch in the project's folder, a few at a time, so a long-running pull
+request is found however many newer ones the repository has, preferring an
+open pull request, then the newest. When no thread is on a branch of its own,
+gh is not asked at all; gh missing or signed out is an empty list, and a
+failed listing leaves just that branch's threads unmarked.
 
 Writing to one lives in `apps/server/src/git/PullRequestActions.ts`.
 `git.pullRequest.action` asks `pullRequestBlocker` first (`unavailable` with

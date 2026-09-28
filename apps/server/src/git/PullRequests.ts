@@ -5,8 +5,9 @@
  *
  * Both ask `pullRequestBlocker` first, so a missing or signed-out gh is an
  * answer — `unavailable` with gh's fix for the view, no marks at all for the
- * sidebar — never an error. Every call is argv form, and the only value in
- * one that is not ours is a pull request's number.
+ * sidebar — never an error. Every call is argv form, and the only values in
+ * one that are not ours are a pull request's number and a branch's name,
+ * passed as `--head=<name>` so it never reads as a flag of its own.
  */
 import type { ThreadId } from "@poseidon/contracts/ids";
 import type {
@@ -48,10 +49,21 @@ const VIEW_FIELDS = [
   "comments",
 ].join(",");
 
-const LIST_FIELDS = "number,url,state,isDraft,headRefName,updatedAt,statusCheckRollup";
+const LIST_FIELDS = [
+  "number",
+  "url",
+  "state",
+  "isDraft",
+  "headRefName",
+  "updatedAt",
+  "statusCheckRollup",
+].join(",");
 
-/** How many of the repository's newest pull requests the marks are matched against. */
-const MARKS_LIST_LIMIT = 50;
+/** How many of one head branch's pull requests, newest first, the marks look through. */
+const MARKS_LIST_LIMIT = 20;
+
+/** How many branches' listings run at once. */
+const MARKS_CONCURRENCY = 4;
 
 /** gh's answer when the branch has no pull request: `no pull requests found for branch "x"`. */
 const NO_PULL_REQUEST = /no pull requests found/i;
@@ -174,13 +186,14 @@ export interface ThreadRoot {
 }
 
 /**
- * A mark for each thread whose branch has a pull request among the
- * repository's newest `MARKS_LIST_LIMIT`, from a single `gh pr list` in the
- * project's root. Each distinct root's branch is read once; the default
- * branch and a detached HEAD are never matched, and when no thread is left on
- * a branch of its own gh is not asked at all. Anything that goes wrong — gh
- * missing or signed out, a failed listing, a git read that fails — is no
- * marks rather than an error.
+ * A mark for each thread whose branch has a pull request. Each distinct
+ * root's branch is read once; the default branch and a detached HEAD are
+ * never matched, and when no thread is left on a branch of its own gh is not
+ * asked at all. Otherwise gh lists each distinct branch's own pull requests
+ * (`gh pr list --head`), so a long-running one is found however many newer
+ * ones the repository has. Anything that goes wrong — gh missing or
+ * signed out, a git read that fails — is no marks rather than an error, and
+ * a failed listing leaves just that branch's threads unmarked.
  */
 export const pullRequestMarks = (
   gh: GhRunner["Service"],
@@ -207,15 +220,40 @@ export const pullRequestMarks = (
     });
     if (onBranches.length === 0) return { marks: [] };
     if ((yield* pullRequestBlocker(gh, projectRoot)) !== null) return { marks: [] };
-    const listed = yield* gh.run(
-      ["pr", "list", "--state", "all", "--limit", String(MARKS_LIST_LIMIT), "--json", LIST_FIELDS],
-      projectRoot,
+    const branches = [...new Set(onBranches.map(({ branch }) => branch))];
+    const listings = yield* Effect.forEach(
+      branches,
+      (branch) =>
+        gh
+          .run(
+            [
+              "pr",
+              "list",
+              "--state",
+              "all",
+              `--head=${branch}`,
+              "--limit",
+              String(MARKS_LIST_LIMIT),
+              "--json",
+              LIST_FIELDS,
+            ],
+            projectRoot,
+          )
+          .pipe(
+            Effect.map(
+              (listed) =>
+                [
+                  branch,
+                  listed.exitCode === 0 ? decodePullRequestList(parseJson(listed.stdout)) : [],
+                ] as const,
+            ),
+          ),
+      { concurrency: MARKS_CONCURRENCY },
     );
-    if (listed.exitCode !== 0) return { marks: [] };
-    const rows = decodePullRequestList(parseJson(listed.stdout));
+    const rowsOf = new Map(listings);
     const marks: Array<PullRequestMark> = [];
     for (const { threadId, branch } of onBranches) {
-      const row = pullRequestForBranch(rows, branch);
+      const row = pullRequestForBranch(rowsOf.get(branch) ?? [], branch);
       if (row === null) continue;
       marks.push({
         threadId,

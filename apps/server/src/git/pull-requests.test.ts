@@ -33,7 +33,7 @@ const GRAPHQL_NOT_FOUND: GhOutput = {
 const signedIn = (answers: {
   view?: (cwd: string) => GhOutput;
   graphql?: GhOutput;
-  list?: GhOutput;
+  list?: (args: ReadonlyArray<string>) => GhOutput;
 }) =>
   fakeGh((args, cwd) => {
     if (args[0] === "--version") return GH_VERSION;
@@ -42,9 +42,34 @@ const signedIn = (answers: {
       return answers.view(cwd);
     }
     if (args[0] === "api" && answers.graphql !== undefined) return answers.graphql;
-    if (args[0] === "pr" && args[1] === "list" && answers.list !== undefined) return answers.list;
+    if (args[0] === "pr" && args[1] === "list" && answers.list !== undefined) {
+      return answers.list(args);
+    }
     return { stdout: "", stderr: `unexpected gh ${args.join(" ")}`, exitCode: 1 };
   });
+
+/** gh 2.92's `gh pr list --head=<branch>` answer per branch, captured from cli/cli. */
+const listByHead = (args: ReadonlyArray<string>): GhOutput => {
+  const head = args.find((arg) => arg.startsWith("--head="))?.slice("--head=".length);
+  const rows = (JSON.parse(fixture("gh-pr-list.by-head.json")) as Record<string, unknown>)[
+    head ?? ""
+  ];
+  return ok(JSON.stringify(rows ?? []));
+};
+
+const LIST_JSON = "number,url,state,isDraft,headRefName,updatedAt,statusCheckRollup";
+
+const listCall = (branch: string) => [
+  "pr",
+  "list",
+  "--state",
+  "all",
+  `--head=${branch}`,
+  "--limit",
+  "20",
+  "--json",
+  LIST_JSON,
+];
 
 const VIEW_JSON =
   "number,title,url,state,isDraft,baseRefName,headRefName,headRefOid,author,updatedAt,mergeable,reviewDecision,statusCheckRollup,reviews,comments";
@@ -220,23 +245,23 @@ describe("git.pullRequest.marks", () => {
   it.live("marks each thread by its own branch's pull request", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        // The project's folder is on the open pull request's branch; one
-        // worktree is on the closed, failing one, another on the draft's, a
-        // third on the default branch and a fourth on a branch with none.
+        // The project's folder is on the open pull request's branch; one worktree is on a branch with a merged and
+        // a closed, failing pull request, another on the draft's, a third on
+        // the default branch and a fourth on a branch with none.
         const root = makeRepo("document-search-operator-support");
-        const failing = addWorktree(root, "bump-go-1.27.1");
+        const merged = addWorktree(root, "bump-go-1.27.1");
         const draft = addWorktree(root, "williammartin-clean-git-test-seams");
         const onDefault = addWorktree(root, "main", false);
         const without = addWorktree(root, "no-pull-request-yet");
-        const gh = signedIn({ list: ok(fixture("gh-pr-list.json")) });
+        const gh = signedIn({ list: listByHead });
         const { projectId, addThread, git: service } = yield* stack(root, gh.runner);
         const local = yield* addThread();
         const secondLocal = yield* addThread();
-        const failingThread = yield* addThread({ worktree: failing });
+        const mergedThread = yield* addThread({ worktree: merged });
         const draftThread = yield* addThread({ worktree: draft });
         yield* addThread({ worktree: onDefault });
         yield* addThread({ worktree: without });
-        yield* addThread({ worktree: failing, deleted: true });
+        yield* addThread({ worktree: merged, deleted: true });
 
         const { marks } = yield* service.pullRequestMarks(projectId);
         const byThread = new Map(marks.map((mark) => [mark.threadId, mark]));
@@ -250,28 +275,41 @@ describe("git.pullRequest.marks", () => {
           failing: false,
         });
         expect(byThread.get(secondLocal)?.number).toBe(14519);
-        expect(byThread.get(failingThread)).toMatchObject({
-          number: 14423,
-          state: "closed",
-          failing: true,
+        // The newest of two closed ones: the merged one, not the older failing one.
+        expect(byThread.get(mergedThread)).toMatchObject({
+          number: 14442,
+          state: "merged",
+          failing: false,
         });
         expect(byThread.get(draftThread)).toMatchObject({ number: 14355, isDraft: true });
 
-        // One listing for the whole project.
-        expect(gh.calls).toEqual([
-          ["--version"],
-          ["auth", "status"],
-          [
-            "pr",
-            "list",
-            "--state",
-            "all",
-            "--limit",
-            "50",
-            "--json",
-            "number,url,state,isDraft,headRefName,updatedAt,statusCheckRollup",
-          ],
-        ]);
+        // One listing per distinct branch, each of that branch's own pull requests.
+        expect(gh.calls.slice(0, 2)).toEqual([["--version"], ["auth", "status"]]);
+        expect(gh.calls.slice(2)).toHaveLength(4);
+        expect(gh.calls.slice(2)).toEqual(
+          expect.arrayContaining([
+            listCall("document-search-operator-support"),
+            listCall("bump-go-1.27.1"),
+            listCall("williammartin-clean-git-test-seams"),
+            listCall("no-pull-request-yet"),
+          ]),
+        );
+      }),
+    ),
+  );
+
+  it.live("finds a branch's pull request however many newer ones the repository has", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        // The draft is older than any repository-wide listing would reach:
+        // the branch's own listing still has it.
+        const root = makeRepo("williammartin-clean-git-test-seams");
+        const gh = signedIn({ list: listByHead });
+        const { projectId, addThread, git: service } = yield* stack(root, gh.runner);
+        const thread = yield* addThread();
+        const { marks } = yield* service.pullRequestMarks(projectId);
+        expect(marks).toEqual([expect.objectContaining({ threadId: thread, number: 14355 })]);
+        expect(gh.calls.at(-1)).toEqual(listCall("williammartin-clean-git-test-seams"));
       }),
     ),
   );
@@ -280,7 +318,7 @@ describe("git.pullRequest.marks", () => {
     Effect.scoped(
       Effect.gen(function* () {
         const root = makeRepo();
-        const gh = signedIn({ list: ok(fixture("gh-pr-list.json")) });
+        const gh = signedIn({ list: listByHead });
         const { projectId, addThread, git: service } = yield* stack(root, gh.runner);
         yield* addThread();
         expect(yield* service.pullRequestMarks(projectId)).toEqual({ marks: [] });
@@ -296,7 +334,9 @@ describe("git.pullRequest.marks", () => {
         const scripts = [
           fakeGh(() => "missing"),
           fakeGh((args) => (args[0] === "--version" ? GH_VERSION : GH_NOT_AUTHENTICATED)),
-          signedIn({ list: { stdout: "", stderr: "HTTP 502: Bad Gateway\n", exitCode: 1 } }),
+          signedIn({
+            list: () => ({ stdout: "", stderr: "HTTP 502: Bad Gateway\n", exitCode: 1 }),
+          }),
         ];
         for (const gh of scripts) {
           const { projectId, addThread, git: service } = yield* stack(root, gh.runner);
