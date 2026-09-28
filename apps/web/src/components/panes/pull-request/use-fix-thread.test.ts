@@ -1,8 +1,9 @@
 /**
  * A Fix menu thread's run with its effects stubbed: the context is read
  * first for checks and conflicts, the thread is created with a fresh id on
- * the source's worktree and settings, the prompt is its first turn, and a
- * refusal at any step stops the run with the server's words.
+ * the source's worktree and settings, the marks are relisted for it, the
+ * prompt is its first turn, and a refusal at any step stops the run with the
+ * server's words.
  */
 
 import { describe, expect, it, vi } from "vitest";
@@ -53,6 +54,7 @@ const depsWith = (overrides: Partial<FixThreadDeps> = {}) => {
     })),
     create: vi.fn<FixThreadDeps["create"]>(async () => true),
     send: vi.fn<FixThreadDeps["send"]>(async () => accepted()),
+    refreshMarks: vi.fn<() => void>(),
     open: vi.fn<(threadId: ThreadId) => void>(),
     newThreadId: () => newId,
     toast: { loading: vi.fn(), success: vi.fn(), error: vi.fn(), dismiss: vi.fn() },
@@ -79,6 +81,11 @@ describe("runFixThread", () => {
       settings: settingsPatch(settings),
       worktree,
     });
+    // The new thread is on the branch now: its mark is listed before it opens.
+    expect(mocks.refreshMarks).toHaveBeenCalledTimes(1);
+    expect(mocks.refreshMarks.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mocks.create.mock.invocationCallOrder[0]!,
+    );
     const [sentTo, text] = mocks.send.mock.calls[0] ?? [];
     expect(sentTo).toBe(newId);
     expect(text).toContain("Resolve the merge conflicts on pull request #42");
@@ -117,6 +124,7 @@ describe("runFixThread", () => {
     const { deps, mocks } = depsWith({ create: async () => false });
     expect(await runFixThread(deps, "reviews", pullRequest, {})).toBeNull();
     expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.refreshMarks).not.toHaveBeenCalled();
     expect(mocks.toast.dismiss).toHaveBeenCalledWith(mocks.toast.loading.mock.calls[0]?.[1].id);
   });
 

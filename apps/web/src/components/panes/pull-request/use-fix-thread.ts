@@ -13,7 +13,9 @@
  *    source thread in a worktree gives the new one the same worktree; a local
  *    one gives a local thread, in the project's folder on the same branch. The
  *    source's settings (model, effort, modes, connector) are copied.
- * 3. Send the prompt as its first turn the way `use-compact-now.ts` does
+ * 3. Reread the project's pull request marks, skipping their throttle, so
+ *    the new thread carries the pull request's glyph and tab at once.
+ * 4. Send the prompt as its first turn the way `use-compact-now.ts` does
  *    (`noteLocalSend`, then `thread.turn.start`), and open the thread.
  *
  * One pending toast covers the whole run and turns into the outcome in place;
@@ -75,6 +77,8 @@ export interface FixThreadDeps {
     options: { readonly settings?: ThreadSettingsPatch; readonly worktree?: ThreadWorktree },
   ) => Promise<boolean>;
   readonly send: (threadId: ThreadId, text: string) => Promise<DispatchExit>;
+  /** The new thread joined the branch: relist the project's marks now. */
+  readonly refreshMarks: () => void;
   readonly open: (threadId: ThreadId) => void;
   readonly newThreadId: () => ThreadId;
   readonly toast: {
@@ -127,6 +131,7 @@ export const runFixThread = async (
     deps.toast.dismiss(id);
     return null;
   }
+  deps.refreshMarks();
   const sent = await deps.send(threadId, prompt);
   deps.open(threadId);
   if (!isAccepted(sent)) {
@@ -141,7 +146,7 @@ export const runFixThread = async (
 /** The Fix menu's run, bound to the tab's thread. */
 export const useFixThread = (projectId: ProjectId, threadId: ThreadId) => {
   const registry = React.useContext(RegistryContext);
-  const { pullRequestFixContext } = usePullRequestAtoms();
+  const { pullRequestFixContext, refreshPullRequests } = usePullRequestAtoms();
   const { create } = useCreateThread();
   const dispatch = useDispatchCommand();
   const navigate = useNavigate();
@@ -177,6 +182,7 @@ export const useFixThread = (projectId: ProjectId, threadId: ThreadId) => {
               queued: false,
             });
           },
+          refreshMarks: () => refreshPullRequests(registry, projectId),
           open: (newThreadId) =>
             void navigate({ to: "/t/$threadId", params: { threadId: newThreadId } }),
           newThreadId: makeThreadId,
@@ -189,7 +195,17 @@ export const useFixThread = (projectId: ProjectId, threadId: ThreadId) => {
           ...(source?.worktree === undefined ? {} : { worktree: source.worktree }),
         },
       ),
-    [create, dispatch, navigate, projectId, pullRequestFixContext, registry, source, threadId],
+    [
+      create,
+      dispatch,
+      navigate,
+      projectId,
+      pullRequestFixContext,
+      refreshPullRequests,
+      registry,
+      source,
+      threadId,
+    ],
   );
 
   return { start, target: fixTarget(source?.worktree) };

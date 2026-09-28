@@ -7,8 +7,8 @@
  * - `pullRequestMarksAtom(projectId)` — `git.pullRequest.marks`, one mark per
  *   thread of the project whose branch has a pull request.
  * - `refreshPullRequests(registry, projectId)` — reread both now: the pane's
- *   refresh button, after a write to the pull request, and after a pull
- *   request is opened (`./gitCommands`).
+ *   refresh button, after a write to the pull request, after a pull request
+ *   is opened (`./gitCommands`), and after a Fix thread joins its branch.
  * - `revisitPullRequestMarks(registry, projectId)` — the sidebar's window
  *   return for a project whose threads carry marks: rereads the marks only,
  *   and only past their throttle.

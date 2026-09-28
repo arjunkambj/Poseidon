@@ -1855,8 +1855,8 @@ lists at once. Besides the tab's refresh and a write to the pull request, it
 runs after the header opens a pull request (`openPullRequest` in
 `packages/client-runtime/src/gitCommands.ts`, which the app builds with the
 same pull request atoms in `components/panes/changes/git-atoms.ts`) — the push
-just before may have listed the marks while the branch had none — so the new
-tab and glyph show at once.
+just before may have listed the marks while the branch had none — and after a
+Fix menu thread joins the branch, so the new tab and glyph show at once.
 
 Every thread row whose branch has a pull request carries a small glyph
 (`apps/web/src/components/sidebar/thread-pr-mark.tsx`) before the fork mark,
@@ -1872,9 +1872,9 @@ from the keyboard. Besides the header's window-return refresh of the open
 project, the rows ask for their project's marks again on every return to the
 window through `revisitPullRequestMarks`, once per project however many rows
 ask and still under the 60-second throttle. So marks are read on connect, on a
-return to the window, on the tab's refresh, and after a pull request is opened
-or written to, and never on a timer. With gh missing or signed out the server
-answers no marks, and no row shows a glyph.
+return to the window, on the tab's refresh, after a pull request is opened or
+written to, and after a Fix thread starts, and never on a timer. With gh
+missing or signed out the server answers no marks, and no row shows a glyph.
 
 The tab, top to bottom:
 
@@ -1921,13 +1921,14 @@ pull request. **Fix failing checks** shows while a check failed, **Resolve
 conflicts** while GitHub says the branch conflicts, and **Address review
 comments** while a review thread is unresolved or a reviewer requested
 changes. Its confirm says where the new thread will work and shows a preview
-of the first message. Once confirmed, `use-fix-thread.ts` does three things.
+of the first message. Once confirmed, `use-fix-thread.ts` does four things.
 It reads `git.pullRequest.fixContext` for checks or conflicts. It creates a
 thread with an id minted there, so a blank newest thread is never reused. That
 thread goes in the source thread's worktree when the source has one, and
 otherwise is a local thread on the same branch, and it keeps the source's
-settings. Then it sends the prompt as the thread's first turn and opens the
-thread. The prompt comes from `pr-fix-prompt.ts` and always starts with the
+settings. It relists the project's marks at once, so the new thread shows the
+pull request's glyph and tab. Then it sends the prompt as the thread's first
+turn and opens the thread. The prompt comes from `pr-fix-prompt.ts` and always starts with the
 pull request's number, title, link and head → base. It then carries one of
 three things:
 
