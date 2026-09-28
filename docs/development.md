@@ -213,7 +213,8 @@ an accidental import of any of them out of `src/main.ts`, since that file is
 bundled for packaging. Test files in `packages/connector-claude` get `testkit`,
 because they replay the connector's recordings through its `sdk-stream`
 replayer and record them through its tee; the connector's sources never import
-it. Test files in `apps/desktop` get `testkit`, so the browser bridge's tests
+it. Test files in `packages/connector-codex` get `testkit` for the same reason,
+through its `stdio-jsonrpc` replayer. Test files in `apps/desktop` get `testkit`, so the browser bridge's tests
 read the agent-browser recordings through `@poseidon/testkit/recording` instead
 of resolving fixture paths by hand. One production file gets extras of its
 own: `apps/server/src/boot.ts`, the composition root, may import
@@ -827,6 +828,20 @@ real definition — the probe, or a session in a throwaway git repo under
 at one turn and five cents. `probe` and `signed-out` spend nothing: the first
 sends no message, and the second was recorded while the CLI was signed out, so
 the CLI refused the turn without calling the API.
+
+The Codex recorders are vitest files too, skipped unless
+`POSEIDON_RECORD_CODEX=1`. They run the operator's own `codex` under their own
+`CODEX_HOME` — the login lives there — with `POSEIDON_HOME=/tmp/poseidon-codex`:
+
+```sh
+POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
+  pnpm -F @poseidon/connector-codex vitest run test/recordProbe.test.ts
+```
+
+The probe opens an app-server connection, reads the account and the model
+list, and starts no thread, so it spends nothing. The finaliser is told the
+names of the operator's MCP servers (`codex mcp list --json`) and skills
+(`$CODEX_HOME/skills`), so each becomes a `user-skill-<n>` stand-in.
 
 `record-cmd.mjs` gives each run a throwaway git repo under a scratch root
 (`RECORD_SCRATCH`, default the system temp directory), spawns the CLI through

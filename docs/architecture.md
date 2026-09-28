@@ -134,6 +134,7 @@ through their `exports` map, one entry per module; apps are unscoped.
 | `packages/connector-sdk`    | `@poseidon/connector-sdk`    | What a connector is, and the suite every one must pass     |
 | `packages/connector-cmd`    | `@poseidon/connector-cmd`    | The Command Code connector                                 |
 | `packages/connector-claude` | `@poseidon/connector-claude` | The Claude Code connector                                  |
+| `packages/connector-codex`  | `@poseidon/connector-codex`  | The Codex connector (not registered yet)                   |
 | `packages/client-runtime`   | `@poseidon/client-runtime`   | Connection, folds and atoms shared by any client           |
 | `packages/shared`           | `@poseidon/shared`           | Ids, paths, permission patterns, image sniffing            |
 | `packages/ui`               | `@poseidon/ui`               | The base component set and its styles                      |
@@ -170,7 +171,8 @@ package segment.
 Test files under `apps/server` get four extras: `testkit`, `client-runtime`,
 `connector-cmd` and `connector-claude`. Test files under
 `packages/connector-claude` get `testkit`, for the `sdk-stream` replayer and
-tee their recordings go through. Test files under `apps/desktop` get
+tee their recordings go through, and so do those under
+`packages/connector-codex`, for the `stdio-jsonrpc` replayer. Test files under `apps/desktop` get
 `testkit`, so the browser bridge's tests read the agent-browser recordings
 through `@poseidon/testkit/recording`. A file counts as a test when
 `.test.`/`.spec.` precedes its extension, or when any path segment is `test` —
@@ -953,6 +955,23 @@ passes none.
 May import `connector-sdk`, `contracts` and `shared`; its tests also import
 `testkit`. It is the only place in the tree that knows `claude` exists, apart from the
 line in `boot.ts` that registers it.
+
+### packages/connector-codex
+
+The Codex connector, over `codex app-server`'s JSON-RPC on stdio; no SDK
+package is involved. So far it probes and lists models, and is not registered
+in `boot.ts` yet: `definition.ts` wires `binary.ts` (find `codex`), `env.ts`
+(the default-deny child environment, `CODEX_HOME` from the instance only),
+`spawn.ts` (a process group per child, stdin closed first, and the proof it is
+gone), `rpc.ts` (the line-delimited JSON-RPC client), `protocol.ts` (narrow
+schemas for the messages read, pinned to the CLI release they were read
+against), `handshake.ts` (`initialize`, `account/read`, `model/list`),
+`probe.ts` (`--version`, `login status`, and the zero-turn handshake),
+`models.ts`, `capabilities.ts` and `configSchema.ts` (`binaryPath`,
+`codexHome`, `defaultModel`). Its sessions fail to start until the app-server
+session lands.
+
+May import `connector-sdk` and `contracts`; its tests also import `testkit`.
 
 ### packages/client-runtime
 
