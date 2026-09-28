@@ -667,7 +667,8 @@ Its recordings and live runs use the CLI's default model (the thread names
 none), one-line prompts and decisive answers, since the app-server has no turn
 or budget cap; the exceptions are `model-switch`, whose manifest names the
 second model, and `ultra-effort`, whose one turn runs at effort `ultra` (the
-costly rung that may delegate to subagents) on the default model. The probe and the MCP servers recording send no message at all.
+costly rung that may delegate to subagents) on the default model. The probe
+and the MCP servers recording send no message at all.
 
 ## Recordings of the real CLI
 
