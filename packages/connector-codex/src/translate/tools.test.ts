@@ -137,4 +137,15 @@ describe("makeItemRows", () => {
     ).toBe(true);
     expect(rows.failOpen()).toEqual([]);
   });
+
+  it("opens no second row when a failed item is reported after its turn ended", () => {
+    const rows = makeItemRows();
+    const change = { type: "fileChange", id: "f1", changes: [{ path: "/r/stop.txt" }] };
+    rows.started({ ...change, status: "inProgress" });
+    expect(rows.failOpen()).toHaveLength(1);
+    // `approval-stop`: the stopped change completes after the next turn/start.
+    expect(rows.completed({ ...change, status: "failed" })).toEqual([]);
+    expect(rows.patchUpdated("f1", change.changes)).toEqual([]);
+    expect(rows.started({ ...change, status: "inProgress" })).toEqual([]);
+  });
 });

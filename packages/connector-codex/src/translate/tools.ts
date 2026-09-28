@@ -26,7 +26,8 @@
  *
  * A finished row is never put back to running, nor finished twice. A turn's
  * rows still open when the turn ends are failed there (`failOpen`), so none
- * spins under an idle thread. Output is cut at `MAX_TOOL_OUTPUT_CHARS`.
+ * spins under an idle thread, and a late report of one of those items opens
+ * no second row. Output is cut at `MAX_TOOL_OUTPUT_CHARS`.
  */
 
 import type { ItemKind } from "@poseidon/contracts/enums";
@@ -245,6 +246,12 @@ const rowEvent = (
 
 export const makeItemRows = (): ItemRows => {
   const entries = new Map<string, Entry>();
+  /**
+   * The items an ended turn left open and `failOpen` settled. The CLI can
+   * still report one after the next turn started — a stopped turn's file
+   * change completes late — and that report must not open a second row.
+   */
+  const settled = new Set<string>();
 
   /**
    * The rows of a file change, one per path: rows it already has keep their
@@ -284,7 +291,7 @@ export const makeItemRows = (): ItemRows => {
   const started = (item: Json): ReadonlyArray<PendingRuntimeEvent> => {
     const id = asString(item.id);
     const type = asString(item.type) ?? "unknown";
-    if (id === undefined || NO_ROW.has(type) || entries.has(id)) return [];
+    if (id === undefined || NO_ROW.has(type) || entries.has(id) || settled.has(id)) return [];
     const entry = open(id, type);
     if (type === "fileChange") return fileRows(entry, changesOf(item.changes), "in_progress");
     const row: Row = { itemId: makeItemId(), status: "in_progress", body: bodyOf(type, item, "") };
@@ -295,7 +302,7 @@ export const makeItemRows = (): ItemRows => {
   const completed = (item: Json): ReadonlyArray<PendingRuntimeEvent> => {
     const id = asString(item.id);
     const type = asString(item.type) ?? "unknown";
-    if (id === undefined || NO_ROW.has(type)) return [];
+    if (id === undefined || NO_ROW.has(type) || settled.has(id)) return [];
     const entry = entries.get(id) ?? open(id, type);
     if (entry.done) return [];
     entry.done = true;
@@ -324,7 +331,7 @@ export const makeItemRows = (): ItemRows => {
   };
 
   const delta: ItemRows["delta"] = (id, type, text) => {
-    if (text === "") return [];
+    if (text === "" || settled.has(id)) return [];
     const opened = entries.has(id) ? [] : started({ id, type });
     const entry = entries.get(id);
     const row = entry?.rows[0];
@@ -355,6 +362,7 @@ export const makeItemRows = (): ItemRows => {
   };
 
   const patchUpdated: ItemRows["patchUpdated"] = (id, changes) => {
+    if (settled.has(id)) return [];
     const entry = entries.get(id) ?? open(id, "fileChange");
     if (entry.done) return [];
     return fileRows(entry, changesOf(changes), "in_progress");
@@ -362,9 +370,10 @@ export const makeItemRows = (): ItemRows => {
 
   const failOpen = (): ReadonlyArray<PendingRuntimeEvent> => {
     const events: Array<PendingRuntimeEvent> = [];
-    for (const entry of entries.values()) {
+    for (const [id, entry] of entries) {
       if (entry.done) continue;
       entry.done = true;
+      settled.add(id);
       for (const row of entry.rows) {
         row.status = "failed";
         events.push(rowEvent("item.completed", row));
