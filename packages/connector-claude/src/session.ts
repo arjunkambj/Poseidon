@@ -119,7 +119,11 @@ export interface ClaudeSessionOptions {
 
 /** How long the CLI may take to answer the SDK's initialize request. */
 const HANDSHAKE_TIMEOUT = "60 seconds";
-/** How long a CLI that failed its handshake may take to finish exiting. */
+/**
+ * How long a CLI that stopped may take to finish writing stderr: its last
+ * line can land after its 'exit', and a grandchild holding the pipe must not
+ * hold the session with it.
+ */
 const STDERR_SETTLE = "2 seconds";
 /** At most this much of the CLI's stderr goes into a failed handshake's message. */
 const HANDSHAKE_TAIL = 500;
@@ -290,14 +294,15 @@ export const makeClaudeSession = (
 
     /**
      * The handshake failed: why, with what the CLI said on stderr, read before
-     * the teardown stops it. A CLI that failed has exited, and its last lines
-     * are waited for; one that never answered is still running.
+     * the teardown stops it. A CLI that failed has exited, and its stderr is
+     * waited for to its end — the SDK can reject on the 'exit' that comes
+     * before the last line; one that never answered is still running.
      */
     const handshakeFailed = (detail: string, exited: boolean) =>
       Effect.gen(function* () {
         const child = group.latest();
         if (exited && child !== undefined) {
-          yield* Effect.promise(() => child.exited).pipe(Effect.timeoutOption(STDERR_SETTLE));
+          yield* Effect.promise(() => child.drained).pipe(Effect.timeoutOption(STDERR_SETTLE));
         }
         return yield* new SpawnFailed({
           kind: CLAUDE_KIND,
@@ -491,6 +496,9 @@ export const makeClaudeSession = (
         if (yield* Ref.get(closedRef)) return;
         const child = group.latest();
         const exit = child === undefined ? undefined : yield* Effect.promise(() => child.exited);
+        if (child !== undefined) {
+          yield* Effect.promise(() => child.drained).pipe(Effect.timeoutOption(STDERR_SETTLE));
+        }
         const tail = child?.stderrTail().trim().split("\n").at(-1) ?? "";
         yield* emit({
           type: "runtime.error",

@@ -317,7 +317,7 @@ blocks, images first and the text last, because the CLI reads a message as a
 slash command only when its last block is text.
 
 A CLI that stops while the session is open is a crash: a fatal
-`runtime.error` naming the last stderr line, then
+`runtime.error` naming the last stderr line, read once stderr has ended, then
 `session.ended { reason: "crashed" }`, which the supervisor resumes from.
 
 ## The message catalogue
@@ -634,7 +634,9 @@ uuid) starts a fresh session with a `session.warning`. A resume the CLI refuses
 with "No conversation found with session ID: …" does the same. The CLI says it
 on stderr, which the SDK does not read from a custom spawn, so a failed
 handshake's `SpawnFailed` carries the end of the CLI's stderr (at most 500
-characters) after the SDK's own message. `resume` is the recording that will
+characters) after the SDK's own message. The line can land after the CLI's
+exit, which is when the SDK rejects, so the tail is read once the stderr
+stream has ended (`drained` in `spawn.ts`), waiting at most two seconds. `resume` is the recording that will
 show a second turn recalling the first after a restart.
 
 Rollback and fork are not offered (`rollback: false`, `fork: false`). The SDK

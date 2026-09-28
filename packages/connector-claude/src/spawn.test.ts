@@ -164,6 +164,33 @@ process.exit(0);`,
     }),
   );
 
+  it.live("holds a stderr line written after the leader's exit once drained", () =>
+    Effect.gen(function* () {
+      const group = makeProcessGroup();
+      // The leader exits at once; a grandchild sharing its stderr writes the
+      // last line later, as a CLI's final line can land after its 'exit'.
+      const lastLine = "No conversation found with session ID: x\n";
+      const late = `setTimeout(() => process.stderr.write(${JSON.stringify(lastLine)}), 300)`;
+      group.spawn({
+        command: process.execPath,
+        args: [
+          "-e",
+          `const { spawn } = require("node:child_process");
+spawn(process.execPath, ["-e", ${JSON.stringify(late)}], { stdio: ["ignore", "ignore", "inherit"] }).unref();
+process.exit(1);`,
+        ],
+        env: { PATH: process.env.PATH },
+      });
+      const child = group.latest()!;
+      expect((yield* Effect.promise(() => child.exited)).code).toBe(1);
+      expect(child.stderrTail()).toBe("");
+
+      yield* Effect.promise(() => child.drained);
+      expect(child.stderrTail()).toBe(lastLine);
+      yield* group.stop;
+    }),
+  );
+
   it.live("reports a spawn that never started as gone, and signals nothing", () =>
     Effect.gen(function* () {
       const group = makeProcessGroup();

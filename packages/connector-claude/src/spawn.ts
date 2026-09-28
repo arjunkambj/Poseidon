@@ -68,7 +68,14 @@ export interface ChildExit {
 /** One CLI child: its pid, how it ended, and its stderr's last lines. */
 export interface ClaudeChild {
   readonly pid: number;
+  /** Resolves on the child's 'exit', when its stderr may still hold lines. */
   readonly exited: Promise<ChildExit>;
+  /**
+   * Resolves once the child's stderr has ended, so `stderrTail` holds its
+   * last line. A grandchild that inherited stderr keeps it open
+   * past the child's exit, so a reader bounds the wait.
+   */
+  readonly drained: Promise<void>;
   readonly stderrTail: () => string;
 }
 
@@ -234,8 +241,19 @@ export const makeProcessGroup = (hooks?: {
       child.once("exit", (code, signal) => resolve({ code, signal }));
       child.once("error", () => resolve({ code: child.exitCode, signal: child.signalCode }));
     });
+    // Its own stream's end, not the child's 'close', which also waits on a
+    // stdout nobody may be reading any more.
+    const drained = new Promise<void>((resolve) => {
+      if (child.stderr === null) {
+        void exited.then(() => resolve());
+        return;
+      }
+      child.stderr.once("end", () => resolve());
+      child.stderr.once("close", () => resolve());
+      child.once("error", () => resolve());
+    });
     if (pid > 0) {
-      spawned.push({ pid, exited, stderrTail: () => tail, member });
+      spawned.push({ pid, exited, drained, stderrTail: () => tail, member });
     }
     options.signal?.addEventListener("abort", () => signalGroup(member, "SIGTERM"), {
       once: true,
@@ -258,7 +276,8 @@ export const makeProcessGroup = (hooks?: {
   return {
     spawn: spawnOne,
     latest: () => spawned.at(-1),
-    children: () => spawned.map(({ pid, exited, stderrTail }) => ({ pid, exited, stderrTail })),
+    children: () =>
+      spawned.map(({ pid, exited, drained, stderrTail }) => ({ pid, exited, drained, stderrTail })),
     stop: Effect.suspend(() =>
       Effect.forEach([...spawned], stopOne, { discard: true, concurrency: "unbounded" }),
     ),
