@@ -5,6 +5,7 @@ import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 import { describe, expect, it } from "vitest";
 
 import { buildTimeline, type TimelineRow, type TimelineWorkGroupRow } from "./fold";
+import { workGroupLabel } from "./work-summary";
 
 let sequence = 0;
 
@@ -102,6 +103,31 @@ describe("buildTimeline live bursts", () => {
       false,
       false,
     ]);
+  });
+
+  it("times a thought up to the row that closed its burst", () => {
+    const user = item("user_message");
+    const thought = item("reasoning");
+    millis += 3_000;
+    const narration = item("assistant_message", { text: "Next, the tests." });
+    const test = item("command_execution", { status: "in_progress" });
+    const [closed, running] = groups(live([user, thought, narration, test]));
+    expect(closed.durationMs).toBe(4_000);
+    expect(workGroupLabel(closed.items, closed.durationMs)).toBe("Thought for 4s");
+    expect(running.live).toBe(true);
+  });
+
+  it("times an opened settled fold's last burst up to the turn's end", () => {
+    const turnId = makeTurnId();
+    const user = item("user_message", { turnId });
+    const thought = item("reasoning", { turnId });
+    const rows = buildTimeline([user, thought], {
+      turnActive: false,
+      isFoldOpen: () => true,
+      turnEndedAt: new Map([[turnId, millis + 2_000]]),
+    }).rows;
+    const [burst] = groups(rows);
+    expect(workGroupLabel(burst.items, burst.durationMs)).toBe("Thought for 2s");
   });
 
   it("splits a burst at a decision anchored inside it", () => {

@@ -721,15 +721,15 @@ The timeline (`apps/web/src/components/timeline/`, behaviour in
 [how-it-works §4, "Rows on screen"](how-it-works.md#rows-on-screen)) keeps
 its rules in pure modules with unit tests and its rows in thin components:
 
-| Concern               | Pure logic                                                                                | Components                                                                                          |
-| --------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Rows from items       | `turns.ts` (turns by `turnId`, task nesting, decision anchors), `fold.ts`, `fold-rows.ts` | `timeline.tsx` (LegendList), `timeline-item.tsx` (one component per kind)                           |
-| Labels and folds      | `work-summary.ts`, `live-step.ts` (labels), `disclosure.ts` (expand/collapse-all ids)     | `turn-fold-row.tsx`, `work-group-row.tsx`, `turn-summary-row.tsx`, `row-shell.tsx`                  |
-| Markdown and code     | `markdown-blocks.ts`, `code-fence.ts`, `remark-user-text.ts`, `user-message-collapse.ts`  | `markdown.tsx`, `code-block.tsx`, `user-message-row.tsx`, `message-rows.tsx`, `attachments.tsx`     |
-| File chips            | `path-links.ts`, `tool-target.ts`                                                         | `path-chips.tsx`, `use-path-chips.ts`, `markdown-paths.tsx`, `file-chip.tsx`, `file-change-row.tsx` |
-| Footers and restore   | `turn-checkpoints.ts`                                                                     | `message-footer.tsx`, `restore-before-turn.tsx` (the Changes pane's `restore-dialog.tsx`)           |
-| Scroll and navigation | `send-anchor.ts`, `turn-rail.ts`, `list-hold.ts` (scroll holds), `reading-position.ts`    | `use-send-anchor.ts`, `use-reading-position.ts`, `jump-to-latest.tsx`, `turn-rail-view.tsx`         |
-| Context for every row | —                                                                                         | `thread-context.tsx`, filled by `use-timeline-thread.ts`                                            |
+| Concern               | Pure logic                                                                                | Components                                                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Rows from items       | `turns.ts` (turns by `turnId`, task nesting, decision anchors), `fold.ts`, `fold-rows.ts` | `timeline.tsx` (LegendList), `timeline-item.tsx` (one component per kind)                                  |
+| Labels and folds      | `work-summary.ts`, `live-step.ts` (labels), `disclosure.ts` (expand/collapse-all ids)     | `turn-fold-row.tsx`, `work-group-row.tsx`, `use-step-ended-at.ts`, `turn-summary-row.tsx`, `row-shell.tsx` |
+| Markdown and code     | `markdown-blocks.ts`, `code-fence.ts`, `remark-user-text.ts`, `user-message-collapse.ts`  | `markdown.tsx`, `code-block.tsx`, `user-message-row.tsx`, `message-rows.tsx`, `attachments.tsx`            |
+| File chips            | `path-links.ts`, `tool-target.ts`                                                         | `path-chips.tsx`, `use-path-chips.ts`, `markdown-paths.tsx`, `file-chip.tsx`, `file-change-row.tsx`        |
+| Footers and restore   | `turn-checkpoints.ts`                                                                     | `message-footer.tsx`, `restore-before-turn.tsx` (the Changes pane's `restore-dialog.tsx`)                  |
+| Scroll and navigation | `send-anchor.ts`, `turn-rail.ts`, `list-hold.ts` (scroll holds), `reading-position.ts`    | `use-send-anchor.ts`, `use-reading-position.ts`, `jump-to-latest.tsx`, `turn-rail-view.tsx`                |
+| Context for every row | —                                                                                         | `thread-context.tsx`, filled by `use-timeline-thread.ts`                                                   |
 
 Row state that must outlive a recycled container — disclosures, turn folds,
 "Show more" — lives in the row disclosure map (`state/ui.ts`,

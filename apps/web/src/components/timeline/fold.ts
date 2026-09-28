@@ -197,16 +197,18 @@ export const buildTimeline = (
   /**
    * Rows in order with each maximal run of work kinds folded into a work
    * group. A decision is not work: it closes the run, and the next one starts
-   * fresh.
+   * fresh. A run is timed up to the item that ended it, or to `endMs` when it
+   * ends the turn's items (`workGroupRow`).
    */
   const pushWorkRuns = (
     run: ReadonlyArray<ItemSnapshot>,
     itemRow: (item: ItemSnapshot) => TimelineItemRow,
+    endMs?: number | undefined,
   ) => {
     let pending: ItemSnapshot[] = [];
-    const flush = () => {
+    const flush = (untilMs: number | undefined) => {
       if (pending.length > 0) {
-        rows.push(workGroupRow(pending));
+        rows.push(workGroupRow(pending, false, untilMs));
         pending = [];
       }
     };
@@ -215,15 +217,15 @@ export const buildTimeline = (
       if (FOLDABLE_KINDS.has(item.kind)) {
         pending.push(item);
         if (after !== undefined) {
-          flush();
+          flush(undefined);
         }
       } else {
-        flush();
+        flush(uuidV7Millis(item.itemId));
         rows.push(itemRow(item));
       }
       pushDecisions(after);
     }
-    flush();
+    flush(endMs);
   };
 
   const turns = groupTurns(roots);
@@ -259,7 +261,7 @@ export const buildTimeline = (
       const fold = turnFoldRow(opener, hidden, durationMs);
       rows.push(fold);
       if (isFoldOpen(fold.id)) {
-        pushWorkRuns(rest, itemRow);
+        pushWorkRuns(rest, itemRow, endedAt);
       } else {
         for (const item of rest) {
           if (!folds(item)) {

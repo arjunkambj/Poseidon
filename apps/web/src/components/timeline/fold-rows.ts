@@ -30,7 +30,10 @@ export interface TimelineWorkGroupRow {
   readonly items: ReadonlyArray<ItemSnapshot>;
   readonly failedCount: number;
   readonly durationMs: number | undefined;
-  /** True only for the trailing burst of the running turn: the work still going on. */
+  /**
+   * True only for the running turn's last burst — the work still going on —
+   * even when the answers to approvals it asked for sit after it.
+   */
   readonly live: boolean;
 }
 
@@ -82,14 +85,22 @@ export const FOLDABLE_KINDS: ReadonlySet<ItemKind> = new Set([
   "skill",
 ]);
 
+/**
+ * A run of work as one row. Its time runs from its first step's start to
+ * `endMs` — the start of whatever came after the run, when something did — or
+ * else to its last step's start: an item's id records when it began, not when
+ * it finished, so a lone thought is only timed by what followed it.
+ */
 export const workGroupRow = (
   items: ReadonlyArray<ItemSnapshot>,
   live = false,
+  endMs?: number | undefined,
 ): TimelineWorkGroupRow => {
   const firstMs = uuidV7Millis(items[0].itemId);
   const lastMs = uuidV7Millis(items[items.length - 1].itemId);
+  const untilMs = lastMs === undefined || endMs === undefined ? lastMs : Math.max(lastMs, endMs);
   const durationMs =
-    firstMs !== undefined && lastMs !== undefined ? Math.max(0, lastMs - firstMs) : undefined;
+    firstMs !== undefined && untilMs !== undefined ? Math.max(0, untilMs - firstMs) : undefined;
   return {
     kind: "work-group",
     id: `work-group:${items[0].itemId}`,

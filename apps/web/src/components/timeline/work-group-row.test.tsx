@@ -1,4 +1,5 @@
 import { makeItemId } from "@poseidon/contracts/ids";
+import { uuidV7Millis } from "@poseidon/shared/ids";
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -18,10 +19,10 @@ const command = (cmd: string, status: ItemSnapshot["status"] = "completed"): Ite
   command: { cmd },
 });
 
-const render = (items: ReadonlyArray<ItemSnapshot>, live: boolean) =>
+const render = (items: ReadonlyArray<ItemSnapshot>, live: boolean, endMs?: number) =>
   renderToStaticMarkup(
     <ClientRuntimeProvider layer={makeFixtureClient().layer}>
-      <WorkGroupRow group={workGroupRow(items, live)} childrenByParent={new Map()} />
+      <WorkGroupRow group={workGroupRow(items, live, endMs)} childrenByParent={new Map()} />
     </ClientRuntimeProvider>,
   );
 
@@ -43,5 +44,13 @@ describe("WorkGroupRow", () => {
     const markup = render([command("pnpm install"), command("pnpm test")], false);
     expect(markup).toContain("Ran 2 commands");
     expect(markup).not.toContain("steps");
+  });
+
+  it("reads a lone thought as timed up to the row after it", () => {
+    const thought: ItemSnapshot = { itemId: makeItemId(), kind: "reasoning", status: "completed" };
+    const startMs = uuidV7Millis(thought.itemId) ?? 0;
+    expect(render([thought], false, startMs + 4_000)).toContain("Thought for 4s");
+    expect(render([thought], false)).toContain("Thought");
+    expect(render([{ ...thought, status: "in_progress" }], true)).toContain("Thinking…");
   });
 });

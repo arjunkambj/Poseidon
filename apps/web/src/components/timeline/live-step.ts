@@ -7,10 +7,11 @@
  * A step is sorted by the same classifier the settled sentence uses
  * (`workAction`), so the two never disagree about what an item was. Targets
  * are cut to one short line: a command's first line, a file's name, a search's
- * pattern. Reasoning reads "Thinking…" while it streams, then "Thought for 4s",
- * timed up to the step after it — an item carries no end time of its own, only
- * the millisecond its UUIDv7 id records — and plain "Thought" while nothing
- * follows it yet.
+ * pattern. Reasoning reads "Thinking…" while it streams, then "Thought for 4s"
+ * once it is over. An item carries no end time of its own, only the
+ * millisecond its UUIDv7 id records, so the row passes the moment it saw the
+ * reasoning finish (`use-step-ended-at.ts`); without one — a thread opened
+ * after the fact — it reads plain "Thought".
  *
  * Pure and cheap: `buildTimeline` reruns on every streamed delta, and the row
  * memoises the label on its items.
@@ -80,22 +81,27 @@ const target = (item: ItemSnapshot, kind: ClauseKind): string | undefined => {
   }
 };
 
-/** How long a reasoning item ran: up to the next item's start, when one has started. */
-const thoughtLabel = (item: ItemSnapshot, next: ItemSnapshot | undefined): string => {
+/** How long a reasoning item ran: from its start to `endedAt`, when that is known. */
+const thoughtLabel = (item: ItemSnapshot, endedAt: number | undefined): string => {
   const startMs = uuidV7Millis(item.itemId);
-  const endMs = next === undefined ? undefined : uuidV7Millis(next.itemId);
-  return startMs !== undefined && endMs !== undefined && endMs > startMs
-    ? `Thought for ${formatDurationMs(endMs - startMs)}`
+  return startMs !== undefined && endedAt !== undefined && endedAt > startMs
+    ? `Thought for ${formatDurationMs(endedAt - startMs)}`
     : "Thought";
 };
 
-/** The sentence for `items[index]`, timed against the item after it. */
-export const stepLabel = (items: ReadonlyArray<ItemSnapshot>, index: number): string => {
-  const item = items[index];
+/**
+ * A live burst's line: its newest step as a sentence. `endedAt` is when that
+ * step finished, epoch ms, when the caller knows it — it times a thought.
+ */
+export const liveStepLabel = (
+  items: ReadonlyArray<ItemSnapshot>,
+  endedAt?: number | undefined,
+): string => {
+  const item = items.at(-1);
   if (item === undefined) return "Working…";
   const running = item.status === "in_progress";
   if (item.kind === "reasoning") {
-    return running ? "Thinking…" : thoughtLabel(item, items[index + 1]);
+    return running ? "Thinking…" : thoughtLabel(item, endedAt);
   }
   const action = workAction(item);
   if (action === null) return "Working…";
@@ -115,10 +121,6 @@ export const stepLabel = (items: ReadonlyArray<ItemSnapshot>, index: number): st
     }
   }
 };
-
-/** A live burst's line: its newest step. */
-export const liveStepLabel = (items: ReadonlyArray<ItemSnapshot>): string =>
-  stepLabel(items, items.length - 1);
 
 /** How many steps a live burst holds; the row shows "N steps" only past one. */
 export const liveStepCount = (items: ReadonlyArray<ItemSnapshot>): number => items.length;

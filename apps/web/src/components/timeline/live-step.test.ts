@@ -3,7 +3,7 @@ import type { ItemId } from "@poseidon/contracts/ids";
 import type { FileChangeKind, ItemSnapshot } from "@poseidon/contracts/runtime";
 import { describe, expect, it } from "vitest";
 
-import { liveStepCount, liveStepLabel, stepLabel } from "./live-step";
+import { liveStepCount, liveStepLabel } from "./live-step";
 
 let sequence = 0;
 
@@ -114,14 +114,17 @@ describe("liveStepLabel", () => {
     expect(one(item("skill", { text: "frontend-design" }))).toBe("frontend-design");
   });
 
-  it("thinks while reasoning streams, then times it up to the next step", () => {
+  it("thinks while reasoning streams, then times it up to when it was seen to end", () => {
     const thinking = item("reasoning", running, BASE);
-    expect(one(thinking)).toBe("Thinking…");
+    expect(liveStepLabel([thinking])).toBe("Thinking…");
+    expect(liveStepLabel([thinking], BASE + 4_000)).toBe("Thinking…");
     const thought = item("reasoning", {}, BASE);
-    expect(one(thought)).toBe("Thought");
-    const next = command("pnpm test", running, BASE + 4_000);
-    expect(stepLabel([thought, next], 0)).toBe("Thought for 4s");
-    expect(stepLabel([thought, command("ls", {}, BASE)], 0)).toBe("Thought");
+    expect(liveStepLabel([thought], BASE + 4_000)).toBe("Thought for 4s");
+    expect(liveStepLabel([command("ls", {}, BASE - 1_000), thought], BASE + 4_000)).toBe(
+      "Thought for 4s",
+    );
+    expect(liveStepLabel([thought])).toBe("Thought");
+    expect(liveStepLabel([thought], BASE)).toBe("Thought");
   });
 
   it("reads the newest step of the burst", () => {

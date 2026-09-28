@@ -780,7 +780,10 @@ turns the flat item list into rows:
   runs and "Ran pnpm test" once it is done, "Editing app.tsx", "Searching
   useMemo", a browser call's sentence, a task's title — the target cut to a
   command's first line or a file's name. Reasoning joins the line as
-  "Thinking…", then "Thought for 4s", timed up to the step after it. The
+  "Thinking…", then "Thought for 4s": a snapshot carries only an item's start
+  (its id), so the row times the thought to the moment it saw the status
+  leave `in_progress` (`timeline/use-step-ended-at.ts`), and reads plain
+  "Thought" when it never saw it running. The
   newest step's spinner or failure mark sits beside it, with "4 steps" once
   the burst holds more than one; opening it shows its rows. Earlier bursts,
   which narration has closed, read as a settled work group does. When the
@@ -829,7 +832,9 @@ turns the flat item list into rows:
   come in that fixed order, the first capitalised, joined with commas; past
   three the rest fold into "and N more". A work group reads the same way
   ("Ran 2 commands, edited 1 file"), or "Thought for 2s" when it holds only
-  reasoning;
+  reasoning — a group's time runs up to the start of the row that closed it
+  (the narration after a thought), or to the turn's end for an opened fold's
+  last run;
 - the `turn-summary` card, "Changed 3 files +20 −4", starts open and lists
   one line per distinct path with its diff counts summed across the turn,
   five at most, then "Show N more" (kept in the disclosure map under
