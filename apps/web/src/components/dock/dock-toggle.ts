@@ -2,12 +2,13 @@
  * What the right dock shows, and where its keys and buttons take it — the pure
  * half of the dock, tested without a DOM.
  *
- * The dock is either closed (`?pane=` absent), open on one of its tabs
- * (`changes | browser | files`), or open with no tab chosen yet: the
- * launcher, `?pane=home`, a short list of the tabs and their keys.
+ * The dock is either closed (`?pane=` absent), open on one of its tab kinds
+ * (`DOCK_TABS`: `changes | browser | files` today), or open with no tab
+ * chosen yet: the launcher, `?pane=home`, a short list of the kinds and their
+ * keys.
  * `DockPane` is that open state; `DockTab` is only the tabs.
  *
- * A thread's dock has all three tabs. The New task page's dock, for a project
+ * A thread's dock offers every kind. The New task page's dock, for a project
  * with no thread yet, has `projectDockTabs`: Changes (the project folder's
  * working tree and branch) and Files. The Browser tab is a thread's browser,
  * so there is none to show before the thread exists.
@@ -38,11 +39,11 @@
 const DOCK_TABS = ["changes", "browser", "files"] as const;
 export type DockTab = (typeof DOCK_TABS)[number];
 
-/** The tabs, in strip order. */
+/** The tab kinds, in registry order: the launcher's rows and the "+" menu. */
 export const dockTabs: ReadonlyArray<DockTab> = DOCK_TABS;
 
 /**
- * The tabs a project's dock offers before any thread exists, in strip order —
+ * The tabs a project's dock offers before any thread exists, in registry order —
  * the kinds `./dock-tab-meta` marks available to a project (a test holds the
  * two equal). A literal here keeps route validation free of the registry.
  */

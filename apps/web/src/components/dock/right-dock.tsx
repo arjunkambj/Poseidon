@@ -1,6 +1,7 @@
 /**
- * The right dock: a resizable panel with `changes | browser | files` tabs,
- * and a launcher for when it is open with no tab chosen.
+ * The right dock: a resizable panel showing the tabs opened in it — kinds
+ * from a small registry (Changes, Browser, Files today) — and a launcher for
+ * when it is open with no tab chosen.
  *
  * It docks beside a thread, or beside the New task page for the picked
  * project (`DockScope`). A project has no thread yet, so its dock offers

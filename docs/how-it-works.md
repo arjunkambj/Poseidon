@@ -1684,6 +1684,66 @@ the client's stamp it the same way, and a document stored before the field
 existed reads as having none. The timeline reads it to know what "before this
 turn" means after a restore (below).
 
+### The right dock
+
+The thread view and the New task page share a right dock
+(`apps/web/src/components/dock/`). It is closed by default: nothing opens it
+at start, on opening a project or on opening a thread. Opening it without
+naming a tab (`dock.toggle`, Mod+Alt+B, or the header's dock button) goes
+back to the tab this thread last used this session, else to a centred
+launcher — one row per kind with its icon, name and key. The launcher reads
+nothing, so an open dock loads nothing until a tab is picked.
+
+The strip across the top holds only the tabs opened in this thread this
+session, in the order they were opened, never every kind the dock offers.
+Each tab is an icon and a short name with its name and chord in a tooltip,
+and has a close button beside it, shown on hover or focus and always on the
+active tab. A middle-click on a tab, or Delete or Backspace while it has the
+focus, closes it too. Closing the active tab opens its right neighbour, else
+its left; closing the last one shows the launcher again with the dock still
+open. After the tabs, a "+" button ("Open a tab") lists the kinds this dock
+offers that are not open yet, each with its icon, name and chord; it shows
+only while at least one tab is open and some kind is not.
+
+Every opener adds its tab if it is absent, activates it and opens the dock:
+the chords, a turn summary's file chips, "Open in Files tab", the agent
+browser's Show button, `openInThreadBrowser` and the browser's own auto-open.
+The chords keep their toggle meaning: `dock.changes` (Mod+Shift+D),
+`browserPane.toggle` (Mod+Shift+B) and `dock.files` (Mod+P) close the dock
+when it already shows their tab, rather than closing the tab.
+
+What a thread's dock remembers — its open tabs, their order, the last tab and
+whether it was left open — is `DockMemory` (`dock-toggle.ts`), kept per thread
+(or per project on the New task page) in an in-memory atom through
+`useDockMemory` (`apps/web/src/state/ui.ts`). It lasts the session and is
+never written to storage, so closing the dock and reopening it brings back
+that thread's tabs and active tab, and a relaunch starts every dock closed
+with no tabs.
+
+Only the active tab's pane is mounted. Closing a tab hides its pane exactly
+as switching to another tab does: closing the active Browser tab is the same
+user move as switching away from it. The browser's tabs and webviews live in
+the browser host above the routes, so they, the agent's control of the
+browser and a person's takeover are untouched by closing the dock tab; the
+terminal drawer is not part of the dock at all.
+
+**Adding a tab kind.** The kinds are a small registry, so a new one needs no
+change to the strip, the launcher or the "+" menu:
+
+1. add its id to `DOCK_TABS` in `dock-toggle.ts` — the order there is the
+   launcher's and the "+" menu's;
+2. add a `DOCK_TAB_META` entry in `dock-tab-meta.ts`: its Honeyicons `icon`,
+   `label`, the catalog `command` that opens it, and `available(scope)` — which
+   docks offer it (`"thread"`, `"project"`; Browser is a thread's only);
+3. add its renderer to `DOCK_TAB_PANES` in `dock-tab-panes.tsx`, a function of
+   the dock's context (scope, snapshot, project, connection);
+4. if it has a chord, add the command to the command catalog (it must pass the
+   default-collision test, and then shows in the palette and cheatsheet) and
+   answer it where the other dock keys are answered.
+
+Both maps are typed `Record<DockTab, …>`, so the compiler refuses a kind
+missing from either.
+
 ### The Changes pane
 
 `apps/web/src/components/panes/changes/changes-pane.tsx` is the dock's first

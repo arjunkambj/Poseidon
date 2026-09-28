@@ -336,7 +336,12 @@ timeline, then the composer with any open approval, question or plan card
 docked above its input, then the terminal drawer — a strip with a show button
 while closed — whose toolbar finds text and quotes a selection into the
 composer draft, and whose mod-clicked http(s) links open on the dock's browser
-tab) and a right dock with three tabs: **changes** (`git.diff` in three scopes
+tab) and a right dock whose strip holds only the tabs opened in that thread
+this session, in opening order, each with a close button and a "+" menu for
+the kinds not open yet. The kinds come from a small registry in
+`apps/web/src/components/dock/` (`DOCK_TABS` in `dock-toggle.ts`,
+`DOCK_TAB_META` in `dock-tab-meta.ts`, `DOCK_TAB_PANES` in
+`dock-tab-panes.tsx`); there are three today: **changes** (`git.diff` in three scopes
 — this turn's checkpoints with the restore controls, the branch against its
 base through `mergeBase`, and the uncommitted working tree — with a
 split/unified toggle), **browser** (the pane) and **files** (a search over
@@ -351,6 +356,10 @@ The dock has keys of its own, answered by the thread view: `dock.toggle`
 `dock.changes` (Mod+Shift+D), `browserPane.toggle` (Mod+Shift+B) and
 `dock.files` (Mod+P) open their tab, or close the dock when it already shows
 that tab. Opening Files by its key also puts the cursor in the Files search.
+Every other opener — a file chip, "Open in Files tab", the agent-browser Show
+button — adds its tab if it is absent and activates it. Closing a tab only
+hides its pane, as switching away does; closing the last one shows the
+launcher with the dock still open.
 The New task page, before any thread exists, has the same frame for the
 picked project's own folder: a one-row header with the git actions and the
 terminal and dock toggles, the project's terminal drawer, and a dock with
@@ -544,7 +553,9 @@ web renderer has no preload bridge, so the host renders nothing there.
 
 **Closed by default.** Nothing opens the dock or the Browser pane, and
 nothing creates a webview, at start, project open or thread open; a dock tab
-comes back only because the user left the thread on it (`useDockTabMemory`).
+comes back only because the user left the thread on it (`useDockMemory` in
+`apps/web/src/state/ui.ts`: per thread, in memory only, the dock's last tab
+and the tabs opened this session, `DockMemory.openTabs`).
 While the agent uses the browser — a `browser_*` call in flight, or a tab it
 opened — and the pane is not on screen, the thread header shows "Agent is
 using the browser" with a Show button
