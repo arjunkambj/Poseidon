@@ -8,6 +8,8 @@ import { CommitDialogView } from "@/components/git/commit-dialog";
 import { commitPick, initialPicker, type CommitPickerState } from "@/components/git/commit-picker";
 import {
   COMMIT_DRAFT_FAILED,
+  TICK_TO_GENERATE,
+  commitGenerateReason,
   generateCommitInto,
   makeOpenDraft,
   type CommitGeneration,
@@ -172,8 +174,8 @@ const mount = (
     toastError,
     notice: () => {},
   };
-  const generate = (auto: boolean) =>
-    generateCommitInto(deps, commitPick(picker, "Fix the bug", FILES).choice.paths, auto);
+  const pickedPaths = () => commitPick(picker, "Fix the bug", FILES).choice.paths;
+  const generate = (auto: boolean) => generateCommitInto(deps, pickedPaths(), auto);
   const render = () => {
     handlers.clicks.clear();
     handlers.checks.clear();
@@ -194,7 +196,7 @@ const mount = (
         }}
         generation={{
           running,
-          reason: options.generationReason ?? null,
+          reason: commitGenerateReason(options.generationReason ?? null, pickedPaths()),
           onGenerate: () => void generate(false),
           onCancel: runner.cancel,
         }}
@@ -402,6 +404,20 @@ describe("CommitDialog", () => {
       expect(dialog.toastError).toHaveBeenLastCalledWith(
         "Couldn't write a commit message: The harness timed out.",
       );
+    });
+
+    it("is disabled while no file is ticked, and never asks for every change", async () => {
+      const generate = vi.fn(async (): Promise<Generated> => ({
+        ok: true,
+        value: { subject: "Everything", body: "" },
+      }));
+      const dialog = mount({ generate });
+      handlers.checks.get("Select all files")?.(false);
+      const markup = dialog.markup();
+      expect(markup).toMatch(/<button type="button" disabled="" aria-label="Generate message">/);
+      expect(markup).toContain(TICK_TO_GENERATE);
+      await dialog.generate(false);
+      expect(generate).not.toHaveBeenCalled();
     });
 
     it("is disabled with the reason when nothing can write", () => {

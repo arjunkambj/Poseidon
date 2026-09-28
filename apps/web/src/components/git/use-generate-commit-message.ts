@@ -4,7 +4,8 @@
  * unticked) and puts it in the box through `fillGenerated`, so it counts as
  * edited and is marked generated.
  *
- * A click fills the box whatever it holds, since the user asked; a failure is
+ * With nothing ticked it is disabled, saying so, since there is no change to
+ * describe. A click fills the box whatever it holds, since the user asked; a failure is
  * a toast with the server's reason. With Settings → Git's "Draft commit
  * messages" set to "Generate when the dialog opens", it also runs once as the
  * dialog opens, as soon as generation is available. That run never replaces
@@ -36,6 +37,16 @@ import type { GenerateControl } from "./generate-button";
 import { fillGenerated, generatedCommitMessage, type CommitPickerState } from "./commit-picker";
 
 export const COMMIT_DRAFT_FAILED = "Couldn't write a message, kept the template";
+export const TICK_TO_GENERATE = "Tick at least one file to commit.";
+
+/**
+ * Why Generate cannot run for this pick: generation is unavailable, or no
+ * file is ticked (`paths` empty), which would otherwise describe every change.
+ */
+export const commitGenerateReason = (
+  generationReason: string | null,
+  paths: ReadonlyArray<string> | undefined,
+): string | null => generationReason ?? (paths?.length === 0 ? TICK_TO_GENERATE : null);
 
 interface GeneratedCommit {
   readonly subject: string;
@@ -65,6 +76,9 @@ export const generateCommitInto = async (
   paths: ReadonlyArray<string> | undefined,
   auto: boolean,
 ): Promise<void> => {
+  if (paths?.length === 0) {
+    return;
+  }
   const outcome = await deps.runner.start((signal) => deps.generate(paths, signal));
   if (outcome === null) {
     return;
@@ -119,7 +133,7 @@ export const useGenerateCommitMessage = ({
   readonly setPicker: (change: (picker: CommitPickerState) => CommitPickerState) => void;
 }): GenerateControl => {
   const { running, runner } = useGenerationRunner();
-  const reason = useGenerationBlockedReason();
+  const reason = commitGenerateReason(useGenerationBlockedReason(), paths);
   const draftMode = useCommitDraftMode();
   const { generateCommitMessage } = useGenerationCommands();
 
