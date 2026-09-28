@@ -2815,7 +2815,10 @@ the desktop shell handed over (`apps/server/src/browser/agentBrowser.ts`):
 - **`owned-chromium`** — the web renderer, with no desktop behind it:
   agent-browser runs its own headless Chrome (`ownedDriver.ts`), the driver
   connects its `stream` WebSocket, and the pane renders the JPEG frames that
-  come back and forwards gestures and toolbar actions into it.
+  come back and forwards gestures and toolbar actions into it. When that
+  stream ends — the daemon reaped itself after 300 s idle, or crashed — the
+  session drops the driver and shows `stopped`, and the next agent call or
+  toolbar navigation opens a fresh one with a stream of its own.
 
 The desktop side of the in-app browser is the bridge
 (`apps/desktop/src/main/browser/`, see

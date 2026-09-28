@@ -88,6 +88,12 @@ const CLOSED_MESSAGE = "the thread's browser was closed";
 
 type BrowserMode = BrowserState["mode"];
 
+/** An open driver plus the scope its stream/fibers live under. */
+interface OpenDriver {
+  readonly driver: BrowserDriver;
+  readonly scope: Scope.Closeable;
+}
+
 interface Session {
   readonly threadId: ThreadId;
   readonly state: SubscriptionRef.SubscriptionRef<BrowserState>;
@@ -95,11 +101,7 @@ interface Session {
   readonly queue: Semaphore.Semaphore;
   /** Set by teardown and shutdown: nothing opens a driver for it again. */
   readonly closed: Ref.Ref<boolean>;
-  /** The open driver plus the scope its stream/fibers live under. */
-  readonly driver: Ref.Ref<{
-    readonly driver: BrowserDriver;
-    readonly scope: Scope.Closeable;
-  } | null>;
+  readonly driver: Ref.Ref<OpenDriver | null>;
 }
 
 /** Gestures that are a person at the page: all of them but passive `location`. */
@@ -170,27 +172,54 @@ export const makeService = (injected: {
             epoch: yield* Ref.make(0),
             queue: yield* Semaphore.make(1),
             closed: yield* Ref.make(false),
-            driver: yield* Ref.make<{
-              readonly driver: BrowserDriver;
-              readonly scope: Scope.Closeable;
-            } | null>(null),
+            driver: yield* Ref.make<OpenDriver | null>(null),
           };
           yield* Ref.update(sessions, (map) => new Map(map).set(threadId, session));
           return session;
         }),
       );
 
-    const eventsFor = (session: Session): DriverEvents => ({
+    /**
+     * The owned-mode stream ended: the daemon reaped itself after its idle
+     * timeout, or crashed. The driver's stream is dead with it and a new
+     * daemon would start on about:blank, so the driver is dropped — without
+     * `close`, which would only start a daemon to close — and the next call or
+     * toolbar navigation opens a fresh one with a stream of its own. Forked
+     * onto the service scope, since the stream fiber reporting this lives in
+     * the scope being closed; in the queue, so a call in flight finishes first.
+     */
+    const driverEnded = (session: Session, ended: OpenDriver): Effect.Effect<void> =>
+      Effect.forkIn(
+        session.queue.withPermits(1)(
+          Effect.gen(function* () {
+            const current = yield* Ref.get(session.driver);
+            if (current !== ended) return;
+            yield* Ref.set(session.driver, null);
+            yield* Scope.close(ended.scope, Exit.void);
+            yield* SubscriptionRef.update(session.state, (state) => ({
+              ...state,
+              status: STOPPED_STATUS,
+              frame: null,
+              url: null,
+              title: null,
+            }));
+          }),
+        ),
+        serviceScope,
+      ).pipe(Effect.asVoid);
+
+    /** `opened` is the driver these events belong to, once it is open. */
+    const eventsFor = (session: Session, opened: { current: OpenDriver | null }): DriverEvents => ({
       onFrame: (frame: BrowserFrame) =>
         SubscriptionRef.update(session.state, (state) => ({ ...state, frame })),
       onUrl: (url: string) => SubscriptionRef.update(session.state, (state) => ({ ...state, url })),
-      // The stream ended — daemon restart or crash. exec() resurrects the
-      // daemon on the next call; frames just pause until then.
       onEnded: () =>
-        SubscriptionRef.update(session.state, (state) => ({
-          ...state,
-          frame: null,
-        })),
+        Effect.andThen(
+          SubscriptionRef.update(session.state, (state) => ({ ...state, frame: null })),
+          Effect.suspend(() =>
+            opened.current === null ? Effect.void : driverEnded(session, opened.current),
+          ),
+        ),
     });
 
     const ensureDriver = (session: Session): Effect.Effect<BrowserDriver, BrowserCallOutcome> =>
@@ -215,8 +244,9 @@ export const makeService = (injected: {
         // stream fiber the owned driver forks into it — releaseDriver is what
         // closes this scope, when the session is really done with the driver.
         const scope = yield* Scope.make();
+        const entry: { current: OpenDriver | null } = { current: null };
         const opened = yield* Scope.provide(scope)(
-          injected.openDriver({ threadId: session.threadId, events: eventsFor(session) }),
+          injected.openDriver({ threadId: session.threadId, events: eventsFor(session, entry) }),
         ).pipe(
           Effect.catch((error) =>
             Effect.gen(function* () {
@@ -234,7 +264,8 @@ export const makeService = (injected: {
           ),
         );
 
-        yield* Ref.set(session.driver, { driver: opened, scope });
+        entry.current = { driver: opened, scope };
+        yield* Ref.set(session.driver, entry.current);
         yield* SubscriptionRef.update(session.state, (state) => ({
           ...state,
           status: "ready" as const,

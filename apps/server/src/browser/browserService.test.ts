@@ -214,6 +214,44 @@ describe("BrowserService", () => {
     ),
   );
 
+  it.live("an owned stream that ends drops its driver, and the next call opens a fresh one", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const opened: Array<OpenDriverOptions> = [];
+        let closes = 0;
+        const { browser } = yield* buildStack((options) =>
+          Effect.sync(() => {
+            opened.push(options);
+            return makeFakeDriver(fakePage(), {
+              onClose: () => Effect.sync(() => void (closes += 1)),
+            });
+          }),
+        );
+
+        yield* browser.callTool(threadId, "browser_open", { url: "https://example.com/" });
+        expect((yield* currentState(browser, threadId))?.url).toBe("https://example.com/");
+
+        // The daemon reaps itself after its idle timeout: the stream ends.
+        yield* opened[0]!.events.onEnded();
+        yield* settle;
+        const after = yield* currentState(browser, threadId);
+        expect(after).toMatchObject({ status: "stopped", url: null, frame: null });
+        // Closing a daemon that is gone would only start one to close.
+        expect(closes).toBe(0);
+
+        const next = yield* browser.callTool(threadId, "browser_snapshot", {});
+        expect(next.kind).toBe("ok");
+        expect(opened).toHaveLength(2);
+
+        // A late end from the old driver leaves the new one alone.
+        yield* opened[0]!.events.onEnded();
+        yield* settle;
+        yield* browser.callTool(threadId, "browser_snapshot", {});
+        expect(opened).toHaveLength(2);
+      }),
+    ),
+  );
+
   it.live("a human click during browser_click interrupts it", () =>
     Effect.scoped(
       Effect.gen(function* () {
