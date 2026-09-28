@@ -74,6 +74,7 @@ const threadDoc = (overrides: Partial<ThreadDoc> = {}): ThreadDoc => ({
   context: null,
   createdAt: NOW,
   updatedAt: NOW,
+  doneAt: null,
   approvals: [],
   userInputs: [],
   preview: undefined,
@@ -265,6 +266,96 @@ const rows: ReadonlyArray<Row> = [
       threadId: makeThreadId(),
     } as Command,
     thread: null,
+    rejects: "does not exist",
+  },
+  {
+    name: "thread.done.mark emits thread.done.marked",
+    command: {
+      ...baseCommand,
+      type: "thread.done.mark",
+      threadId: makeThreadId(),
+    } as Command,
+    thread: threadDoc(),
+    events: ["thread.done.marked"],
+  },
+  {
+    name: "thread.done.mark marks a thread that is already done again",
+    command: {
+      ...baseCommand,
+      type: "thread.done.mark",
+      threadId: makeThreadId(),
+    } as Command,
+    thread: threadDoc({ doneAt: NOW }),
+    events: ["thread.done.marked"],
+  },
+  {
+    name: "thread.done.mark rejects a missing thread",
+    command: {
+      ...baseCommand,
+      type: "thread.done.mark",
+      threadId: makeThreadId(),
+    } as Command,
+    thread: null,
+    rejects: "does not exist",
+  },
+  {
+    name: "thread.done.mark rejects a deleted thread",
+    command: {
+      ...baseCommand,
+      type: "thread.done.mark",
+      threadId: makeThreadId(),
+    } as Command,
+    thread: threadDoc({ deleted: true }),
+    rejects: "does not exist",
+  },
+  {
+    name: "thread.done.mark rejects an archived thread",
+    command: {
+      ...baseCommand,
+      type: "thread.done.mark",
+      threadId: makeThreadId(),
+    } as Command,
+    thread: threadDoc({ status: "archived" }),
+    rejects: "is archived",
+  },
+  {
+    name: "thread.done.clear emits thread.done.cleared",
+    command: {
+      ...baseCommand,
+      type: "thread.done.clear",
+      threadId: makeThreadId(),
+    } as Command,
+    thread: threadDoc({ doneAt: NOW }),
+    events: ["thread.done.cleared"],
+  },
+  {
+    name: "thread.done.clear accepts a thread never marked, which may have gone to Done on its own",
+    command: {
+      ...baseCommand,
+      type: "thread.done.clear",
+      threadId: makeThreadId(),
+    } as Command,
+    thread: threadDoc(),
+    events: ["thread.done.cleared"],
+  },
+  {
+    name: "thread.done.clear rejects a missing thread",
+    command: {
+      ...baseCommand,
+      type: "thread.done.clear",
+      threadId: makeThreadId(),
+    } as Command,
+    thread: null,
+    rejects: "does not exist",
+  },
+  {
+    name: "thread.done.clear rejects a deleted thread",
+    command: {
+      ...baseCommand,
+      type: "thread.done.clear",
+      threadId: makeThreadId(),
+    } as Command,
+    thread: threadDoc({ deleted: true }),
     rejects: "does not exist",
   },
   {

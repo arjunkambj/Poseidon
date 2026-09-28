@@ -1351,6 +1351,18 @@ While the thread is `running`, `runningSince` is when the turn in flight was
 requested (stamped on `ThreadDoc.currentTurn.startedAt`); it is absent
 otherwise and optional, so older summaries still decode.
 
+The summary also carries the sidebar's Active/Done split
+(`apps/server/src/orchestration/threadDone.ts`). `doneAt` is when the user
+marked the thread done (`thread.done.marked`); `thread.done.cleared` and
+`thread.unarchived` drop it. `lastActivityAt` is the last `thread.created`,
+`turn.requested`, `turn.steered`, `message.queued`, `turn.completed`,
+`unarchived` or `done.cleared`. A thread is marked done while
+`doneAt >= lastActivityAt`, so newer activity brings it back with no event of
+its own. Auto-done is the client's: it compares `lastActivityAt` with the
+`autoDoneAfterDays` setting, and the server never stores it. Both fields are
+optional on the wire; a `ThreadDoc` projected before them is read through
+`doneAtOf` and `lastActivityOf`, which falls back to `updatedAt`.
+
 `projection_state` holds one row per projector: `last_applied_sequence`,
 `updated_at` and `projector_version`. Projections are written inside the
 command's transaction, so a projection can never get ahead of its events.
@@ -1378,7 +1390,7 @@ provides the migrations layer, so the graph itself says the schema exists first.
 
 `threads.doc_json` is parsed straight back into a `ThreadDoc` with no schema and
 no version, so the first release that adds a field would serve stale rows
-missing it. The engine stamps `PROJECTOR_VERSION` (currently `3`) on every
+missing it. The engine stamps `PROJECTOR_VERSION` (currently `4`) on every
 watermark write and compares it at boot: on a mismatch it clears the projection
 tables inside one transaction, re-folds every stream from `allEvents`, writes
 the documents back and stamps the new version. Rows written before the column
@@ -1445,14 +1457,19 @@ and its append.
 
 ### Commands and events
 
-Eighteen commands (`packages/contracts/src/orchestration.ts`):
+Twenty commands (`packages/contracts/src/orchestration.ts`):
 `project.create`, `project.remove`, `thread.create`, `thread.rename`,
 `thread.archive`, `thread.unarchive`, `thread.delete`, `thread.turn.start`,
 `thread.turn.steer`, `thread.turn.interrupt`, `thread.task.stop`, `thread.settings.update`, `thread.approval.respond`,
 `thread.userInput.respond`, `thread.plan.respond`, `thread.queue.remove`,
-`thread.queue.reorder`, `thread.checkpoint.restore`.
+`thread.queue.reorder`, `thread.checkpoint.restore`, `thread.done.mark`,
+`thread.done.clear`.
 
-Thirty-three events, from `project.created` through `thread.error`. The catalogue
+Thirty-five events, from `project.created` through `thread.error`, then
+`thread.done.marked` and `thread.done.cleared`. `thread.done.mark` is refused
+for a missing, deleted or archived thread; `thread.done.clear` is accepted for
+any thread that exists, marked or not, because a thread that went to Done on
+its own did so on the client. The catalogue
 is kept as data (`commandTypes`, `orchestrationEventTypes`) and a test holds
 each list and its union in lockstep. The value objects the commands, events
 and read models share — `ThreadSettings`, `QueuedMessage`, `ThreadSession` and

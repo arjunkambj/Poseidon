@@ -1,0 +1,18 @@
+{
+  "threadId": "0199c0de-0002-7000-8000-000000000001",
+  "projectId": "0199c0de-0001-7000-8000-000000000001",
+  "title": "Health check endpoint",
+  "status": "idle",
+  "settings": {
+    "model": "stealth/ox-alpha",
+    "effort": "medium",
+    "runtimeMode": "approval-required",
+    "interactionMode": "default"
+  },
+  "preview": "Both endpoints are live and the smoke test covers them.",
+  "awaitingInput": false,
+  "doneAt": "2026-09-15T12:05:00.000Z",
+  "lastActivityAt": "2026-09-15T12:04:00.000Z",
+  "createdAt": "2026-09-15T12:00:00.000Z",
+  "updatedAt": "2026-09-15T12:05:00.000Z"
+}

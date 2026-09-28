@@ -35,6 +35,8 @@ import type { ItemKind } from "@poseidon/contracts/enums";
 import type { ApprovalRequest, ItemSnapshot, UserQuestion } from "@poseidon/contracts/runtime";
 import { approvalSubject, planSubject, questionSubject } from "@poseidon/shared/decisionSubject";
 
+import { activityStamp, doneSummaryFields, lastActivityOf } from "./threadDone";
+
 export type { ApprovalRequest, ItemSnapshot, QueuedMessage, UserQuestion };
 
 // ── Documents ─────────────────────────────────────────────────
@@ -138,6 +140,13 @@ export interface ThreadDoc {
   readonly context: ContextWindowUsage | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /**
+   * When the user marked the thread done, and its last activity (see
+   * `./threadDone`). A document projected before either existed has neither,
+   * so read them through `doneAtOf` and `lastActivityOf`.
+   */
+  readonly doneAt: string | null;
+  readonly lastActivityAt?: string;
   // Internal bookkeeping, not on the wire.
   readonly approvals: ReadonlyArray<ApprovalRequest>;
   readonly userInputs: ReadonlyArray<PendingUserInput>;
@@ -261,6 +270,8 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
       context: null,
       createdAt: event.occurredAt,
       updatedAt: event.occurredAt,
+      doneAt: null,
+      lastActivityAt: event.occurredAt,
       approvals: [],
       userInputs: [],
       preview: undefined,
@@ -271,7 +282,15 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
   if (doc === null) {
     return null;
   }
-  const next = { ...doc, snapshotSequence: event.sequence, updatedAt: event.occurredAt };
+  // `lastActivityAt` is pinned before `updatedAt` moves on, so a document
+  // projected before it existed keeps its old `updatedAt` as its last activity.
+  const next = {
+    ...doc,
+    snapshotSequence: event.sequence,
+    updatedAt: event.occurredAt,
+    lastActivityAt: lastActivityOf(doc),
+    ...activityStamp(event),
+  };
 
   switch (type) {
     case "thread.renamed":
@@ -294,10 +313,15 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
         userInputs: [],
         currentTurn: null,
         interrupting: false,
+        doneAt: null,
         status: waitingOr({ ...doc, approvals: [], userInputs: [] }, "idle"),
       };
     case "thread.deleted":
       return { ...next, deleted: true };
+    case "thread.done.marked":
+      return { ...next, doneAt: event.occurredAt };
+    case "thread.done.cleared":
+      return { ...next, doneAt: null };
     case "thread.session.bound":
       // The capabilities ride along when the connector announced them — the
       // decider reads `steering` here. A session bound before they were
@@ -742,6 +766,7 @@ export const threadSummaryOf = (doc: ThreadDoc): ThreadSummary => {
       ? { runningSince: doc.currentTurn.startedAt }
       : {}),
     ...worktreeField(doc),
+    ...doneSummaryFields(doc),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };

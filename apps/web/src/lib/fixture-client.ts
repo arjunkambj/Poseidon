@@ -438,6 +438,10 @@ export const makeFixtureClient = (): FixtureClient => {
           events: () => next("thread.settings.updated", settingsPatch(command)),
         };
       }
+      case "thread.done.mark":
+        return { events: () => next("thread.done.marked", {}, command.commandId) };
+      case "thread.done.clear":
+        return { events: () => next("thread.done.cleared", {}, command.commandId) };
       default:
         return { events: () => {}, reason: `fixture does not handle ${command.type}` };
     }

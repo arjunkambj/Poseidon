@@ -1,0 +1,13 @@
+{
+  "sequence": 6,
+  "eventId": "0199c0de-0006-7000-8000-000000000131",
+  "streamKind": "thread",
+  "streamId": "0199c0de-0002-7000-8000-000000000001",
+  "streamVersion": 4,
+  "occurredAt": "2026-09-15T12:00:06.000Z",
+  "commandId": "0199c0de-0008-7000-8000-000000000019",
+  "correlationId": "0199c0de-0008-7000-8000-000000000019",
+  "actor": "user",
+  "type": "thread.done.cleared",
+  "payload": {}
+}

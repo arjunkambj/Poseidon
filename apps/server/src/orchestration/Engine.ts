@@ -131,7 +131,7 @@ const PROJECTOR = "orchestration";
  * the projections away and re-folds every stream from the event log — the log
  * is the source of truth, so a stale document is never served.
  */
-const PROJECTOR_VERSION = 3;
+const PROJECTOR_VERSION = 4;
 
 export class OrchestrationEngine extends Context.Service<
   OrchestrationEngine,

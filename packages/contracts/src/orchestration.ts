@@ -49,6 +49,7 @@ import {
   ThreadSession,
   ThreadSettings,
   ThreadActivity,
+  ThreadDoneFields,
   ThreadSettingsPatch,
   ThreadStatus,
   TurnUsage,
@@ -121,6 +122,11 @@ const ThreadArchiveCommand = command("thread.archive", { threadId: ThreadId });
 const ThreadUnarchiveCommand = command("thread.unarchive", { threadId: ThreadId });
 
 const ThreadDeleteCommand = command("thread.delete", { threadId: ThreadId });
+
+/** Move a thread to the sidebar's Done section, or take it back out. */
+const ThreadDoneMarkCommand = command("thread.done.mark", { threadId: ThreadId });
+
+const ThreadDoneClearCommand = command("thread.done.clear", { threadId: ThreadId });
 
 /**
  * Start a turn, or queue it. `queued` is the composer's `composer.queue` key
@@ -238,6 +244,8 @@ export const Command = Schema.Union([
   ThreadQueueRemoveCommand,
   ThreadQueueReorderCommand,
   ThreadCheckpointRestoreCommand,
+  ThreadDoneMarkCommand,
+  ThreadDoneClearCommand,
 ]);
 export type Command = typeof Command.Type;
 
@@ -264,6 +272,8 @@ export const CommandType = Schema.Literals([
   "thread.queue.remove",
   "thread.queue.reorder",
   "thread.checkpoint.restore",
+  "thread.done.mark",
+  "thread.done.clear",
 ]);
 export type CommandType = typeof CommandType.Type;
 
@@ -541,6 +551,10 @@ const ThreadCheckpointRestoreFailedEvent = orchestrationEvent(
   Schema.Struct({ checkpointId: CheckpointId, message: NonEmptyString }),
 );
 
+const ThreadDoneMarkedEvent = orchestrationEvent("thread.done.marked", Schema.Struct({}));
+
+const ThreadDoneClearedEvent = orchestrationEvent("thread.done.cleared", Schema.Struct({}));
+
 const ThreadErrorEvent = orchestrationEvent(
   "thread.error",
   Schema.Struct({ message: NonEmptyString, fatal: Schema.Boolean }),
@@ -580,6 +594,8 @@ export const OrchestrationEvent = Schema.Union([
   ThreadCheckpointRestoredEvent,
   ThreadCheckpointRestoreFailedEvent,
   ThreadErrorEvent,
+  ThreadDoneMarkedEvent,
+  ThreadDoneClearedEvent,
 ]);
 export type OrchestrationEvent = typeof OrchestrationEvent.Type;
 
@@ -621,6 +637,8 @@ export const OrchestrationEventType = Schema.Literals([
   "thread.checkpoint.restored",
   "thread.checkpoint.restore.failed",
   "thread.error",
+  "thread.done.marked",
+  "thread.done.cleared",
 ]);
 export type OrchestrationEventType = typeof OrchestrationEventType.Type;
 
@@ -671,6 +689,8 @@ export const ThreadSummary = Schema.Struct({
   runningSince: Schema.optional(IsoDateTime),
   /** The thread's own worktree; absent for a local thread. */
   worktree: Schema.optional(ThreadWorktree),
+  /** `doneAt` and `lastActivityAt`, for the Active/Done split. */
+  ...ThreadDoneFields,
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });

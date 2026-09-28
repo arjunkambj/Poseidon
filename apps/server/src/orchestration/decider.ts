@@ -290,6 +290,26 @@ export const decide = (
       return accepted([emit("thread.unarchived", {})]);
     }
 
+    case "thread.done.mark": {
+      if (thread === null || thread.deleted) {
+        return rejected(`thread ${command.threadId} does not exist`);
+      }
+      if (thread.status === "archived") {
+        return rejected(`thread ${command.threadId} is archived`);
+      }
+      return accepted([emit("thread.done.marked", {})]);
+    }
+
+    case "thread.done.clear": {
+      // Accepted whether or not the thread was marked: a thread that went to
+      // Done on its own did so on the client (`autoDoneAfterDays`), which the
+      // server never sees, and clearing it is how opening it brings it back.
+      if (thread === null || thread.deleted) {
+        return rejected(`thread ${command.threadId} does not exist`);
+      }
+      return accepted([emit("thread.done.cleared", {})]);
+    }
+
     case "thread.delete": {
       if (thread === null || thread.deleted) {
         return rejected(`thread ${command.threadId} does not exist`);

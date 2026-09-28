@@ -305,6 +305,37 @@ describe("OrchestrationEngine", () => {
     }).pipe(Effect.provide(engineLayer())),
   );
 
+  it.effect("marks a thread done and clears it, on the summaries the list publishes", () =>
+    Effect.gen(function* () {
+      const engine = yield* OrchestrationEngine;
+      yield* engine.dispatch(createProject);
+      yield* engine.dispatch(createThread);
+      const done = (type: "thread.done.mark" | "thread.done.clear"): Command => ({
+        commandId: makeCommandId(),
+        createdAt: NOW,
+        type,
+        threadId,
+      });
+
+      const stream = yield* engine.subscribeThreadList({ coalesceWindow: 0 });
+      const fiber = yield* stream.pipe(Stream.take(3), Stream.runCollect, Effect.forkChild);
+      expect((yield* engine.dispatch(done("thread.done.mark"))).status).toBe("accepted");
+      const items = yield* Fiber.join(fiber);
+      const upserted = items[2];
+      expect(upserted?.kind).toBe("upserted");
+      if (upserted?.kind === "upserted") {
+        expect(upserted.thread.doneAt).toBeDefined();
+        expect(upserted.thread.lastActivityAt).toBeDefined();
+        expect(upserted.thread.doneAt! >= upserted.thread.lastActivityAt!).toBe(true);
+      }
+
+      expect((yield* engine.dispatch(done("thread.done.clear"))).status).toBe("accepted");
+      const [cleared] = yield* engine.listThreads(projectId);
+      expect(cleared).not.toHaveProperty("doneAt");
+      expect(cleared?.lastActivityAt).toBeDefined();
+    }).pipe(Effect.provide(engineLayer())),
+  );
+
   it.effect("starts a thread on the connector instance's own default model", () =>
     Effect.scoped(
       Effect.gen(function* () {

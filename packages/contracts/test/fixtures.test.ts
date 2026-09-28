@@ -218,6 +218,8 @@ const singles: ReadonlyArray<{ readonly path: string; readonly schema: FixtureSc
   // where the decider reads `steering` from.
   { path: "read-models/thread-session.json", schema: ThreadSession },
   { path: "read-models/thread-summary.worktree.json", schema: ThreadSummary },
+  // A thread the user marked done after its last activity.
+  { path: "read-models/thread-summary.done.json", schema: ThreadSummary },
   { path: "read-models/command-receipt.accepted.json", schema: CommandReceipt },
   { path: "read-models/command-receipt.rejected.json", schema: CommandReceipt },
   { path: "rpc/server-hello.json", schema: ServerHello },
@@ -452,6 +454,23 @@ describe("the bound session's capabilities", () => {
       expect(bound.type === "thread.session.bound" && bound.payload.capabilities?.steering).toBe(
         true,
       );
+    }),
+  );
+});
+
+describe("a thread's done state", () => {
+  it.effect("is absent from a summary written before it existed, and present once marked", () =>
+    Effect.gen(function* () {
+      const older = yield* Effect.sync(() =>
+        Schema.decodeUnknownSync(ThreadSummary)(read("read-models/thread-summary.json")),
+      );
+      expect(older.doneAt).toBeUndefined();
+      expect(older.lastActivityAt).toBeUndefined();
+      const done = yield* Effect.sync(() =>
+        Schema.decodeUnknownSync(ThreadSummary)(read("read-models/thread-summary.done.json")),
+      );
+      expect(done.doneAt).toBe("2026-09-15T12:05:00.000Z");
+      expect(done.lastActivityAt).toBe("2026-09-15T12:04:00.000Z");
     }),
   );
 });

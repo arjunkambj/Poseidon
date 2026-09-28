@@ -143,6 +143,11 @@ export const applyThreadEvent = (
         status: waitingOr({ ...doc, pendingApproval: null, pendingUserInput: null }, "idle"),
         updatedAt: event.occurredAt,
       };
+    case "thread.done.marked":
+    case "thread.done.cleared":
+      // The Active/Done split lives on the sidebar's `ThreadSummary`; the
+      // open thread's view has nothing to change but the time.
+      return { ...doc, updatedAt: event.occurredAt };
     case "thread.deleted":
       // Not the same as archived: the thread is gone from the server, so an
       // open timeline has to say so (and the route can redirect) instead of

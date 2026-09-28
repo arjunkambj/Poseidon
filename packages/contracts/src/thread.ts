@@ -180,3 +180,19 @@ export type ThreadActivity = typeof ThreadActivity.Type;
 /** What the user chose on a proposed plan. */
 export const PlanResponseAction = Schema.Literals(["accept", "accept-auto", "revise"]);
 export type PlanResponseAction = typeof PlanResponseAction.Type;
+
+/**
+ * The sidebar's Active/Done split, as `ThreadSummary` carries it. `doneAt` is
+ * when the user last marked the thread done, absent when they never did or a
+ * later `thread.done.cleared` or unarchive took it back. `lastActivityAt` is
+ * the last time the thread was created, sent a turn, steered, queued to,
+ * finished a turn, unarchived or reopened. A thread is marked done while
+ * `doneAt >= lastActivityAt`, so any newer activity brings it back without an
+ * event of its own; the auto-done rule reads `lastActivityAt` against the
+ * `autoDoneAfterDays` setting on the client. Both optional, so a summary
+ * written before they existed still decodes.
+ */
+export const ThreadDoneFields = {
+  doneAt: Schema.optional(IsoDateTime),
+  lastActivityAt: Schema.optional(IsoDateTime),
+};

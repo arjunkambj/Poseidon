@@ -21,6 +21,7 @@ import { UNANSWERED_OUTCOME } from "@poseidon/contracts/decisions";
 import type { CheckpointSummary, OrchestrationEvent } from "@poseidon/contracts/orchestration";
 import type { ConnectorCapabilities } from "@poseidon/contracts/runtime";
 
+import { doneAtOf, lastActivityOf } from "./threadDone";
 import {
   foldThread,
   projectThreadEvent,
@@ -900,5 +901,113 @@ describe("the thread's worktree", () => {
     expect(worktreeOf(stored)).toBeNull();
     expect(threadSnapshotOf(stored)).not.toHaveProperty("worktree");
     expect(threadSummaryOf(stored)).not.toHaveProperty("worktree");
+  });
+});
+
+describe("the thread's done state", () => {
+  const at = (occurredAt: string, planned: OrchestrationEvent): OrchestrationEvent => ({
+    ...planned,
+    occurredAt,
+  });
+  const CREATED = "2026-01-02T03:00:00.000Z";
+  const MARKED = "2026-01-02T04:00:00.000Z";
+  const LATER = "2026-01-02T05:00:00.000Z";
+
+  it("stamps the creation as the first activity, and is not done", () => {
+    const doc = foldThread([at(CREATED, created())])!;
+    expect(doc.doneAt).toBeNull();
+    const summary = threadSummaryOf(doc);
+    expect(summary.lastActivityAt).toBe(CREATED);
+    expect(summary).not.toHaveProperty("doneAt");
+  });
+
+  it("records the mark, and a later turn is newer activity than it", () => {
+    const marked = foldThread([
+      at(CREATED, created()),
+      at(MARKED, event("thread.done.marked", {})),
+    ])!;
+    expect(threadSummaryOf(marked).doneAt).toBe(MARKED);
+    expect(threadSummaryOf(marked).lastActivityAt).toBe(CREATED);
+
+    const resumed = projectThreadEvent(marked, at(LATER, turnRequested()))!;
+    const summary = threadSummaryOf(resumed);
+    expect(summary.doneAt).toBe(MARKED);
+    expect(summary.lastActivityAt! > summary.doneAt!).toBe(true);
+  });
+
+  it("counts steers, queued messages and completions as activity, but not a rename", () => {
+    const turnId = makeTurnId();
+    const base = foldThread([
+      at(CREATED, created()),
+      at(CREATED, turnRequested(turnId)),
+      at(MARKED, event("thread.done.marked", {})),
+    ])!;
+    const activity: ReadonlyArray<OrchestrationEvent> = [
+      event("thread.turn.steered", { turnId, text: "more", attachments: [], mentions: [] }),
+      event("thread.message.queued", {
+        message: {
+          queuedMessageId: makeItemId(),
+          text: "next",
+          attachments: [],
+          mentions: [],
+          queuedAt: LATER,
+        },
+      }),
+      event("thread.turn.completed", { turnId, stopReason: "end_turn" }),
+    ];
+    for (const planned of activity) {
+      expect(lastActivityOf(projectThreadEvent(base, at(LATER, planned))!), planned.type).toBe(
+        LATER,
+      );
+    }
+    const renamed = projectThreadEvent(base, at(LATER, event("thread.renamed", { title: "New" })))!;
+    expect(lastActivityOf(renamed)).toBe(CREATED);
+    expect(renamed.updatedAt).toBe(LATER);
+  });
+
+  it("drops the mark when cleared, and counts the clear as activity", () => {
+    const doc = foldThread([
+      at(CREATED, created()),
+      at(MARKED, event("thread.done.marked", {})),
+      at(LATER, event("thread.done.cleared", {})),
+    ])!;
+    expect(doc.doneAt).toBeNull();
+    expect(threadSummaryOf(doc)).not.toHaveProperty("doneAt");
+    expect(threadSummaryOf(doc).lastActivityAt).toBe(LATER);
+  });
+
+  it("drops the mark when an archived thread comes back", () => {
+    const doc = foldThread([
+      at(CREATED, created()),
+      at(MARKED, event("thread.done.marked", {})),
+      event("thread.archived", {}),
+      at(LATER, event("thread.unarchived", {})),
+    ])!;
+    expect(doc.doneAt).toBeNull();
+    expect(lastActivityOf(doc)).toBe(LATER);
+  });
+
+  it("folds a document projected before either field existed", () => {
+    const {
+      doneAt: _doneAt,
+      lastActivityAt: _lastActivityAt,
+      ...older
+    } = foldThread([at(CREATED, created())])!;
+    const stored = JSON.parse(JSON.stringify(older)) as ThreadDoc;
+    expect(doneAtOf(stored)).toBeNull();
+    expect(lastActivityOf(stored)).toBe(stored.updatedAt);
+    expect(threadSummaryOf(stored)).not.toHaveProperty("doneAt");
+    expect(threadSummaryOf(stored).lastActivityAt).toBe(CREATED);
+
+    const marked = projectThreadEvent(stored, at(MARKED, event("thread.done.marked", {})))!;
+    expect(threadSummaryOf(marked).doneAt).toBe(MARKED);
+    // The old `updatedAt` stays the last activity once the mark moves it on,
+    // so the thread reads as done and a later rename does not undo that.
+    expect(threadSummaryOf(marked).lastActivityAt).toBe(CREATED);
+    const renamed = projectThreadEvent(
+      marked,
+      at(LATER, event("thread.renamed", { title: "New" })),
+    )!;
+    expect(lastActivityOf(renamed)).toBe(CREATED);
   });
 });
