@@ -12,8 +12,9 @@
  *
  * "Mark unread" stores the empty stamp `""`: every ISO `updatedAt` sorts after
  * it, so the row shows the dot and the bold title until the thread is opened
- * again and the open row stamps it afresh. That works for a thread that was
- * never stamped too.
+ * again and the open thread is stamped afresh — by `./triage-shortcuts`, which
+ * is mounted on every route, so opening a row the title filter hides counts
+ * too. That works for a thread that was never stamped too.
  *
  * The map lives in localStorage like the dock's width and per-thread tab: it is
  * presentation state, it never reaches the server, and losing it costs nothing.

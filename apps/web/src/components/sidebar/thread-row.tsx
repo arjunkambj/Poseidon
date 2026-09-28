@@ -30,7 +30,6 @@
  */
 
 import { Link, useMatchRoute } from "@tanstack/react-router";
-import * as React from "react";
 
 import { SidebarMenuButton, SidebarMenuItem } from "@poseidon/ui/components/sidebar";
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
@@ -90,15 +89,9 @@ export function ThreadRow({
 }) {
   const matchRoute = useMatchRoute();
   const active = Boolean(matchRoute({ to: "/t/$threadId", params: { threadId: thread.threadId } }));
-  const [seen, remember] = useThreadSeen();
+  // The open thread is stamped seen by `./triage-shortcuts`, row or no row.
+  const [seen] = useThreadSeen();
   const { threadId, updatedAt } = thread;
-
-  // The open thread is being read right now, so every event it takes is seen.
-  React.useEffect(() => {
-    if (active) {
-      remember(threadId, updatedAt);
-    }
-  }, [active, threadId, updatedAt, remember]);
 
   const unread = !active && isUnread(seen, thread);
   const archived = thread.status === "archived";
