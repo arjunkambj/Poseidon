@@ -169,6 +169,35 @@ export const stepMatch = (count: number, index: number, direction: "next" | "pre
   return direction === "next" ? (index + 1) % count : (index - 1 + count) % count;
 };
 
+/** The match the reader stepped to, and where it sat in the list then. */
+export interface FindSelection {
+  readonly match: FindMatch;
+  readonly index: number;
+}
+
+const sameMatch = (a: FindMatch, b: FindMatch): boolean =>
+  a.itemId === b.itemId && a.field === b.field && a.start === b.start;
+
+/**
+ * The current match's index once the matches are worked out again — a
+ * streamed delta adds matches, a rewritten item moves them. The match the
+ * reader was on keeps its place wherever it now sits; when it is gone, its old
+ * index is clamped to the list. Nothing selected yet means the first match.
+ */
+export const currentMatchIndex = (
+  matches: ReadonlyArray<FindMatch>,
+  selected: FindSelection | undefined,
+): number => {
+  if (matches.length === 0) {
+    return -1;
+  }
+  if (selected === undefined) {
+    return 0;
+  }
+  const same = matches.findIndex((match) => sameMatch(match, selected.match));
+  return same !== -1 ? same : Math.min(Math.max(selected.index, 0), matches.length - 1);
+};
+
 /**
  * Where an item shows, given the projection with every fold open (`allOpen`)
  * and one built with the folds as they are (`shown`, or every fold closed).

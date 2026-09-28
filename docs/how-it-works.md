@@ -1060,6 +1060,28 @@ the keys hand the scroll to the reader before they move it, the same event a
 wheel sends, so a held send anchor lets go rather than pulling the list back.
 The scroll is instant under reduced motion.
 
+`timeline.find` (Mod+F, with the thread open and the focus outside the
+terminal, the browser and the Files pane, which keep their own find) opens a
+find bar over the timeline's top-right corner (`timeline/thread-find-bar.tsx`,
+state in `use-thread-find.ts`). The list is virtualized and a settled turn's
+work is not in it until its fold opens, so the bar searches the thread
+snapshot, not the page: it walks the projection built with every fold open,
+in display order, and matches the query, ignoring case, against each row's
+own text — a message, a reasoning or plan body, a command line, a tool's name
+and the file it names, a changed file's path, a search query, a task's title,
+an error (`timeline/thread-find.ts`). Command output and tool payloads are
+left out. Typing is debounced and a new query goes to its first match; the
+bar shows "3/12", and Enter, Shift+Enter or its arrows step through the
+matches, wrapping at either end. A step opens whatever hides the match — its
+turn fold, its work group, the tasks above it, its own reasoning or plan body
+— hands the scroll to the reader as the rail does, and scrolls the row to
+30% down the viewport once the list holds it. The match the reader is on
+keeps its place while a reply streams in more matches. Escape closes the bar
+and puts the focus back in the composer. Pressing Mod+F again with the bar
+open selects its query. While the bar is closed nothing is searched, and
+while it is open the search reads a deferred copy of the items, so a streamed
+delta is never held up by it.
+
 ### Closing the turn
 
 `run_end` produces `turn.completed` with a `stopReason` of `end_turn`,

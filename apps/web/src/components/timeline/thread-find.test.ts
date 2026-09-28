@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { ALL_FOLDS_OPEN, buildTimeline } from "./fold";
 import {
+  currentMatchIndex,
   findDocuments,
   findMatches,
   locateItem,
@@ -131,6 +132,29 @@ describe("stepMatch", () => {
   it("has nothing to step to without matches", () => {
     expect(stepMatch(0, -1, "next")).toBe(-1);
     expect(stepMatch(0, 2, "previous")).toBe(-1);
+  });
+});
+
+describe("currentMatchIndex", () => {
+  const match = (itemId: string, start: number) =>
+    ({ itemId, field: "text", start, end: start + 3 }) as const;
+
+  it("starts on the first match and has none without matches", () => {
+    expect(currentMatchIndex([match("a", 0), match("b", 0)], undefined)).toBe(0);
+    expect(currentMatchIndex([], { match: match("a", 0), index: 0 })).toBe(-1);
+  });
+
+  it("follows the selected match when matches are added before it", () => {
+    const selected = { match: match("b", 4), index: 1 };
+    const next = [match("a", 0), match("a", 9), match("b", 4), match("c", 0)];
+    expect(currentMatchIndex(next, selected)).toBe(2);
+  });
+
+  it("clamps the old index when the selected match is gone", () => {
+    expect(
+      currentMatchIndex([match("a", 0), match("c", 0)], { match: match("b", 4), index: 1 }),
+    ).toBe(1);
+    expect(currentMatchIndex([match("a", 0)], { match: match("b", 4), index: 5 })).toBe(0);
   });
 });
 

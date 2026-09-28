@@ -33,10 +33,12 @@ import { disclosureIds } from "@/components/timeline/disclosure";
 import { ALL_FOLDS_OPEN, buildTimeline } from "@/components/timeline/fold";
 import { JumpToLatest } from "@/components/timeline/jump-to-latest";
 import { TimelineThreadProvider } from "@/components/timeline/thread-context";
+import { ThreadFindBar } from "@/components/timeline/thread-find-bar";
 import { TimelineRowView } from "@/components/timeline/timeline-item";
 import { turnEndTimes } from "@/components/timeline/turn-checkpoints";
 import { TurnRail, useTurnNavigation } from "@/components/timeline/turn-rail-view";
 import { useSendAnchor } from "@/components/timeline/use-send-anchor";
+import { useThreadFind } from "@/components/timeline/use-thread-find";
 import { useTimelineThreadValue } from "@/components/timeline/use-timeline-thread";
 import { useKeybindingCommand } from "@/lib/shortcuts";
 import { useChatWidth } from "@/lib/use-chat-width";
@@ -80,6 +82,7 @@ export function Timeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
     turnActive: options.turnActive,
   });
   const navigation = useTurnNavigation({ listRef, rows: projection.rows, release: anchor.release });
+  const find = useThreadFind({ snapshot, options, projection, listRef, release: anchor.release });
   const setDisclosures = useSetRowDisclosures();
   useKeybindingCommand("timeline.jumpToLatest", anchor.jumpToLatest);
   // Folds above the viewport open and close too: the anchor holds the reader's place.
@@ -134,6 +137,7 @@ export function Timeline({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
           onJump={anchor.jumpToLatest}
         />
         <TurnRail listRef={listRef} navigation={navigation} />
+        {find.open ? <ThreadFindBar find={find} /> : null}
       </div>
     </TimelineThreadProvider>
   );
