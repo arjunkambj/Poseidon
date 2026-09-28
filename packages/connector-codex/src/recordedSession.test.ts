@@ -11,6 +11,9 @@
  * `resume-missing`: a resume of a thread the CLI does not have, started
  * afresh with a warning. `model-switch`: `model.changed`, and the second turn
  * on the switched model. `image`: a PNG as a `localImage` input.
+ * `edit-approval`, `deny` and `sensitive-full-access`: the CLI's approval
+ * requests reaching the ladder and a card, and the card's answer reaching the
+ * CLI — accept, decline, and a read of `.env` stopped even under full access.
  *
  * Every replay checks what the connector sent against what the recording
  * says it sent, so a request the connector stopped making, or made in
@@ -25,6 +28,7 @@ import type { TurnInput } from "@poseidon/connector-sdk/definition";
 import type { SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
 import { makeStreamCollector, type StreamCollector } from "@poseidon/connector-sdk/streamCollector";
 import { makeConnectorInstanceId, makeProjectId, makeThreadId } from "@poseidon/contracts/ids";
+import type { ApprovalDecision } from "@poseidon/contracts/enums";
 import type { ThreadSettings } from "@poseidon/contracts/orchestration";
 import type { RuntimeEvent } from "@poseidon/contracts/runtime";
 import { loadStdioJsonRpcRecording } from "@poseidon/testkit/stdioJsonRpcRecording";
@@ -73,7 +77,7 @@ interface Opened {
  * workspace. `assertDone` proves every replayed process gone and the
  * recording played out.
  */
-const replaying = (scenario: string) =>
+const replaying = (scenario: string, settings: ThreadSettings = SETTINGS) =>
   Effect.gen(function* () {
     const replayed: Replay = replay(scenario);
     const workspace = NodePath.join(
@@ -90,7 +94,7 @@ const replaying = (scenario: string) =>
       threadId: makeThreadId(),
       projectId: makeProjectId(),
       workspaceRoot: workspace,
-      settings: SETTINGS,
+      settings,
     };
     const open = (sessionRef?: unknown): Effect.Effect<Opened, unknown, Scope.Scope> =>
       Effect.gen(function* () {
@@ -321,6 +325,155 @@ describe("a Codex session replaying codex/image", () => {
         expect(stopReasons(events)).toEqual(["end_turn"]);
         expect(rows(events, "assistant_message")[0]!.text?.toLowerCase()).toBe("red");
         expect(ofType(events, "session.warning")).toEqual([]);
+      }),
+    ),
+  );
+});
+
+/**
+ * Sends `input` and answers the one card it opens with `decision`; answers
+ * the card's request and the turn's completion.
+ */
+const turnWithCard = (opened: Opened, input: TurnInput, decision: ApprovalDecision) =>
+  Effect.gen(function* () {
+    yield* opened.handle.send(input);
+    const card = yield* opened.collector.awaitItem((event) => event.type === "request.opened");
+    if (card.type !== "request.opened") throw new Error("not a card");
+    yield* opened.handle.respondToRequest(card.payload.request.requestId, decision);
+    const completion = yield* opened.collector.awaitItem(
+      (event) => event.type === "turn.completed",
+    );
+    return { request: card.payload.request, completion };
+  });
+
+describe("a Codex session replaying codex/edit-approval", () => {
+  it.live("opens a card for the file change, and the write runs once allowed", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { open, assertDone, workspace } = yield* replaying("edit-approval");
+        const session = yield* open();
+        const { request } = yield* turnWithCard(
+          session,
+          text(prompts("edit-approval")[0]!),
+          "allow-once",
+        );
+        const events = yield* closed(session);
+        assertDone();
+
+        // The replay restores the scratch root as the workspace's real path.
+        const hello = NodePath.join(NodeFS.realpathSync(workspace), "hello.txt");
+        expect(request).toMatchObject({
+          kind: "file_write",
+          toolName: "Edit",
+          input: { file_path: hello },
+          patternSuggestion: `Edit(${hello})`,
+        });
+        expect(ofType(events, "request.resolved").map((event) => event.payload.decision)).toEqual([
+          "allow-once",
+        ]);
+        const change = rows(events, "file_change");
+        expect(change.map((row) => row.status)).toEqual(["completed"]);
+        expect(change[0]!.fileChange?.path).toBe(hello);
+        expect(stopReasons(events)).toEqual(["end_turn"]);
+        expect(ofType(events, "session.warning")).toEqual([]);
+        expect(ofType(events, "event.unmapped")).toEqual([]);
+      }),
+    ),
+  );
+});
+
+describe("a Codex session replaying codex/deny", () => {
+  it.live("opens a card for the command, and the denied command never runs", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { open, assertDone, workspace } = yield* replaying("deny");
+        const session = yield* open();
+        const { request } = yield* turnWithCard(session, text(prompts("deny")[0]!), "deny");
+        const events = yield* closed(session);
+        assertDone();
+
+        expect(request).toMatchObject({
+          kind: "command",
+          toolName: "Shell",
+          input: { command: "touch denied.txt", cwd: NodeFS.realpathSync(workspace) },
+          patternSuggestion: "Shell(touch *)",
+        });
+        expect(ofType(events, "request.resolved").map((event) => event.payload.decision)).toEqual([
+          "deny",
+        ]);
+        expect(rows(events, "command_execution").map((row) => row.status)).toEqual(["failed"]);
+        expect(stopReasons(events)).toEqual(["end_turn"]);
+        expect(ofType(events, "session.warning")).toEqual([]);
+      }),
+    ),
+  );
+});
+
+describe("a Codex session replaying codex/sensitive-full-access", () => {
+  it.live("asks about cat .env even under full access, and the ladder is the one asked", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { open, assertDone } = yield* replaying("sensitive-full-access", {
+          ...SETTINGS,
+          runtimeMode: "full-access",
+        });
+        const session = yield* open();
+        const { request } = yield* turnWithCard(
+          session,
+          text(prompts("sensitive-full-access")[0]!),
+          "deny",
+        );
+        const events = yield* closed(session);
+        assertDone();
+
+        // The ladder reads `.env` as an argument of the command line, which is
+        // what makes its sensitive-path rung prompt under full access.
+        expect(request).toMatchObject({ kind: "command", input: { command: "cat .env" } });
+        expect(rows(events, "command_execution").map((row) => row.status)).toEqual(["failed"]);
+        expect(stopReasons(events)).toEqual(["end_turn"]);
+        expect(ofType(events, "session.warning")).toEqual([]);
+      }),
+    ),
+  );
+});
+
+describe("a Codex session replaying codex/approval-stop", () => {
+  it.live("Stop and close each resolve the open card once, and nothing is written", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { open, assertDone } = yield* replaying("approval-stop");
+        const [stopEdit, closeEdit] = prompts("approval-stop");
+        const session = yield* open();
+        yield* session.handle.send(text(stopEdit!));
+        const first = yield* session.collector.awaitItem(
+          (event) => event.type === "request.opened",
+        );
+        yield* session.handle.interrupt();
+        yield* session.collector.awaitItem((event) => event.type === "turn.completed");
+        yield* session.handle.send(text(closeEdit!));
+        yield* session.collector.awaitItem(
+          (event) => event.type === "request.opened" && event !== first,
+        );
+        const events = yield* closed(session);
+        assertDone();
+
+        const opened = ofType(events, "request.opened").map((event) => event.payload.request);
+        expect(opened.map((request) => request.toolName)).toEqual(["Edit", "Edit"]);
+        const resolved = ofType(events, "request.resolved").map((event) => event.payload);
+        expect(resolved).toEqual(
+          opened.map((request) => ({ requestId: request.requestId, decision: "deny" })),
+        );
+        // The first by Stop, before its turn ended; the second by close,
+        // before the session did.
+        const index = (event: RuntimeEvent) => events.indexOf(event);
+        const resolutions = ofType(events, "request.resolved");
+        const completion = ofType(events, "turn.completed")[0]!;
+        expect(index(resolutions[0]!)).toBeLessThan(index(completion));
+        expect(index(resolutions[1]!)).toBeLessThan(index(ofType(events, "session.ended")[0]!));
+        expect(stopReasons(events)).toEqual(["interrupted"]);
+        expect(rows(events, "file_change").map((row) => row.status)).toEqual(["failed"]);
+        expect(ofType(events, "session.warning")).toEqual([]);
+        expect(ofType(events, "event.unmapped")).toEqual([]);
       }),
     ),
   );

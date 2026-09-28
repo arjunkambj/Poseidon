@@ -15,7 +15,11 @@
  *    fiber (`translate/translator.ts`), in the order the server sent them;
  * 4. starts each turn with `turn/start`, naming the thread's model and effort
  *    for that turn, and its modes again when they changed (`modes.ts`);
- * 5. answers every request the server makes of it (`serverRequests.ts`);
+ * 5. answers every request the server makes of it: the command and
+ *    file-change approvals through Poseidon's permission ladder and its cards
+ *    (`toolGate.ts`), each on a fiber of its own so a card waiting on the user
+ *    holds up nothing else; every other request with a safe refusal
+ *    (`serverRequests.ts`);
  * 6. closes by ending the server's stdin — it exits on EOF — stopping the
  *    process group and proving it gone (`spawn.ts`).
  *
@@ -30,6 +34,7 @@ import type {
   ConnectorServices,
   TurnInput,
 } from "@poseidon/connector-sdk/definition";
+import { makeApprovalGate } from "@poseidon/connector-sdk/approvalGate";
 import { SessionClosed, SpawnFailed, TurnInProgress } from "@poseidon/connector-sdk/definition";
 import { makeBoundedEventQueue, type SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
 import type { Effort, RuntimeMode } from "@poseidon/contracts/enums";
@@ -54,10 +59,11 @@ import { codexModelFor } from "./models";
 import { APPROVAL_POLICY, sandboxPolicyFor } from "./modes";
 import { TurnStartResponse } from "./protocol";
 import { makeRpcClient, type RpcServerRequest } from "./rpc";
-import { declineOutcome } from "./serverRequests";
+import { refusalFor } from "./serverRequests";
 import type { CodexSessionRef } from "./sessionRef";
 import { makeProcessGroup } from "./spawn";
 import { openThread } from "./threadOpen";
+import { GATED_METHODS, makeCodexToolGate } from "./toolGate";
 import {
   asRecord,
   asString,
@@ -183,6 +189,10 @@ export const makeCodexSession = (
     });
 
     const translator = makeTranslator({ loginCommand: options.loginCommand });
+    const gate = yield* makeApprovalGate({ permissions: services.permissions, emit });
+    /** Where each approval's fiber lives: the session's scope, not the consumer's. */
+    const sessionScope = yield* Effect.scope;
+    const toolGate = makeCodexToolGate({ threadId, gate, settings: () => settings });
 
     /**
      * The running turn, if `notification` belongs to it. A notification that
@@ -216,14 +226,42 @@ export const makeCodexSession = (
             return;
           }
         }
+        yield* toolGate.observe(notification);
         for (const event of translator.translate(notification, turn)) {
-          if (event.type === "turn.completed") yield* Ref.set(turnRef, null);
+          if (event.type === "turn.completed") {
+            yield* Ref.set(turnRef, null);
+            const warning = toolGate.ungated();
+            if (warning !== undefined) {
+              yield* services.logger.log("warn", warning);
+              yield* emit({ type: "session.warning", payload: { message: warning } });
+            }
+          }
           yield* emit(event);
         }
       });
 
+    /**
+     * An approval goes to the gate on a fiber of its own — its card may wait
+     * on the user for as long as they take, and the notifications behind it
+     * must not. Anything else is refused at once.
+     */
     const onRequest = (request: RpcServerRequest): Effect.Effect<void> =>
-      rpc.respond(request.id, declineOutcome(request));
+      GATED_METHODS.has(request.method)
+        ? toolGate.answer(request).pipe(
+            Effect.flatMap((outcome) =>
+              outcome === null ? Effect.void : rpc.respond(request.id, outcome),
+            ),
+            Effect.forkIn(sessionScope),
+            Effect.asVoid,
+          )
+        : Effect.gen(function* () {
+            const refusal = refusalFor(request);
+            yield* rpc.respond(request.id, refusal.outcome);
+            if (refusal.warning !== undefined) {
+              yield* services.logger.log("warn", refusal.warning, { method: request.method });
+              yield* emit({ type: "session.warning", payload: { message: refusal.warning } });
+            }
+          });
 
     /**
      * The one way a session ends. `stopped` when the caller closed it,
@@ -238,6 +276,8 @@ export const makeCodexSession = (
       Effect.gen(function* () {
         if (yield* Ref.getAndSet(closedRef, true)) return;
         if (consumer !== null) yield* Fiber.interrupt(consumer);
+        // No card outlives the process that asked: each resolves before the end.
+        yield* toolGate.closeAll;
         yield* group.stop;
         if (!(yield* group.isGone)) {
           yield* group.stop;
@@ -342,6 +382,7 @@ export const makeCodexSession = (
         // it runs whose id nothing knows, and either strands the thread.
         yield* Effect.uninterruptible(
           Effect.gen(function* () {
+            yield* toolGate.turnStarted;
             yield* emit({ type: "turn.started", payload: { turnId } });
             const staged = yield* Effect.promise(() =>
               stageAttachments({
@@ -382,6 +423,9 @@ export const makeCodexSession = (
         const active = yield* Ref.get(turnRef);
         if (active === null || active.interrupted) return;
         yield* Ref.set(turnRef, { ...active, interrupted: true });
+        // Every open card resolves now, and its request is cancelled, which
+        // stops the CLI's turn as well.
+        yield* toolGate.cancelAll;
         const codexTurnId = yield* Deferred.await(active.codexTurnId);
         if (codexTurnId === null) return;
         yield* rpc
@@ -417,10 +461,7 @@ export const makeCodexSession = (
       events: queue.events,
       send,
       interrupt,
-      // Every approval is answered on arrival until the approval cards land;
-      // there is nothing parked for an answer to reach.
-      respondToRequest: (requestId, decision) =>
-        services.logger.log("debug", "codex approval answered", { requestId, decision }),
+      respondToRequest: gate.respond,
       respondToUserInput: (requestId) =>
         services.logger.log("debug", "codex question answered", { requestId }),
       respondToPlan: (turnId, action) =>

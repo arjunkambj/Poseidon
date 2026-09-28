@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "kind": "codex",
+  "transport": "stdio-jsonrpc",
+  "scenario": "deny",
+  "description": "Approval required: every card the turn opens is denied (decline), so the command never runs and the file is absent.",
+  "cliVersion": "0.156.1",
+  "recordedOn": "2026-09-28",
+  "model": "gpt-6-astra",
+  "real": true,
+  "prompts": ["Run: touch denied.txt"],
+  "invocations": [
+    {
+      "argv": [
+        "app-server",
+        "-c",
+        "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
+        "-c",
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+      ],
+      "cwd": "<SCRATCH>/deny",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}

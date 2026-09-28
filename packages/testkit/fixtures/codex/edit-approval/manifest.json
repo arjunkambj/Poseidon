@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "kind": "codex",
+  "transport": "stdio-jsonrpc",
+  "scenario": "edit-approval",
+  "description": "Approval required: the model's file change (item/fileChange/requestApproval) opens a card, which is allowed once (accept); the file is written.",
+  "cliVersion": "0.156.1",
+  "recordedOn": "2026-09-28",
+  "model": "gpt-6-astra",
+  "real": true,
+  "prompts": ["Create hello.txt containing hi"],
+  "invocations": [
+    {
+      "argv": [
+        "app-server",
+        "-c",
+        "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
+        "-c",
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+      ],
+      "cwd": "<SCRATCH>/edit-approval",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}

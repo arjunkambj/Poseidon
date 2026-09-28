@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "kind": "codex",
+  "transport": "stdio-jsonrpc",
+  "scenario": "approval-stop",
+  "description": "Approval required, two turns in one process, each stopped with its file-change card still open: the first by Stop (the request answered cancel, then turn/interrupt), the second by closing the session, which answers nothing. Neither file is written.",
+  "cliVersion": "0.156.1",
+  "recordedOn": "2026-09-28",
+  "model": "gpt-6-astra",
+  "real": true,
+  "prompts": ["Create stop.txt containing hi", "Create close.txt containing hi"],
+  "invocations": [
+    {
+      "argv": [
+        "app-server",
+        "-c",
+        "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
+        "-c",
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+      ],
+      "cwd": "<SCRATCH>/approval-stop",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}

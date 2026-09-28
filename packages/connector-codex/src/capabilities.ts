@@ -39,7 +39,13 @@ export const CODEX_CAPABILITIES: ConnectorCapabilities = {
   // `item/tool/requestUserInput` exists; nothing recorded shows it yet.
   questions: false,
   // Every mode keeps the approval policy that asks, and varies only the
-  // sandbox; the approval recordings (`edit-approval`, `deny`) will show it.
+  // sandbox; each request goes through Poseidon's ladder and card
+  // (`edit-approval`: a file change allowed once; `deny`: a command declined;
+  // `approval-stop`: Stop and close resolving an open card). The CLI asked
+  // about every command on the recording machine, reads included
+  // (`sensitive-full-access`: `cat .env` under full access); a known-safe read
+  // it runs unasked where its exemption applies is the gap `toolGate.ts`
+  // names.
   runtimeModes: ["approval-required", "auto-accept-edits", "full-access"],
   // Images go as `localImage` inputs; any other file is named in the prompt.
   attachments: "files",

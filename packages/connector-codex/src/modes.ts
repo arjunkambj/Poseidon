@@ -9,9 +9,10 @@
  * sensitive path. The obvious mapping, full access as `never`, would hide
  * every call from the ladder and never ask about anything.
  *
- * `untrusted` still lets the CLI run the commands it counts as known-safe
- * reads (`cat`, `ls`, …) without asking; `docs/codex-connector.md` says what
- * that leaves ungated.
+ * On the recording machine the CLI asked about every command under
+ * `untrusted`, reads included (`sensitive-full-access`: `cat .env` under full
+ * access stopped for approval). Where its known-safe-read exemption applies,
+ * such a read runs unasked; `toolGate.ts` says what the gate does about it.
  *
  * Only the sandbox varies, as the OS-level backstop under the ladder: the
  * workspace is writable in the two asking modes, and full access lifts it.

@@ -27,6 +27,7 @@ import {
   makeThreadId,
   type ThreadId,
 } from "@poseidon/contracts/ids";
+import type { ApprovalDecision } from "@poseidon/contracts/enums";
 import type { ThreadSettings } from "@poseidon/contracts/orchestration";
 import type { RuntimeEvent } from "@poseidon/contracts/runtime";
 import * as Effect from "effect/Effect";
@@ -45,7 +46,15 @@ const PROMPTS = {
   remember: "Remember the word walrus. Reply with exactly: ok",
   recall: "Which word did I ask you to remember? Reply with that word only.",
   image: "What colour is the image? Answer with one word.",
+  edit: "Create hello.txt containing hi",
+  deny: "Run: touch denied.txt",
+  sensitive: "cat .env",
+  stopEdit: "Create stop.txt containing hi",
+  closeEdit: "Create close.txt containing hi",
 } as const;
+
+/** The scratch `.env` of `sensitive-full-access`: a stand-in, nothing secret. */
+const SCRATCH_ENV = "POSEIDON_SCRATCH=not-a-secret\n";
 
 /** The model and effort the second turn of `model-switch` runs on. */
 const SWITCHED_TO = { model: "gpt-6-luna", effort: "low" } as const;
@@ -93,6 +102,10 @@ const recordScenario = (
     readonly prompts: ReadonlyArray<string>;
     /** What the manifest names as the model, when not the thread's default alone. */
     readonly model?: (defaultModel: string) => string;
+    /** The thread's settings, when not the approval-required default. */
+    readonly settings?: ThreadSettings;
+    /** Puts the scenario's files into the scratch repo before the session opens. */
+    readonly prepare?: (repo: string) => void;
   },
   drive: (session: Session) => Effect.Effect<void, unknown, Scope.Scope>,
 ) =>
@@ -109,11 +122,12 @@ const recordScenario = (
       });
       const threadId = makeThreadId();
       const repo = scratchRepo(spec.scenario);
+      spec.prepare?.(repo);
       const input = {
         threadId,
         projectId: makeProjectId(),
         workspaceRoot: repo,
-        settings: SETTINGS,
+        settings: spec.settings ?? SETTINGS,
       };
       const open = (sessionRef?: unknown) =>
         Effect.gen(function* () {
@@ -153,6 +167,25 @@ const turn = (recording: Recording, input: TurnInput) =>
     return yield* recording.collector.awaitItem(
       (event) => !before.has(event) && event.type === "turn.completed",
     );
+  });
+
+/**
+ * Answers every card the session opens with `decision`, for as long as its
+ * stream runs; the ids it answered, for the recorder to check.
+ */
+const answerCards = (recording: Recording, decision: ApprovalDecision) =>
+  Effect.gen(function* () {
+    const answered = new Set<string>();
+    yield* Effect.gen(function* () {
+      const opened = yield* recording.collector.awaitItem(
+        (event) =>
+          event.type === "request.opened" && !answered.has(event.payload.request.requestId),
+      );
+      if (opened.type !== "request.opened") return;
+      answered.add(opened.payload.request.requestId);
+      yield* recording.handle.respondToRequest(opened.payload.request.requestId, decision);
+    }).pipe(Effect.forever, Effect.ignore, Effect.forkScoped);
+    return answered;
   });
 
 /** Closes the session and waits for its stream to end. */
@@ -287,6 +320,102 @@ describe("session recordings", () => {
             text(PROMPTS.image, [{ path: image, mime: "image/png", name: "red.png" }]),
           );
           yield* closed(recording);
+        }),
+    ),
+  );
+
+  it.live.skipIf(!RECORD)("edit-approval: a file write stopped on a card, allowed once", () =>
+    recordScenario(
+      {
+        scenario: "edit-approval",
+        description:
+          "Approval required: the model's file change (item/fileChange/requestApproval) opens a card, which is allowed once (accept); the file is written.",
+        prompts: [PROMPTS.edit],
+      },
+      (session) =>
+        Effect.gen(function* () {
+          const recording = yield* session.open();
+          const answered = yield* answerCards(recording, "allow-once");
+          yield* turn(recording, text(PROMPTS.edit));
+          yield* closed(recording);
+          expect(answered.size).toBeGreaterThan(0);
+          expect(NodeFS.existsSync(NodePath.join(session.repo, "hello.txt"))).toBe(true);
+        }),
+    ),
+  );
+
+  it.live.skipIf(!RECORD)("deny: a command stopped on a card, denied", () =>
+    recordScenario(
+      {
+        scenario: "deny",
+        description:
+          "Approval required: every card the turn opens is denied (decline), so the command never runs and the file is absent.",
+        prompts: [PROMPTS.deny],
+      },
+      (session) =>
+        Effect.gen(function* () {
+          const recording = yield* session.open();
+          const answered = yield* answerCards(recording, "deny");
+          yield* turn(recording, text(PROMPTS.deny));
+          yield* closed(recording);
+          expect(answered.size).toBeGreaterThan(0);
+          expect(NodeFS.existsSync(NodePath.join(session.repo, "denied.txt"))).toBe(false);
+        }),
+    ),
+  );
+
+  it.live.skipIf(!RECORD)("sensitive-full-access: cat .env under full access", () =>
+    recordScenario(
+      {
+        scenario: "sensitive-full-access",
+        description:
+          "Full access, in a repo with a stand-in .env: the model is asked to cat it. What the CLI does is recorded as it happened — whether it asks (any card is denied) or runs the read unasked.",
+        prompts: [PROMPTS.sensitive],
+        settings: { ...SETTINGS, runtimeMode: "full-access" },
+        prepare: (repo) => NodeFS.writeFileSync(NodePath.join(repo, ".env"), SCRATCH_ENV, "utf8"),
+      },
+      (session) =>
+        Effect.gen(function* () {
+          const recording = yield* session.open();
+          yield* answerCards(recording, "deny");
+          yield* turn(recording, text(PROMPTS.sensitive));
+          yield* closed(recording);
+        }),
+    ),
+  );
+
+  it.live.skipIf(!RECORD)("approval-stop: Stop and close with a card open", () =>
+    recordScenario(
+      {
+        scenario: "approval-stop",
+        description:
+          "Approval required, two turns in one process, each stopped with its file-change card still open: the first by Stop (the request answered cancel, then turn/interrupt), the second by closing the session, which answers nothing. Neither file is written.",
+        prompts: [PROMPTS.stopEdit, PROMPTS.closeEdit],
+      },
+      (session) =>
+        Effect.gen(function* () {
+          const recording = yield* session.open();
+          const card = () =>
+            recording.collector.awaitItem(
+              (event) =>
+                event.type === "request.opened" && !seen.has(event.payload.request.requestId),
+            );
+          const seen = new Set<string>();
+          yield* recording.handle.send(text(PROMPTS.stopEdit));
+          const first = yield* card();
+          if (first.type === "request.opened") seen.add(first.payload.request.requestId);
+          yield* recording.handle.interrupt();
+          const stopped = yield* recording.collector.awaitItem(
+            (event) => event.type === "turn.completed",
+          );
+          expect(stopped.type === "turn.completed" && stopped.payload.stopReason).toBe(
+            "interrupted",
+          );
+          yield* recording.handle.send(text(PROMPTS.closeEdit));
+          yield* card();
+          yield* closed(recording);
+          expect(NodeFS.existsSync(NodePath.join(session.repo, "stop.txt"))).toBe(false);
+          expect(NodeFS.existsSync(NodePath.join(session.repo, "close.txt"))).toBe(false);
         }),
     ),
   );
