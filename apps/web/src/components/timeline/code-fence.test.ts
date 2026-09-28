@@ -6,6 +6,7 @@ import {
   codeFenceInfo,
   hastText,
   highlightable,
+  languageForPath,
 } from "./code-fence";
 
 describe("codeFenceInfo", () => {
@@ -132,5 +133,20 @@ describe("hastText", () => {
         ],
       }),
     ).toBe("ab");
+  });
+});
+
+describe("languageForPath", () => {
+  it("names the language of a file's extension or whole name", () => {
+    expect(languageForPath("src/app.ts")).toBe("typescript");
+    expect(languageForPath("apps/web/Dockerfile")).toBe("dockerfile");
+    expect(languageForPath("notes/README.md")).toBe("markdown");
+    expect(languageForPath("main.rs")).toBe("rust");
+  });
+
+  it("names nothing for plain text or an unknown extension", () => {
+    expect(languageForPath("notes.txt")).toBeUndefined();
+    expect(languageForPath("data.unknownext")).toBeUndefined();
+    expect(languageForPath("LICENSE")).toBeUndefined();
   });
 });

@@ -16,11 +16,20 @@
  * last line this one actually returned, and `capped` says so in the footer.
  *
  * The judgement calls: what counts as binary (the server decodes every file as
- * UTF-8, so a PNG comes back as mojibake rather than as an error), and where a
- * page ends when the server returned fewer lines than were asked for.
+ * UTF-8, so a PNG comes back as mojibake rather than as an error), where a
+ * page ends when the server returned fewer lines than were asked for, and
+ * which pages are worth handing to the syntax highlighter.
  */
 
 import type { FileContent } from "@poseidon/contracts/rpc";
+import type { FileOptions } from "@pierre/diffs/react";
+
+import {
+  HIGHLIGHT_MAX_LINES,
+  highlightable,
+  languageForPath,
+} from "@/components/timeline/code-fence";
+import { DIFF_THEMES } from "@/components/timeline/diff-options";
 
 /** Lines per page. Big enough to read, small enough to render as plain DOM. */
 export const PAGE_LINES = 500;
@@ -165,3 +174,72 @@ export const splitPath = (path: string): { readonly directory: string; readonly 
     ? { directory: "", name: path }
     : { directory: path.slice(0, cut + 1), name: path.slice(cut + 1) };
 };
+
+/**
+ * The highlighter language of a page that holds text in a language it knows,
+ * or `undefined` for an empty page, a binary file or a name that says nothing.
+ */
+const previewLanguage = (path: string, content: FileContent): string | undefined =>
+  content.text === "" || looksBinary(content.text) ? undefined : languageForPath(path);
+
+/**
+ * Whether the page is the whole file: it starts at the top, nothing follows,
+ * and the server's own cap did not cut it. Only then do the line numbers the
+ * highlighter draws (it always counts from 1) match the file's.
+ */
+const wholeFile = (offset: number, content: FileContent): boolean =>
+  windowFor(offset).offset === 0 && !content.truncated && !pagePosition(offset, content).hasNext;
+
+/**
+ * The language to highlight this page in, or `null` to show it as plain rows:
+ * a binary file, a name the highlighter has no grammar for, a file longer than
+ * one page (paged or cut by the server), and one over the timeline's own caps
+ * (`highlightable`), since tokenizing it would stall a worker.
+ */
+export const previewHighlight = (
+  path: string,
+  content: FileContent,
+  offset: number,
+): { readonly language: string } | null => {
+  const language = previewLanguage(path, content);
+  return language !== undefined && wholeFile(offset, content) && highlightable(content.text)
+    ? { language }
+    : null;
+};
+
+/**
+ * Whether a file the highlighter knows is shown plain only because of its
+ * size, so the footer can say why the colours are missing.
+ */
+export const tooLargeToHighlight = (path: string, content: FileContent, offset: number): boolean =>
+  previewLanguage(path, content) !== undefined && previewHighlight(path, content, offset) === null;
+
+/**
+ * Names a highlighted page for the worker pool's cache: the path, the length
+ * and a hash of the text, so a file edited in place — same length, other
+ * bytes — is tokenized again rather than shown with its old colours.
+ */
+export const previewCacheKey = (path: string, text: string): string => {
+  let hash = 0x81_1c_9d_c5;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = Math.imul(hash ^ text.charCodeAt(index), 0x01_00_01_93);
+  }
+  return `files:${path}:${text.length}:${(hash >>> 0).toString(36)}`;
+};
+
+/**
+ * The options a highlighted page renders with: the diff themes (so it follows
+ * light and dark like every diff), line numbers, no header (the pane shows the
+ * path), long lines scrolling sideways, and the timeline's tokenize cap — the
+ * library reads `tokenizeMaxLength` as lines.
+ */
+export const previewFileOptions = (
+  themeType: "light" | "dark",
+): FileOptions<undefined, undefined> => ({
+  theme: DIFF_THEMES,
+  themeType,
+  disableFileHeader: true,
+  disableLineNumbers: false,
+  overflow: "scroll",
+  tokenizeMaxLength: HIGHLIGHT_MAX_LINES,
+});

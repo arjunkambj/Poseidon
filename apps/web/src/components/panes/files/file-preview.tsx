@@ -22,9 +22,15 @@
  * page to its top, for a file opened without a line — as soon as the page
  * arrives, and `onRevealed` clears it, so coming back to the tab later keeps
  * the reader's own scroll instead.
+ *
+ * A code file shown whole and small enough (`previewHighlight`) is syntax
+ * highlighted by the timeline's worker pool (`./highlighted-page`); anything
+ * else — a paged, capped or large file, an unknown name, no pool — is the
+ * plain line table, and the footer says when size alone kept the colours off.
  */
 
 import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
+import { useWorkerPool } from "@pierre/diffs/react";
 import type { FileQuery } from "@poseidon/client-runtime/fileAtoms";
 import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import type { FileContent } from "@poseidon/contracts/rpc";
@@ -38,8 +44,17 @@ import { cn } from "@/lib/utils";
 
 import { useFileAtoms } from "./file-atoms";
 import type { FilesPreviewView, useKeptScroll } from "./files-view";
+import { HighlightedPage } from "./highlighted-page";
 import { PaneMessage } from "./pane-message";
-import { looksBinary, PAGE_LINES, pagePosition, previewLines, windowFor } from "./preview";
+import {
+  looksBinary,
+  PAGE_LINES,
+  pagePosition,
+  previewHighlight,
+  previewLines,
+  tooLargeToHighlight,
+  windowFor,
+} from "./preview";
 import {
   AlertTriangle,
   ChevronDown,
@@ -151,6 +166,7 @@ export function FilePreview({
   });
   const result = useAtomValue(atom);
   const refresh = useAtomRefresh(atom);
+  const pool = useWorkerPool();
 
   const query: FileQuery<FileContent> | "broken" | null = AsyncResult.isSuccess(result)
     ? result.value
@@ -202,20 +218,36 @@ export function FilePreview({
     return <PaneMessage icon={FileIcon} text="This file is empty." detail={path} />;
   }
 
+  const highlight = pool === undefined ? null : previewHighlight(path, content, offset);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <LineTable
-        offset={offset}
-        content={content}
-        scroll={scroll}
-        markedLine={page.line}
-        reveal={page.reveal === true}
-        onRevealed={onRevealed}
-      />
+      {highlight !== null ? (
+        <HighlightedPage
+          path={path}
+          content={content}
+          language={highlight.language}
+          scroll={scroll}
+          markedLine={page.line}
+          reveal={page.reveal === true}
+          onRevealed={onRevealed}
+        />
+      ) : (
+        <LineTable
+          offset={offset}
+          content={content}
+          scroll={scroll}
+          markedLine={page.line}
+          reveal={page.reveal === true}
+          onRevealed={onRevealed}
+        />
+      )}
       <div className="flex h-8 shrink-0 items-center gap-1.5 px-2 type-micro text-muted-foreground">
         <span className="min-w-0 truncate">{position.label}</span>
         {position.capped || (content.truncated && !position.hasNext) ? (
           <span className="shrink-0">· capped by the server</span>
+        ) : null}
+        {tooLargeToHighlight(path, content, offset) ? (
+          <span className="min-w-0 truncate">· plain text (too large to highlight)</span>
         ) : null}
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <Tooltip>

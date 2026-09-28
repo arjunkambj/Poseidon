@@ -723,9 +723,11 @@ Syntax highlighting has one engine. `DiffWorkerPoolProvider`
 workers with the `pierre-light`/`pierre-dark` themes. Shiki tokenizes in
 those workers. Both the inline diffs (`InlineDiff`) and the markdown code
 blocks (`CodeBlock`, through the library's `File`) highlight through that
-pool, with options from `diff-options.ts`. A code block rendered without a
+pool, with options from `diff-options.ts`, and so does the Files preview
+(`panes/files/highlighted-page.tsx`, options and the decision in
+`panes/files/preview.ts`). A code block rendered without a
 pool, as in tests, falls back to a plain `pre` rather than load Shiki on the
-main thread. The renderer depends on `shiki` directly only for its list of
+main thread, and the Files preview to its plain line table. The renderer depends on `shiki` directly only for its list of
 bundled languages (`bundledLanguagesInfo`, the same one the pool resolves
 grammars from, at the version `@pierre/diffs` already brings), so a fence
 names any language the workers can highlight (`code-fence.ts`).

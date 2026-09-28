@@ -2037,6 +2037,29 @@ the app — a prune, a re-clone — so `checkpoints.list` answers the refs that
 are actually in the thread's root, and the timeline intersects the two before
 it offers a restore (below).
 
+### The Files tab
+
+`apps/web/src/components/panes/files/files-pane.tsx` is the dock's Files tab:
+a search over `files.search` that drills into folders, and a read-only
+preview of one file through `files.read`, 500 lines a page (`preview.ts`).
+A file that decodes as binary shows a note instead of its bytes.
+
+A code file is syntax highlighted when the page is the whole file: it starts
+at line 1, no page follows, the server did not cut it short, and it is within
+the timeline's code-block caps (20,000 characters, 1,000 lines). Its name must
+also map to a language the highlighter bundles (`languageForPath` in
+`timeline/code-fence.ts`). `previewHighlight` in `preview.ts` makes that call.
+`highlighted-page.tsx` renders the page through `@pierre/diffs`' `File` on the
+same worker pool and themes as the timeline's code blocks, so it follows light
+and dark and tokenizes off the main thread. It shows line numbers, marks the
+line a file chip opened it at, scrolls that line into view once, and keeps
+the reader's scroll across tab switches like the plain page does. Only the
+page on screen is highlighted; nothing is preloaded. Everything else renders
+as the plain numbered table: a paged or server-capped file, one over the
+caps, an unknown or plain-text name, and any page when no pool is mounted.
+When size alone kept a code file plain, the footer adds "plain text (too
+large to highlight)".
+
 ### Restoring from the timeline
 
 Each user message offers "Restore to here" in its footer: the workspace as it

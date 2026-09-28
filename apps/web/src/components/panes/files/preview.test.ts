@@ -1,14 +1,20 @@
 import type { FileContent } from "@poseidon/contracts/rpc";
 import { describe, expect, it } from "vitest";
 
+import { HIGHLIGHT_MAX_CHARS, HIGHLIGHT_MAX_LINES } from "@/components/timeline/code-fence";
+
 import {
   lineCount,
   looksBinary,
   offsetForLine,
   PAGE_LINES,
   pagePosition,
+  previewCacheKey,
+  previewFileOptions,
+  previewHighlight,
   previewLines,
   splitPath,
+  tooLargeToHighlight,
   windowFor,
 } from "./preview";
 
@@ -180,5 +186,65 @@ describe("splitPath", () => {
       name: "main.tsx",
     });
     expect(splitPath("README.md")).toEqual({ directory: "", name: "README.md" });
+  });
+});
+
+describe("files preview highlighting", () => {
+  const small = content({ text: "const a = 1;\nexport { a };", totalLines: 2 });
+
+  it("highlights a small code file shown whole", () => {
+    expect(previewHighlight("src/app.ts", small, 0)).toEqual({ language: "typescript" });
+    expect(tooLargeToHighlight("src/app.ts", small, 0)).toBe(false);
+  });
+
+  it("keeps a file longer than one page plain, on every page", () => {
+    const first = content({ text: body(PAGE_LINES), totalLines: 1_200 });
+    expect(previewHighlight("src/app.ts", first, 0)).toBeNull();
+    expect(tooLargeToHighlight("src/app.ts", first, 0)).toBe(true);
+    const last = content({ text: body(200, 1_000), totalLines: 1_200 });
+    expect(previewHighlight("src/app.ts", last, 1_000)).toBeNull();
+    expect(tooLargeToHighlight("src/app.ts", last, 1_000)).toBe(true);
+  });
+
+  it("keeps a page the server cut short plain", () => {
+    const cut = content({ text: body(10), totalLines: 10, truncated: true });
+    expect(previewHighlight("src/app.ts", cut, 0)).toBeNull();
+    expect(tooLargeToHighlight("src/app.ts", cut, 0)).toBe(true);
+  });
+
+  it("keeps a whole file over the character cap plain", () => {
+    const wide = content({ text: "x".repeat(HIGHLIGHT_MAX_CHARS + 1), totalLines: 1 });
+    expect(previewHighlight("src/app.ts", wide, 0)).toBeNull();
+    expect(tooLargeToHighlight("src/app.ts", wide, 0)).toBe(true);
+  });
+
+  it("keeps an unknown extension, plain text and an empty file plain, with no size note", () => {
+    for (const path of ["data.unknownext", "notes.txt", "LICENSE"]) {
+      expect(previewHighlight(path, small, 0)).toBeNull();
+      expect(tooLargeToHighlight(path, small, 0)).toBe(false);
+    }
+    expect(previewHighlight("src/app.ts", content({}), 0)).toBeNull();
+  });
+
+  it("never highlights a binary file", () => {
+    const png = content({ text: `PNG${String.fromCharCode(0)}IHDR`, totalLines: 1 });
+    expect(previewHighlight("logo.ts", png, 0)).toBeNull();
+    expect(tooLargeToHighlight("logo.ts", png, 0)).toBe(false);
+  });
+
+  it("names a page by path and text, so an edit of the same length is a new key", () => {
+    expect(previewCacheKey("a.ts", "abc")).toBe(previewCacheKey("a.ts", "abc"));
+    expect(previewCacheKey("a.ts", "abc")).not.toBe(previewCacheKey("a.ts", "abd"));
+    expect(previewCacheKey("a.ts", "abc")).not.toBe(previewCacheKey("b.ts", "abc"));
+  });
+
+  it("renders with line numbers, no header, sideways scroll and the tokenize cap", () => {
+    expect(previewFileOptions("dark")).toMatchObject({
+      themeType: "dark",
+      disableFileHeader: true,
+      disableLineNumbers: false,
+      overflow: "scroll",
+      tokenizeMaxLength: HIGHLIGHT_MAX_LINES,
+    });
   });
 });

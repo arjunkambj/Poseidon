@@ -157,6 +157,16 @@ export const isCodeFile = (path: string): boolean => {
   return language !== undefined && !PROSE.has(language);
 };
 
+/**
+ * The highlighter language a file's name picks, or `undefined` when its
+ * extension (or whole name, for a Dockerfile or Makefile) names none, or
+ * names plain text — the Files preview highlights only what this answers.
+ */
+export const languageForPath = (path: string): string | undefined => {
+  const language = languageOfFile(path)?.[0];
+  return language === "text" ? undefined : language;
+};
+
 /** `title="x"`, `filename='x'` or `file=x` anywhere in the meta. */
 const titleInMeta = (meta: string): string | undefined => {
   const match = /(?:^|\s)(?:title|filename|file)=(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(meta);
