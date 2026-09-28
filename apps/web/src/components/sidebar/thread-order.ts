@@ -6,11 +6,13 @@
  * derive from `sidebarThreadGroups` here, so the Nth thread a key opens is the
  * Nth row on screen and the two cannot drift apart.
  *
- * The rule: projects in their listed order, each with its threads in list
- * order — a folded project contributes only the open thread, which the tree
- * keeps showing under it — then the threads whose project is gone ("Other
- * threads"). Archived threads are left out except the open one, by
- * `sidebarThreads`.
+ * The rule: pinned threads first, newest pin first (`./thread-pins`); then
+ * projects in their listed order, each with its threads in list order — a
+ * folded project contributes only the open thread, which the tree keeps
+ * showing under it — then the threads whose project is gone ("Other
+ * threads"). A pinned thread is listed in the pinned group only, so no row
+ * appears twice, and folding its project does not hide it. Archived threads
+ * are left out except the open one, by `sidebarThreads`, pinned or not.
  */
 
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
@@ -24,10 +26,17 @@ interface OrderedThread {
 }
 
 export interface SidebarThreadGroups<T> {
+  /** Listed threads that are pinned, in pin order; in no other group. */
+  readonly pinned: ReadonlyArray<T>;
   /** Each known project's listed threads, folding already applied. */
   readonly byProject: ReadonlyMap<string, ReadonlyArray<T>>;
   /** Listed threads whose project is not in the project list. */
   readonly orphans: ReadonlyArray<T>;
+}
+
+export interface SidebarOrderOptions {
+  /** Pinned thread ids, newest pin first — see `./thread-pins`. */
+  readonly pinned?: ReadonlyArray<string>;
 }
 
 /** The sidebar's rows, grouped the way the tree draws them. */
@@ -36,11 +45,18 @@ export const sidebarThreadGroups = <T extends OrderedThread>(
   threads: ReadonlyArray<T>,
   collapsed: ReadonlySet<string>,
   openThreadId: string | null,
+  options: SidebarOrderOptions = {},
 ): SidebarThreadGroups<T> => {
   const known = new Set(projects.map((project) => project.projectId));
+  const pinRank = new Map((options.pinned ?? []).map((threadId, rank) => [threadId, rank]));
+  const pinned: Array<T> = [];
   const byProject = new Map<string, Array<T>>();
   const orphans: Array<T> = [];
   for (const thread of sidebarThreads(threads, openThreadId)) {
+    if (pinRank.has(thread.threadId)) {
+      pinned.push(thread);
+      continue;
+    }
     if (!known.has(thread.projectId)) {
       orphans.push(thread);
       continue;
@@ -52,7 +68,8 @@ export const sidebarThreadGroups = <T extends OrderedThread>(
     list.push(thread);
     byProject.set(thread.projectId, list);
   }
-  return { byProject, orphans };
+  pinned.sort((a, b) => pinRank.get(a.threadId)! - pinRank.get(b.threadId)!);
+  return { pinned, byProject, orphans };
 };
 
 /** Every thread row in the sidebar, top to bottom. */
@@ -61,9 +78,20 @@ export const sidebarThreadOrder = <T extends OrderedThread>(
   threads: ReadonlyArray<T>,
   collapsed: ReadonlySet<string>,
   openThreadId: string | null,
+  options: SidebarOrderOptions = {},
 ): ReadonlyArray<T> => {
-  const { byProject, orphans } = sidebarThreadGroups(projects, threads, collapsed, openThreadId);
-  return [...projects.flatMap((project) => byProject.get(project.projectId) ?? []), ...orphans];
+  const { pinned, byProject, orphans } = sidebarThreadGroups(
+    projects,
+    threads,
+    collapsed,
+    openThreadId,
+    options,
+  );
+  return [
+    ...pinned,
+    ...projects.flatMap((project) => byProject.get(project.projectId) ?? []),
+    ...orphans,
+  ];
 };
 
 /** The Nth row (1-based), or `undefined` past the end — `Mod+9` on a short list. */

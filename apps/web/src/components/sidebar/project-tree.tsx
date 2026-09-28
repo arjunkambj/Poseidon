@@ -10,6 +10,10 @@
  * into `thread-seen`, and any other thread that has moved past its own stamp
  * is marked. That is renderer state by design — see `./thread-seen`.
  *
+ * Pinned threads leave their project for a "Pinned" group above the tree
+ * (`./pinned-threads`), first in the order the thread keys walk too. Pins are
+ * this window's, like the unread stamps — see `./thread-pins`.
+ *
  * The tree owns the one-minute tick behind every row's relative time, so a
  * long list runs one interval rather than one per row.
  *
@@ -29,8 +33,9 @@
  * can be archived or deleted together from the bar under the tree — see
  * `./thread-selection` and `./thread-selection-bar`.
  *
- * Every row has an overflow menu, revealed on hover: rename/archive/delete for
- * a thread, remove for a project. A thread row also offers archive on its own.
+ * Every row has an overflow menu, revealed on hover: pin, mark unread,
+ * archive and delete for a thread, remove for a project. A thread row also
+ * offers archive on its own.
  * Those four commands existed end to end — decider, reactors, tests — with
  * nothing in the UI that could send them, so the sidebar only ever grew and a
  * mistyped project root could not be dropped.
@@ -58,12 +63,14 @@ import type { ProjectId } from "@poseidon/contracts/ids";
 import type { ProjectSummary, ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { AddProjectDialog } from "@/components/sidebar/add-project-dialog";
+import { PinnedThreads } from "@/components/sidebar/pinned-threads";
 import { ProjectTerminalsBadge } from "@/components/terminal/project-terminals-badge";
 import { ProjectRowMenu } from "@/components/sidebar/project-menu";
 import { projectStatusRollup, type ProjectStatusRollup } from "@/components/sidebar/project-status";
 import { ProjectStatusMark } from "@/components/sidebar/project-status-mark";
 import { ThreadRow } from "@/components/sidebar/thread-row";
 import { sidebarThreadGroups } from "@/components/sidebar/thread-order";
+import { useThreadPins } from "@/components/sidebar/thread-pins";
 import { selectedRows } from "@/components/sidebar/thread-selection";
 import { ThreadSelectionBar } from "@/components/sidebar/thread-selection-bar";
 import {
@@ -130,18 +137,24 @@ export function ProjectTree() {
   const openRoute = useMatchRoute()({ to: "/t/$threadId" });
   const openThreadId = openRoute === false ? null : openRoute.threadId;
   const collapsed = useCollapsedProjects();
+  const [pins] = useThreadPins();
   // The same grouping the thread keys walk — see `./thread-order`.
-  const { byProject: threadsByProject, orphans: orphanThreads } = React.useMemo(
-    () => sidebarThreadGroups(projects, threads, collapsed, openThreadId),
-    [projects, threads, collapsed, openThreadId],
+  const {
+    pinned: pinnedThreads,
+    byProject: threadsByProject,
+    orphans: orphanThreads,
+  } = React.useMemo(
+    () => sidebarThreadGroups(projects, threads, collapsed, openThreadId, { pinned: pins }),
+    [projects, threads, collapsed, openThreadId, pins],
   );
   // Rows top to bottom, as `sidebarThreadOrder` walks them.
   const order = React.useMemo(
     () => [
+      ...pinnedThreads,
       ...projects.flatMap((project) => threadsByProject.get(project.projectId) ?? []),
       ...orphanThreads,
     ],
-    [projects, threadsByProject, orphanThreads],
+    [pinnedThreads, projects, threadsByProject, orphanThreads],
   );
   const selection = useThreadSelection(order, openThreadId);
   // What each project would show folded, over all its threads, not the listed ones.
@@ -167,66 +180,79 @@ export function ProjectTree() {
   }, [threads]);
 
   return (
-    <SidebarGroup padding="section" className="min-h-0 flex-1">
-      <div className="flex h-6 items-center gap-1">
-        <SidebarGroupLabel className="h-auto flex-1">Projects</SidebarGroupLabel>
-        <AddProjectDialog disabled={connection.status !== "connected"} command="project.add" />
-      </div>
-      <SidebarGroupContent className="min-h-0 overflow-y-auto [scrollbar-width:none]">
-        {projects.length === 0 && orphanThreads.length === 0 ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <FolderAdd variant="bold" />
-              </EmptyMedia>
-              <EmptyTitle>
-                {connection.status === "connected" ? "No projects yet" : "Not connected"}
-              </EmptyTitle>
-              <EmptyDescription>
-                {connection.status === "connected"
-                  ? "Add one to start a thread."
-                  : "Connect to a server to see projects."}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : null}
-        <div className="grid min-w-0 gap-0.5">
-          {projects.map((project) => (
-            <ProjectSection
-              key={project.projectId}
-              project={project}
-              threads={threadsByProject.get(project.projectId) ?? []}
-              counts={threadCounts.get(project.projectId) ?? NO_THREADS}
-              rollup={rollups.get(project.projectId) ?? null}
-              now={now}
-              selection={selection}
-            />
-          ))}
-          {orphanThreads.length > 0 ? (
-            <div className="grid gap-0.5">
-              <div className="flex h-7 items-center gap-2.5 rounded-xl px-2 text-sm text-sidebar-foreground">
-                <Folder variant="bold" className="size-4 shrink-0" />
-                <span className="min-w-0 truncate">Other threads</span>
-              </div>
-              <SidebarMenu>
-                {orphanThreads.map((thread) => (
-                  <SelectableThreadRow
-                    key={thread.threadId}
-                    thread={thread}
-                    now={now}
-                    selection={selection}
-                  />
-                ))}
-              </SidebarMenu>
-            </div>
-          ) : null}
-        </div>
-      </SidebarGroupContent>
-      <ThreadSelectionBar
-        threads={selectedRows(order, selection.selection)}
-        onClear={selection.clear}
+    <>
+      <PinnedThreads
+        threads={pinnedThreads}
+        renderRow={(thread) => (
+          <SelectableThreadRow
+            key={thread.threadId}
+            thread={thread}
+            now={now}
+            selection={selection}
+          />
+        )}
       />
-    </SidebarGroup>
+      <SidebarGroup padding="section" className="min-h-0 flex-1">
+        <div className="flex h-6 items-center gap-1">
+          <SidebarGroupLabel className="h-auto flex-1">Projects</SidebarGroupLabel>
+          <AddProjectDialog disabled={connection.status !== "connected"} command="project.add" />
+        </div>
+        <SidebarGroupContent className="min-h-0 overflow-y-auto [scrollbar-width:none]">
+          {projects.length === 0 && orphanThreads.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <FolderAdd variant="bold" />
+                </EmptyMedia>
+                <EmptyTitle>
+                  {connection.status === "connected" ? "No projects yet" : "Not connected"}
+                </EmptyTitle>
+                <EmptyDescription>
+                  {connection.status === "connected"
+                    ? "Add one to start a thread."
+                    : "Connect to a server to see projects."}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : null}
+          <div className="grid min-w-0 gap-0.5">
+            {projects.map((project) => (
+              <ProjectSection
+                key={project.projectId}
+                project={project}
+                threads={threadsByProject.get(project.projectId) ?? []}
+                counts={threadCounts.get(project.projectId) ?? NO_THREADS}
+                rollup={rollups.get(project.projectId) ?? null}
+                now={now}
+                selection={selection}
+              />
+            ))}
+            {orphanThreads.length > 0 ? (
+              <div className="grid gap-0.5">
+                <div className="flex h-7 items-center gap-2.5 rounded-xl px-2 text-sm text-sidebar-foreground">
+                  <Folder variant="bold" className="size-4 shrink-0" />
+                  <span className="min-w-0 truncate">Other threads</span>
+                </div>
+                <SidebarMenu>
+                  {orphanThreads.map((thread) => (
+                    <SelectableThreadRow
+                      key={thread.threadId}
+                      thread={thread}
+                      now={now}
+                      selection={selection}
+                    />
+                  ))}
+                </SidebarMenu>
+              </div>
+            ) : null}
+          </div>
+        </SidebarGroupContent>
+        <ThreadSelectionBar
+          threads={selectedRows(order, selection.selection)}
+          onClear={selection.clear}
+        />
+      </SidebarGroup>
+    </>
   );
 }
 

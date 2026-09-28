@@ -136,3 +136,59 @@ describe("projectForNewThread", () => {
     expect(projectForNewThread([], "p1", "p1")).toBeUndefined();
   });
 });
+
+describe("pinned threads", () => {
+  const threads = [thread("a1", "p1"), thread("a2", "p1"), thread("b1", "p2"), thread("x", "gone")];
+
+  it("come first, in pin order, and leave their own group", () => {
+    const pinned = ["b1", "a2"];
+    expect(ids(sidebarThreadOrder(projects, threads, none, null, { pinned }))).toEqual([
+      "b1",
+      "a2",
+      "a1",
+      "x",
+    ]);
+    const groups = sidebarThreadGroups(projects, threads, none, null, { pinned });
+    expect(ids(groups.pinned)).toEqual(["b1", "a2"]);
+    expect(ids(groups.byProject.get("p1") ?? [])).toEqual(["a1"]);
+    expect(groups.byProject.get("p2")).toBeUndefined();
+  });
+
+  it("takes orphans out of Other threads too", () => {
+    const groups = sidebarThreadGroups(projects, threads, none, null, { pinned: ["x"] });
+    expect(ids(groups.pinned)).toEqual(["x"]);
+    expect(groups.orphans).toEqual([]);
+  });
+
+  it("stay listed when their project is folded", () => {
+    expect(
+      ids(sidebarThreadOrder(projects, threads, new Set(["p1"]), null, { pinned: ["a2"] })),
+    ).toEqual(["a2", "b1", "x"]);
+  });
+
+  it("hide an archived pinned thread unless it is open", () => {
+    const withArchived = [thread("a1", "p1", "archived"), thread("b1", "p2")];
+    const pinned = ["a1"];
+    expect(ids(sidebarThreadOrder(projects, withArchived, none, null, { pinned }))).toEqual(["b1"]);
+    expect(ids(sidebarThreadOrder(projects, withArchived, none, "a1", { pinned }))).toEqual([
+      "a1",
+      "b1",
+    ]);
+  });
+
+  it("ignore pins for threads that are gone", () => {
+    expect(ids(sidebarThreadOrder(projects, threads, none, null, { pinned: ["deleted"] }))).toEqual(
+      ["a1", "a2", "b1", "x"],
+    );
+  });
+
+  it("are the first rows the thread keys reach", () => {
+    const order = sidebarThreadOrder(projects, threads, none, null, { pinned: ["b1"] });
+    expect(nthThread(order, 1)?.threadId).toBe("b1");
+    expect(neighbourThread(order, null, 1)?.threadId).toBe("b1");
+    expect(neighbourThread(order, "b1", 1)?.threadId).toBe("a1");
+    // Up from the pinned row wraps to the bottom of the tree.
+    expect(neighbourThread(order, "b1", -1)?.threadId).toBe("x");
+    expect(neighbourThread(order, "x", 1)?.threadId).toBe("b1");
+  });
+});

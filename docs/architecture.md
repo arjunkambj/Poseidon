@@ -343,12 +343,14 @@ more than one runs and a tooltip naming them
 (`apps/web/src/components/terminal/thread-terminals-mark.tsx`); every row reads
 one `terminal.listRunning` listing, so a long sidebar costs one call per
 refetch rather than one per row. On hover the time gives
-way to two actions: archive, and the overflow menu (rename, archive or
+way to two actions: archive, and the overflow menu (rename, pin or unpin, archive or
 unarchive, delete). An archived row, listed only while it is open, offers the
-menu alone.
+menu alone. Pinned threads leave their project for a
+"Pinned" group above Projects (`apps/web/src/components/sidebar/pinned-threads.tsx`),
+newest pin first, whether or not their project is folded.
 
-The sidebar's order is also a keyboard order. Projects come in their listed
-order, each with its threads in list order; a folded project contributes only
+The sidebar's order is also a keyboard order. Pinned threads come first, then
+projects in their listed order, each with its threads in list order; a folded project contributes only
 the open thread, and threads whose project is gone come last
 (`apps/web/src/components/sidebar/thread-order.ts`, which the tree draws from
 too, so the two cannot drift). A folded project's header shows the most
@@ -428,8 +430,9 @@ Presentation state that never reaches the server lives in
 `apps/web/src/state/ui.ts` and the browser's own storage — row disclosure, dock
 width, the per-thread dock tab, each thread's last pull request link, the
 Changes pane's scope and diff style and, in memory only, each thread's review
-there (which files are open and which are marked viewed), and the "last seen"
-stamp behind the unread dot
+there (which files are open and which are marked viewed), the "last seen"
+stamp behind the unread dot and the sidebar's pinned threads
+(`apps/web/src/components/sidebar/thread-pins.ts`)
 — and in `apps/web/src/state/terminal-ui.ts`, which threads have their
 terminal drawer open and how tall it is. The terminals themselves are the
 server's: the drawer's tabs are a fold of `terminal.list`
@@ -573,6 +576,8 @@ browser's page.
 There is no `unread` flag on the wire: whether this window has looked at a
 thread is not the server's business, and a thread with no stamp is deliberately
 not unread.
+Pins are the same kind of state — how one person arranges one sidebar — so a
+second client keeps its own.
 
 The three `dev/*` pages load their bodies through a dynamic import inside
 `if (import.meta.env.DEV)`, so no fixture data reaches a production bundle.

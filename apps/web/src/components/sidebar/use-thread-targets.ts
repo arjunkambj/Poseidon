@@ -12,6 +12,7 @@ import * as React from "react";
 import type { ProjectSummary, ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { projectForNewThread, sidebarThreadOrder } from "@/components/sidebar/thread-order";
+import { useThreadPins } from "@/components/sidebar/thread-pins";
 import { useProjects, useThreadList } from "@/state/hooks";
 import { useCollapsedProjects, useLastProject } from "@/state/ui";
 
@@ -28,12 +29,13 @@ export function useThreadTargets(): ThreadTargets {
   const threads = useThreadList();
   const collapsed = useCollapsedProjects();
   const [lastProject] = useLastProject();
+  const [pinned] = useThreadPins();
   const openRoute = useMatchRoute()({ to: "/t/$threadId" });
   const openThreadId = openRoute === false ? null : openRoute.threadId;
 
   const order = React.useMemo(
-    () => sidebarThreadOrder(projects, threads, collapsed, openThreadId),
-    [projects, threads, collapsed, openThreadId],
+    () => sidebarThreadOrder(projects, threads, collapsed, openThreadId, { pinned }),
+    [projects, threads, collapsed, openThreadId, pinned],
   );
   const openThreadProject = threads.find((thread) => thread.threadId === openThreadId)?.projectId;
   const newThreadProject = projectForNewThread(projects, openThreadProject, lastProject);

@@ -1,6 +1,8 @@
 /**
- * The per-thread menu: archive or unarchive, delete. It opens from the row's
- * overflow button or a right-click anywhere on the row. Rename is not in it —
+ * The per-thread menu: pin or unpin, archive or unarchive, delete. It opens
+ * from the row's overflow button or a right-click anywhere on the row. Pins
+ * are this window's, never the server's — see `./thread-pins`. Rename is not
+ * in it —
  * that is `thread.rename` on the open thread, which this module's
  * `RenameThreadDialog` answers from `@/components/thread/thread-shortcuts`.
  *
@@ -61,9 +63,17 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { DeleteThreadDialog } from "@/components/sidebar/delete-thread-dialog";
 import { threadCommandBase, useThreadCommand } from "@/components/sidebar/thread-actions";
+import { useThreadPins } from "@/components/sidebar/thread-pins";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
 import { CommandKbd } from "@/lib/shortcuts";
-import { Archive as ArchiveIcon, ArchiveUp, MoreVertical, Trash } from "@honeyicons/react";
+import {
+  Archive as ArchiveIcon,
+  ArchiveUp,
+  MoreVertical,
+  Pin,
+  PinOff,
+  Trash,
+} from "@honeyicons/react";
 
 /**
  * The rename form, for `thread.rename` on the open thread
@@ -169,8 +179,9 @@ const CONTEXT_PARTS: MenuParts = {
 };
 
 /**
- * Archive or unarchive, then delete. `active` marks the open thread's row: the
- * lifecycle keys act on the open thread, so only its menu names them.
+ * Pin or unpin, archive or unarchive, then delete. `active`
+ * marks the open thread's row: the lifecycle keys act on the open thread, so
+ * only its menu names them.
  */
 function ThreadMenuItems({
   parts: { Item, Separator, Shortcut },
@@ -184,6 +195,8 @@ function ThreadMenuItems({
   readonly onDelete: () => void;
 }) {
   const send = useThreadCommand();
+  const [pins, setPinned] = useThreadPins();
+  const pinned = pins.includes(thread.threadId);
   const base = () => threadCommandBase(thread.threadId);
   const keys = (command: string) =>
     active ? (
@@ -194,6 +207,11 @@ function ThreadMenuItems({
 
   return (
     <>
+      <Item onClick={() => setPinned(thread.threadId, !pinned)}>
+        {pinned ? <PinOff variant="bold" /> : <Pin variant="bold" />}
+        {pinned ? "Unpin" : "Pin"}
+      </Item>
+      <Separator />
       {thread.status === "archived" ? (
         <Item
           onClick={() =>
