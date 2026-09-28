@@ -2510,8 +2510,9 @@ the branch's state, offering the first step with something to do
 (`nextGitStep` in `apps/web/src/lib/git-next-step.ts`): Commit while anything
 changed, with the changed-file count as a badge; Push while the branch has no
 upstream yet or is ahead of it, with `↑N` commits ahead as the badge; View PR
-once a pull request for the branch is remembered (below), which opens it; and
-Create PR for a pushed branch that is not the default one and has a remote.
+once a pull request for the branch is remembered (below), which opens it on
+GitHub and so leads with GitHub's mark; and Create PR for a pushed branch
+that is not the default one and has a remote.
 With none of these it is Commit, disabled as "no changes". Create PR is
 disabled with gh's reason when `git.pullRequest.readiness` says gh is missing
 or signed out; that read is refetched with the others, so signing in from a
@@ -2519,7 +2520,7 @@ terminal enables it on return to the window. Until it answers (or from a
 server without it) Create PR is offered, and a `gh` that cannot open one fails
 with the server's message in its toast. Beside it a chevron
 opens a menu with Commit, Commit & push, and Commit & create PR, and View pull
-request when a link is known. An action is a stack of steps, planned from the
+request (GitHub's mark again) when a link is known. An action is a stack of steps, planned from the
 root's status and branch list (`planGitAction` in
 `apps/web/src/lib/git-actions.ts`): a commit only when something changed; a
 push after a commit, and otherwise only when the branch has no upstream yet

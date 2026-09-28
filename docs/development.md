@@ -293,7 +293,7 @@ and their official mark is the bold drawing.
 family, never its label) to a Honeyicons export. The `-color` variants are
 only for a logo that stands alone: a harness avatar, the Open in menu's
 leading icons. Beside text (a connector heading, a model row's provider mark,
-the PR pane's GitHub mark) a logo is monochrome and bold at
+GitHub's mark on the PR pane and View PR) a logo is monochrome and bold at
 `text-foreground/85`, like any other icon. Every lookup has a clean fallback:
 a generic glyph in a heading (`Terminal`, `Server`, `Code`, `FolderOpen`), the
 monogram in an avatar, and an empty box the mark's size beside a model name.

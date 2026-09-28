@@ -5,7 +5,9 @@
  * The primary button shows the step's badge — the changed-file count while
  * committing, the commits ahead while pushing — and says in its tooltip what
  * it does, or why it cannot. View PR opens the remembered pull request and
- * runs nothing, so it stays enabled while a turn or a git run is going.
+ * runs nothing, so it stays enabled while a turn or a git run is going. It
+ * opens GitHub, so it and the menu's View pull request lead with GitHub's
+ * mark, like the pull request pane's link.
  *
  * The menu lists Commit, Commit & push and Commit & create PR; one that
  * cannot run is disabled with its reason as a second line, since a tooltip
@@ -29,8 +31,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components
 import {
   ChevronDown,
   CloudUpload,
-  ExternalLink,
   GitCommit,
+  Github,
   GitPullRequest,
   Spinner,
 } from "@honeyicons/react";
@@ -42,7 +44,7 @@ const STEP_ICONS: Record<GitNextStep, typeof GitCommit> = {
   commit: GitCommit,
   push: CloudUpload,
   "create-pr": GitPullRequest,
-  "view-pr": ExternalLink,
+  "view-pr": Github,
 };
 
 const MENU_ACTIONS: ReadonlyArray<{
@@ -152,7 +154,7 @@ export function GitPrimaryButton({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onOpen(pullRequestUrl)}>
-                <ExternalLink variant="bold" />
+                <Github variant="bold" />
                 View pull request
               </DropdownMenuItem>
             </>

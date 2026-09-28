@@ -1,3 +1,4 @@
+import { Github } from "@honeyicons/react";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -145,6 +146,14 @@ describe("GitPrimaryButton", () => {
     );
     expect(primary(markup, "View PR")).not.toContain("disabled");
     expect(items(markup).at(-1)).toBe("enabled: View pull request");
+    // Both open GitHub, so both lead with its mark.
+    const drawing = (html: string) => (html.match(/ d="[^"]*"/g) ?? []).join("");
+    const github = drawing(renderToStaticMarkup(<Github variant="bold" />));
+    const firstIcon = (html: string) => drawing(html.match(/<svg.*?<\/svg>/)?.[0] ?? "");
+    expect(firstIcon(markup.slice(markup.indexOf('aria-label="View PR"')))).toBe(github);
+    const viewItem = markup.slice(markup.lastIndexOf('<div data-item="enabled">'));
+    expect(viewItem).toContain("View pull request");
+    expect(firstIcon(viewItem)).toBe(github);
     clicks.get("View PR")?.();
     expect(onOpen).toHaveBeenCalledWith(PR_URL);
     expect(onStart).not.toHaveBeenCalled();
