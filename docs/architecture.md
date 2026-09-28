@@ -348,10 +348,13 @@ the kinds not open yet. The kinds come from a small registry in
 `dock-tab-panes.tsx`); there are four today: **changes** (`git.diff` in three scopes
 — this turn's checkpoints with the restore controls, the branch against its
 base through `mergeBase`, and the uncommitted working tree — with a
-split/unified toggle), **browser** (the pane), **files** (a search over
+split/unified toggle, a changed-file tree, next-unviewed and change keys,
+scrollbar change marks, per-file discard and blame through `git.discard` and
+`git.blame`, and a View menu for whitespace and wrapping), **browser** (the
+pane), **files** (a search over
 `files.search` that drills into directories and previews a file through
 `files.read`, paged by line offset because a window is capped by characters,
-not lines; a file chip in the timeline opens it on a file at a line, through
+not lines, and syntax highlighted when a small code file fits one page; a file chip in the timeline opens it on a file at a line, through
 a per-thread request in `state/file-reveal.ts` that the thread view answers by
 writing the file into the thread's Files view and opening the dock on Files) and
 **agents** (the thread's subagents from its snapshot's task rows, grouped
