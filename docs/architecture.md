@@ -954,7 +954,8 @@ Everything a client needs that is not React.
   the family, so the old one is disposed with its last reader and its call is
   interrupted; a failure is a value (`{ _tag: "error", message }`), and a
   query under three characters answers no hits without asking the server.
-- `oneShot.ts` — `runOneShot`, how every git write but the setup runs: a
+- `oneShot.ts` — `runOneShot`, how every git write but the start panel's
+  setup atom runs (a setup nothing watches, `worktreeSetupRun`, is one too): a
   fresh atom per call, held until it settles. A shared `runtime.fn` atom would
   interrupt a call still in flight when the next one starts and hand the first
   caller the second's result; two threads committing at once, or two deleted

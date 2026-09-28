@@ -1,7 +1,8 @@
 /**
  * The git writes over a stubbed RPC client. What the start screen relies on:
  * the setup atom shows the output while the script is still running, a
- * finished run resolves with everything it printed and its exit status, and
+ * finished run resolves with everything it printed and its exit status, a
+ * background start's setup run resolves with the finished run on its own, and
  * the writes send the payload the server expects. What the git actions
  * control relies on: a commit or a push refetches the status it shows, and
  * two writes in flight at once each finish with their own result.
@@ -65,9 +66,16 @@ const branchList = (branches: ReadonlyArray<string>): GitBranchList => ({
 /** A commit whose message is `SLOW` waits for `gate` before it answers. */
 const SLOW = "slow";
 
+type Frames = Queue.Queue<WorktreeSetupFrame, Cause.Done>;
+
+/**
+ * A setup run reads the queue registered for its worktree path in
+ * `setupFrames`, else the shared `frames` — so two runs can be fed apart.
+ */
 const fakeClient = (
   calls: Calls,
-  frames: Queue.Queue<WorktreeSetupFrame, Cause.Done>,
+  frames: Frames,
+  setupFrames: Map<string, Frames>,
   gate: Deferred.Deferred<void>,
 ): PoseidonRpcClient =>
   new Proxy({} as PoseidonRpcClient, {
@@ -80,9 +88,9 @@ const fakeClient = (
               return { ...WORKTREE, baseBranch: "main" };
             });
         case "git.worktree.setup":
-          return (payload: unknown) => {
+          return (payload: { readonly path: string }) => {
             calls.setup.push(payload);
-            return Stream.fromQueue(frames);
+            return Stream.fromQueue(setupFrames.get(payload.path) ?? frames);
           };
         case "git.worktree.remove":
           return (payload: unknown) =>
@@ -161,13 +169,14 @@ const setupWith = Effect.gen(function* () {
   };
   const gate = yield* Deferred.make<void>();
   const frames = yield* Queue.unbounded<WorktreeSetupFrame, Cause.Done>();
+  const setupFrames = new Map<string, Frames>();
   const stateRef = yield* SubscriptionRef.make<ConnectionState>({
     status: "connected",
     serverInstanceId: null,
   });
   const layer = Layer.mergeAll(
     Layer.succeed(Connection, {
-      client: Effect.succeed(fakeClient(calls, frames, gate)),
+      client: Effect.succeed(fakeClient(calls, frames, setupFrames, gate)),
       state: stateRef,
     }),
     Layer.succeed(ConnectionStateRef, stateRef),
@@ -177,6 +186,7 @@ const setupWith = Effect.gen(function* () {
   return {
     calls,
     frames,
+    setupFrames,
     gate,
     registry: AtomRegistry.make(),
     git,
@@ -262,6 +272,78 @@ describe("git commands", () => {
         skipped: false,
       });
       expect(calls.setup).toEqual([{ projectId, path: WORKTREE.path }]);
+    }),
+  );
+
+  it.live("a setup run resolves with the whole output and the exit code", () =>
+    Effect.gen(function* () {
+      const projectId = makeProjectId();
+      const { calls, frames, registry, worktreeSetupRun } = yield* setupWith;
+      const run = worktreeSetupRun(registry, { projectId, path: WORKTREE.path });
+      yield* Queue.offer(frames, { kind: "output", text: "installing\n" });
+      yield* Queue.offer(frames, { kind: "output", text: "warn: peer dep\n" });
+      yield* Queue.offer(frames, { kind: "exit", exitCode: 3 });
+      yield* Queue.end(frames);
+      const finished = yield* Effect.promise(() => run);
+      expect(Exit.isSuccess(finished) && finished.value).toEqual<WorktreeSetupProgress>({
+        output: "installing\nwarn: peer dep\n",
+        exit: { code: 3 },
+        skipped: false,
+      });
+      expect(calls.setup).toEqual([{ projectId, path: WORKTREE.path }]);
+    }),
+  );
+
+  it.live("a setup run of a project without a script resolves as skipped", () =>
+    Effect.gen(function* () {
+      const projectId = makeProjectId();
+      const { frames, registry, worktreeSetupRun } = yield* setupWith;
+      const run = worktreeSetupRun(registry, { projectId, path: WORKTREE.path });
+      yield* Queue.offer(frames, { kind: "skipped" });
+      yield* Queue.end(frames);
+      const finished = yield* Effect.promise(() => run);
+      expect(Exit.isSuccess(finished) && finished.value).toEqual<WorktreeSetupProgress>({
+        output: "",
+        exit: null,
+        skipped: true,
+      });
+    }),
+  );
+
+  it.live("overlapping setup runs each finish with their own run", () =>
+    Effect.gen(function* () {
+      const projectId = makeProjectId();
+      const { calls, registry, setupFrames, worktreeSetupRun } = yield* setupWith;
+      const first = yield* Queue.unbounded<WorktreeSetupFrame, Cause.Done>();
+      const second = yield* Queue.unbounded<WorktreeSetupFrame, Cause.Done>();
+      setupFrames.set("/wt/one", first);
+      setupFrames.set("/wt/two", second);
+
+      // The first lane's script is still running when the second one starts.
+      const runOne = worktreeSetupRun(registry, { projectId, path: "/wt/one" });
+      yield* Queue.offer(first, { kind: "output", text: "one\n" });
+      yield* Effect.promise(() => expect.poll(() => calls.setup.length).toBe(1));
+      const runTwo = worktreeSetupRun(registry, { projectId, path: "/wt/two" });
+      yield* Effect.promise(() => expect.poll(() => calls.setup.length).toBe(2));
+
+      yield* Queue.offer(second, { kind: "output", text: "two\n" });
+      yield* Queue.offer(second, { kind: "exit", exitCode: 1 });
+      yield* Queue.end(second);
+      const finishedTwo = yield* Effect.promise(() => runTwo);
+      expect(Exit.isSuccess(finishedTwo) && finishedTwo.value).toEqual<WorktreeSetupProgress>({
+        output: "two\n",
+        exit: { code: 1 },
+        skipped: false,
+      });
+
+      yield* Queue.offer(first, { kind: "exit", exitCode: 0 });
+      yield* Queue.end(first);
+      const finishedOne = yield* Effect.promise(() => runOne);
+      expect(Exit.isSuccess(finishedOne) && finishedOne.value).toEqual<WorktreeSetupProgress>({
+        output: "one\n",
+        exit: { code: 0 },
+        skipped: false,
+      });
     }),
   );
 

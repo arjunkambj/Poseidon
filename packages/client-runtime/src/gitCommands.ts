@@ -11,6 +11,10 @@
  *   start screen shows the output while it grows, and a `promise`-mode setter
  *   resolves with the finished run. Interrupting the atom ends the stream,
  *   which kills the script on the server.
+ * - `worktreeSetupRun` — the same stream as a one-shot call that resolves
+ *   with the finished run only. A start that runs in the background, or one
+ *   of several started at once, uses it: nothing shows the output while it
+ *   grows, and two runs must not interrupt each other.
  * - `worktreeRemove` — `git.worktree.remove`: discards a worktree, keeping
  *   its branch.
  *
@@ -19,7 +23,7 @@
  *   stacked steps. Each fails with the server's refusal for the step's toast
  *   to show.
  *
- * Every write but the setup is a one-shot call (`./oneShot`) on the app's
+ * Every write but the setup atom is a one-shot call (`./oneShot`) on the app's
  * registry, resolving with its own `Exit`. Two threads may commit or push at
  * once, and a second deleted thread may remove its worktree while the first
  * one's removal still runs; a shared write atom would interrupt the call in
@@ -145,6 +149,20 @@ export const makeGitCommands = (
     ).pipe(Stream.unwrap, Stream.scan(emptySetupProgress, scanSetupFrame)),
   );
 
+  /**
+   * Runs the setup script and resolves with the finished run — its whole
+   * output, its exit status, or `skipped`. Each call is its own stream.
+   */
+  const worktreeSetupRun = (registry: AtomRegistry.AtomRegistry, input: WorktreeTarget) =>
+    runOneShot(runtime, registry, () =>
+      Effect.map(client, (c) =>
+        c["git.worktree.setup"]({ projectId: input.projectId, path: input.path }),
+      ).pipe(
+        Stream.unwrap,
+        Stream.runFold(() => emptySetupProgress, scanSetupFrame),
+      ),
+    );
+
   /** Fails with `conflict` while a thread works there, or on unsaved work without `force`. */
   const worktreeRemove = (registry: AtomRegistry.AtomRegistry, input: WorktreeRemove) =>
     runOneShot(runtime, registry, () =>
@@ -201,6 +219,7 @@ export const makeGitCommands = (
   return {
     worktreeCreate,
     worktreeSetupAtom,
+    worktreeSetupRun,
     worktreeRemove,
     commit,
     push,
