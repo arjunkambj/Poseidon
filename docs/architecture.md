@@ -239,6 +239,10 @@ Owns the operating system. Nothing about orchestration lives here.
   `-beep` is `shell.beep()`; `-keep-awake` holds at most one
   `prevent-app-suspension` power-save blocker (released on `will-quit`) and
   answers whether it is held; `-busy` stores the count the quit guard reads.
+  When the window's page is destroyed (the window closed while the app keeps
+  running on macOS) or its renderer crashes, main lets go of the blocker,
+  clears the badge and zeroes the busy count itself, since a torn-down page
+  never runs its own release (`releaseWhenPageGone`).
   The channel names sit alone in `attentionChannels.ts` because the sandboxed
   preload bundles them and `attention.ts` pulls in `node:crypto`.
 - `apps/desktop/src/main/protocol.ts` — the `poseidon://app/` scheme.

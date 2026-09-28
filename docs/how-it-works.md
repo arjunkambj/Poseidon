@@ -3273,7 +3273,10 @@ The same list drives the shell: the Dock badge counts the threads that need
 you (0 clears it, as does turning it off); keep-awake holds a
 `prevent-app-suspension` blocker while any thread is `running` and writes the
 answer to `keepAwakeHoldingAtom`; and the count of threads running or waiting
-on you goes to the quit guard (section 14).
+on you goes to the quit guard (section 14). A closed window or a crashed
+renderer never clears these itself, so the desktop main process drops the
+blocker, the badge and the busy count when the window's page goes away; the
+next window's coordinator sets them again.
 
 **Next needing attention** (`thread.nextAttention`, `Mod+Alt+J`, also in the
 palette) opens the most recently updated thread that needs you, else the most

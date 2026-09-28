@@ -22,6 +22,7 @@ import {
   parseBadge,
   parseBusyCount,
   parseNotify,
+  releaseWhenPageGone,
 } from "./attention";
 
 export interface AttentionIpcDeps {
@@ -96,6 +97,16 @@ export function registerAttentionIpc(deps: AttentionIpcDeps) {
   ipcMain.handle(ATTENTION_BUSY_CHANNEL, (event, count: unknown) => {
     fromWindow(event);
     busy = parseBusyCount(count);
+  });
+
+  // A closed window or a crashed renderer never sends the release itself.
+  app.on("web-contents-created", (_event, contents) => {
+    if (contents.getType() !== "window") return;
+    releaseWhenPageGone(contents, () => {
+      keepAwake.set(false);
+      app.setBadgeCount(0);
+      busy = 0;
+    });
   });
 
   ipcMain.handle(QUIT_ANSWER_CHANNEL, (event, quit: unknown) => {

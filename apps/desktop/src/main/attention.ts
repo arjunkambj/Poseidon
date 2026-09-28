@@ -88,3 +88,21 @@ export const makeKeepAwake = (blocker: PowerSaveBlocker) => {
     holding,
   };
 };
+
+/** The part of a window's `WebContents` that says its page is gone. */
+export interface PageLifecycle {
+  readonly once: (event: "destroyed", listener: () => void) => unknown;
+  readonly on: (event: "render-process-gone", listener: () => void) => unknown;
+}
+
+/**
+ * Runs `release` when the window's page goes away without saying so: the
+ * window is closed (on macOS the app keeps running) or its renderer crashes.
+ * The renderer clears the badge, the keep-awake hold and the busy count on
+ * unmount, but a torn-down page never unmounts, so main lets go of them here;
+ * the next page's coordinator sets them again.
+ */
+export const releaseWhenPageGone = (contents: PageLifecycle, release: () => void) => {
+  contents.once("destroyed", release);
+  contents.on("render-process-gone", release);
+};

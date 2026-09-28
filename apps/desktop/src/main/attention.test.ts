@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { EventEmitter } from "node:events";
 
-import { makeKeepAwake, parseBadge, parseBusyCount, parseNotify } from "./attention";
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  makeKeepAwake,
+  parseBadge,
+  parseBusyCount,
+  parseNotify,
+  releaseWhenPageGone,
+} from "./attention";
 
 describe("parseNotify", () => {
   it("accepts a thread notice and caps its text", () => {
@@ -106,5 +114,36 @@ describe("makeKeepAwake", () => {
     expect(keepAwake.holding()).toBe(false);
     expect(keepAwake.set(true)).toBe(true);
     expect(fake.calls).toEqual(["start:1", "start:2"]);
+  });
+});
+
+describe("releaseWhenPageGone", () => {
+  it("releases when the window's page is destroyed, once", () => {
+    const contents = new EventEmitter();
+    const release = vi.fn();
+    releaseWhenPageGone(contents, release);
+    contents.emit("destroyed");
+    contents.emit("destroyed");
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("releases each time the renderer crashes", () => {
+    const contents = new EventEmitter();
+    const release = vi.fn();
+    releaseWhenPageGone(contents, release);
+    contents.emit("render-process-gone");
+    contents.emit("render-process-gone");
+    expect(release).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets a held keep-awake blocker go", () => {
+    const fake = fakeBlocker();
+    const keepAwake = makeKeepAwake(fake.blocker);
+    keepAwake.set(true);
+    const contents = new EventEmitter();
+    releaseWhenPageGone(contents, () => keepAwake.set(false));
+    contents.emit("destroyed");
+    expect(keepAwake.holding()).toBe(false);
+    expect(fake.calls).toEqual(["start:1", "stop:1"]);
   });
 });
