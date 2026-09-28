@@ -19,6 +19,9 @@
  * right-click on the row opens that same menu. The time is a label, not a clock: `ProjectTree` owns the one
  * minute tick and passes `now` down, so a long list runs a single interval.
  *
+ * A double-click on the title, or "Rename" in the row menu, swaps the link
+ * for a title field — see `./thread-title-input`.
+ *
  * Cmd/Ctrl-click and Shift-click pick rows instead of following the link —
  * left to the browser, they would open the app in a new window, which the
  * desktop shell hands to the OS browser. A middle click is kept in too. While
@@ -33,12 +36,14 @@ import { SidebarMenuButton, SidebarMenuItem } from "@poseidon/ui/components/side
 import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 
 import { ThreadContextMenu, ThreadRowMenu } from "@/components/sidebar/thread-menu";
+import { useRenamingThread } from "@/components/sidebar/thread-rename";
 import { isUnread, useThreadSeen } from "@/components/sidebar/thread-seen";
 import { selectGestureOf, type SelectGesture } from "@/components/sidebar/thread-selection";
 import { threadStatusMark } from "@/components/sidebar/thread-status";
 import { recedes, workingLabel } from "@/components/sidebar/working-time";
 import { ThreadTerminalsMark } from "@/components/terminal/thread-terminals-mark";
 import { useThreadRunningTerminals } from "@/components/terminal/use-running-terminals";
+import { ThreadTitleInput } from "@/components/sidebar/thread-title-input";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { GitFork } from "@honeyicons/react";
@@ -106,6 +111,19 @@ export function ThreadRow({
   // terminal mark, else the title.
   const lastPiece =
     thread.worktree !== undefined ? "fork" : terminals.length > 0 ? "terminals" : "title";
+  const [renamingId, startRename, stopRename] = useRenamingThread();
+
+  if (renamingId === threadId) {
+    // Outside the link, so keys and clicks in the field never navigate.
+    return (
+      <SidebarMenuItem>
+        <div className="flex items-center gap-2.5 pl-2">
+          <ThreadStatusSlot thread={thread} unread={unread} />
+          <ThreadTitleInput thread={thread} onDone={stopRename} />
+        </div>
+      </SidebarMenuItem>
+    );
+  }
 
   return (
     <ThreadContextMenu thread={thread} active={active} row={<SidebarMenuItem />}>
@@ -157,6 +175,10 @@ export function ThreadRow({
             archived && "text-muted-foreground italic",
           )}
           title={archived ? `${thread.title} (archived)` : undefined}
+          onDoubleClick={(event) => {
+            event.preventDefault();
+            startRename(threadId);
+          }}
         >
           {thread.title}
         </span>
