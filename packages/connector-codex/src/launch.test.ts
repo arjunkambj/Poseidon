@@ -39,7 +39,9 @@ describe("sessionServerArgs and sessionEnv", () => {
   });
 
   it("launched every recorded session that way", () => {
-    for (const scenario of recordingNames(CODEX_KIND)) {
+    // `generate-text` is no session: its one-shot app-server names no MCP
+    // server (`generateText.test.ts` checks its argv).
+    for (const scenario of recordingNames(CODEX_KIND).filter((name) => name !== "generate-text")) {
       // `mcp-servers` records the one-shot `codex mcp` commands, no session.
       for (const invocation of loadStdioJsonRpcRecording(
         CODEX_KIND,

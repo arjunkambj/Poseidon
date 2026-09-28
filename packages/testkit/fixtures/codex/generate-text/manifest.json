@@ -1,0 +1,21 @@
+{
+  "formatVersion": 1,
+  "kind": "codex",
+  "transport": "stdio-jsonrpc",
+  "scenario": "generate-text",
+  "description": "generateText: one app-server with no MCP override, an ephemeral thread (read-only sandbox, approval policy never, the system text as developer instructions) and one turn at effort low with an outputSchema; the answer is a JSON title.",
+  "cliVersion": "0.156.1",
+  "recordedOn": "2026-09-28",
+  "model": "gpt-6-astra",
+  "real": true,
+  "prompts": ["First message: fix the flaky login test"],
+  "invocations": [
+    {
+      "argv": ["app-server"],
+      "cwd": "<SCRATCH>/poseidon-generate-TPmvdE",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}
