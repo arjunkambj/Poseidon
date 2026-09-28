@@ -49,7 +49,8 @@ const mcpRoute = Effect.gen(function* () {
     return HttpServerResponse.jsonUnsafe({ error: "forbidden origin" }, { status: 403 });
   }
   const token = bearerOf(request);
-  const threadId = token === null ? Option.none() : yield* gateway.resolve(token);
+  if (token === null) return unauthorized();
+  const threadId = yield* gateway.resolve(token);
   if (Option.isNone(threadId)) return unauthorized();
 
   const text = yield* request.text.pipe(
@@ -70,7 +71,7 @@ const mcpRoute = Effect.gen(function* () {
 
   if (Array.isArray(body)) {
     const responses = yield* Effect.forEach(body, (message) =>
-      gateway.handleMessage(threadId.value, message as JsonRpcRequest),
+      gateway.handleMessage(threadId.value, message as JsonRpcRequest, token),
     );
     const filtered = responses.filter((response) => response !== null);
     return filtered.length === 0
@@ -78,7 +79,7 @@ const mcpRoute = Effect.gen(function* () {
       : HttpServerResponse.jsonUnsafe(filtered);
   }
 
-  const response = yield* gateway.handleMessage(threadId.value, body as JsonRpcRequest);
+  const response = yield* gateway.handleMessage(threadId.value, body as JsonRpcRequest, token);
   return response === null
     ? HttpServerResponse.empty({ status: 202 })
     : HttpServerResponse.jsonUnsafe(response);

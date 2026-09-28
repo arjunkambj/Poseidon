@@ -2164,6 +2164,14 @@ the client's version when it is one the gateway speaks (`2025-06-18`,
 annotations, the agent-browser argv the call maps to, and whether the call can
 move the page.
 
+The catalogue belongs to the built-in Browser plugin. Each bearer records
+whether that plugin was on when it was minted (`PluginRegistry.browserEnabled`,
+read only when the registry is in the graph); a bearer minted with it off gets
+`tools: []` from `tools/list`, and a `browser_*` call on it answers a tool error
+saying the Browser plugin is turned off in Customize → Plugins. The state is
+fixed for the bearer's life, so toggling the plugin changes new sessions only.
+The browser's own security model is untouched by this.
+
 `tools/call` goes through `BrowserService.callTool`, which owns the serialized
 per-thread queue and the human-control epoch. Every human gesture bumps the
 epoch — a click, a key, a scroll, a toolbar navigation — and a call that

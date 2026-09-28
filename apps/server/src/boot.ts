@@ -224,7 +224,13 @@ export const boot = (options: BootOptions) =>
     const browser = browserServiceLayer.pipe(
       Layer.provide(Layer.mergeAll(engine, permissions, AgentBrowser.layer)),
     );
-    const mcp = McpGateway.layer.pipe(Layer.provide(Layer.mergeAll(browser, engine, manager)));
+    // Over the same settings store, so a plugin switched on the plugins page
+    // reaches `settings.subscribe` like any other setting. The gateway reads
+    // it too: a session minted with the Browser plugin off gets no browser tools.
+    const pluginRegistry = PluginRegistry.layer.pipe(Layer.provide(sharedSettings));
+    const mcp = McpGateway.layer.pipe(
+      Layer.provide(Layer.mergeAll(browser, engine, manager, pluginRegistry)),
+    );
 
     const services = Layer.mergeAll(
       Layer.succeed(ServerIdentity, { serverInstanceId }),
@@ -258,9 +264,7 @@ export const boot = (options: BootOptions) =>
       // SettingsStore is not listed here: `sharedSettings` already merges the one
       // instance the manager watches and the RPC handlers mutate.
       permissions,
-      // Over the same settings store, so a plugin switched on the plugins page
-      // reaches `settings.subscribe` like any other setting.
-      PluginRegistry.layer.pipe(Layer.provide(sharedSettings)),
+      pluginRegistry,
     );
 
     // ── Shutting down with clients attached ──

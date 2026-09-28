@@ -11,6 +11,8 @@
  * - `revoke` kills the bearer — dead requests 401.
  * - A snapshot past the 64KB cap is capped in `structuredContent` too, not
  *   only in the text.
+ * - A bearer minted with the Browser plugin off lists no tools and refuses a
+ *   browser call; the state at mint holds for the session's life.
  */
 
 import { createServer } from "node:http";
@@ -35,9 +37,10 @@ import { EventStore } from "../persistence/EventStore";
 import { ReadModelStore } from "../persistence/ReadModels";
 import { testLayer as sqliteTestLayer } from "../persistence/Sqlite";
 import { PermissionService } from "../permissions/PermissionService";
+import { PluginRegistry } from "../plugins/PluginRegistry";
 import { BrowserService } from "../rpc/services";
 import { mcpRoutesLayer } from "./httpRoute";
-import { capStructured, capText, McpGateway } from "./McpGateway";
+import { BROWSER_PLUGIN_OFF_MESSAGE, capStructured, capText, McpGateway } from "./McpGateway";
 
 const threadId = makeThreadId();
 
@@ -58,10 +61,25 @@ const permissionsStub = Layer.succeed(
   }),
 );
 
+/** A registry whose Browser plugin follows `state.on`; nothing else is used. */
+const browserSwitch = (state: { on: boolean }) =>
+  Layer.succeed(
+    PluginRegistry,
+    PluginRegistry.of({
+      list: Effect.succeed({ globalDir: "", plugins: [] }),
+      setEnabled: () => Effect.die("unused"),
+      openFolder: Effect.void,
+      sessionPlugins: () => Effect.succeed([]),
+      browserEnabled: Effect.sync(() => state.on),
+      materializeBuiltins: Effect.void,
+    }),
+  );
+
 const buildStack = (
   openDriver: (
     options: OpenDriverOptions,
   ) => Effect.Effect<BrowserDriver, { readonly message: string }, never>,
+  plugins: Layer.Layer<PluginRegistry> | Layer.Layer<never> = Layer.empty,
 ) =>
   Effect.gen(function* () {
     const sqliteContext = yield* Layer.build(sqliteTestLayer());
@@ -85,7 +103,7 @@ const buildStack = (
     ).pipe(Layer.provide(Layer.mergeAll(engine, permissionsStub)));
 
     const gateway = McpGateway.layer.pipe(
-      Layer.provide(Layer.mergeAll(browser, engine, manager, httpLayer)),
+      Layer.provide(Layer.mergeAll(browser, engine, manager, httpLayer, plugins)),
     );
 
     const app = HttpRouter.serve(mcpRoutesLayer).pipe(
@@ -265,6 +283,91 @@ describe("McpGateway", () => {
           post(url, bearer, { jsonrpc: "2.0", id: 5, method: "ping" }),
         );
         expect(dead.status).toBe(401);
+      }),
+    ),
+  );
+});
+
+describe("the Browser plugin switch", () => {
+  const listNames = (url: string, bearer: string) =>
+    Effect.promise(() => post(url, bearer, { jsonrpc: "2.0", id: 1, method: "tools/list" })).pipe(
+      Effect.map((list) => (list.body?.result?.tools ?? []).map((tool) => tool.name)),
+    );
+  const callOpen = (url: string, bearer: string) =>
+    Effect.promise(() =>
+      post(url, bearer, {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "browser_open", arguments: { url: "https://example.com" } },
+      }),
+    );
+
+  it.live("off at mint: no tools are listed and a browser call is refused", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { gateway, port } = yield* buildStack(
+          () => Effect.succeed(makeFakeDriver(fakePage())),
+          browserSwitch({ on: false }),
+        );
+        const url = `http://127.0.0.1:${port}/mcp`;
+        const { bearer } = yield* gateway.endpoint(threadId);
+
+        expect(yield* listNames(url, bearer)).toEqual([]);
+        const call = yield* callOpen(url, bearer);
+        expect(call.status).toBe(200);
+        expect(call.body?.result?.isError).toBe(true);
+        expect(call.body?.result?.content?.[0]?.text).toBe(BROWSER_PLUGIN_OFF_MESSAGE);
+        expect(BROWSER_PLUGIN_OFF_MESSAGE).toContain("Customize → Plugins");
+
+        // The rest of the protocol still answers: the session just has no tools.
+        const ping = yield* Effect.promise(() =>
+          post(url, bearer, { jsonrpc: "2.0", id: 3, method: "ping" }),
+        );
+        expect(ping.body?.result).toEqual({});
+      }),
+    ),
+  );
+
+  it.live("on at mint: the browser tools are listed", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { gateway, port } = yield* buildStack(
+          () => Effect.succeed(makeFakeDriver(fakePage())),
+          browserSwitch({ on: true }),
+        );
+        const url = `http://127.0.0.1:${port}/mcp`;
+        const { bearer } = yield* gateway.endpoint(threadId);
+
+        const names = yield* listNames(url, bearer);
+        expect(names).toContain("browser_open");
+        expect(names).toContain("browser_snapshot");
+        expect((yield* callOpen(url, bearer)).body?.result?.isError).toBe(false);
+      }),
+    ),
+  );
+
+  it.live("toggled after mint: a minted bearer keeps its state, a new one follows", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const state = { on: true };
+        const { gateway, port } = yield* buildStack(
+          () => Effect.succeed(makeFakeDriver(fakePage())),
+          browserSwitch(state),
+        );
+        const url = `http://127.0.0.1:${port}/mcp`;
+        const running = (yield* gateway.endpoint(threadId)).bearer;
+
+        state.on = false;
+        expect(yield* listNames(url, running)).toContain("browser_open");
+        expect((yield* callOpen(url, running)).body?.result?.isError).toBe(false);
+        const started = (yield* gateway.endpoint(makeThreadId())).bearer;
+        expect(yield* listNames(url, started)).toEqual([]);
+
+        state.on = true;
+        expect(yield* listNames(url, started)).toEqual([]);
+        const later = (yield* gateway.endpoint(makeThreadId())).bearer;
+        expect(yield* listNames(url, later)).toContain("browser_open");
       }),
     ),
   );

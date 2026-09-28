@@ -2690,6 +2690,11 @@ gets 15 s instead of the CLI's usual 30: a guest that is not painted never
 answers a capture, so the agent reads "the page did not paint — is the
 browser pane laid out?" rather than waiting.
 
+The tools come with the built-in Browser plugin. Turn it off in Customize →
+Plugins and the sessions started afterwards list no browser tools, and a
+browser call from one of them is refused with a message naming that switch.
+A session that was already running keeps its tools until it ends.
+
 Timeline rows for `mcp__poseidon__browser_*` come from the harness transcript
 like any other tool call — the gateway emits none, or every row would appear
 twice.

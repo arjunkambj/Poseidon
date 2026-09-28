@@ -13,6 +13,16 @@
  * serialized; `browser_screenshot` adds an image content block. Timeline rows for `mcp__poseidon__browser_*` come from the
  * harness transcript (the connector's translator), not from here — emitting
  * `thread.item.upserted` in this layer would double every row.
+ *
+ * The browser tools belong to the built-in Browser plugin. When a bearer is
+ * minted, the gateway records whether that plugin was on at that moment
+ * (`PluginRegistry.browserEnabled`); a bearer minted with it off lists no
+ * tools and refuses every `browser_*` call with a message naming the switch.
+ * The flag is fixed for the bearer's life, so the unit is the session:
+ * toggling the plugin changes the sessions started afterwards and never the
+ * running ones. Without a registry in the graph the tools are on. This is
+ * only wiring — the browser's own security model (the scoped bridge, the
+ * capability tokens, the kill switch) is untouched.
  */
 
 import { randomBytes } from "node:crypto";
@@ -33,6 +43,7 @@ import type { ThreadId } from "@poseidon/contracts/ids";
 import { BROWSER_TOOLS, type BrowserCallOutcome } from "../browser/tools";
 import { OrchestrationEngine } from "../orchestration/Engine";
 import { SessionManager } from "../orchestration/SessionManager";
+import { PluginRegistry } from "../plugins/PluginRegistry";
 import { BrowserService } from "../rpc/services";
 
 const PROTOCOL_VERSION = "2025-06-18";
@@ -50,6 +61,15 @@ const SUPPORTED_PROTOCOL_VERSIONS: ReadonlySet<string> = new Set([
   "2024-11-05",
 ]);
 const RESULT_CAP_BYTES = 64 * 1024;
+
+/** What a `browser_*` call on a bearer minted with the Browser plugin off reads. */
+export const BROWSER_PLUGIN_OFF_MESSAGE = "the Browser plugin is turned off in Customize → Plugins";
+
+/** One minted bearer: its thread, and whether the browser tools were on at mint. */
+interface Bearer {
+  readonly threadId: ThreadId;
+  readonly browser: boolean;
+}
 
 export interface JsonRpcRequest {
   readonly jsonrpc?: string;
@@ -150,10 +170,14 @@ export class McpGateway extends Context.Service<
     /**
      * One JSON-RPC message. Returns `null` for notifications (the route
      * answers 202 with an empty body) and the response object otherwise.
+     * `bearer` is the token the message came with; its mint-time Browser
+     * plugin state decides whether the browser tools exist. Without one the
+     * tools are on.
      */
     readonly handleMessage: (
       threadId: ThreadId,
       message: JsonRpcRequest,
+      bearer?: string,
     ) => Effect.Effect<Record<string, unknown> | null>;
   }
 >()("server/mcp/McpGateway") {
@@ -165,8 +189,13 @@ export class McpGateway extends Context.Service<
       const engine = yield* OrchestrationEngine;
       const manager = yield* SessionManager;
       const scope = yield* Effect.scope;
+      const plugins = yield* Effect.serviceOption(PluginRegistry);
+      const browserEnabled = Option.match(plugins, {
+        onNone: () => Effect.succeed(true),
+        onSome: (registry) => registry.browserEnabled,
+      });
 
-      const tokens = yield* Ref.make(new Map<string, ThreadId>());
+      const tokens = yield* Ref.make(new Map<string, Bearer>());
       const byThread = yield* Ref.make(new Map<ThreadId, ReadonlySet<string>>());
 
       const httpBase = (): string => {
@@ -180,7 +209,8 @@ export class McpGateway extends Context.Service<
       const issueBearer = (threadId: ThreadId): Effect.Effect<string> =>
         Effect.gen(function* () {
           const bearer = randomBytes(24).toString("hex");
-          yield* Ref.update(tokens, (map) => new Map(map).set(bearer, threadId));
+          const browser = yield* browserEnabled;
+          yield* Ref.update(tokens, (map) => new Map(map).set(bearer, { threadId, browser }));
           yield* Ref.update(byThread, (map) => {
             const next = new Map(map);
             next.set(threadId, new Set([...(next.get(threadId) ?? []), bearer]));
@@ -210,10 +240,17 @@ export class McpGateway extends Context.Service<
           });
         });
 
+      /** Whether the bearer's session has the browser tools; unknown bearers do. */
+      const browserToolsFor = (bearer: string | undefined): Effect.Effect<boolean> =>
+        bearer === undefined
+          ? Effect.succeed(true)
+          : Effect.map(Ref.get(tokens), (map) => map.get(bearer)?.browser ?? true);
+
       const handleToolsCall = (
         threadId: ThreadId,
         id: unknown,
         params: unknown,
+        bearer: string | undefined,
       ): Effect.Effect<Record<string, unknown>> =>
         Effect.gen(function* () {
           if (!isRecord(params) || typeof params.name !== "string") {
@@ -222,6 +259,13 @@ export class McpGateway extends Context.Service<
           const name = params.name;
           if (BROWSER_TOOLS.every((tool) => tool.name !== name)) {
             return jsonRpcError(id, -32602, `unknown tool: ${name}`);
+          }
+          if (!(yield* browserToolsFor(bearer))) {
+            return jsonRpcResult(id, {
+              content: [{ type: "text", text: BROWSER_PLUGIN_OFF_MESSAGE }],
+              isError: true,
+              structuredContent: { error: BROWSER_PLUGIN_OFF_MESSAGE },
+            });
           }
           const outcome = yield* browser.callTool(threadId, name, params.arguments ?? {});
           const content: Array<Record<string, unknown>> = [
@@ -249,6 +293,7 @@ export class McpGateway extends Context.Service<
       const handleMessage = (
         threadId: ThreadId,
         message: JsonRpcRequest,
+        bearer?: string,
       ): Effect.Effect<Record<string, unknown> | null> => {
         const method = message.method;
         if (method === undefined || typeof method !== "string") {
@@ -274,18 +319,20 @@ export class McpGateway extends Context.Service<
           case "ping":
             return Effect.succeed(jsonRpcResult(message.id, {}));
           case "tools/list":
-            return Effect.succeed(
+            return Effect.map(browserToolsFor(bearer), (browser) =>
               jsonRpcResult(message.id, {
-                tools: BROWSER_TOOLS.map((tool) => ({
-                  name: tool.name,
-                  description: tool.description,
-                  inputSchema: tool.inputSchema,
-                  annotations: tool.annotations,
-                })),
+                tools: browser
+                  ? BROWSER_TOOLS.map((tool) => ({
+                      name: tool.name,
+                      description: tool.description,
+                      inputSchema: tool.inputSchema,
+                      annotations: tool.annotations,
+                    }))
+                  : [],
               }),
             );
           case "tools/call":
-            return handleToolsCall(threadId, message.id, message.params);
+            return handleToolsCall(threadId, message.id, message.params, bearer);
           default:
             return Effect.succeed(jsonRpcError(message.id, -32601, `method not found: ${method}`));
         }
@@ -321,7 +368,7 @@ export class McpGateway extends Context.Service<
         endpoint,
         revoke,
         resolve: (token) =>
-          Effect.map(Ref.get(tokens), (map) => Option.fromNullishOr(map.get(token))),
+          Effect.map(Ref.get(tokens), (map) => Option.fromNullishOr(map.get(token)?.threadId)),
         handleMessage,
       });
     }),
