@@ -10,6 +10,7 @@ import {
   forkBlockedReason,
   threadForkBlockedReason,
   threadTurnInFlight,
+  planHandoffTurnId,
   forkTitle,
   inNewWorktree,
   sendFirstMessage,
@@ -191,5 +192,16 @@ describe("a branch-off's first message", () => {
     await sendFirstMessage(async () => Exit.fail("socket closed"), "plan", keep, report);
     expect(kept).toEqual(["plan", "plan"]);
     expect(reported).toEqual(["thread is archived", "Could not reach the server"]);
+  });
+});
+
+describe("which plan Implement in new thread hands off", () => {
+  it("answers the pending plan from its timeline record, and nothing older", () => {
+    const pending = makeTurnId();
+    const older = makeTurnId();
+    expect(planHandoffTurnId(pending, pending)).toBe(pending);
+    expect(planHandoffTurnId(older, pending)).toBeUndefined();
+    expect(planHandoffTurnId(pending, null)).toBeUndefined();
+    expect(planHandoffTurnId(undefined, pending)).toBeUndefined();
   });
 });

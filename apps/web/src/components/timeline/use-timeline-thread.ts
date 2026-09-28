@@ -90,6 +90,8 @@ export const useTimelineThreadValue = (snapshot: ThreadDetailSnapshot): Timeline
   }
   const workspaceRevision = String(settles.count);
 
+  const pendingPlanTurnId = snapshot.pendingPlan?.turnId ?? null;
+
   return React.useMemo(
     () => ({
       threadId,
@@ -101,6 +103,7 @@ export const useTimelineThreadValue = (snapshot: ThreadDetailSnapshot): Timeline
       workspaceRevision,
       connected,
       runningTurnId: snapshot.currentTurnId,
+      pendingPlanTurnId,
     }),
     [
       threadId,
@@ -112,6 +115,7 @@ export const useTimelineThreadValue = (snapshot: ThreadDetailSnapshot): Timeline
       workspaceRevision,
       connected,
       snapshot.currentTurnId,
+      pendingPlanTurnId,
     ],
   );
 };

@@ -43,6 +43,8 @@ export interface TimelineThread {
   readonly connected?: boolean;
   /** The turn in flight, whose messages cannot be forked from yet. */
   readonly runningTurnId?: TurnId | null;
+  /** The turn whose plan still waits for an answer, so its record can hand it off. */
+  readonly pendingPlanTurnId?: TurnId | null;
 }
 
 const TimelineThreadContext = React.createContext<TimelineThread | null>(null);

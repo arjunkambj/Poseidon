@@ -34,11 +34,23 @@ export interface BranchOffPlan {
   readonly markdown: string;
   /**
    * The source's pending plan, answered `handoff` once the new thread exists
-   * so its card closes without running the plan there. Absent from the
-   * timeline's record of a plan, which has nothing left to answer.
+   * so its card closes without running the plan there. Absent for a plan
+   * that has been answered already, which has nothing left to close.
    */
   readonly handoffTurnId?: TurnId;
 }
+
+/**
+ * The turn a plan's "Implement in new thread" answers `handoff`, from where
+ * the plan is shown: the timeline's record of the plan that is still pending
+ * answers it just as its card does, or a later Accept would run the same plan
+ * in the source thread too. An older plan answers nothing.
+ */
+export const planHandoffTurnId = (
+  planTurnId: TurnId | undefined,
+  pendingPlanTurnId: TurnId | null | undefined,
+): TurnId | undefined =>
+  planTurnId !== undefined && planTurnId === pendingPlanTurnId ? planTurnId : undefined;
 
 /**
  * One request to open the branch-off dialog: a fork, from a message's footer

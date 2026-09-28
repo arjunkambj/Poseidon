@@ -1538,8 +1538,9 @@ is a copy.
 
 A plan's "Implement in new thread" goes through the same dialog but is not a
 fork: the renderer sends `thread.create` with the source's settings out of plan
-mode and no `fork`, sends the plan as the first turn, and, from the pending
-card, answers the source's plan `handoff` (`branch-off.ts`, `use-branch-off.ts`).
+mode and no `fork`, sends the plan as the first turn, and, while the plan is
+still pending (from its card or its timeline record), answers the source's plan
+`handoff` (`branch-off.ts`, `use-branch-off.ts`).
 
 `thread.turn.steer` is how a message reaches a turn that is already running.
 The decider decides it from the thread's bound session: `thread.session.bound`
