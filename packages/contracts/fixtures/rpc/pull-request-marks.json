@@ -1,0 +1,20 @@
+{
+  "marks": [
+    {
+      "threadId": "01900000-0000-7000-8000-000000000011",
+      "number": 14519,
+      "url": "https://github.com/cli/cli/pull/14519",
+      "state": "open",
+      "isDraft": false,
+      "failing": false
+    },
+    {
+      "threadId": "01900000-0000-7000-8000-000000000012",
+      "number": 14423,
+      "url": "https://github.com/cli/cli/pull/14423",
+      "state": "closed",
+      "isDraft": false,
+      "failing": true
+    }
+  ]
+}

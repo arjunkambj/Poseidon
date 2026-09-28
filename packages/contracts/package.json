@@ -68,6 +68,10 @@
       "types": "./src/git-review.ts",
       "import": "./src/git-review.ts"
     },
+    "./pullRequest": {
+      "types": "./src/pullRequest.ts",
+      "import": "./src/pullRequest.ts"
+    },
     "./rpc": {
       "types": "./src/rpc.ts",
       "import": "./src/rpc.ts"

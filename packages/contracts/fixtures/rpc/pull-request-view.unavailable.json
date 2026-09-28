@@ -1,0 +1,4 @@
+{
+  "state": "unavailable",
+  "reason": "gh is not authenticated: run gh auth login in a terminal, then try again."
+}

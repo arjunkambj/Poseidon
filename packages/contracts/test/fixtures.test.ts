@@ -67,6 +67,7 @@ import {
   ServerHello,
   StagedAttachment,
 } from "../src/rpc";
+import { PullRequestMarks, PullRequestView } from "../src/pullRequest";
 import { ItemSnapshot, RuntimeEvent, RuntimeEventType } from "../src/runtime";
 import { Settings } from "../src/settings";
 import { TerminalStreamItem, TerminalSummary } from "../src/terminal";
@@ -231,6 +232,10 @@ const singles: ReadonlyArray<{ readonly path: string; readonly schema: FixtureSc
   { path: "rpc/git-commit-result.json", schema: GitCommitResult },
   { path: "rpc/git-push-result.json", schema: GitPushResult },
   { path: "rpc/git-pull-request-result.json", schema: GitPullRequestResult },
+  { path: "rpc/pull-request-view.found.json", schema: PullRequestView },
+  { path: "rpc/pull-request-view.none.json", schema: PullRequestView },
+  { path: "rpc/pull-request-view.unavailable.json", schema: PullRequestView },
+  { path: "rpc/pull-request-marks.json", schema: PullRequestMarks },
   { path: "rpc/git-worktree-info.json", schema: GitWorktreeInfo },
   { path: "rpc/git-worktree-info.main.json", schema: GitWorktreeInfo },
   { path: "rpc/detected-editor.json", schema: DetectedEditor },

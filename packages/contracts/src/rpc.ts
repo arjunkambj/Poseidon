@@ -50,6 +50,11 @@ import {
 import { GIT_REVIEW_RPC_METHODS, GitBlameRpc, GitDiscardRpc } from "./git-review";
 import { ConnectorInstanceId, ProjectId, TerminalId, ThreadId, UuidV7 } from "./ids";
 import {
+  GitPullRequestMarksRpc,
+  GitPullRequestViewRpc,
+  PULL_REQUEST_RPC_METHODS,
+} from "./pullRequest";
+import {
   CheckpointSummary,
   Command,
   CommandReceipt,
@@ -239,6 +244,7 @@ export const RPC_METHODS = {
   gitDiff: "git.diff",
   ...GIT_RPC_METHODS,
   ...GIT_REVIEW_RPC_METHODS,
+  ...PULL_REQUEST_RPC_METHODS,
   ...EDITOR_RPC_METHODS,
   ...SCRIPT_RPC_METHODS,
   ...PLUGIN_RPC_METHODS,
@@ -740,6 +746,8 @@ export const PoseidonRpcGroup = RpcGroup.make(
   GitPushRpc,
   GitPullRequestCreateRpc,
   GitPullRequestReadinessRpc,
+  GitPullRequestViewRpc,
+  GitPullRequestMarksRpc,
   GitWorktreeCreateRpc,
   GitWorktreeListRpc,
   GitWorktreeRemoveRpc,

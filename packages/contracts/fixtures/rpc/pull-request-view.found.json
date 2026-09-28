@@ -1,0 +1,162 @@
+{
+  "state": "found",
+  "pullRequest": {
+    "number": 14519,
+    "title": "Document search operator support in `gh search` help",
+    "url": "https://github.com/cli/cli/pull/14519",
+    "state": "open",
+    "isDraft": false,
+    "baseRefName": "trunk",
+    "headRefName": "document-search-operator-support",
+    "headRefOid": "97577e407ff3aee505aec675da081da75a24224a",
+    "author": "user-1",
+    "updatedAt": "2026-09-26T06:51:47Z",
+    "mergeable": "mergeable",
+    "reviewDecision": "changes-requested",
+    "checks": [
+      {
+        "name": "govulncheck",
+        "workflow": "Lint",
+        "bucket": "fail",
+        "startedAt": "2026-09-11T05:20:10Z",
+        "completedAt": "2026-09-11T05:20:55Z",
+        "url": "https://github.com/cli/cli/actions/runs/34558150659/job/103156848767",
+        "jobId": "103156848767"
+      },
+      {
+        "name": "CodeQL-Build (go, manual, ./.github/codeql/codeql-config.yml)",
+        "workflow": "Code Scanning",
+        "bucket": "pass",
+        "startedAt": "2026-09-26T06:46:28Z",
+        "completedAt": "2026-09-26T06:48:41Z",
+        "url": "https://github.com/cli/cli/actions/runs/36224759478/job/108356509553",
+        "jobId": "108356509553"
+      },
+      {
+        "name": "lint",
+        "workflow": "Lint",
+        "bucket": "pass",
+        "startedAt": "2026-09-26T06:46:28Z",
+        "completedAt": "2026-09-26T06:48:50Z",
+        "url": "https://github.com/cli/cli/actions/runs/36224759479/job/108356509446",
+        "jobId": "108356509446"
+      },
+      {
+        "name": "close-from-default-branch",
+        "workflow": "PR Triaging",
+        "bucket": "skipped",
+        "startedAt": "2026-09-26T06:52:03Z",
+        "completedAt": "2026-09-26T06:51:53Z",
+        "url": "https://github.com/cli/cli/actions/runs/36225027797/job/108357294367",
+        "jobId": "108357294367"
+      },
+      {
+        "name": "label-external",
+        "workflow": "PR Triaging",
+        "bucket": "skipped",
+        "startedAt": "2026-09-26T06:51:53Z",
+        "completedAt": "2026-09-26T06:51:53Z",
+        "url": "https://github.com/cli/cli/actions/runs/36225027797/job/108357271590",
+        "jobId": "108357271590"
+      }
+    ],
+    "reviews": [
+      {
+        "author": "copilot-pull-request-reviewer",
+        "state": "commented",
+        "body": "<!-- ccr-overview-v2 -->",
+        "submittedAt": "2026-09-25T15:38:36Z"
+      },
+      {
+        "author": "user-2",
+        "state": "changes-requested",
+        "body": "",
+        "submittedAt": "2026-09-25T19:22:21Z"
+      }
+    ],
+    "comments": [
+      {
+        "author": "github-actions",
+        "body": "Thanks for your pull request! While it doesn't meet all of our standard requirements, it appears to ",
+        "createdAt": "2026-09-25T15:34:01Z",
+        "url": "https://github.com/cli/cli/pull/14519#issuecomment-5835049811"
+      },
+      {
+        "author": "user-1",
+        "body": "> While it doesn't meet all of our standard requirements",
+        "createdAt": "2026-09-25T15:36:12Z",
+        "url": "https://github.com/cli/cli/pull/14519#issuecomment-5835081370"
+      }
+    ],
+    "reviewThreads": [
+      {
+        "id": "PRRT_kwDODKw3uc6mIKpX",
+        "path": "pkg/cmd/search/issues/issues.go",
+        "line": 38,
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": [
+          {
+            "author": "user-2",
+            "body": "Suggest: Somewhere around here I think there should be a link to https://docs.github.com/en/enterpri",
+            "createdAt": "2026-09-25T19:20:59Z",
+            "url": "https://github.com/cli/cli/pull/14519#discussion_r4107885267"
+          },
+          {
+            "author": "user-2",
+            "body": "Suggestion applies to both comments.",
+            "createdAt": "2026-09-25T19:22:56Z",
+            "url": "https://github.com/cli/cli/pull/14519#discussion_r4107899463"
+          }
+        ]
+      },
+      {
+        "id": "PRRT_kwDODKw3uc6mIHmT",
+        "path": "pkg/cmd/search/issues/issues.go",
+        "line": 39,
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": [
+          {
+            "author": "user-2",
+            "body": "Issue: the list of host availability should be removed since this list is not exhaustive and it pres",
+            "createdAt": "2026-09-25T19:18:21Z",
+            "url": "https://github.com/cli/cli/pull/14519#discussion_r4107865905"
+          },
+          {
+            "author": "user-1",
+            "body": "Sure — I modeled this after the existing wording in `item list`:",
+            "createdAt": "2026-09-25T20:28:18Z",
+            "url": "https://github.com/cli/cli/pull/14519#discussion_r4108367439"
+          }
+        ]
+      },
+      {
+        "id": "PRRT_kwDODKw3uc6mD3eD",
+        "path": "pkg/cmd/search/issues/issues.go",
+        "line": 40,
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": [
+          {
+            "author": "copilot-pull-request-reviewer",
+            "body": "🛑 Requirement: Scope this guidance to advanced-search-capable API calls",
+            "createdAt": "2026-09-25T15:38:35Z",
+            "url": "https://github.com/cli/cli/pull/14519#discussion_r4106126529"
+          },
+          {
+            "author": "user-1",
+            "body": "Addressed in [8e55103](https://github.com/cli/cli/compare/33d0240d4fe01138d7ac11798003c13b1f6dd24e..",
+            "createdAt": "2026-09-25T16:17:55Z",
+            "url": "https://github.com/cli/cli/pull/14519#discussion_r4106458120"
+          }
+        ]
+      }
+    ],
+    "mergeMethods": {
+      "merge": true,
+      "squash": true,
+      "rebase": true
+    }
+  }
+}
