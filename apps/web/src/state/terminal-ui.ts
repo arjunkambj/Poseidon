@@ -1,7 +1,8 @@
 /**
  * The terminal drawer's layout: whether each owner's drawer is open — a
- * thread's, or on the New task page a project's, keyed by `terminalOwnerKey`
- * (a thread's bare id, or `project:<id>`) — and how tall the drawer is. Both
+ * thread's, on the New task page a project's, or in first-run setup home's,
+ * keyed by `terminalOwnerKey` (a thread's bare id, `project:<id>` or `home`)
+ * — and how tall the drawer is. Both
  * persist through localStorage — durable layout, nothing more — the way the
  * dock's width and tab do in `@/state/ui`.
  *

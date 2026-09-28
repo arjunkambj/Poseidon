@@ -1,8 +1,8 @@
 /**
  * The terminal drawer, at the bottom of the thread column — or of the New
  * task page's column, before any thread exists. `./owned-terminal` mounts it
- * for a thread or a project (`TerminalOwner`) while that owner's drawer is
- * open, and answers `terminal.toggle`.
+ * for a thread, a project or home (`TerminalOwner`) while that owner's drawer
+ * is open, and answers `terminal.toggle`.
  *
  * The drawer holds a tab strip over a lazily loaded xterm (`./terminal-view`)
  * for the tab in front, a fresh one per tab, and a toolbar that acts on that
@@ -11,7 +11,8 @@
  * output. A mod-clicked link goes to `onOpenLink`, a printed file reference
  * to `fileLinks`. While the tab in front is a running script that printed a
  * dev server, "Open in browser" (`./dev-server-button`) opens it through
- * `onOpenDevServer`.
+ * `onOpenDevServer`. A drawer with no composer (home's) passes no `draftId`,
+ * `fileLinks` or `onOpenDevServer`, and shows none of what they drive.
  *
  * Which terminals exist is the server's to say: the drawer folds each
  * `terminal.list` into its tab state (`./drawer-state`). Opening a drawer that
@@ -31,7 +32,9 @@ import { makeTerminalId, type TerminalId, type ThreadId } from "@poseidon/contra
 import {
   TERMINALS_PER_OWNER,
   decodeTerminalOwnerKey,
+  isProjectOwner,
   isThreadOwner,
+  type TerminalOwner,
   type TerminalSize,
 } from "@poseidon/contracts/terminal";
 import { Button } from "@poseidon/ui/components/button";
@@ -103,6 +106,14 @@ function useDrawerResize(drawerRef: React.RefObject<HTMLDivElement | null>) {
   return { shown, onPointerDown };
 }
 
+/** The New terminal button's label once the owner is at its limit. */
+const limitLabel = (owner: TerminalOwner): string =>
+  isThreadOwner(owner)
+    ? `At most ${TERMINALS_PER_OWNER} terminals per thread`
+    : isProjectOwner(owner)
+      ? `At most ${TERMINALS_PER_OWNER} terminals per project`
+      : `At most ${TERMINALS_PER_OWNER} terminals`;
+
 export function TerminalDrawer({
   ownerKey,
   draftId,
@@ -114,18 +125,19 @@ export function TerminalDrawer({
   onOpenDevServer,
   fileLinks,
 }: {
-  /** The owner, a thread or a project, by `terminalOwnerKey`. */
+  /** The owner, a thread, a project or home, by `terminalOwnerKey`. */
   ownerKey: string;
-  /** The composer draft "Add selection to chat" writes into. */
-  draftId: ThreadId;
+  /** The composer draft "Add selection to chat" writes into; without one there is no such button. */
+  draftId?: ThreadId | undefined;
   phase: Presence;
   focusRequest: number;
   onHide: () => void;
   onClose: (terminalId: TerminalId) => void;
   onOpenLink: (url: string) => void;
-  /** Opens a dev server a running script printed, in a browser tab of its own. */
-  onOpenDevServer: (url: string) => void;
-  fileLinks: FileLinkHandlers;
+  /** Opens a dev server a running script printed, in a browser tab of its own; without it there is no such button. */
+  onOpenDevServer?: ((url: string) => void) | undefined;
+  /** Printed file references as links; without them a path is plain text. */
+  fileLinks?: FileLinkHandlers | undefined;
 }) {
   const atoms = useTerminalAtoms();
   const connected = useConnectionState().status === "connected";
@@ -237,8 +249,6 @@ export function TerminalDrawer({
   };
 
   const full = state.tabs.length >= TERMINALS_PER_OWNER;
-  const owner = decodeTerminalOwnerKey(ownerKey);
-  const ownerNoun = isThreadOwner(owner) ? "thread" : "project";
   const listError = listed?._tag === "error" ? listed.message : null;
 
   let body: React.ReactNode;
@@ -338,10 +348,12 @@ export function TerminalDrawer({
         {openError !== null && state.tabs.length > 0 ? (
           <p className="min-w-0 shrink truncate type-micro text-destructive">{openError}</p>
         ) : null}
-        <DevServerButton
-          tab={state.tabs.find((tab) => tab.terminalId === state.activeId)}
-          onOpen={onOpenDevServer}
-        />
+        {onOpenDevServer === undefined ? null : (
+          <DevServerButton
+            tab={state.tabs.find((tab) => tab.terminalId === state.activeId)}
+            onOpen={onOpenDevServer}
+          />
+        )}
         <IconButton
           label="Find"
           disabled={handle === null}
@@ -349,11 +361,9 @@ export function TerminalDrawer({
         >
           <Search variant="bold" />
         </IconButton>
-        <AddSelectionButton threadId={draftId} handle={handle} />
+        {draftId === undefined ? null : <AddSelectionButton threadId={draftId} handle={handle} />}
         <IconButton
-          label={
-            full ? `At most ${TERMINALS_PER_OWNER} terminals per ${ownerNoun}` : "New terminal"
-          }
+          label={full ? limitLabel(decodeTerminalOwnerKey(ownerKey)) : "New terminal"}
           disabled={!connected || opening || full}
           onClick={() => void openNew()}
         >

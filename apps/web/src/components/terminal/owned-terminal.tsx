@@ -6,14 +6,17 @@
  * the New task page, where no thread exists yet: its terminals are the
  * project's own (`TerminalOwner`) and start in the project's folder — never
  * keyed by the page's draft id, since the thread that draft becomes may run in
- * a new worktree.
+ * a new worktree. `HomeTerminal` is for a page with no project at all —
+ * first-run setup: its terminals are home's and start in the user's home
+ * folder, and with no composer, no files and no browser pane it has no "Add
+ * selection to chat", no file links and no dev-server button.
  *
- * Either answers `terminal.toggle` and renders the drawer (`./terminal-drawer`)
+ * Each answers `terminal.toggle` and renders the drawer (`./terminal-drawer`)
  * while its owner's drawer is open (`@/state/terminal-ui`, keyed by
  * `terminalOwnerKey`), and the strip with its show button (`./terminal-bar`)
  * while it is not. A mod-clicked link opens in the thread's browser pane
- * (`./use-open-link`); the New task page has no browser pane, so there it
- * opens in the system browser. A dev server a script printed opens the way
+ * (`./use-open-link`); the New task page and home have no browser pane, so
+ * there it opens in the system browser. A dev server a script printed opens the way
  * the Run menu opens one: a tab of the thread's in-app browser
  * (`openInThreadBrowser`), or on the New task page the system browser.
  *
@@ -31,6 +34,7 @@ import * as React from "react";
 import { openInThreadBrowser } from "@/components/panes/browser/open-in-browser";
 import { useTerminalAtoms } from "@/components/terminal/terminal-atoms";
 import { TerminalBar } from "@/components/terminal/terminal-bar";
+import type { FileLinkHandlers } from "@/components/terminal/file-link-provider";
 import { TerminalDrawer } from "@/components/terminal/terminal-drawer";
 import { useFileLinks } from "@/components/terminal/use-file-links";
 import { useOpenInBrowserPane } from "@/components/terminal/use-open-link";
@@ -46,21 +50,17 @@ import { useTerminalOpen } from "@/state/terminal-ui";
  */
 function OwnedTerminal({
   ownerKey,
-  projectId,
-  threadId,
   draftId,
+  fileLinks,
   onOpenLink,
   onOpenDevServer,
 }: {
   ownerKey: string;
-  /** The root file links resolve in: the thread's workspace, else the project's folder. */
-  projectId: ProjectId;
-  threadId?: ThreadId;
-  draftId: ThreadId;
+  draftId?: ThreadId;
+  fileLinks?: FileLinkHandlers;
   onOpenLink: (url: string) => void;
-  onOpenDevServer: (url: string) => void;
+  onOpenDevServer?: (url: string) => void;
 }) {
-  const fileLinks = useFileLinks({ projectId, threadId });
   const [open, setOpen] = useTerminalOpen(ownerKey);
   const [focusRequest, bumpFocus] = React.useReducer((count: number) => count + 1, 0);
   // Mounted here, not in the drawer: closing the last tab hides the drawer,
@@ -109,12 +109,13 @@ export function ThreadTerminal({
   onShowBrowser: () => void;
 }) {
   const openLink = useOpenInBrowserPane(threadId, onShowBrowser);
+  // File links resolve in the thread's workspace.
+  const fileLinks = useFileLinks({ projectId, threadId });
   return (
     <OwnedTerminal
       ownerKey={terminalOwnerKey({ threadId })}
-      projectId={projectId}
-      threadId={threadId}
       draftId={threadId}
+      fileLinks={fileLinks}
       onOpenLink={openLink}
       onOpenDevServer={(url) => void openInThreadBrowser(threadId, url)}
     />
@@ -133,13 +134,25 @@ export function ProjectTerminal({
   projectId: ProjectId;
   draftId: ThreadId;
 }) {
+  const fileLinks = useFileLinks({ projectId });
   return (
     <OwnedTerminal
       ownerKey={terminalOwnerKey({ projectId })}
-      projectId={projectId}
       draftId={draftId}
+      fileLinks={fileLinks}
       onOpenLink={openExternal}
       onOpenDevServer={openExternal}
     />
   );
+}
+
+/**
+ * Home's drawer, for a page with no project (first-run setup): terminals in
+ * the user's home folder, links in the system browser, and nothing that needs
+ * a composer or a project.
+ *
+ * @public — first-run setup mounts it, before any project exists.
+ */
+export function HomeTerminal() {
+  return <OwnedTerminal ownerKey={terminalOwnerKey({ home: true })} onOpenLink={openExternal} />;
 }

@@ -95,7 +95,7 @@ function TerminalAttachment({
   onExited,
   onGone,
 }: {
-  /** The terminal's owner, a thread or a project, by `terminalOwnerKey`. */
+  /** The terminal's owner, a thread, a project or home, by `terminalOwnerKey`. */
   ownerKey: string;
   terminalId: TerminalId;
   terminal: Terminal;
@@ -174,7 +174,7 @@ export default function TerminalView({
   onOpenLink,
   fileLinks,
 }: {
-  /** The terminal's owner, a thread or a project, by `terminalOwnerKey`. */
+  /** The terminal's owner, a thread, a project or home, by `terminalOwnerKey`. */
   ownerKey: string;
   terminalId: TerminalId | null;
   /** Focus the terminal whenever this changes; 0 means "not asked yet". */

@@ -1,6 +1,7 @@
 /**
- * Running and stopping scripts in an owner's terminal drawer — a thread's, or
- * on the New task page a project's (`ownerKey`, its `terminalOwnerKey`).
+ * Running and stopping scripts in an owner's terminal drawer — a thread's, on
+ * the New task page a project's, or in first-run setup home's (`ownerKey`, its
+ * `terminalOwnerKey`).
  *
  * A script runs as a terminal's own process (`terminal.open` with `script`),
  * in a new tab titled with its name, and the drawer opens on it. Running a
