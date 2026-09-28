@@ -26,7 +26,8 @@ thing, and [command-code-connector.md](command-code-connector.md) and
 
 Three processes of our own, plus three kinds of child the server starts: a
 `cmd` per turn, `agent-browser` per browser call, and a login shell per open
-terminal.
+terminal. It also launches the editor, file manager or terminal app a person
+opens a workspace in, and lets go of it at once.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -97,6 +98,16 @@ group.
 invocation per call against a named session
 (`apps/server/src/browser/agentBrowser.ts`). The Rust daemon underneath
 persists between invocations.
+
+**Server → editor.** `editors.open` starts the app a person picked in argv
+form with `shell: false`, `detached` and unreferenced, never waited on
+(`apps/server/src/editors/`). The command comes only from what detection found
+— an app bundle in `/Applications` or `~/Applications`, the CLI inside it or
+on `PATH`, or the platform's own opener — and the one argument a client shapes
+is the target: a path held inside the thread's workspace root lexically and
+through `realpath`, passed absolute so it can never read as a flag. The child's
+environment is the server's without `ELECTRON_RUN_AS_NODE`, which the packaged
+server runs under and which would start an Electron editor as bare node.
 
 **Server → shell.** One login shell per open terminal, started in a
 pseudo-terminal by `@lydell/node-pty` (`apps/server/src/terminal/pty.ts`). A
@@ -738,6 +749,7 @@ Directories, relative to `apps/server/`:
 | `src/terminal/`      | terminal service and sessions, pty seam, shell and env, scrollback, batcher                                      |
 | `src/git/`           | status/diff, branches, commit/push, gh pull requests, worktrees and their setup script, file search, checkpoints |
 | `src/fs/`            | `fs.browse`                                                                                                      |
+| `src/editors/`       | editor, file manager and terminal detection, path containment, launch argv (`editors.list`, `editors.open`)      |
 | `src/settings/`      | settings store users, connector manager and host, connector extension routing                                    |
 | `src/attachments/`   | the staging store and its reactor                                                                                |
 
@@ -755,8 +767,8 @@ enabled one.
 ### packages/contracts
 
 Every wire shape, as `effect/Schema` codecs. Modules: `base`, `ids`, `enums`,
-`runtime`, `orchestration`, `decisions`, `git`, `settings`, `keybindings`,
-`connectors`, `terminal`, `rpc`. `keybindings` holds the shipped keymap, the
+`runtime`, `orchestration`, `decisions`, `git`, `editors`, `settings`,
+`keybindings`, `connectors`, `terminal`, `rpc`. `keybindings` holds the shipped keymap, the
 chords reserved for features still being built, and how the user's stored
 overrides layer on the keymap, since both server and renderer need it.
 `git` holds `ThreadWorktree`, the worktree a thread was created in, and the branch, commit, push, pull-request and worktree RPCs with
@@ -764,8 +776,10 @@ their shapes (`GitBranch`, `GitBranchList`, `GitCommitResult`, `GitPushResult`,
 `GitPullRequestResult`, `GitWorktreeInfo`, and the `WorktreeSetupFrame` union
 the setup script streams); they are defined there rather than in `rpc.ts`,
 their names are spread into `RPC_METHODS`, and `rpc.ts` lists them in the
-group. `PoseidonRpcError` lives in `rpcError.ts` so `git` can name it without an
-import cycle, and `rpc` re-exports it. `browser.ts` holds the browser pane's
+group. `editors` does the same for `editors.list` and `editors.open`, with
+`EditorId` and `DetectedEditor`. `PoseidonRpcError` lives in `rpcError.ts` so
+`git` and `editors` can name it without an import cycle, and `rpc` re-exports
+it. `browser.ts` holds the browser pane's
 payloads (`BrowserState`, `BrowserHumanInput`, `DevServer`,
 `BrowserToolStatus`), and `files.ts` the workspace file reads' payloads
 (`FileSearchResult`, `FileContent`, and `FileStat` with the
@@ -1905,6 +1919,8 @@ the client in the terminal `incompatible` state.
 | `git.worktree.list`           | call   | The repository's worktrees, the project's own checkout first                         |
 | `git.worktree.remove`         | call   | Removes one, keeping its branch; `conflict` on unsaved work unless `force`           |
 | `git.worktree.setup`          | stream | Runs the project's setup script (from settings) in a worktree, streaming its output  |
+| `editors.list`                | call   | Editors, file manager and terminal installed on the server's machine                 |
+| `editors.open`                | call   | Opens the root or a path inside it in one of those, at a line where supported        |
 | `checkpoints.list`            | call   | Checkpoints that still exist as refs, read in the thread's root                      |
 | `browser.subscribe`           | stream | The browser pane's state, and frames when the browser is ours                        |
 | `browser.humanInput`          | call   | A human gesture into the browser the agent is driving                                |
