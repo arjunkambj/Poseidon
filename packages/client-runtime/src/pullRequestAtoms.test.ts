@@ -7,9 +7,15 @@
 
 import { describe, expect, it } from "@effect/vitest";
 import { makeProjectId, makeThreadId } from "@poseidon/contracts/ids";
-import type { PullRequestMarks, PullRequestView } from "@poseidon/contracts/pullRequest";
+import type {
+  PullRequestFixContext,
+  PullRequestMarks,
+  PullRequestView,
+} from "@poseidon/contracts/pullRequest";
+import { PoseidonRpcError } from "@poseidon/contracts/rpc";
 import type * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 import { AsyncResult, AtomRegistry } from "effect/unstable/reactivity";
@@ -33,6 +39,10 @@ interface Script {
   readonly marks: Array<{ projectId: string }>;
   /** The view's next answer: a branch with none, or a refusal. */
   failView: boolean;
+  readonly actions?: Array<unknown>;
+  readonly fixContexts?: Array<unknown>;
+  /** The action's next answer is gh's refusal. */
+  failAction?: boolean;
 }
 
 const noneOn = (branch: string): PullRequestView => ({ state: "none", branch });
@@ -48,6 +58,29 @@ const fakeClient = (script: Script): PoseidonRpcClient =>
               return yield* Effect.fail({ message: "HTTP 502: Bad Gateway" });
             }
             return noneOn(`branch-${script.view.length}`);
+          });
+      }
+      if (key === "git.pullRequest.action") {
+        return (payload: unknown) =>
+          Effect.gen(function* () {
+            script.actions?.push(payload);
+            if (script.failAction === true) {
+              return yield* Effect.fail(
+                new PoseidonRpcError({
+                  code: "conflict",
+                  message:
+                    "Pull request #7 is not mergeable: the merge commit cannot be cleanly created.",
+                }),
+              );
+            }
+            return noneOn("merged-away");
+          });
+      }
+      if (key === "git.pullRequest.fixContext") {
+        return (payload: unknown) =>
+          Effect.sync((): PullRequestFixContext => {
+            script.fixContexts?.push(payload);
+            return { checks: [], conflictFiles: ["a.txt"], base: "origin/main" };
           });
       }
       if (key === "git.pullRequest.marks") {
@@ -228,5 +261,90 @@ describe("pull request atoms", () => {
         expect(script.marks).toHaveLength(3);
       }),
     ),
+  );
+
+  it.live("an action sends the pinned head and refreshes the marks whatever it answers", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const projectId = makeProjectId();
+        const threadId = makeThreadId();
+        const clock = { now: 1_000 };
+        const script: Script = { view: [], marks: [], failView: false, actions: [] };
+        const { registry, pullRequestMarksAtom, runPullRequestAction } = yield* runtimeWith(
+          fakeClient(script),
+          clock,
+        );
+        const marks = pullRequestMarksAtom(projectId);
+        registry.mount(marks);
+        yield* Effect.promise(() =>
+          awaitValue<MarksQuery, Cause.NoSuchElementError>(registry, marks, (q) => q._tag === "ok"),
+        );
+
+        const merged = yield* Effect.promise(() =>
+          runPullRequestAction(registry, {
+            scope: { projectId, threadId },
+            number: 7,
+            headRefOid: "0123456789abcdef",
+            action: { kind: "merge", method: "squash" },
+          }),
+        );
+        expect(Exit.isSuccess(merged) && merged.value).toEqual(noneOn("merged-away"));
+        expect(script.actions).toEqual([
+          {
+            projectId,
+            threadId,
+            number: 7,
+            headRefOid: "0123456789abcdef",
+            action: { kind: "merge", method: "squash" },
+          },
+        ]);
+        // Well inside the throttle, and still the marks list again.
+        yield* Effect.promise(() =>
+          awaitValue<MarksQuery, Cause.NoSuchElementError>(
+            registry,
+            marks,
+            () => script.marks.length === 2,
+          ),
+        );
+
+        script.failAction = true;
+        const refused = yield* Effect.promise(() =>
+          runPullRequestAction(registry, {
+            scope: { projectId },
+            number: 7,
+            action: { kind: "close" },
+          }),
+        );
+        expect(Exit.isFailure(refused)).toBe(true);
+        expect(script.actions?.[1]).toEqual({ projectId, number: 7, action: { kind: "close" } });
+        yield* Effect.promise(() =>
+          awaitValue<MarksQuery, Cause.NoSuchElementError>(
+            registry,
+            marks,
+            () => script.marks.length === 3,
+          ),
+        );
+      }),
+    ),
+  );
+
+  it.live("the fix context is asked for the scope, number and kind", () =>
+    Effect.gen(function* () {
+      const projectId = makeProjectId();
+      const threadId = makeThreadId();
+      const script: Script = { view: [], marks: [], failView: false, fixContexts: [] };
+      const { registry, pullRequestFixContext } = yield* runtimeWith(fakeClient(script), {
+        now: 0,
+      });
+      const exit = yield* Effect.promise(() =>
+        pullRequestFixContext(registry, {
+          scope: { projectId, threadId },
+          number: 7,
+          kind: "conflicts",
+        }),
+      );
+      expect(Exit.isSuccess(exit) && exit.value.conflictFiles).toEqual(["a.txt"]);
+      expect(script.fixContexts).toEqual([{ projectId, threadId, number: 7, kind: "conflicts" }]);
+    }),
   );
 });

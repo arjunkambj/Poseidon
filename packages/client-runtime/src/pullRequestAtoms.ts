@@ -8,6 +8,13 @@
  *   thread of the project whose branch has a pull request.
  * - `refreshPullRequests(registry, projectId)` — reread both now: the pane's
  *   refresh button, and after a write to the pull request.
+ * - `runPullRequestAction(registry, input)` — `git.pullRequest.action`, a
+ *   one-shot (`./oneShot`) that resolves with its own `Exit`: the view as it
+ *   is after the write, or the server's refusal. Either way the project's pull
+ *   request reads are refreshed once it settles, marks included, so the tab
+ *   and the sidebar follow a merge or a close.
+ * - `pullRequestFixContext(registry, input)` — `git.pullRequest.fixContext`,
+ *   the one-shot a "fix" thread's first message is built from.
  *
  * They follow the git atoms' two shapes (`./gitAtoms`): each is a stream
  * driven by the connection's status, so a mounted read fetches on connect and
@@ -25,7 +32,11 @@
  */
 
 import type { ProjectId } from "@poseidon/contracts/ids";
-import type { PullRequestMarks, PullRequestView } from "@poseidon/contracts/pullRequest";
+import type {
+  PullRequestAction,
+  PullRequestMarks,
+  PullRequestView,
+} from "@poseidon/contracts/pullRequest";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
@@ -40,6 +51,28 @@ import {
   type GitQuery,
   type GitScope,
 } from "./gitAtoms";
+import { runOneShot } from "./oneShot";
+
+/** A write to pull request `number` of the scope's branch. */
+export interface PullRequestActionInput {
+  readonly scope: GitScope;
+  readonly number: number;
+  /** The head commit the pane showed; a merge pins it. */
+  readonly headRefOid?: string;
+  readonly action: PullRequestAction;
+}
+
+/** What a fix thread for pull request `number` of the scope's branch starts from. */
+export interface PullRequestFixContextInput {
+  readonly scope: GitScope;
+  readonly number: number;
+  readonly kind: "checks" | "conflicts";
+}
+
+const scopePayload = (scope: GitScope) => ({
+  projectId: scope.projectId,
+  ...(scope.threadId === undefined ? {} : { threadId: scope.threadId }),
+});
 
 /** How long a marks listing stands before a revision bump lists again. */
 export const MARKS_MIN_INTERVAL_MS = 60_000;
@@ -96,12 +129,7 @@ export const makePullRequestAtoms = (
       get(pullRequestRevisionAtom(scope.projectId));
       return connectedEpochs.pipe(
         Stream.mapEffect(() =>
-          call<PullRequestView>((client) =>
-            client["git.pullRequest.view"]({
-              projectId: scope.projectId,
-              ...(scope.threadId === undefined ? {} : { threadId: scope.threadId }),
-            }),
-          ),
+          call<PullRequestView>((client) => client["git.pullRequest.view"](scopePayload(scope))),
         ),
       );
     });
@@ -147,7 +175,52 @@ export const makePullRequestAtoms = (
     registry.update(pullRequestRevisionAtom(projectId), (revision) => revision + 1);
   };
 
-  return { pullRequestViewAtom, pullRequestMarksAtom, refreshPullRequests };
+  /**
+   * One write, run on its own (`./oneShot`) so it outlives the menu that
+   * started it. Whatever the answer, the pull request moved or may have: the
+   * project's view and marks are reread once it settles.
+   */
+  const runPullRequestAction = (
+    registry: AtomRegistry.AtomRegistry,
+    input: PullRequestActionInput,
+  ) =>
+    runOneShot(runtime, registry, () =>
+      Effect.gen(function* () {
+        const client = yield* (yield* Connection).client;
+        return yield* client["git.pullRequest.action"]({
+          ...scopePayload(input.scope),
+          number: input.number,
+          ...(input.headRefOid === undefined ? {} : { headRefOid: input.headRefOid }),
+          action: input.action,
+        });
+      }).pipe(
+        Effect.ensuring(Effect.sync(() => refreshPullRequests(registry, input.scope.projectId))),
+      ),
+    );
+
+  /** A read, but asked for once at the moment a fix thread starts — never kept. */
+  const pullRequestFixContext = (
+    registry: AtomRegistry.AtomRegistry,
+    input: PullRequestFixContextInput,
+  ) =>
+    runOneShot(runtime, registry, () =>
+      Effect.gen(function* () {
+        const client = yield* (yield* Connection).client;
+        return yield* client["git.pullRequest.fixContext"]({
+          ...scopePayload(input.scope),
+          number: input.number,
+          kind: input.kind,
+        });
+      }),
+    );
+
+  return {
+    pullRequestViewAtom,
+    pullRequestMarksAtom,
+    refreshPullRequests,
+    runPullRequestAction,
+    pullRequestFixContext,
+  };
 };
 
 export type PullRequestAtoms = ReturnType<typeof makePullRequestAtoms>;
