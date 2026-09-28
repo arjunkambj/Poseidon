@@ -2912,7 +2912,7 @@ first toolbar navigation), so opening the pane never starts one.
 
 ### Tabs and the toolbar
 
-In-app the pane has a tab strip above the address bar: one entry per tab of
+In-app the pane has a tab strip under the address bar: one entry per tab of
 the thread with its favicon (http(s) only) or a spinner while it loads, a close
 button each, and New tab, which opens `about:blank` and focuses the address.
 A page's popup — a `target=_blank` link or `window.open` — becomes a tab

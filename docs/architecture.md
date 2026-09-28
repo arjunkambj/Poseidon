@@ -624,15 +624,15 @@ under the kill switch the pane says "In-app browser is disabled
 labels its frame stream "Headless browser (web mode)".
 
 **The pane's chrome** (`apps/web/src/components/panes/browser/`,
-`in-app-toolbar.tsx`). In-app, the pane is a tab strip (`tab-strip.tsx`: stock
-Buttons per tab — the stock tabs cannot hold a close button inside a trigger —
-with the page's http(s) favicon, a spinner while it loads, and New tab), the
-address bar (`address-bar.tsx`: back and forward disabled at the ends of the
-history, reload that becomes stop while the page loads, a zoom badge when not
-at 100%) and a "more" menu (`more-menu.tsx`: zoom in, out and reset through
-the webview's zoom level, stepped through Chromium's presets in `zoom.ts`;
-DevTools, which opens in its own window beside the bridge's debugger; open in
-the system browser; copy the address). Everything moves the selected webview
+`in-app-toolbar.tsx`). In-app, the pane is the address bar (`address-bar.tsx`:
+back and forward disabled at the ends of the history, reload that becomes stop
+while the page loads, a zoom badge when not at 100%) with a "more" menu
+(`more-menu.tsx`: zoom in, out and reset through the webview's zoom level,
+stepped through Chromium's presets in `zoom.ts`; DevTools, which opens in its
+own window beside the bridge's debugger; open in the system browser; copy the
+address), and under it the tab strip (`tab-strip.tsx`: stock Buttons per tab —
+the stock tabs cannot hold a close button inside a trigger — with the page's
+http(s) favicon, a spinner while it loads, and New tab). Everything moves the selected webview
 directly (`tab-actions.ts`) and reports a history move as the matching
 `browser.humanInput` gesture — `stop` included — so the epoch bumps and the
 server never runs agent-browser for a person. `address.ts` decides what a
