@@ -19,8 +19,10 @@
  * - `assistant` — one record per content block, the blocks of one reply
  *   sharing `message.id`; their `text` blocks are joined. `thinking` and
  *   `tool_use` blocks are left out, as is the CLI's `<synthetic>` model.
- * - `isMeta` records are the CLI's notes to the model, and `isSidechain`
- *   records a subagent's conversation; both are skipped.
+ * - `isMeta` records are the CLI's notes to the model, `isSidechain` records
+ *   a subagent's conversation, and an `isCompactSummary` user record (also
+ *   `isVisibleInTranscriptOnly`) the CLI's summary of the conversation before
+ *   a compaction, whose messages the file still holds; all are skipped.
  * - `custom-title` (`customTitle`, set by the user) and `ai-title`
  *   (`aiTitle`) name the session; the last of each wins. Every other record
  *   type — attachments, queue operations, file history, system, last prompt,
@@ -97,7 +99,7 @@ class ClaudeScan {
       return;
     }
     if (raw.type !== "user" && raw.type !== "assistant") return;
-    if (raw.isMeta === true || raw.isSidechain === true || !isRecord(raw.message)) return;
+    if (notTheConversation(raw) || !isRecord(raw.message)) return;
     const timestamp = textField(raw, "timestamp");
     const at = timestamp === undefined ? {} : { timestamp };
     if (raw.type === "user") {
@@ -112,6 +114,13 @@ class ClaudeScan {
     }
   };
 }
+
+/** The CLI's notes, a subagent's records and a compaction's summary. */
+const notTheConversation = (raw: Record<string, unknown>): boolean =>
+  raw.isMeta === true ||
+  raw.isSidechain === true ||
+  raw.isCompactSummary === true ||
+  raw.isVisibleInTranscriptOnly === true;
 
 /** The `text` blocks of a content array, joined; undefined when there are none. */
 const blockText = (content: unknown): string | undefined => {

@@ -183,6 +183,31 @@ describe("makeClaudeSessionFiles", () => {
     }),
   );
 
+  it.effect("never takes a compaction's summary for a message or a title", () =>
+    Effect.gen(function* () {
+      const config = copyFixture();
+      // The alpha fixture's own compaction: its summary is not in the messages.
+      const alpha = yield* readerIn(config).read(ALPHA_ID);
+      expect(alpha.messages.some((message) => message.text.includes("being continued"))).toBe(
+        false,
+      );
+      // A file that starts with the summary is titled by the prompt after it.
+      const source = NodeFS.readFileSync(NodePath.join(config, ALPHA_DIR, `${ALPHA_ID}.jsonl`), {
+        encoding: "utf8",
+      }).split("\n");
+      const summary = source.find((line) => line.includes('"isCompactSummary":true'));
+      const prompt = source.find((line) => line.includes('"Also mention the licence"'));
+      const id = "0b6f3c1e-5a2d-4c8e-9f10-2a3b4c5d6e04";
+      NodeFS.writeFileSync(
+        NodePath.join(config, ALPHA_DIR, `${id}.jsonl`),
+        `${[summary, prompt].join("\n")}\n`,
+      );
+      const read = yield* readerIn(config).read(id);
+      expect(read.session.title).toBe("Also mention the licence");
+      expect(read.messages.map((message) => message.text)).toEqual(["Also mention the licence"]);
+    }),
+  );
+
   it.effect("answers an empty list for a config directory with no sessions", () =>
     Effect.gen(function* () {
       const missing = NodePath.join(NodeOS.tmpdir(), "claude-session-files-missing", "config");
