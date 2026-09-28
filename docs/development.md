@@ -513,21 +513,22 @@ tool did to the workspace (the file an allowed write made, the file a denied
 command did not) is checked by the live and record drivers; a replay checks
 the thread: the cards, their answers, and the rows.
 
-| File                 | Recording               | Scenario                                                     |
-| -------------------- | ----------------------- | ------------------------------------------------------------ |
-| `signed-out.test.ts` | `signed-out-turn`       | a turn against a signed-out CLI: the probe and the error row |
-| `turn.test.ts`       | `plain-reply`           | a turn, from `project.create` to the answer on screen        |
-| `interrupt.test.ts`  | `interrupt`             | Stop after the first text, then the next message             |
-| `resume.test.ts`     | `resume`                | the server restarts and the conversation goes on             |
-| `approval.test.ts`   | `edit-approval`         | a write asked about, then allowed once                       |
-| `approval.test.ts`   | `deny`                  | a command denied, and the file it would have made absent     |
-| `approval.test.ts`   | `sensitive-full-access` | `cat .env` under full access still opens a card              |
-| `plan.test.ts`       | `plan-accept`           | the plan card, then the accepted plan implemented            |
-| `question.test.ts`   | `question`              | the question card, and the answer written to `colour.txt`    |
-| `subagent.test.ts`   | `subagent`              | a Task delegation, its rows nested under the task row        |
-| `model.test.ts`      | `model-switch`          | the model and effort switched between turns, in session      |
-| `attachment.test.ts` | `image`                 | a staged PNG sent as an image block, and its colour named    |
-| `steering.test.ts`   | `steering`              | a message steered in while a command runs, answered in-turn  |
+| File                    | Recording               | Scenario                                                     |
+| ----------------------- | ----------------------- | ------------------------------------------------------------ |
+| `signed-out.test.ts`    | `signed-out-turn`       | a turn against a signed-out CLI: the probe and the error row |
+| `turn.test.ts`          | `plain-reply`           | a turn, from `project.create` to the answer on screen        |
+| `interrupt.test.ts`     | `interrupt`             | Stop after the first text, then the next message             |
+| `resume.test.ts`        | `resume`                | the server restarts and the conversation goes on             |
+| `approval.test.ts`      | `edit-approval`         | a write asked about, then allowed once                       |
+| `approval.test.ts`      | `deny`                  | a command denied, and the file it would have made absent     |
+| `approval.test.ts`      | `sensitive-full-access` | `cat .env` under full access still opens a card              |
+| `plan.test.ts`          | `plan-accept`           | the plan card, then the accepted plan implemented            |
+| `question.test.ts`      | `question`              | the question card, and the answer written to `colour.txt`    |
+| `subagent.test.ts`      | `subagent`              | a Task delegation, its rows nested under the task row        |
+| `subagent-stop.test.ts` | `subagent-stop`         | one subagent stopped, its row failed, the turn going on      |
+| `model.test.ts`         | `model-switch`          | the model and effort switched between turns, in session      |
+| `attachment.test.ts`    | `image`                 | a staged PNG sent as an image block, and its colour named    |
+| `steering.test.ts`      | `steering`              | a message steered in while a command runs, answered in-turn  |
 
 A scenario whose recording has not been made yet is skipped under replay, and
 its title says so. `packages/testkit/fixtures/claude/README.md` lists which

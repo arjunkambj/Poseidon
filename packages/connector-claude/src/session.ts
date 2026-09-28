@@ -62,7 +62,7 @@ import {
   TurnInProgress,
 } from "@poseidon/connector-sdk/definition";
 import { makeBoundedEventQueue, type SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
-import type { ConnectorInstanceId, ThreadId, TurnId } from "@poseidon/contracts/ids";
+import type { ConnectorInstanceId, ItemId, ThreadId, TurnId } from "@poseidon/contracts/ids";
 import { makeEventId, makeTurnId } from "@poseidon/contracts/ids";
 import type {
   ThreadSettings,
@@ -641,6 +641,22 @@ export const makeClaudeSession = (
         ),
       );
 
+    /**
+     * One running subagent stopped through the SDK's `stopTask`, by the CLI's
+     * own `task_id` for its row; the CLI then reports the task stopped, which
+     * settles the row as failed (`translate/subagents.ts`), and the turn goes
+     * on. A row whose task already settled, or whose id the CLI never named,
+     * has nothing to stop.
+     */
+    const stopTask = (itemId: ItemId): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        const taskId = translator.cliTaskOf(itemId);
+        if (taskId === undefined) {
+          return yield* services.logger.log("debug", "claude task not running", { itemId });
+        }
+        yield* control("stopTask", () => session.stopTask(taskId));
+      });
+
     /** The CLI's permission mode, set; kept as `cliMode` once the CLI took it. */
     const applyMode = (mode: PermissionMode): Effect.Effect<void> =>
       Effect.tryPromise(() => session.setPermissionMode(mode)).pipe(
@@ -702,6 +718,7 @@ export const makeClaudeSession = (
       send,
       steer,
       interrupt,
+      stopTask,
       respondToRequest: (requestId, decision) => gate.respond(requestId, decision),
       respondToUserInput: (requestId, answers) =>
         interactions.respondToUserInput(requestId, answers),

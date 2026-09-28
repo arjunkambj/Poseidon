@@ -140,6 +140,8 @@ export interface Translator {
     toolUseId: string | undefined,
     markdown: string,
   ) => ReadonlyArray<PendingRuntimeEvent>;
+  /** The CLI's `task_id` for a running task's row (`subagents.ts`). */
+  readonly cliTaskOf: (itemId: ItemId) => string | undefined;
 }
 
 /** Why a tool row still open at the end of its turn is failed. */
@@ -496,5 +498,6 @@ export const makeTranslator = (options: {
     totalCost: () => totalCost,
     toolCallsRan: tools.ran,
     planProposed: (toolUseId, markdown) => withParents(tools.planProposed(toolUseId, markdown)),
+    cliTaskOf: subagents.cliTaskOf,
   };
 };

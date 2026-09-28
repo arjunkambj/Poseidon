@@ -616,6 +616,13 @@ Unlike Command Code's, a subagent's own tool calls reach the PreToolUse hook —
 the hook input names the subagent (`agent_id`) — so they are gated one by one.
 `subagent` is the recording that will show a delegation end to end.
 
+Stopping one subagent (`stopTask` on the handle) calls the SDK's `stopTask`
+with the CLI's `task_id` that the task's `task_started` tied to its call; the
+CLI then reports the task stopped, which settles the row as failed, and the
+turn goes on. A row whose task has settled, or whose id no `task_started` has
+named yet, has nothing to stop. This rests on the SDK's declarations until
+`subagent-stop` is recorded.
+
 ## Resume, rewind and fork
 
 `ClaudeSessionRef` (`sessionRef.ts`) is `{ sessionId, cwd, lastAssistantUuid?,
@@ -791,13 +798,14 @@ message the turn is held for that ends without being `started`.
 | `resume`       | `true`       | `resume: <sessionId>` against the CLI's own transcript                                                                                          |
 | `fork`         | `false`      | nothing recorded forks a session                                                                                                                |
 | `interrupt`    | `session`    | `Query.interrupt()` inside the one long-lived process                                                                                           |
+| `stopTask`     | `true`       | `Query.stopTask(task_id)` with the CLI's id for the row; `subagent-stop` is the recording that will show it                                     |
 | `rollback`     | `false`      | `resumeSessionAt` exists, but nothing recorded shows it; Poseidon's checkpoints are git                                                         |
 | `compaction`   | `true`       | `/compact` runs as the CLI's command; `session-controls`                                                                                        |
 | `questions`    | `true`       | AskUserQuestion, offered to SDK sessions (recorded `system/init`)                                                                               |
 | `runtimeModes` | all three    | the PreToolUse hook puts every call in every mode past the ladder                                                                               |
 | `attachments`  | `files`      | images as blocks, anything else by path under a readable directory                                                                              |
 
-`planMode`, `subagents` and `questions` rest on the SDK's declarations and on
+`planMode`, `subagents`, `questions` and `stopTask` rest on the SDK's declarations and on
 reading the CLI's bundle until their recordings are made; the capability
 comments say which recording will pin each.
 

@@ -67,4 +67,8 @@ export const CLAUDE_CAPABILITIES: ConnectorCapabilities = {
   // attachments directory, which the session adds to the CLI's readable
   // directories, and is named in the prompt (`attachments.ts`).
   attachments: "files",
+  // The SDK's `stopTask` with the CLI's `task_id` for the row
+  // (`session.ts`). `subagent-stop` is the recording that will show a
+  // subagent stopped mid-turn; none is made yet.
+  stopTask: true,
 };

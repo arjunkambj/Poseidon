@@ -103,6 +103,12 @@ export interface Subagents {
     toolUseId: string,
     message: Json,
   ) => ReadonlyArray<PendingRuntimeEvent> | null;
+  /**
+   * The CLI's `task_id` for the running task whose row is `itemId`, which is
+   * what the SDK's `stopTask` takes. Undefined once the task settled, or
+   * before its `task_started` named the id.
+   */
+  readonly cliTaskOf: (itemId: ItemId) => string | undefined;
   /** Holds a subagent's message until its task's row opens. */
   readonly hold: (toolUseId: string, message: Json) => void;
   /** The held messages whose task row is open now, taken out. */
@@ -192,10 +198,19 @@ export const makeSubagents = (): Subagents => {
     }
   };
 
+  const cliTaskOf: Subagents["cliTaskOf"] = (itemId) => {
+    for (const [taskId, toolUseId] of calls) {
+      const task = tasks.get(toolUseId);
+      if (task?.itemId === itemId && !task.settled) return taskId;
+    }
+    return undefined;
+  };
+
   return {
     opened,
     callOf,
     lifecycle,
+    cliTaskOf,
     hold: (toolUseId, message) => {
       held.set(toolUseId, [...(held.get(toolUseId) ?? []), message]);
     },
