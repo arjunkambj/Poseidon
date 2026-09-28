@@ -1875,6 +1875,46 @@ the Changes tab to Branch vs base and opens it on that file through its deep
 link (`?pane=changes&file=`); the pane opens the file but does not scroll to
 the line.
 
+Under the summary sit the lifecycle actions (`pr-actions.ts`,
+`pr-actions-menu.tsx`): the first one the pull request offers is a button and
+the rest are behind a "…" menu. A merged pull request offers none, a closed one
+Reopen, a draft Ready for review and Close, and an open one Merge, Convert to
+draft and Close. Merge is listed disabled, with the reason, while GitHub says
+the branch conflicts with its base or the repository allows no merge method.
+Failing checks only add a warning line to its confirm. Each action opens one
+confirm. Merge's confirm also has the method picker, which lists the methods the
+repository allows, squash first when allowed, and names the head commit it will
+merge. The action runs through `runPullRequestAction`, a one-shot that pins
+that commit for a merge (`headRefOid`) and rereads the tab and the project's
+marks once it settles. Its toast reads "Merging #42…" and turns in place into
+the success, or into `Merge failed: <reason>`. The reason is the server's own
+words: gh's install or sign-in sentence when gh is not ready, or GitHub's
+refusal.
+
+The **Fix** menu (`pr-fix-menu.tsx`) lists only the fixes that apply to an open
+pull request. **Fix failing checks** shows while a check failed, **Resolve
+conflicts** while GitHub says the branch conflicts, and **Address review
+comments** while a review thread is unresolved or a reviewer requested
+changes. Its confirm says where the new thread will work and shows a preview
+of the first message. Once confirmed, `use-fix-thread.ts` does three things.
+It reads `git.pullRequest.fixContext` for checks or conflicts. It creates a
+thread with an id minted there, so a blank newest thread is never reused. That
+thread goes in the source thread's worktree when the source has one, and
+otherwise is a local thread on the same branch, and it keeps the source's
+settings. Then it sends the prompt as the thread's first turn and opens the
+thread. The prompt comes from `pr-fix-prompt.ts` and always starts with the
+pull request's number, title, link and head → base. It then carries one of
+three things:
+
+- the failing checks, each with its link and the fenced tail of its failed log
+  where the server read one;
+- the conflicting files as of the last fetch, and the instruction to fetch,
+  merge `origin/<base>` and resolve them;
+- every unresolved review thread as `path:line @author body` with its replies,
+  plus the summaries of the reviews that requested changes.
+
+A refused context read or send is a toast with the server's words.
+
 Loading, not connected, gh missing or signed out (with gh's own reason and
 fix), no pull request for the branch (named), and a failed read with a retry
 are each an `Empty`. The palette's "Show pull request" (`dock.pullRequest`, no
