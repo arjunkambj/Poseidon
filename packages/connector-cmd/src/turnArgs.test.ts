@@ -112,6 +112,50 @@ const browserPlugin: SessionPlugin = {
   mcpServers: [],
 };
 
+describe("a forked first turn", () => {
+  const forkTurn = (resumeSessionId: string | null, fork: boolean) =>
+    prepareTurn({
+      turn: { text: "hi", attachments: [], mentions: [] },
+      settings: settings("default"),
+      attachmentsDir: NodePath.join(NodeFS.realpathSync(NodePath.resolve("/tmp")), "poseidon-none"),
+      threadId: makeThreadId(),
+      resumeSessionId,
+      fork,
+    });
+
+  /**
+   * `fixtures/cmd/fork/` turn 2 was spawned with `--fork-session` straight
+   * after `--session <id>`: the harness answered with a new session id on
+   * `run_start` and left the first session's transcript byte for byte as it
+   * was. The flag sits in the same place here.
+   */
+  it("puts --fork-session right after the session it forks, as recorded", async () => {
+    const recorded = JSON.parse(
+      NodeFS.readFileSync(NodePath.join(RECORDINGS, "fork", "manifest.json"), "utf8"),
+    ) as { turns: ReadonlyArray<{ connectorArgs: ReadonlyArray<string>; sessionId: string }> };
+    const origin = recorded.turns[0]!.sessionId;
+    const flags = (args: ReadonlyArray<string>) => {
+      const at = args.indexOf("--session");
+      return args.slice(at, at + 3);
+    };
+    const prepared = await forkTurn(origin, true);
+    expect(flags(prepared.args)).toEqual(["--session", origin, "--fork-session"]);
+    expect(flags(recorded.turns[1]!.connectorArgs)).toEqual(flags(prepared.args));
+  });
+
+  it("resumes without forking once the fork is made", async () => {
+    const prepared = await forkTurn("d7046b9b-50c8-4567-a5c8-81615db9a65b", false);
+    expect(prepared.args).toContain("--session");
+    expect(prepared.args).not.toContain("--fork-session");
+  });
+
+  it("has nothing to fork without a session to resume", async () => {
+    const prepared = await forkTurn(null, true);
+    expect(prepared.args).not.toContain("--session");
+    expect(prepared.args).not.toContain("--fork-session");
+  });
+});
+
 /** The prompt `prepareTurn` builds for one turn: argv's second element. */
 const promptOf = async (
   turn: TurnInput,

@@ -264,6 +264,15 @@ export interface StartSessionInput {
  */
 export interface ResumeSessionInput extends StartSessionInput {
   readonly sessionRef: unknown;
+  /**
+   * Continue `sessionRef`'s conversation in a new harness session and leave
+   * the original untouched: a thread forked from another. Sent only to a
+   * connector whose capabilities declare `fork`; every other connector may
+   * ignore it. A connector that cannot fork this ref fails rather than
+   * starting fresh, so the server can start the thread its own way and carry
+   * the conversation over as text.
+   */
+  readonly fork?: boolean;
 }
 
 // ── Instance and definition ────────────────────────────────────

@@ -18,6 +18,8 @@ export const CMD_CAPABILITIES: ConnectorCapabilities = {
   // their paths in the prompt instead.
   images: true,
   resume: true,
+  // `--session <id> --fork-session`: a new session with the history, the
+  // original left as it was (`fixtures/cmd/fork/`).
   fork: true,
   // Stopping signals the one turn's process group; the session outlives it and
   // the next turn resumes the same conversation.

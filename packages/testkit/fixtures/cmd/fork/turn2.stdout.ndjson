@@ -1,0 +1,14 @@
+{"type":"event","event":{"type":"run_start","sessionId":"d7046b9b-50c8-4567-a5c8-81615db9a65b"}}
+{"type":"event","event":{"type":"turn_start","turnNumber":1}}
+{"type":"event","event":{"type":"message_start"}}
+{"type":"event","event":{"type":"model_request_start","model":"poolside/laguna-s-2.1-free"}}
+{"type":"event","event":{"type":"model_trace","traceId":"ed7a40ed8b3eb2350cc250d51b0fb139"}}
+{"type":"event","event":{"type":"text_delta","delta":"pine"}}
+{"type":"event","event":{"type":"message_update","content":[{"type":"text","text":"pine"}]}}
+{"type":"event","event":{"type":"text_delta","delta":"apple"}}
+{"type":"event","event":{"type":"message_update","content":[{"type":"text","text":"pineapple"}]}}
+{"type":"event","event":{"type":"model_request_end","model":"poolside/laguna-s-2.1-free","usage":{"inputTokens":17241,"outputTokens":3,"cacheReadTokens":2624,"cacheWriteTokens":0},"stopReason":"stop"}}
+{"type":"event","event":{"type":"message_end","content":[{"type":"text","text":"pineapple"}]}}
+{"type":"event","event":{"type":"turn_end","turnNumber":1,"hadToolCalls":false,"usage":{"inputTokens":17241,"outputTokens":3,"cacheReadTokens":2624,"cacheWriteTokens":0}}}
+{"type":"event","event":{"type":"run_end","result":{"finalText":"pineapple","stopReason":"end_turn","turnCount":1,"usage":{"inputTokens":17241,"outputTokens":3,"cacheReadTokens":2624,"cacheWriteTokens":0},"systemPromptTokens":null,"nextState":{"sessionId":"d7046b9b-50c8-4567-a5c8-81615db9a65b","messages":[{"role":"user","content":[{"type":"text","text":"Remember the word `pineapple`. Reply with exactly: stored"}],"meta":{"source":"user","createdAt":1790573060060,"messageId":"45afef4d-a6cf-48ab-8ec2-a2c3f17c31a2"}},{"role":"assistant","content":[{"type":"text","text":"stored"}],"meta":{"source":"model","createdAt":1790573062396,"messageId":"9f86946d-c9ec-4360-ab58-c0899d46a975"}},{"role":"user","content":[{"type":"text","text":"What word did I ask you to remember? Reply with just the word."}],"meta":{"source":"user","createdAt":1790573063134,"messageId":"38dde095-7773-4d92-a18c-104c70c6c0a2"}},{"role":"assistant","content":[{"type":"text","text":"pineapple"}],"meta":{"source":"model","createdAt":1790573067500,"messageId":"e905078c-76a2-41bb-a18b-6f1a5e566ad7"}}],"interrupted":false,"modState":{"workspace":{"cwd":"<SCRATCH>/repo","platform":"darwin","branch":"main","gitStatus":"?? .commandcode/","recentCommits":["f2e153d seed"],"additionalDirectories":[]},"compaction":{"tokens":17250,"basis":{"role":"assistant","content":[{"type":"text","text":"pineapple"}],"meta":{"source":"model","createdAt":1790573067500,"messageId":"e905078c-76a2-41bb-a18b-6f1a5e566ad7"}}}}}}}}
+{"type":"result","subtype":"success","sessionId":"d7046b9b-50c8-4567-a5c8-81615db9a65b","stopReason":"end_turn","usage":{"inputTokens":17241,"outputTokens":3,"cacheReadTokens":2624,"cacheWriteTokens":0},"durationMs":4617,"finalText":"pineapple"}

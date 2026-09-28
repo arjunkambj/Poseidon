@@ -1,0 +1,479 @@
+{
+  "scenario": "fork",
+  "description": "a first turn, then --session <it> --fork-session: a new session carrying the first one's history, the first left untouched — and a third turn resuming the fork",
+  "cli": "/opt/homebrew/bin/cmd",
+  "cliVersion": "1.66.0",
+  "recordedOn": "2026-09-28",
+  "model": "poolside/laguna-s-2.1-free",
+  "modelRequested": "poolside/laguna-s-2.1-free",
+  "real": true,
+  "turns": [
+    {
+      "index": 0,
+      "prompt": "Remember the word `pineapple`. Reply with exactly: stored",
+      "connectorArgs": [
+        "-p",
+        "Remember the word `pineapple`. Reply with exactly: stored",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--yolo",
+        "--max-turns",
+        "1",
+        "--tools-enable",
+        "ask_user_question"
+      ],
+      "argv": [
+        "-p",
+        "Remember the word `pineapple`. Reply with exactly: stored",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--yolo",
+        "--max-turns",
+        "1",
+        "--tools-enable",
+        "ask_user_question"
+      ],
+      "envKeys": [
+        "HOME",
+        "PATH",
+        "POSEIDON_RECORD_HOOK_LOG",
+        "POSEIDON_RECORD_HOOK_POLICY",
+        "POSEIDON_THREAD_ID",
+        "SHELL",
+        "SSH_AUTH_SOCK",
+        "TMPDIR",
+        "USER"
+      ],
+      "sessionId": "22a15391-8cfd-464e-abf4-dc80f51037e0",
+      "exitCode": 0,
+      "signal": null,
+      "interrupted": false,
+      "durationMs": 3040,
+      "stdoutChunks": [
+        {
+          "at": 696,
+          "chars": 97
+        },
+        {
+          "at": 747,
+          "chars": 62
+        },
+        {
+          "at": 835,
+          "chars": 50
+        },
+        {
+          "at": 835,
+          "chars": 93
+        },
+        {
+          "at": 978,
+          "chars": 93
+        },
+        {
+          "at": 3031,
+          "chars": 64
+        },
+        {
+          "at": 3031,
+          "chars": 95
+        },
+        {
+          "at": 3032,
+          "chars": 202
+        },
+        {
+          "at": 3032,
+          "chars": 92
+        },
+        {
+          "at": 3032,
+          "chars": 172
+        },
+        {
+          "at": 3034,
+          "chars": 1201
+        },
+        {
+          "at": 3034,
+          "chars": 243
+        }
+      ],
+      "transcriptPath": "<HOME>/.commandcode/projects/private-tmp-claude-501-volumes-main-code-poseidon-5ebb8650-5256-43ed-9841-ad29d135cf3d-scratchpad-rec-fork-590a1100-repo/22a15391-8cfd-464e-abf4-dc80f51037e0.jsonl",
+      "guessedTranscriptPath": "<HOME>/.commandcode/projects/private-tmp-claude-501--volumes-main-code-poseidon-5ebb8650-5256-43ed-9841-ad29d135cf3d-scratchpad-rec-fork-590a1100-repo/22a15391-8cfd-464e-abf4-dc80f51037e0.jsonl",
+      "transcriptDirMatchesConnectorSlug": false,
+      "projectDirListing": [
+        "22a15391-8cfd-464e-abf4-dc80f51037e0.checkpoints.jsonl",
+        "22a15391-8cfd-464e-abf4-dc80f51037e0.jsonl",
+        "22a15391-8cfd-464e-abf4-dc80f51037e0.meta.json"
+      ],
+      "transcriptGrowth": [
+        {
+          "at": 3040,
+          "bytes": 972,
+          "lines": 3
+        }
+      ],
+      "transcriptBytes": 972,
+      "checkpointGrowth": [
+        {
+          "at": 701,
+          "bytes": 247,
+          "lines": 1
+        }
+      ],
+      "transcriptMeta": "{\n  \"entrypoint\": \"print\",\n  \"traceIds\": [\n    \"e7f430f5d96a63025dc50ec6d690a2a4\"\n  ]\n}",
+      "hookCount": 0,
+      "plans": [],
+      "touchedFiles": [],
+      "files": {
+        "stdout": "turn1.stdout.ndjson",
+        "stderr": "turn1.stderr.txt",
+        "transcript": "turn1.transcript.jsonl",
+        "checkpoints": "turn1.checkpoints.jsonl"
+      }
+    },
+    {
+      "index": 1,
+      "prompt": "What word did I ask you to remember? Reply with just the word.",
+      "connectorArgs": [
+        "-p",
+        "What word did I ask you to remember? Reply with just the word.",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--session",
+        "22a15391-8cfd-464e-abf4-dc80f51037e0",
+        "--fork-session",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--yolo",
+        "--max-turns",
+        "1",
+        "--tools-enable",
+        "ask_user_question"
+      ],
+      "argv": [
+        "-p",
+        "What word did I ask you to remember? Reply with just the word.",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--session",
+        "22a15391-8cfd-464e-abf4-dc80f51037e0",
+        "--fork-session",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--yolo",
+        "--max-turns",
+        "1",
+        "--tools-enable",
+        "ask_user_question"
+      ],
+      "envKeys": [
+        "HOME",
+        "PATH",
+        "POSEIDON_RECORD_HOOK_LOG",
+        "POSEIDON_RECORD_HOOK_POLICY",
+        "POSEIDON_THREAD_ID",
+        "SHELL",
+        "SSH_AUTH_SOCK",
+        "TMPDIR",
+        "USER"
+      ],
+      "sessionId": "d7046b9b-50c8-4567-a5c8-81615db9a65b",
+      "exitCode": 0,
+      "signal": null,
+      "interrupted": false,
+      "durationMs": 5106,
+      "stdoutChunks": [
+        {
+          "at": 729,
+          "chars": 97
+        },
+        {
+          "at": 779,
+          "chars": 62
+        },
+        {
+          "at": 871,
+          "chars": 50
+        },
+        {
+          "at": 871,
+          "chars": 93
+        },
+        {
+          "at": 962,
+          "chars": 93
+        },
+        {
+          "at": 5093,
+          "chars": 62
+        },
+        {
+          "at": 5093,
+          "chars": 156
+        },
+        {
+          "at": 5093,
+          "chars": 98
+        },
+        {
+          "at": 5094,
+          "chars": 202
+        },
+        {
+          "at": 5094,
+          "chars": 95
+        },
+        {
+          "at": 5094,
+          "chars": 172
+        },
+        {
+          "at": 5096,
+          "chars": 1596
+        },
+        {
+          "at": 5097,
+          "chars": 246
+        }
+      ],
+      "transcriptPath": "<HOME>/.commandcode/projects/private-tmp-claude-501-volumes-main-code-poseidon-5ebb8650-5256-43ed-9841-ad29d135cf3d-scratchpad-rec-fork-590a1100-repo/d7046b9b-50c8-4567-a5c8-81615db9a65b.jsonl",
+      "guessedTranscriptPath": "<HOME>/.commandcode/projects/private-tmp-claude-501--volumes-main-code-poseidon-5ebb8650-5256-43ed-9841-ad29d135cf3d-scratchpad-rec-fork-590a1100-repo/d7046b9b-50c8-4567-a5c8-81615db9a65b.jsonl",
+      "transcriptDirMatchesConnectorSlug": false,
+      "projectDirListing": [
+        "22a15391-8cfd-464e-abf4-dc80f51037e0.checkpoints.jsonl",
+        "22a15391-8cfd-464e-abf4-dc80f51037e0.jsonl",
+        "22a15391-8cfd-464e-abf4-dc80f51037e0.meta.json",
+        "d7046b9b-50c8-4567-a5c8-81615db9a65b.checkpoints.jsonl",
+        "d7046b9b-50c8-4567-a5c8-81615db9a65b.jsonl",
+        "d7046b9b-50c8-4567-a5c8-81615db9a65b.meta.json"
+      ],
+      "transcriptGrowth": [
+        {
+          "at": 697,
+          "bytes": 1125,
+          "lines": 3
+        },
+        {
+          "at": 5106,
+          "bytes": 1866,
+          "lines": 5
+        }
+      ],
+      "transcriptBytes": 1866,
+      "checkpointGrowth": [
+        {
+          "at": 697,
+          "bytes": 247,
+          "lines": 1
+        },
+        {
+          "at": 747,
+          "bytes": 555,
+          "lines": 2
+        }
+      ],
+      "transcriptMeta": "{\n  \"userRenamed\": false,\n  \"parentSessionId\": \"22a15391-8cfd-464e-abf4-dc80f51037e0\",\n  \"forkedAt\": \"2026-09-28T05:24:23.096Z\",\n  \"traceIds\": [\n    \"ed7a40ed8b3eb2350cc250d51b0fb139\"\n  ]\n}",
+      "hookCount": 0,
+      "plans": [],
+      "touchedFiles": [],
+      "earlierSessions": [
+        {
+          "sessionId": "22a15391-8cfd-464e-abf4-dc80f51037e0",
+          "transcriptBytes": 972
+        }
+      ],
+      "files": {
+        "stdout": "turn2.stdout.ndjson",
+        "stderr": "turn2.stderr.txt",
+        "transcript": "turn2.transcript.jsonl",
+        "checkpoints": "turn2.checkpoints.jsonl"
+      }
+    },
+    {
+      "index": 2,
+      "prompt": "Reply with that word again, in capitals.",
+      "connectorArgs": [
+        "-p",
+        "Reply with that word again, in capitals.",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--session",
+        "d7046b9b-50c8-4567-a5c8-81615db9a65b",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--yolo",
+        "--max-turns",
+        "1",
+        "--tools-enable",
+        "ask_user_question"
+      ],
+      "argv": [
+        "-p",
+        "Reply with that word again, in capitals.",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--session",
+        "d7046b9b-50c8-4567-a5c8-81615db9a65b",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--yolo",
+        "--max-turns",
+        "1",
+        "--tools-enable",
+        "ask_user_question"
+      ],
+      "envKeys": [
+        "HOME",
+        "PATH",
+        "POSEIDON_RECORD_HOOK_LOG",
+        "POSEIDON_RECORD_HOOK_POLICY",
+        "POSEIDON_THREAD_ID",
+        "SHELL",
+        "SSH_AUTH_SOCK",
+        "TMPDIR",
+        "USER"
+      ],
+      "sessionId": "d7046b9b-50c8-4567-a5c8-81615db9a65b",
+      "exitCode": 0,
+      "signal": null,
+      "interrupted": false,
+      "durationMs": 5763,
+      "stdoutChunks": [
+        {
+          "at": 712,
+          "chars": 97
+        },
+        {
+          "at": 762,
+          "chars": 62
+        },
+        {
+          "at": 854,
+          "chars": 50
+        },
+        {
+          "at": 854,
+          "chars": 93
+        },
+        {
+          "at": 942,
+          "chars": 93
+        },
+        {
+          "at": 3732,
+          "chars": 93
+        },
+        {
+          "at": 5752,
+          "chars": 59
+        },
+        {
+          "at": 5752,
+          "chars": 405
+        },
+        {
+          "at": 5754,
+          "chars": 202
+        },
+        {
+          "at": 5754,
+          "chars": 95
+        },
+        {
+          "at": 5754,
+          "chars": 172
+        },
+        {
+          "at": 5756,
+          "chars": 1963
+        },
+        {
+          "at": 5757,
+          "chars": 246
+        }
+      ],
+      "transcriptPath": "<HOME>/.commandcode/projects/private-tmp-claude-501-volumes-main-code-poseidon-5ebb8650-5256-43ed-9841-ad29d135cf3d-scratchpad-rec-fork-590a1100-repo/d7046b9b-50c8-4567-a5c8-81615db9a65b.jsonl",
+      "guessedTranscriptPath": "<HOME>/.commandcode/projects/private-tmp-claude-501--volumes-main-code-poseidon-5ebb8650-5256-43ed-9841-ad29d135cf3d-scratchpad-rec-fork-590a1100-repo/d7046b9b-50c8-4567-a5c8-81615db9a65b.jsonl",
+      "transcriptDirMatchesConnectorSlug": false,
+      "projectDirListing": [
+        "22a15391-8cfd-464e-abf4-dc80f51037e0.checkpoints.jsonl",
+        "22a15391-8cfd-464e-abf4-dc80f51037e0.jsonl",
+        "22a15391-8cfd-464e-abf4-dc80f51037e0.meta.json",
+        "d7046b9b-50c8-4567-a5c8-81615db9a65b.checkpoints.jsonl",
+        "d7046b9b-50c8-4567-a5c8-81615db9a65b.jsonl",
+        "d7046b9b-50c8-4567-a5c8-81615db9a65b.meta.json"
+      ],
+      "transcriptGrowth": [
+        {
+          "at": 674,
+          "bytes": 1866,
+          "lines": 5
+        },
+        {
+          "at": 5763,
+          "bytes": 2585,
+          "lines": 7
+        }
+      ],
+      "transcriptBytes": 2585,
+      "checkpointGrowth": [
+        {
+          "at": 674,
+          "bytes": 555,
+          "lines": 2
+        },
+        {
+          "at": 725,
+          "bytes": 841,
+          "lines": 3
+        }
+      ],
+      "transcriptMeta": "{\n  \"userRenamed\": false,\n  \"parentSessionId\": \"22a15391-8cfd-464e-abf4-dc80f51037e0\",\n  \"forkedAt\": \"2026-09-28T05:24:23.096Z\",\n  \"traceIds\": [\n    \"ed7a40ed8b3eb2350cc250d51b0fb139\",\n    \"464db83989feba075e0c1523d5ee4e04\"\n  ]\n}",
+      "hookCount": 0,
+      "plans": [],
+      "touchedFiles": [],
+      "earlierSessions": [
+        {
+          "sessionId": "22a15391-8cfd-464e-abf4-dc80f51037e0",
+          "transcriptBytes": 972
+        }
+      ],
+      "files": {
+        "stdout": "turn3.stdout.ndjson",
+        "stderr": "turn3.stderr.txt",
+        "transcript": "turn3.transcript.jsonl",
+        "checkpoints": "turn3.checkpoints.jsonl"
+      }
+    }
+  ]
+}

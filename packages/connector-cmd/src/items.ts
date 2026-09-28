@@ -81,6 +81,8 @@ export interface TranscriptMessage {
 export interface TranscriptLine {
   readonly type?: string;
   readonly id?: string;
+  /** On a forked session's header only: the new session; `id` is the one it came from. */
+  readonly sessionId?: string;
   readonly parentId?: string;
   readonly timestamp?: string;
   readonly message?: TranscriptMessage;

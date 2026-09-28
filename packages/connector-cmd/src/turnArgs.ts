@@ -96,6 +96,12 @@ export const prepareTurn = async (input: {
   readonly resumeSessionId: string | null;
   /** The session's enabled Poseidon plugins; absent means none. */
   readonly plugins?: ReadonlyArray<SessionPlugin>;
+  /**
+   * Fork the resumed session rather than continue it: `--fork-session`
+   * beside `--session`, and the harness names a new session on `run_start`
+   * (`fixtures/cmd/fork/`). Ignored when there is no session to resume.
+   */
+  readonly fork?: boolean;
 }): Promise<PreparedTurn> => {
   const plugins = input.plugins ?? [];
   const skills = [...new Set(plugins.flatMap((plugin) => plugin.skillsDirs))];
@@ -118,6 +124,7 @@ export const prepareTurn = async (input: {
       model: input.settings.model,
       ...(input.settings.effort === undefined ? {} : { effort: cmdEffort(input.settings.effort) }),
       ...(input.resumeSessionId === null ? {} : { sessionId: input.resumeSessionId }),
+      ...(input.resumeSessionId !== null && input.fork === true ? { forkSession: true } : {}),
       // Not in plan mode. `--yolo` turns off print mode's own refusal of
       // writes and shell calls, and in plan mode PreToolUse never fires —
       // `hookCount: 0` in all four plan recordings, including one whose

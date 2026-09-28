@@ -26,6 +26,11 @@ import * as Stream from "effect/Stream";
 export interface BuildArgsInput {
   readonly prompt: string;
   readonly sessionId?: string;
+  /**
+   * With `sessionId`: continue that session's history in a new session and
+   * leave the original as it was (`--fork-session`, `fixtures/cmd/fork/`).
+   */
+  readonly forkSession?: boolean;
   readonly model?: string;
   readonly effort?: string;
   /** approvals run through our hook; `permissionMode: "plan"` replaces it. */
@@ -79,6 +84,9 @@ export const buildArgs = (input: BuildArgsInput): Array<string> => {
     args.push("--no-session");
   } else if (input.sessionId !== undefined) {
     args.push("--session", input.sessionId);
+    if (input.forkSession === true) {
+      args.push("--fork-session");
+    }
   }
   if (input.model !== undefined) {
     args.push("--model", input.model);

@@ -4,13 +4,13 @@
 Nothing in it is hand-written, reconstructed or synthesized. If the CLI changes,
 these are re-recorded — they are never edited by hand to make a test pass.
 
-|             |                                                                      |
-| ----------- | -------------------------------------------------------------------- |
-| CLI         | `/opt/homebrew/bin/cmd` (the operator's global install)              |
-| Version     | **1.55.1**; **1.56.0** for the six after it; **1.65.0** for `skill/` |
-| Recorded on | **2026-09-18**, and **2026-09-24** for `skill/`                      |
-| Model       | `meta/muse-spark-1.3-contributor` (the account default)              |
-| Recorded by | `packages/testkit/scripts/record-cmd.mjs`                            |
+|             |                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| CLI         | `/opt/homebrew/bin/cmd` (the operator's global install)                                           |
+| Version     | **1.55.1**; **1.56.0** for the six after it; **1.65.0** for `skill/`; **1.66.0** for `fork/`      |
+| Recorded on | **2026-09-18**, **2026-09-24** for `skill/`, **2026-09-28** for `fork/`                           |
+| Model       | `meta/muse-spark-1.3-contributor` (the account default); `poolside/laguna-s-2.1-free` for `fork/` |
+| Recorded by | `packages/testkit/scripts/record-cmd.mjs`                                                         |
 
 Each `manifest.json` carries the model its own frames name, the CLI version it
 ran on and the day it was recorded, so a recording made on a different model or
@@ -54,7 +54,9 @@ seventy models `--list-models` offers bill real money.
 
 `manifest.json` is the index: the argv and env keys the run used, the exit code
 and signal, the session id, stdout chunk arrival order, transcript growth
-samples, hook count, plan files and touched files. Beside it:
+samples, hook count, plan files and touched files, and — for a turn after the
+first — the byte count of every earlier session's transcript as it stood when
+that turn ended (`earlierSessions`). Beside it:
 
 | file                | what it is                                               |
 | ------------------- | -------------------------------------------------------- |
@@ -88,6 +90,7 @@ Multi-turn scenarios prefix each file with `turn1.` / `turn2.`.
 | `skill/`            | a skill reference written the way `prepareTurn` writes it — `activate_skill` fires for it    |
 | `interrupt/`        | SIGINT mid-turn — exit 130, no `run_end`, no `result`                                        |
 | `resume/`           | a second turn resuming the first session id                                                  |
+| `fork/`             | `--session <id> --fork-session`: a new session with the history, the first left untouched    |
 | `shell-twice/`      | the same shell call twice in one session — what "allow always" has to answer                 |
 | `file-edit-twice/`  | two editing turns in one session — two checkpoints with a real diff between them             |
 | `interrupt-resume/` | a SIGINT'd turn, then a resume of it: the harness refuses, because it wrote no transcript    |

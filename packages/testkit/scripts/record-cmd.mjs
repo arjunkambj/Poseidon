@@ -126,6 +126,7 @@ const buildArgs = (input) => {
     args.push("--no-session");
   } else if (input.sessionId !== undefined) {
     args.push("--session", input.sessionId);
+    if (input.forkSession === true) args.push("--fork-session");
   }
   if (input.model !== undefined) args.push("--model", input.model);
   if (input.effort !== undefined) args.push("--effort", input.effort);
@@ -370,6 +371,7 @@ const recordTurn = async (context, turn, index) => {
   const connectorArgs = buildArgs({
     prompt: turn.prompt,
     ...(turn.sessionId === undefined ? {} : { sessionId: turn.sessionId }),
+    ...(turn.forkSession === true ? { forkSession: true } : {}),
     ...(context.model === undefined ? {} : { model: context.model }),
     ...(turn.permissionMode === undefined ? {} : { permissionMode: turn.permissionMode }),
     ...(turn.yolo === false ? {} : { yolo: true }),
@@ -515,10 +517,25 @@ const recordTurn = async (context, turn, index) => {
       (filesBefore[name] === undefined || filesBefore[name].mtimeMs !== filesAfter[name].mtimeMs),
   );
 
+  // Every session an earlier turn ran in, as it stands now. A turn that forks
+  // or resumes one says here whether it wrote to it: the fork recording's
+  // whole claim is that the session it forked from is left as it was.
+  const earlierSessions = [];
+  for (const earlier of context.earlier ?? []) {
+    if (earlier.sessionId === null || earlier.sessionId === sessionId) continue;
+    if (earlierSessions.some((entry) => entry.sessionId === earlier.sessionId)) continue;
+    const text = earlier.transcriptPath === null ? null : readIf(earlier.transcriptPath);
+    earlierSessions.push({
+      sessionId: earlier.sessionId,
+      transcriptBytes: text === null ? null : text.length,
+    });
+  }
+
   return {
     index,
     argv,
     connectorArgs,
+    earlierSessions,
     cwd: repo,
     prompt: turn.prompt,
     envKeys: Object.keys(env).sort(),
@@ -680,6 +697,7 @@ const writeRecording = (name, scenario, turns, context) => {
         hookCount: turn.hooks.length,
         plans: turn.plans,
         touchedFiles: turn.touchedFiles,
+        ...(turn.earlierSessions.length === 0 ? {} : { earlierSessions: turn.earlierSessions }),
         files: {
           stdout: `${prefix}stdout.ndjson`,
           stderr: `${prefix}stderr.txt`,
@@ -752,7 +770,7 @@ const main = async () => {
     const resolved =
       typeof turn === "function" ? turn({ sessionId: previousSessionId, scratch, repo }) : turn;
     process.stderr.write(`▸ ${name} turn ${index + 1}: ${resolved.prompt.slice(0, 60)}\n`);
-    const result = await recordTurn(context, resolved, index);
+    const result = await recordTurn({ ...context, earlier: recorded }, resolved, index);
     process.stderr.write(
       `  exit=${result.exitCode} signal=${result.signal} session=${result.sessionId} hooks=${result.hooks.length} ${result.durationMs}ms\n`,
     );

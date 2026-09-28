@@ -33,7 +33,11 @@ const RECORDINGS = NodePath.join(TESTKIT, "fixtures", "cmd");
 const manifestOf = (scenario: string) =>
   JSON.parse(NodeFS.readFileSync(NodePath.join(RECORDINGS, scenario, "manifest.json"), "utf8")) as {
     readonly model: string;
-    readonly turns: ReadonlyArray<{ readonly sessionId: string; readonly prompt: string }>;
+    readonly turns: ReadonlyArray<{
+      readonly sessionId: string;
+      readonly prompt: string;
+      readonly earlierSessions?: ReadonlyArray<{ sessionId: string; transcriptBytes: number }>;
+    }>;
   };
 
 interface Box {
@@ -77,6 +81,7 @@ const openSession = (
     readonly plan?: boolean;
     readonly argvLog?: string;
     readonly sessionRef?: CmdSessionRef;
+    readonly fork?: boolean;
   } = {},
 ) =>
   Effect.gen(function* () {
@@ -93,6 +98,7 @@ const openSession = (
       },
       home: b.home,
       ...(options.sessionRef === undefined ? {} : { sessionRef: options.sessionRef }),
+      ...(options.fork === undefined ? {} : { fork: options.fork }),
       services: yield* services(),
       settings: {
         model: manifestOf(scenario).model,
@@ -322,6 +328,115 @@ describe("a recorded pair of turns", () => {
         expect(itemsOf(events).some((item) => item.kind === "reasoning")).toBe(true);
 
         yield* handle.close();
+      }),
+    ),
+  );
+});
+
+/** The argv of every turn the replayer was spawned for, in order. */
+const turnArgvs = (log: string): ReadonlyArray<ReadonlyArray<string>> =>
+  NodeFS.readFileSync(log, "utf8")
+    .split("\n")
+    .filter((line) => line.length > 0)
+    .map((line) => (JSON.parse(line) as { argv: ReadonlyArray<string> }).argv)
+    .filter((argv) => argv[0] === "-p");
+
+describe("a recorded fork", () => {
+  /**
+   * `fixtures/cmd/fork/`: a first turn, then `--session <it> --fork-session`,
+   * then a plain resume. The harness named a new session on the fork's
+   * `run_start`, the new transcript opens with a copy of the first session's
+   * messages, and the first session's transcript kept its bytes.
+   */
+  it.live("forks the source session once, then resumes the fork", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const b = yield* box();
+        const recorded = manifestOf("fork");
+        const origin = recorded.turns[0]!.sessionId;
+        const forkId = recorded.turns[1]!.sessionId;
+        expect(forkId).not.toBe(origin);
+        // The recorder read the first transcript again after each later turn.
+        expect(recorded.turns[1]!.earlierSessions).toEqual([
+          { sessionId: origin, transcriptBytes: expect.any(Number) },
+        ]);
+        const argvLog = NodePath.join(b.home, "argv.ndjson");
+
+        // The source thread's one turn.
+        const source = yield* openSession("fork", b, { argvLog });
+        yield* source.handle.send({
+          text: recorded.turns[0]!.prompt,
+          attachments: [],
+          mentions: [],
+        });
+        yield* source.collector.awaitItem((event) => event.type === "turn.completed");
+        const sourceRef = (yield* source.handle.sessionRef()) as CmdSessionRef;
+        yield* source.handle.close();
+        expect(sourceRef.sessionId).toBe(origin);
+        const before = NodeFS.readFileSync(sourceRef.transcriptPath, "utf8");
+
+        // The fork: a new thread's session over the source's ref.
+        const { handle, collector } = yield* openSession("fork", b, {
+          argvLog,
+          sessionRef: sourceRef,
+          fork: true,
+        });
+        yield* handle.send({ text: recorded.turns[1]!.prompt, attachments: [], mentions: [] });
+        const first = yield* collector.awaitItem((event) => event.type === "turn.completed");
+        yield* handle.send({ text: recorded.turns[2]!.prompt, attachments: [], mentions: [] });
+        yield* collector.awaitItem(
+          (event) => event.type === "turn.completed" && event.eventId !== first.eventId,
+        );
+        const events = yield* collector.collected;
+
+        const [, forking, resuming] = turnArgvs(argvLog);
+        expect(
+          forking?.slice(forking.indexOf("--session"), forking.indexOf("--session") + 3),
+        ).toEqual(["--session", origin, "--fork-session"]);
+        expect(resuming).toContain(forkId);
+        expect(resuming).not.toContain("--fork-session");
+
+        // Every announcement names the fork, never the session it came from —
+        // the forked transcript's header still carries the original's id.
+        const announced = events.flatMap((event) =>
+          event.type === "session.started"
+            ? [(event.payload.sessionRef as CmdSessionRef).sessionId]
+            : [],
+        );
+        expect(new Set(announced)).toEqual(new Set([forkId]));
+        expect(((yield* handle.sessionRef()) as CmdSessionRef).sessionId).toBe(forkId);
+
+        // The copied history is not shown again: only the fork's own answers,
+        // one row each (frames and transcript both settle the same row).
+        const answers = new Map(
+          itemsOf(events)
+            .filter((item) => item.kind === "assistant_message" && item.status === "completed")
+            .map((item) => [item.itemId, item.text]),
+        );
+        expect([...answers.values()]).toEqual(["pineapple", "PINEAPPLE"]);
+
+        // And the source session is exactly as it was.
+        expect(NodeFS.readFileSync(sourceRef.transcriptPath, "utf8")).toBe(before);
+
+        yield* handle.close();
+      }),
+    ),
+  );
+
+  it.live("refuses to fork a session that left no transcript", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const b = yield* box();
+        const error = yield* openSession("fork", b, {
+          sessionRef: {
+            sessionId: manifestOf("fork").turns[0]!.sessionId,
+            transcriptPath: NodePath.join(b.home, "missing.jsonl"),
+            cwd: b.workspace,
+            lastMessageId: null,
+          },
+          fork: true,
+        }).pipe(Effect.flip);
+        expect(error._tag).toBe("SpawnFailed");
       }),
     ),
   );

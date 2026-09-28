@@ -112,6 +112,9 @@ const parse = (argv: ReadonlyArray<string>): Parsed => {
       case "--session":
         input.sessionId = next();
         break;
+      case "--fork-session":
+        input.forkSession = true;
+        break;
       case "--model":
         input.model = next();
         break;

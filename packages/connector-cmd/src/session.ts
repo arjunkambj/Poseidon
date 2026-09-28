@@ -12,8 +12,6 @@
  * turn-scoped wrapper settles turns.
  */
 import * as NodeFS from "node:fs";
-import type { ConnectorInstanceId, ThreadId } from "@poseidon/contracts/ids";
-import type { ThreadSettings } from "@poseidon/contracts/orchestration";
 import type { RuntimeEvent } from "@poseidon/contracts/runtime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -23,11 +21,7 @@ import * as Scope from "effect/Scope";
 import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 
-import type {
-  ConnectorError,
-  ConnectorServices,
-  TurnInput,
-} from "@poseidon/connector-sdk/definition";
+import type { ConnectorError, TurnInput } from "@poseidon/connector-sdk/definition";
 import { SessionClosed, SpawnFailed, TurnInProgress } from "@poseidon/connector-sdk/definition";
 import { loadSessionPlugins } from "@poseidon/connector-sdk/plugins";
 import { makeBoundedEventQueue, type SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
@@ -52,6 +46,7 @@ import { envAllowlist, spawnProcess } from "./spawn";
 import { registerSessionMcp } from "./sessionMcp";
 import { prepareTurn } from "./turnArgs";
 import { makeSessionRefLocator, type CmdSessionRef } from "./sessionRef";
+import type { CmdSessionOptions } from "./sessionOptions";
 import {
   findTranscriptPath,
   isMessageLine,
@@ -62,33 +57,7 @@ import { makeTranslator, type PendingRuntimeEvent } from "./translate";
 
 /** Re-exported so consumers keep importing the session's own vocabulary from it. */
 export type { CmdSessionRef };
-
-export interface CmdSessionOptions {
-  readonly instanceId: ConnectorInstanceId;
-  readonly threadId: ThreadId;
-  readonly workspaceRoot: string;
-  readonly binaryPath?: string;
-  /**
-   * The executable the probe resolved — command plus the npx fallback's prefix
-   * args. Omitted, the session resolves it itself the same way.
-   */
-  readonly binary?: ResolvedBinary;
-  /**
-   * Tokens the model can hold. Defaults to what the last probe of this binary
-   * reported; a test passes it outright.
-   */
-  readonly contextLimit?: number | null;
-  readonly extraEnv?: Record<string, string>;
-  readonly services: ConnectorServices;
-  readonly settings: ThreadSettings;
-  readonly sessionRef?: CmdSessionRef;
-  /**
-   * Home directory override for transcript resolution. The harness resolves
-   * `~/.commandcode` against `HOME` alone, so a test that points the
-   * child's `HOME` aside passes the same directory here.
-   */
-  readonly home?: string;
-}
+export type { CmdSessionOptions };
 
 export const makeCmdSession = (
   options: CmdSessionOptions,
@@ -137,6 +106,18 @@ export const makeCmdSession = (
       root: transcriptRoot,
       ...(options.home === undefined ? {} : { home: options.home }),
     });
+    // A fork needs the session it forks to be on disk. Failing here, before
+    // anything is installed, lets the server start the thread its own way
+    // and carry the conversation over as text instead of losing it.
+    if (options.fork === true && refs.resumable(options.sessionRef ?? null) === null) {
+      return yield* new SpawnFailed({
+        kind: "cmd",
+        instanceId: options.instanceId,
+        message: "the session to fork has no transcript on disk",
+      });
+    }
+    /** True until the harness names the forked session; only then is A left behind. */
+    const forkPending = yield* Ref.make(options.fork === true);
 
     // One translator for the session's whole life: dedupe keys (tool_use.id,
     // messageId) must survive across the one-process-per-turn boundary or the
@@ -513,6 +494,7 @@ export const makeCmdSession = (
                 cwd: options.workspaceRoot,
                 lastMessageId: translator.lastMessageId,
               });
+              yield* Ref.set(forkPending, false);
               yield* startTailer(ref.sessionId);
             }
           }
@@ -656,6 +638,7 @@ export const makeCmdSession = (
             yield* writeHookTicket(ticket, hook.bearer).pipe(
               Effect.catch((error) => warn(`could not write the hook ticket: ${String(error)}`)),
             );
+            const fork = yield* Ref.get(forkPending);
             const prepared = yield* Effect.promise(() =>
               prepareTurn({
                 turn,
@@ -664,6 +647,7 @@ export const makeCmdSession = (
                 threadId: options.threadId,
                 resumeSessionId: prior?.sessionId ?? null,
                 plugins,
+                fork,
               }),
             );
             for (const message of [...prepared.warnings, ...(yield* sessionMcp.strayWarnings)]) {

@@ -1073,9 +1073,31 @@ The fold stops at the marker only on a message line. The translator starts out
 holding the marker, so a check after the transcript's header line used to end
 the fold before it had read a single message.
 
-`fork` is advertised in the capabilities and `--fork-session` is in `cmd --help`
-("with --resume/--continue, fork the session into a new one"), but nothing in
-the tree builds that argv today.
+#### Forking a session
+
+`--fork-session` beside `--session <id>` copies that session into a new one and
+leaves the original as it was. `fixtures/cmd/fork/` records it (CLI 1.66.0,
+`poolside/laguna-s-2.1-free`): a first turn in session A; a second turn spawned
+with `--session A --fork-session`; a third that resumes what the second named.
+What it shows:
+
+- the forked turn's `run_start`, `result` and stderr name a **new** session B,
+  and the model still answers from A's history;
+- B's transcript sits beside A's and opens with a copy of A's messages under
+  the same `meta.messageId`s. Its header keeps A's id in `id` and names B in
+  `sessionId`, so the translator reads a header's `sessionId` first — reading
+  `id` sent the next turn back to A;
+- the recorder read A's transcript again after each later turn
+  (`earlierSessions` in the manifest), and its byte count never changed;
+- the third turn, `--session B` without the flag, resumes B.
+
+`resumeSession` with `fork: true` opens a session that runs its first turn with
+`--fork-session` and every later one as a plain resume of the session
+`run_start` named. The copied messages are deduped against the fold of A that
+runs before the first turn, so the fork's timeline shows only its own turns. A
+ref with no transcript left on disk cannot be forked, so that resume fails with
+`SpawnFailed` instead of quietly starting a fresh session; the server then
+starts one itself and sends the fork's transcript with the first message.
 
 ### Capabilities
 
@@ -1088,7 +1110,7 @@ the tree builds that argv today.
 | `planMode`                   | `true`     | `--permission-mode plan`                                                     |
 | `subagents`                  | `true`     | subagent frames become progress on the `agent` row that spawned them         |
 | `images`                     | `true`     | staged and named by path; see [Attachments](#attachments)                    |
-| `resume`, `fork`             | `true`     | `--session <id>`; `--fork-session` exists but is not built yet               |
+| `resume`, `fork`             | `true`     | `--session <id>`; a fork's first turn adds `--fork-session`                  |
 | `interrupt`                  | `turn`     | SIGINT to the turn's process group; the session and its transcript remain    |
 | `rollback`                   | `false`    | the harness cannot rewind its conversation; Poseidon's checkpoints are git   |
 | `compaction`                 | `false`    | the harness compacts by itself; print mode cannot be asked to                |

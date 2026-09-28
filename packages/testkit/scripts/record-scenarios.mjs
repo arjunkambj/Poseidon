@@ -202,6 +202,25 @@ export const SCENARIOS = {
     ],
   },
 
+  fork: {
+    description:
+      "a first turn, then --session <it> --fork-session: a new session carrying the first one's history, the first left untouched — and a third turn resuming the fork",
+    turns: [
+      { prompt: "Remember the word `pineapple`. Reply with exactly: stored", maxTurns: 1 },
+      ({ sessionId }) => ({
+        prompt: "What word did I ask you to remember? Reply with just the word.",
+        maxTurns: 1,
+        sessionId,
+        forkSession: true,
+      }),
+      ({ sessionId }) => ({
+        prompt: "Reply with that word again, in capitals.",
+        maxTurns: 1,
+        sessionId,
+      }),
+    ],
+  },
+
   "max-turns": {
     description: "--max-turns exhausted: stopReason, result.subtype and exit code",
     seed: { "note.txt": "one\n" },

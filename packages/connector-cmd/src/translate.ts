@@ -551,8 +551,12 @@ export const makeTranslator = (options: {
     }
     const record = line as TranscriptLine;
     if (record.type === "session") {
-      if (typeof record.id === "string") {
-        sessionId = record.id;
+      // A forked session's header keeps the id it was forked from and names
+      // itself in `sessionId` (`fixtures/cmd/fork/`); read as the session's
+      // own, `id` sent the next turn back to the original.
+      const own = record.sessionId ?? record.id;
+      if (typeof own === "string") {
+        sessionId = own;
       }
       return [];
     }

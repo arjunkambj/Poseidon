@@ -96,7 +96,7 @@ export const makeCmdConnectorDefinition = (
     defaultConfig: () => ({}),
     probe: (config) => probeBinary(config),
     createInstance: ({ instanceId, config, services }) => {
-      const spawnSession = (input: StartSessionInput, sessionRef?: CmdSessionRef) =>
+      const spawnSession = (input: StartSessionInput, sessionRef?: CmdSessionRef, fork = false) =>
         makeCmdSession({
           instanceId,
           threadId: input.threadId,
@@ -116,13 +116,28 @@ export const makeCmdConnectorDefinition = (
           services,
           settings: input.settings,
           ...(sessionRef === undefined ? {} : { sessionRef }),
+          ...(fork ? { fork } : {}),
         });
       return Effect.succeed({
         instanceId,
         kind: CMD_KIND,
         capabilities: CMD_CAPABILITIES,
         startSession: (input) => spawnSession(input),
-        resumeSession: (input) => spawnSession(input, asSessionRef(input.sessionRef)),
+        resumeSession: (input) => {
+          const ref = asSessionRef(input.sessionRef);
+          // A ref too old to read can be resumed as a fresh start, but a fork
+          // of it would quietly carry nothing over: refuse, so the server
+          // sends the conversation as text instead.
+          return input.fork === true && ref === undefined
+            ? Effect.fail(
+                new SpawnFailed({
+                  kind: CMD_KIND,
+                  instanceId,
+                  message: "the session to fork is not a Command Code session reference",
+                }),
+              )
+            : spawnSession(input, ref, input.fork === true);
+        },
         listModels: () =>
           probeBinary(config).pipe(
             Effect.map((probe) => probe.models),

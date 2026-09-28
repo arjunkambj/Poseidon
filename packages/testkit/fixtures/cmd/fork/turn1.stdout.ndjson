@@ -1,0 +1,12 @@
+{"type":"event","event":{"type":"run_start","sessionId":"22a15391-8cfd-464e-abf4-dc80f51037e0"}}
+{"type":"event","event":{"type":"turn_start","turnNumber":1}}
+{"type":"event","event":{"type":"message_start"}}
+{"type":"event","event":{"type":"model_request_start","model":"poolside/laguna-s-2.1-free"}}
+{"type":"event","event":{"type":"model_trace","traceId":"e7f430f5d96a63025dc50ec6d690a2a4"}}
+{"type":"event","event":{"type":"text_delta","delta":"stored"}}
+{"type":"event","event":{"type":"message_update","content":[{"type":"text","text":"stored"}]}}
+{"type":"event","event":{"type":"model_request_end","model":"poolside/laguna-s-2.1-free","usage":{"inputTokens":17212,"outputTokens":2,"cacheReadTokens":5792,"cacheWriteTokens":0},"stopReason":"stop"}}
+{"type":"event","event":{"type":"message_end","content":[{"type":"text","text":"stored"}]}}
+{"type":"event","event":{"type":"turn_end","turnNumber":1,"hadToolCalls":false,"usage":{"inputTokens":17212,"outputTokens":2,"cacheReadTokens":5792,"cacheWriteTokens":0}}}
+{"type":"event","event":{"type":"run_end","result":{"finalText":"stored","stopReason":"end_turn","turnCount":1,"usage":{"inputTokens":17212,"outputTokens":2,"cacheReadTokens":5792,"cacheWriteTokens":0},"systemPromptTokens":null,"nextState":{"sessionId":"22a15391-8cfd-464e-abf4-dc80f51037e0","messages":[{"role":"user","content":[{"type":"text","text":"Remember the word `pineapple`. Reply with exactly: stored"}],"meta":{"source":"user","createdAt":1790573060060,"messageId":"45afef4d-a6cf-48ab-8ec2-a2c3f17c31a2"}},{"role":"assistant","content":[{"type":"text","text":"stored"}],"meta":{"source":"model","createdAt":1790573062396,"messageId":"9f86946d-c9ec-4360-ab58-c0899d46a975"}}],"interrupted":false,"modState":{"workspace":{"cwd":"<SCRATCH>/repo","platform":"darwin","branch":"main","gitStatus":"?? .commandcode/","recentCommits":["f2e153d seed"],"additionalDirectories":[]},"compaction":{"tokens":17220,"basis":{"role":"assistant","content":[{"type":"text","text":"stored"}],"meta":{"source":"model","createdAt":1790573062396,"messageId":"9f86946d-c9ec-4360-ab58-c0899d46a975"}}}}}}}}
+{"type":"result","subtype":"success","sessionId":"22a15391-8cfd-464e-abf4-dc80f51037e0","stopReason":"end_turn","usage":{"inputTokens":17212,"outputTokens":2,"cacheReadTokens":5792,"cacheWriteTokens":0},"durationMs":2398,"finalText":"stored"}
