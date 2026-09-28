@@ -3244,6 +3244,36 @@ description, source, scope and whether it is enabled. Command Code has no
 plugins, so its instance answers `unavailable`, and the client runtime's
 `pluginsAtom` reads that as an empty list rather than an error.
 
+### Attention
+
+`AttentionCoordinator` (`apps/web/src/components/attention/attention-coordinator.tsx`,
+mounted once at the root) turns thread-list updates into alerts, with the
+decisions kept pure in `apps/web/src/lib/attention.ts`. Each update is diffed
+against the last list seen, and each thread reports at most one event per
+diff, the loudest: **failed** (any status became `error`), **needs you** (an
+approval, a question or a ready plan opened, or a different one replaced it)
+or **finished** (a `running` or `waiting` thread went `idle` with nothing
+open). The first loaded list only seeds the baseline, and the baseline outlives
+a reconnect — the list reads `null` while loading and that is skipped — so a
+reload or a replayed snapshot never alerts, and an approval that stays open
+alerts once. A new, archived or deleted thread says nothing.
+
+An event whose switch is on goes out one of three ways: nothing for the thread
+on screen in a focused window; a sonner toast for another thread while the
+window is focused, carrying the sidebar's status mark (a check for finished),
+the title and an **Open** action; a system notification when the window is
+unfocused or hidden, whose click focuses the window and opens the thread. In a
+plain browser the notification only fires if the page already has permission.
+Notifications are posted silent, and with the sound on the coordinator beeps
+once per batch — the system beep in the desktop app, a short WebAudio blip in
+a browser.
+
+The same list drives the shell: the Dock badge counts the threads that need
+you (0 clears it, as does turning it off); keep-awake holds a
+`prevent-app-suspension` blocker while any thread is `running` and writes the
+answer to `keepAwakeHoldingAtom`; and the count of threads running or waiting
+on you goes to the quit guard (section 14).
+
 ---
 
 ## 13. Crash and recovery
@@ -3359,6 +3389,16 @@ running — it closes sessions one at a time, each spawning `cmd mcp remove` —
 holding `~/.poseidon/state.sqlite` against the next launch. A second quit while
 the app waits falls straight through to Electron, so a wedged server cannot make
 the app unquittable.
+
+Before any of that, the quit guard (`apps/desktop/src/main/quitGuard.ts`)
+asks the window first when the renderer has reported threads running or
+waiting on you: `QuitGuardDialog`
+(`apps/web/src/components/attention/quit-guard-dialog.tsx`) lists them with
+their status marks, **Quit anyway** carries on into the shutdown above and
+Cancel or dismissing keeps the app open. A second quit while that question is
+open passes straight through. With nothing busy, or no window to ask, quitting
+works as before. On Windows and Linux, closing the last window quits once the
+window is gone, so there only Ctrl+Q and the menu's Quit are guarded.
 
 On the server side, closing `boot`'s scope shuts everything down. Three
 finalizers matter — the sockets', the sessions' and the terminals':

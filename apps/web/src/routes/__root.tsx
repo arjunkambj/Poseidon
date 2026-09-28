@@ -6,6 +6,8 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
 
+import { AttentionCoordinator } from "@/components/attention/attention-coordinator";
+import { QuitGuardDialog } from "@/components/attention/quit-guard-dialog";
 import { BrowserHost } from "@/components/browser-host/browser-host";
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import { AppShortcuts } from "@/components/Layout/app-shortcuts";
@@ -126,6 +128,9 @@ function RootComponent() {
             <KeybindingsProvider>
               {/* Thread switching and history keys, on every route. */}
               <AppShortcuts />
+              {/* Notifications, toasts, the Dock badge, keep-awake and the quit guard. */}
+              <AttentionCoordinator />
+              <QuitGuardDialog />
               {/* The keyboard shortcuts sheet (Mod+/), on every route. */}
               <ShortcutsDialog />
               {/*
