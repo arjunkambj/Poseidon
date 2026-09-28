@@ -226,7 +226,7 @@ describe("stdioJsonRpcReplayer", () => {
     const run = converse(binaryFor("exchange"), SERVER_ARGS, { cwd: REPLAY_REPO });
     const initialized = await handshake(run, "live-init");
     // The recorded answer to request 0 carries the live id, and `<SCRATCH>`
-    // and `<TMPDIR>` are put back from this run's own directories.
+    // and `<TMP>` are put back from this run's own directories.
     expect(initialized).toMatchObject({
       id: "live-init",
       result: { cwd: NodeFS.realpathSync(REPLAY_REPO), tmp: NodeOS.tmpdir() },

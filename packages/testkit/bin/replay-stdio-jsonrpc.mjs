@@ -51,7 +51,7 @@
  * to stderr — and appends them to the config's `divergenceLog` when it names
  * one — and exits 97.
  *
- * `<HOME>`, `<SCRATCH>` and `<TMPDIR>` in the recording are put back from this
+ * `<HOME>`, `<SCRATCH>` and `<TMP>` in the recording are put back from this
  * process's own directories: its HOME, the parent of its working directory,
  * and its temp directory.
  *
@@ -146,7 +146,7 @@ const { invocation, index: invocationIndex } = chosen;
 
 const home = process.env.HOME ?? os.homedir();
 const scratch = path.dirname(process.cwd());
-const tmpdir = os.tmpdir();
+const tmp = os.tmpdir();
 const inJson = (text) => JSON.stringify(text).slice(1, -1);
 const unscrub = (line) =>
   line
@@ -154,8 +154,8 @@ const unscrub = (line) =>
     .join(inJson(home))
     .split("<SCRATCH>")
     .join(inJson(scratch))
-    .split("<TMPDIR>")
-    .join(inJson(tmpdir));
+    .split("<TMP>")
+    .join(inJson(tmp));
 
 const frames = fs
   .readFileSync(path.join(config.scenarioDir, invocation.file), "utf8")

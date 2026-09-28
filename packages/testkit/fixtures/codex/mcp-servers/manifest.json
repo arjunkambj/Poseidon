@@ -12,14 +12,14 @@
   "invocations": [
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-1.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-2.ndjson",
       "exitCode": 0,
       "signal": null
@@ -34,56 +34,56 @@
         "--bearer-token-env-var",
         "POSEIDON_TEST_TOKEN"
       ],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-3.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-4.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-5.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "add", "local", "--env", "MODE=test", "--", "node", "server.js", "--flag"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-6.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-7.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-8.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-9.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-10.ndjson",
       "exitCode": 0,
       "signal": null
@@ -98,35 +98,35 @@
         "--bearer-token-env-var",
         "POSEIDON_TEST_TOKEN"
       ],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-11.ndjson",
       "exitCode": 1,
       "signal": null
     },
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-12.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "remove", "web"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-13.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-14.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["mcp", "list", "--json"],
-      "cwd": "<TMPDIR>",
+      "cwd": "<TMP>",
       "file": "invocation-15.ndjson",
       "exitCode": 0,
       "signal": null

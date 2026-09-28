@@ -230,7 +230,7 @@ describe("finalizeStdioJsonRpcRecording", () => {
     const [status, probe, session] = recording.invocations;
     expect(status!.frames[0]!.data).toBe("Logged in as user@example.com");
     // The scratch root comes from the session's run, not the probe's.
-    expect(probe!.cwd).toMatch(/^<TMPDIR>\/stdio-jsonrpc-tee-[^/]+\/probe-cwd$/);
+    expect(probe!.cwd).toMatch(/^<TMP>\/stdio-jsonrpc-tee-[^/]+\/probe-cwd$/);
     expect(session!.cwd).toBe("<SCRATCH>/repo");
 
     const [, answer, , status2] = session!.frames.map((frame) => frame.data);
@@ -238,13 +238,13 @@ describe("finalizeStdioJsonRpcRecording", () => {
       id: 0,
       result: {
         cwd: "<SCRATCH>/repo",
-        tmp: "<TMPDIR>",
+        tmp: "<TMP>",
         params: {
           account: { email: "user@example.com", accountId: "<ACCOUNT>" },
           workspaceRouting: { chatgptAccountId: "00000000-0000-0000-0000-000000000000" },
           headers: { Authorization: "<REDACTED>", access_token: "<REDACTED>" },
           mcpServers: { "user-skill-1": { command: "<HOME>/bin/user-skill-1" } },
-          text: "user@example.com on <HOST> reads <HOME>/notes and <TMPDIR>/scratch-file",
+          text: "user@example.com on <HOST> reads <HOME>/notes and <TMP>/scratch-file",
         },
       },
     });
@@ -281,7 +281,7 @@ describe("finalizeStdioJsonRpcRecording", () => {
     const session = loadStdioJsonRpcRecording("sample", "segment", fixtures).invocations[2]!;
     expect(session.frames[1]!.data).toMatchObject({
       result: {
-        params: { paths: ["<TMPDIR>/inside", `${fakeTmp}-sibling/file`, "<TMPDIR>"] },
+        params: { paths: ["<TMP>/inside", `${fakeTmp}-sibling/file`, "<TMP>"] },
       },
     });
   });
