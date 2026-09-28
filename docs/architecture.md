@@ -2295,7 +2295,7 @@ the client in the terminal `incompatible` state.
 | `files.search`                | call   | The composer's `#` file search; `threadId` searches the thread's root                                                                   |
 | `files.read`                  | call   | A window of one file, with a `truncated` flag                                                                                           |
 | `files.stat`                  | call   | Which of up to 100 paths exist inside the root; the others are left out, not errors                                                     |
-| `files.create` | call | Writes a new `.md` file inside the root; never overwrites (`conflict`) |
+| `files.create`                | call   | Writes a new `.md` file inside the root; never overwrites (`conflict`)                                                                  |
 | `fs.browse`                   | call   | Subfolders of one directory on the server's machine, for the folder picker                                                              |
 | `attachments.stage`           | call   | Uploads one composer image; returns a reference, never echoes bytes                                                                     |
 | `attachments.read`            | call   | Reads a staged image back for a thumbnail                                                                                               |
