@@ -8,19 +8,21 @@ terminal, settings.
 Nothing above the connector boundary knows which CLI is running. A _connector_
 owns a harness — how to find its binary, how to spawn it, how to translate what
 it emits into the `RuntimeEvent` vocabulary — and everything else is written
-against that vocabulary. Two connectors ship today:
-`packages/connector-cmd`, for the Command Code CLI (`cmd`), and
+against that vocabulary. Three connectors ship today:
+`packages/connector-cmd`, for the Command Code CLI (`cmd`),
 `packages/connector-claude`, for the Claude Code CLI (`claude`) driven through
-the Claude Agent SDK.
+the Claude Agent SDK, and `packages/connector-codex`, for the Codex CLI
+(`codex`) over its app-server.
 
 This document describes the pieces and how they connect, written against the
 code as it stands. Its companions:
 [how-it-works.md](how-it-works.md) traces what happens at runtime,
 [philosophy.md](philosophy.md) says which of these shapes are rules and where
 they are enforced, [development.md](development.md) is how to run and check the
-thing, and [command-code-connector.md](command-code-connector.md) and
-[claude-code-connector.md](claude-code-connector.md) are what the `cmd` and
-`claude` CLIs actually do.
+thing, and [command-code-connector.md](command-code-connector.md),
+[claude-code-connector.md](claude-code-connector.md) and
+[codex-connector.md](codex-connector.md) are what the `cmd`, `claude` and
+`codex` CLIs actually do.
 
 ## Processes
 
@@ -134,7 +136,7 @@ through their `exports` map, one entry per module; apps are unscoped.
 | `packages/connector-sdk`    | `@poseidon/connector-sdk`    | What a connector is, and the suite every one must pass     |
 | `packages/connector-cmd`    | `@poseidon/connector-cmd`    | The Command Code connector                                 |
 | `packages/connector-claude` | `@poseidon/connector-claude` | The Claude Code connector                                  |
-| `packages/connector-codex`  | `@poseidon/connector-codex`  | The Codex connector (not registered yet)                   |
+| `packages/connector-codex`  | `@poseidon/connector-codex`  | The Codex connector                                        |
 | `packages/client-runtime`   | `@poseidon/client-runtime`   | Connection, folds and atoms shared by any client           |
 | `packages/shared`           | `@poseidon/shared`           | Ids, paths, permission patterns, image sniffing            |
 | `packages/ui`               | `@poseidon/ui`               | The base component set and its styles                      |
@@ -168,8 +170,8 @@ package segment.
 | `packages/ui`             | nothing                                       |
 | `packages/config`         | nothing                                       |
 
-Test files under `apps/server` get four extras: `testkit`, `client-runtime`,
-`connector-cmd` and `connector-claude`. Test files under
+Test files under `apps/server` get five extras: `testkit`, `client-runtime`,
+`connector-cmd`, `connector-claude` and `connector-codex`. Test files under
 `packages/connector-claude` get `testkit`, for the `sdk-stream` replayer and
 tee their recordings go through, and so do those under
 `packages/connector-codex`, for the `stdio-jsonrpc` replayer. Test files under `apps/desktop` get
@@ -181,7 +183,8 @@ Keeping them out of the production list is what makes an accidental import in
 `apps/server/src/main.ts` fail: `apps/server` is bundled to a single file for
 packaging, and testkit must never ship. One production file has extras of its
 own: `apps/server/src/boot.ts`, the composition root, may import
-`connector-cmd` and `connector-claude` to build the registry. Every other
+`connector-cmd`, `connector-claude` and `connector-codex` to build the
+registry. Every other
 server file reaches a connector through the registry.
 
 A relative specifier that climbs out of its own workspace directory is a
@@ -838,11 +841,13 @@ Directories, relative to `apps/server/`:
 
 Public seam: the RPC group in `packages/contracts/src/rpc.ts` and the three
 loopback HTTP routes. May import `contracts`, `connector-sdk` and `shared`;
-`connector-cmd` and `connector-claude` in `boot.ts` and in tests only;
+`connector-cmd`, `connector-claude` and `connector-codex` in `boot.ts` and in
+tests only;
 `testkit` and `client-runtime` in tests only. Must never import `apps/web` or
 `apps/desktop`.
 
-`boot.ts` registers Command Code first and Claude Code second. The order is
+`boot.ts` registers Command Code first, Claude Code second and Codex third.
+The order is
 routing order on a fresh install: every definition is seeded as an enabled
 instance in that order, and a thread that names no instance runs on the first
 enabled one.
@@ -959,8 +964,8 @@ line in `boot.ts` that registers it.
 ### packages/connector-codex
 
 The Codex connector, over `codex app-server`'s JSON-RPC on stdio; no SDK
-package is involved. It probes, lists models and runs sessions, and is not
-registered in `boot.ts` yet: `definition.ts` wires `binary.ts` (find
+package is involved. `boot.ts` registers it third. `definition.ts` wires
+`binary.ts` (find
 `codex`), `env.ts` (the default-deny child environment, `CODEX_HOME` from the
 instance only), `spawn.ts` (a process group per child, stdin closed first, and
 the proof it is gone), `rpc.ts` (the line-delimited JSON-RPC client),
@@ -1011,8 +1016,15 @@ and any refusal is `NotSteerable` for the server to queue. A `/compact` turn is
 `thread/compact/start` (`compaction.ts`); the CLI runs it as a turn of its
 own, whose id only its `turn/started` names.
 
+Its extensions: `extensions/skills.ts` reads the skill roots the CLI loads
+(the project's `.codex/skills` and `.agents/skills`, `CODEX_HOME/skills`, and
+`~/.agents/skills`), and `extensions/mcpServers.ts` lists, adds and removes
+MCP servers through `codex mcp`, keeping the names Poseidon added in
+`CODEX_HOME/poseidon-mcp.json` since the CLI carries no ownership marker.
+
 May import `connector-sdk`, `contracts` and `shared`; its tests also import
-`testkit`.
+`testkit`. It is the only place in the tree that knows `codex` exists, apart
+from the line in `boot.ts` that registers it.
 
 ### packages/client-runtime
 
@@ -2114,6 +2126,38 @@ without one. `src/liveConformance.test.ts` runs the conformance suite, a
 mapping check and a denied write against the operator's own CLI, behind
 `POSEIDON_LIVE_CLAUDE=1`. [development.md](development.md#the-claude-code-end-to-end-suite)
 has the drivers and the budget rules.
+
+## The Codex connector
+
+The same seam over a third shape of harness: a JSON-RPC server rather than an
+SDK or a one-shot CLI. The facts about the harness itself — the probe, the
+launch, the notification catalogue, the approval mapping and runtime modes,
+the capabilities and the recording behind each, what to check after a release
+— are in [codex-connector.md](codex-connector.md), read off the code and the
+recordings under `packages/testkit/fixtures/codex/`.
+
+**One process per session.** Each thread is one `codex app-server` process,
+opened with `initialize` (experimental API on) and `thread/start` or
+`thread/resume`; each turn is a `turn/start` on it. Stop is `turn/interrupt`,
+steering `turn/steer`, `/compact` `thread/compact/start`. A resume the CLI has
+no rollout for starts a new thread and says so with `session.warning`.
+
+**Approvals.** The approval policy is `untrusted` in every runtime mode and
+only the sandbox varies, so the CLI asks and Poseidon's ladder decides; its
+command and file-change requests go through `makeApprovalGate` like every
+other connector's calls.
+
+**Poseidon's MCP server** is added per process with `-c mcp_servers.poseidon.*`
+overrides, the bearer in a child-only environment variable, so the in-app
+browser and Poseidon's tools reach Codex without anything written to the
+user's `config.toml`.
+
+**Tests.** Every recording is a real app-server run through the testkit's
+stdio tee, replayed by the `stdio-jsonrpc` replayer: the conformance suite
+(approval case included), the recorded sessions and interactions, and the MCP
+extension. `src/liveConformance.test.ts` runs the conformance suite, a schema
+check of every method used, a plain turn, an allowed write and a plan turn
+against the operator's own CLI behind `POSEIDON_LIVE_CODEX=1`.
 
 ## The RPC surface
 

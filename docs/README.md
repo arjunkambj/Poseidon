@@ -31,6 +31,12 @@ whichever question you have.
   and the approval gate, runtime modes, plan mode, questions, subagents,
   resume, model switching, compaction, attachments, steering, capabilities,
   and what to check after a new release.
+- [codex-connector.md](codex-connector.md) — the Codex CLI as observed through
+  its app-server: binary resolution, the probe, the child environment, the
+  launch and the MCP injection, the notification catalogue, the tool
+  vocabulary, the approval gate and runtime modes, plan mode, questions,
+  steering, compaction, attachments, resume, capabilities, the skills and MCP
+  server extensions, and what to check after a new release.
 
 They cross-link rather than repeat: a flow belongs in how-it-works, a component
 in architecture, a rule in philosophy, a command in development, and a fact

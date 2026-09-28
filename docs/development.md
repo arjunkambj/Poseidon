@@ -207,8 +207,9 @@ out of its own workspace directory is a violation whatever it lands on, because
 packages are consumed through their `exports` map.
 
 A workspace with no rule may import no workspace package at all; add the rule
-before the import. Test files in `apps/server` get four extras — `testkit`,
-`client-runtime`, `connector-cmd` and `connector-claude` — which is what keeps
+before the import. Test files in `apps/server` get five extras — `testkit`,
+`client-runtime`, `connector-cmd`, `connector-claude` and `connector-codex` —
+which is what keeps
 an accidental import of any of them out of `src/main.ts`, since that file is
 bundled for packaging. Test files in `packages/connector-claude` get `testkit`,
 because they replay the connector's recordings through its `sdk-stream`
@@ -218,7 +219,7 @@ through its `stdio-jsonrpc` replayer. Test files in `apps/desktop` get `testkit`
 read the agent-browser recordings through `@poseidon/testkit/recording` instead
 of resolving fixture paths by hand. One production file gets extras of its
 own: `apps/server/src/boot.ts`, the composition root, may import
-`connector-cmd` and `connector-claude`. A file counts as a test when it ends in
+`connector-cmd`, `connector-claude` and `connector-codex`. A file counts as a test when it ends in
 `.test.`/`.spec.` or sits under a `test/` directory.
 
 **Connector leaks.** Non-test sources under `apps/web`, `packages/client-runtime`
@@ -516,6 +517,29 @@ log lines and every event type. Signed out, the probe case fails naming the
 login command, the plain turns end in the CLI's login error, and the approval
 case waits out its three-minute ceiling for a card that never opens.
 
+The Codex connector has no server-level end-to-end suite; its recordings are
+replayed at the connector level (below), and its live suite is the same kind
+of file:
+
+```sh
+POSEIDON_LIVE_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
+  pnpm -F @poseidon/connector-codex vitest run src/liveConformance.test.ts
+```
+
+It first checks the probe (installed, at or above `OLDEST_TESTED_VERSION`,
+signed in, models listed) and generates the CLI's own JSON schema
+(`codex app-server generate-json-schema --experimental`) to assert that every
+method the connector sends or handles still exists. Then it runs
+`runConnectorConformance` against the discovered `codex` with the approval
+case, a plain turn that must map without any `event.unmapped` or error, a file
+write allowed once that must leave the file written, and a plan turn that must
+propose its plan — on the CLI's default model, in a throwaway git repo under
+`/tmp/poseidon-codex`, with the conformance recording's prompts.
+`POSEIDON_LIVE_CODEX_HOME` points the instance at a separate account (its
+`codexHome`, which sets `CODEX_HOME`; `HOME` is never redirected), and
+`POSEIDON_LIVE_CODEX_DEBUG=1` prints the connector's log lines and every event
+type.
+
 A live run that disagrees with the replay of the same scenario means the
 recording is stale: record that scenario again rather than editing either.
 
@@ -604,6 +628,12 @@ in `POSEIDON_CLAUDE_APPROVED_MODEL`. What costs nothing: the probe (no message
 is sent), and any turn against a signed-out CLI, which refuses it without
 calling the API. A signed-in `/compact` costs a summarisation request and is
 recorded only with the operator's approval.
+
+Codex, signed in with ChatGPT, spends the plan's usage on every answered turn.
+Its recordings and live runs use the CLI's default model (the thread names
+none), one-line prompts and decisive answers, since the app-server has no turn
+or budget cap; the one exception is `model-switch`, whose manifest names the
+second model. The probe and the MCP servers recording send no message at all.
 
 ## Recordings of the real CLI
 
@@ -843,6 +873,8 @@ POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
   pnpm -F @poseidon/connector-codex vitest run test/recordInteractions.test.ts -t question
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
   pnpm -F @poseidon/connector-codex vitest run src/conformance.test.ts
+POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
+  pnpm -F @poseidon/connector-codex vitest run src/extensions/mcpServersRecorded.test.ts
 ```
 
 The probe opens an app-server connection, reads the account and the model
@@ -861,6 +893,11 @@ records the connector-sdk suite itself, one app-server launch per case, and
 replays it in the gate, approval case included. The finaliser is told the
 names of the operator's MCP servers (`codex mcp list --json`) and skills
 (`$CODEX_HOME/skills`), so each becomes a `user-skill-<n>` stand-in.
+`src/extensions/mcpServersRecorded.test.ts` records the MCP servers
+extension itself — every `codex mcp list --json`, `add` and `remove` it runs —
+on a scratch `CODEX_HOME` (`/tmp/poseidon-codex/mcp-home`) seeded with one
+hand-written server, so the operator's own config is never touched and no
+model is called.
 
 `record-cmd.mjs` gives each run a throwaway git repo under a scratch root
 (`RECORD_SCRATCH`, default the system temp directory), spawns the CLI through
@@ -987,6 +1024,17 @@ suites. Re-record through the same test that made the recording
 (`packages/testkit/fixtures/claude/README.md` names it for each scenario),
 signed in, on the default model; when the recordings move to a newer CLI,
 move `OLDEST_TESTED_VERSION` with them.
+
+For Codex the notice comes from
+`packages/connector-codex/src/recordedFrames.test.ts` (a recorded
+notification left unmapped, or a manifest older than `OLDEST_TESTED_VERSION`),
+from any replayed suite exiting 97 because the connector now sends a line the
+recording was not sent — a change to the `initialize` handshake does this to
+every recording at once — and from the `POSEIDON_LIVE_CODEX=1` suite, whose
+schema check names any method the installed CLI no longer has. Re-record
+through the test named for each scenario in
+`packages/testkit/fixtures/codex/README.md`, signed in, on the default model;
+move `OLDEST_TESTED_VERSION` and `PROTOCOL_CLI_VERSION` with a newer CLI.
 
 Do not edit a recording. Re-record the scenario, or point the test at a
 different one.
