@@ -1220,10 +1220,14 @@ it itself only when there is no live session left to do so.
 `approval.resolved` / `userInput.resolved` / `plan.responded` → the matching
 `respond*` on the live handle, plus the plan follow-up. `settings.updated` →
 `handle.updateSettings`. `turn.completed` → dequeue the head of the queue and
-dispatch it as a new turn, whatever its `stopReason`: an interrupted or failed
-turn drains the queue too. That is on purpose — a message sent while an
-interrupt settles is queued so it runs once the connector is free, which is how
-interrupt-then-correct works — so there is no paused queue to resume. A failing side effect records `thread.error` — and a
+dispatch it as a new turn, whatever its `stopReason`. After an interrupt that
+is on purpose: a message sent while an interrupt settles is queued so it runs
+once the connector is free, which is how interrupt-then-correct works. After a
+failed turn (`stopReason: "error"`) it is a known gap, not a design choice:
+when the connector keeps failing — auth, rate limit, a dead connector — each
+queued message is sent into the same failure in turn. Pausing there would need
+a resume command through the contracts, decider and reactor, and there is no
+paused queue yet. A failing side effect records `thread.error` — and a
 synthetic `turn.completed` when a turn was mid-flight — rather than leaving a
 thread wedged in `running`. Four of the five errors it can see are tagged errors
 with no message, so it falls back to the tag: "removed connector" reads very
