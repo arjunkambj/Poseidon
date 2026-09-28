@@ -30,8 +30,11 @@ describe("sessionServerArgs and sessionEnv", () => {
 
   it("launched every recorded session that way", () => {
     for (const scenario of recordingNames(CODEX_KIND)) {
-      for (const invocation of loadStdioJsonRpcRecording(CODEX_KIND, scenario).manifest
-        .invocations) {
+      // `mcp-servers` records the one-shot `codex mcp` commands, no session.
+      for (const invocation of loadStdioJsonRpcRecording(
+        CODEX_KIND,
+        scenario,
+      ).manifest.invocations.filter((launch) => launch.argv.includes("app-server"))) {
         expect(invocation.argv, scenario).toEqual(sessionServerArgs(UNREACHABLE_MCP));
       }
     }

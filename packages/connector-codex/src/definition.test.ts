@@ -3,7 +3,9 @@
  * `connectors.describe` serves — and what an instance of it offers.
  */
 
+import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
 import { eraseConnectorDefinition } from "@poseidon/connector-sdk/definition";
 import { makeConnectorInstanceId, makeProjectId, makeThreadId } from "@poseidon/contracts/ids";
 import { describe, expect, it } from "@effect/vitest";
@@ -14,7 +16,7 @@ import { replay } from "../test/replay";
 import { testServices } from "../test/services";
 import { CODEX_CAPABILITIES } from "./capabilities";
 import { CodexConnectorConfig } from "./configSchema";
-import { codexConnectorDefinition } from "./definition";
+import { codexConnectorDefinition, makeCodexConnectorDefinition } from "./definition";
 import { CODEX_KIND } from "./kind";
 
 describe("codexConnectorDefinition", () => {
@@ -46,7 +48,7 @@ describe("codexConnectorDefinition", () => {
     }),
   );
 
-  it.effect("opens instances with the connector's capabilities and no extensions yet", () =>
+  it.effect("opens instances with the connector's capabilities, skills and MCP servers", () =>
     Effect.gen(function* () {
       const instance = yield* codexConnectorDefinition.createInstance({
         instanceId: makeConnectorInstanceId(),
@@ -55,7 +57,38 @@ describe("codexConnectorDefinition", () => {
       });
       expect(instance.kind).toBe(CODEX_KIND);
       expect(instance.capabilities).toEqual(CODEX_CAPABILITIES);
-      expect(instance.extensions).toBeUndefined();
+      expect(instance.extensions?.skills).toBeDefined();
+      expect(instance.extensions?.mcpServers).toBeDefined();
+      expect(instance.extensions?.plugins).toBeUndefined();
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("reads skills from the instance's own CODEX_HOME", () =>
+    Effect.gen(function* () {
+      const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "codex-definition-"));
+      const home = NodePath.join(root, "second-account");
+      NodeFS.mkdirSync(NodePath.join(home, "skills", "mine"), { recursive: true });
+      NodeFS.writeFileSync(
+        NodePath.join(home, "skills", "mine", "SKILL.md"),
+        "---\nname: mine\ndescription: d\n---\n",
+      );
+      const definition = makeCodexConnectorDefinition({
+        agentsSkillsRoot: NodePath.join(root, "no-agents"),
+      });
+      const instance = yield* definition.createInstance({
+        instanceId: makeConnectorInstanceId(),
+        config: { codexHome: home, binaryPath: "/nonexistent/codex" },
+        services: yield* testServices(),
+      });
+      const skills = yield* instance.extensions!.skills!.list({ workspaceRoot: null });
+      expect(skills.map((skill) => skill.name)).toEqual(["mine"]);
+
+      // The MCP list is the CLI's to answer; a binary that cannot start says so.
+      const error = yield* Effect.flip(
+        instance.extensions!.mcpServers!.list({ workspaceRoot: null }),
+      );
+      expect(error.code).toBe("internal");
+      NodeFS.rmSync(root, { recursive: true, force: true });
     }).pipe(Effect.scoped),
   );
 

@@ -1,0 +1,1 @@
+{"dir":"from-harness","channel":"stderr","at":250,"data":"Error: invalid server name 'bad name' (use letters, numbers, '-', '_', ':', '@', '/', '.')"}

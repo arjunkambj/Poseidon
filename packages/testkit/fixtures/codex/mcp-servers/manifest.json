@@ -1,0 +1,135 @@
+{
+  "formatVersion": 1,
+  "kind": "codex",
+  "transport": "stdio-jsonrpc",
+  "scenario": "mcp-servers",
+  "description": "The MCP servers extension on a scratch CODEX_HOME holding one hand-written server: codex mcp list --json, add (http with a bearer variable, stdio with env), the refusals that run no add or remove, a name the CLI rejects, and a remove.",
+  "cliVersion": "0.156.1",
+  "recordedOn": "2026-09-28",
+  "model": "default",
+  "real": true,
+  "prompts": [],
+  "invocations": [
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-2.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "mcp",
+        "add",
+        "web",
+        "--url",
+        "http://127.0.0.1:9/web",
+        "--bearer-token-env-var",
+        "POSEIDON_TEST_TOKEN"
+      ],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-3.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-4.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-5.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "add", "local", "--env", "MODE=test", "--", "node", "server.js", "--flag"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-6.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-7.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-8.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-9.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-10.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "mcp",
+        "add",
+        "bad name",
+        "--url",
+        "http://127.0.0.1:9/web",
+        "--bearer-token-env-var",
+        "POSEIDON_TEST_TOKEN"
+      ],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-11.ndjson",
+      "exitCode": 1,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-12.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "remove", "web"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-13.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-14.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "list", "--json"],
+      "cwd": "<TMPDIR>",
+      "file": "invocation-15.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}

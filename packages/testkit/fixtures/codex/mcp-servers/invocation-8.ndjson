@@ -1,0 +1,59 @@
+{"dir":"from-harness","channel":"stdout","at":283,"data":"["}
+{"dir":"from-harness","channel":"stdout","at":283,"data":"  {"}
+{"dir":"from-harness","channel":"stdout","at":283,"data":"    \"name\": \"hand-made\","}
+{"dir":"from-harness","channel":"stdout","at":284,"data":"    \"enabled\": false,"}
+{"dir":"from-harness","channel":"stdout","at":284,"data":"    \"disabled_reason\": null,"}
+{"dir":"from-harness","channel":"stdout","at":284,"data":"    \"transport\": {"}
+{"dir":"from-harness","channel":"stdout","at":284,"data":"      \"type\": \"streamable_http\","}
+{"dir":"from-harness","channel":"stdout","at":284,"data":"      \"url\": \"http://127.0.0.1:9/hand\","}
+{"dir":"from-harness","channel":"stdout","at":284,"data":"      \"bearer_token_env_var\": null,"}
+{"dir":"from-harness","channel":"stdout","at":284,"data":"      \"http_headers\": {"}
+{"dir":"from-harness","channel":"stdout","at":284,"data":"        \"X-Client\": \"poseidon-test\""}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"      },"}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"      \"env_http_headers\": {"}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"        \"X-Team\": \"TEAM_TOKEN\""}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"      },"}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"      \"http_headers_helper\": null"}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"    },"}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"    \"startup_timeout_sec\": null,"}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"    \"tool_timeout_sec\": null,"}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"    \"auth_status\": \"unsupported\""}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"  },"}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"  {"}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"    \"name\": \"local\","}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"    \"enabled\": true,"}
+{"dir":"from-harness","channel":"stdout","at":287,"data":"    \"disabled_reason\": null,"}
+{"dir":"from-harness","channel":"stdout","at":287,"data":"    \"transport\": {"}
+{"dir":"from-harness","channel":"stdout","at":287,"data":"      \"type\": \"stdio\","}
+{"dir":"from-harness","channel":"stdout","at":287,"data":"      \"command\": \"node\","}
+{"dir":"from-harness","channel":"stdout","at":288,"data":"      \"args\": ["}
+{"dir":"from-harness","channel":"stdout","at":288,"data":"        \"server.js\","}
+{"dir":"from-harness","channel":"stdout","at":288,"data":"        \"--flag\""}
+{"dir":"from-harness","channel":"stdout","at":288,"data":"      ],"}
+{"dir":"from-harness","channel":"stdout","at":288,"data":"      \"env\": {"}
+{"dir":"from-harness","channel":"stdout","at":288,"data":"        \"MODE\": \"test\""}
+{"dir":"from-harness","channel":"stdout","at":288,"data":"      },"}
+{"dir":"from-harness","channel":"stdout","at":288,"data":"      \"env_vars\": [],"}
+{"dir":"from-harness","channel":"stdout","at":288,"data":"      \"cwd\": null"}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"    },"}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"    \"startup_timeout_sec\": null,"}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"    \"tool_timeout_sec\": null,"}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"    \"auth_status\": \"unsupported\""}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"  },"}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"  {"}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"    \"name\": \"web\","}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"    \"enabled\": true,"}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"    \"disabled_reason\": null,"}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"    \"transport\": {"}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"      \"type\": \"streamable_http\","}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"      \"url\": \"http://127.0.0.1:9/web\","}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"      \"bearer_token_env_var\": \"POSEIDON_TEST_TOKEN\","}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"      \"http_headers\": null,"}
+{"dir":"from-harness","channel":"stdout","at":289,"data":"      \"env_http_headers\": null,"}
+{"dir":"from-harness","channel":"stdout","at":290,"data":"      \"http_headers_helper\": null"}
+{"dir":"from-harness","channel":"stdout","at":290,"data":"    },"}
+{"dir":"from-harness","channel":"stdout","at":290,"data":"    \"startup_timeout_sec\": null,"}
+{"dir":"from-harness","channel":"stdout","at":290,"data":"    \"tool_timeout_sec\": null,"}
+{"dir":"from-harness","channel":"stdout","at":290,"data":"    \"auth_status\": \"bearer_token\""}
+{"dir":"from-harness","channel":"stdout","at":290,"data":"  }"}
+{"dir":"from-harness","channel":"stdout","at":290,"data":"]"}

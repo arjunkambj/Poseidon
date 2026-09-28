@@ -1,0 +1,22 @@
+{"dir":"from-harness","channel":"stdout","at":285,"data":"["}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"  {"}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"    \"name\": \"hand-made\","}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"    \"enabled\": false,"}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"    \"disabled_reason\": null,"}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"    \"transport\": {"}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"      \"type\": \"streamable_http\","}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"      \"url\": \"http://127.0.0.1:9/hand\","}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"      \"bearer_token_env_var\": null,"}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"      \"http_headers\": {"}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"        \"X-Client\": \"poseidon-test\""}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"      },"}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"      \"env_http_headers\": {"}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"        \"X-Team\": \"TEAM_TOKEN\""}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"      },"}
+{"dir":"from-harness","channel":"stdout","at":286,"data":"      \"http_headers_helper\": null"}
+{"dir":"from-harness","channel":"stdout","at":287,"data":"    },"}
+{"dir":"from-harness","channel":"stdout","at":287,"data":"    \"startup_timeout_sec\": null,"}
+{"dir":"from-harness","channel":"stdout","at":287,"data":"    \"tool_timeout_sec\": null,"}
+{"dir":"from-harness","channel":"stdout","at":287,"data":"    \"auth_status\": \"unsupported\""}
+{"dir":"from-harness","channel":"stdout","at":287,"data":"  }"}
+{"dir":"from-harness","channel":"stdout","at":287,"data":"]"}
