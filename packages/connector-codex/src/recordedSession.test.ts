@@ -247,32 +247,32 @@ describe("a Codex session replaying codex/model-switch", () => {
 });
 
 describe("a Codex session replaying codex/ultra-effort", () => {
-  it.live(
-    "names effort ultra on turn/start for a model that lists it, and the turn completes",
-    () =>
-      Effect.scoped(
-        Effect.gen(function* () {
-          const { open, assertDone } = yield* replaying("ultra-effort", {
-            ...SETTINGS,
-            effort: "ultra",
-          });
-          const [prompt] = prompts("ultra-effort");
-          const session = yield* open();
-          yield* turn(session, text(prompt!));
-          const events = yield* closed(session);
-          assertDone();
+  it.live("names a thread's effort ultra on turn/start, and the real CLI completes the turn", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { open, assertDone } = yield* replaying("ultra-effort", {
+          ...SETTINGS,
+          effort: "ultra",
+        });
+        const [prompt] = prompts("ultra-effort");
+        const session = yield* open();
+        yield* turn(session, text(prompt!));
+        const events = yield* closed(session);
+        assertDone();
 
-          // The default model (gpt-6-astra) lists ultra, so the thread's effort
-          // is named as it is; the replay held the live turn/start to it.
-          expect(
-            recordedTurnStarts("ultra-effort").map(({ model, effort }) => ({ model, effort })),
-          ).toEqual([{ model: undefined, effort: "ultra" }]);
-          expect(stopReasons(events)).toEqual(["end_turn"]);
-          expect(rows(events, "assistant_message").map((row) => row.text)).toEqual(["ok"]);
-          // On a one-word prompt the model delegated nothing: no subagent rows.
-          expect(rows(events, "task")).toEqual([]);
-        }),
-      ),
+        // The thread's effort is passed through as it is, and the replay held
+        // the live turn/start to it: the real CLI took ultra and answered.
+        // The recording has no model/list, so no listing gates the effort
+        // here; that check is turnSettings.test.ts's, on the probe's facts.
+        expect(
+          recordedTurnStarts("ultra-effort").map(({ model, effort }) => ({ model, effort })),
+        ).toEqual([{ model: undefined, effort: "ultra" }]);
+        expect(stopReasons(events)).toEqual(["end_turn"]);
+        expect(rows(events, "assistant_message").map((row) => row.text)).toEqual(["ok"]);
+        // On a one-word prompt the model delegated nothing: no subagent rows.
+        expect(rows(events, "task")).toEqual([]);
+      }),
+    ),
   );
 });
 
