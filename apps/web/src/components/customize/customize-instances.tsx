@@ -31,7 +31,6 @@ export function CustomizeInstances({
 }) {
   const atoms = useAppAtoms();
   const connectorsResult = useAtomValue(atoms.connectorsAtom);
-  const descriptorsResult = useAtomValue(atoms.connectorDescriptorsAtom);
 
   if (!AsyncResult.isSuccess(connectorsResult)) {
     return <CustomizeEmpty>Loading…</CustomizeEmpty>;
@@ -40,23 +39,49 @@ export function CustomizeInstances({
   if (instances.length === 0) {
     return <CustomizeEmpty>{empty}</CustomizeEmpty>;
   }
-  const descriptors = AsyncResult.isSuccess(descriptorsResult) ? descriptorsResult.value : [];
 
-  return instances.map((instance) => {
-    const Icon = connectorIconFor(
-      descriptors.find((descriptor) => descriptor.kind === instance.kind)?.metadata.iconKey,
-    );
-    return (
-      <section key={instance.connectorInstanceId} className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="flex min-w-0 items-center gap-2 text-base font-medium">
-            <Icon variant="bold" className="size-4 shrink-0 text-foreground/85" />
-            <span className="truncate">{instance.displayName}</span>
-          </h2>
-          {actions?.(instance)}
-        </div>
-        {children(instance)}
-      </section>
-    );
-  });
+  return instances.map((instance) => (
+    <InstanceSection
+      key={instance.connectorInstanceId}
+      instance={instance}
+      actions={actions?.(instance)}
+    >
+      {children(instance)}
+    </InstanceSection>
+  ));
+}
+
+/**
+ * One instance's section: its heading, under the instance's name and generic
+ * icon, then whatever it lists. A tab that hides an instance with nothing to
+ * show renders this itself, only once it knows there is something.
+ */
+export function InstanceSection({
+  instance,
+  actions,
+  children,
+}: {
+  readonly instance: ConnectorSummary;
+  readonly actions?: React.ReactNode;
+  readonly children: React.ReactNode;
+}) {
+  const atoms = useAppAtoms();
+  const descriptorsResult = useAtomValue(atoms.connectorDescriptorsAtom);
+  const descriptors = AsyncResult.isSuccess(descriptorsResult) ? descriptorsResult.value : [];
+  const Icon = connectorIconFor(
+    descriptors.find((descriptor) => descriptor.kind === instance.kind)?.metadata.iconKey,
+  );
+
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="flex min-w-0 items-center gap-2 text-base font-medium">
+          <Icon variant="bold" className="size-4 shrink-0 text-foreground/85" />
+          <span className="truncate">{instance.displayName}</span>
+        </h2>
+        {actions}
+      </div>
+      {children}
+    </section>
+  );
 }

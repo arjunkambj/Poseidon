@@ -75,8 +75,8 @@ tests build layers and would otherwise write into the real home.
 **Global plugins** are folders the user puts in `POSEIDON_HOME/plugins`. The
 registry reads both folders again on every request, so a plugin dropped in
 shows up without a restart. Dotfiles and plain files are skipped. The
-Customize → Plugins page names the folder and has **Copy path** and **Open
-folder** buttons; Open folder creates it first when it is missing.
+Customize → Plugins page has a **Plugins folder** button in its header that
+opens the folder, creating it first when it is missing.
 
 A global plugin's id comes from its folder, not its manifest, so a plugin whose
 manifest cannot be parsed still has an id to list its error under.
@@ -230,8 +230,10 @@ Customize → Plugins (`/customize/plugins`, also in the command palette as
   plugin has an Invalid badge, its error in place of the contents, and a
   disabled switch. A plugin that loaded with warnings shows the first one under
   its contents, with "+N more" and every warning in a tooltip, so a smaller
-  count than the folder suggests comes with its reason. With no global plugins, an empty state names the global
-  folder with Copy path and Open folder.
-- One section per connector instance with its own plugins, read-only as above.
+  count than the folder suggests comes with its reason. There is no empty state:
+  with no global plugins the grid holds only the built-in ones, and the header's
+  Plugins folder button opens the global folder.
+- One section per connector instance with plugins of its own, read-only as
+  above. An instance with none, or none matching the search, has no section.
 
 The tab's count adds up Poseidon's plugins and every instance's own.

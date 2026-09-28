@@ -3717,12 +3717,14 @@ puts it back with a toast. The setting reaches sessions started afterwards:
 the connectors ask `ConnectorServices.sessionPlugins` once at session start,
 and the MCP gateway reads the Browser plugin's switch when it mints a
 session's bearer. An invalid plugin shows an Invalid badge and its error, and
-its switch is disabled. With no global plugins the section shows the folder's
-path with Copy path and Open folder (`plugins.openFolder`, which creates the
-folder first).
+its switch is disabled. The page lists only what exists: with no global
+plugins the grid holds just the built-in ones, and the section header's
+"Plugins folder" button opens the global folder (`plugins.openFolder`, which
+creates it first).
 
-An instance's own plugins (`pluginsAtom`, Claude Code's installed plugins) are
-read-only cards whose disabled switch has the tooltip "Managed by Claude
+An instance's own plugins (`pluginsAtom`, Claude Code's installed plugins) get
+a section only when there are some to show (`InstanceSection`, the heading the
+Skills tab's instance sections use too); they are read-only cards whose disabled switch has the tooltip "Managed by Claude
 Code". The palette's Navigation group offers Plugins (`plugins.open`, no
 default chord). The standard itself, and what each harness loads, is in
 [plugins.md](plugins.md).

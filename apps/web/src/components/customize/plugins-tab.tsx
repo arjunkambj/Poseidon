@@ -5,20 +5,16 @@
  * its own (the plugins its CLI installed), shown read-only because that
  * harness owns their state.
  *
+ * It lists only what exists: no empty block for a missing global plugin, and
+ * no section for a harness with none. "Plugins folder" in the header opens
+ * the global folder (creating it), where a new plugin goes.
+ *
  * A switch changes which plugins sessions started from now on load; a running
  * session keeps what it started with.
  */
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import { Button } from "@poseidon/ui/components/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@poseidon/ui/components/empty";
 import type { ConnectorSummary } from "@poseidon/contracts/connectors";
 import type { PluginId, PoseidonPlugin } from "@poseidon/contracts/plugins";
 import * as Exit from "effect/Exit";
@@ -26,15 +22,15 @@ import * as React from "react";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { toast } from "sonner";
 
-import { copyPath } from "@/lib/copy-path";
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
+import { instancesWith } from "@/lib/customize-instances";
 
-import { CustomizeInstances } from "./customize-instances";
+import { InstanceSection } from "./customize-instances";
 import { useCustomizeScope } from "./customize-layout";
 import { CustomizeEmpty, CustomizeSearch, matchesQuery } from "./customize-list";
 import { PluginCard } from "./plugin-card";
 import { harnessPluginCard, poseidonPluginCard, splitBySource } from "./plugin-card-model";
-import { Copy, FolderOpen, Package } from "@honeyicons/react";
+import { FolderOpen, Package } from "@honeyicons/react";
 
 const GRID = "grid grid-cols-1 gap-3 sm:grid-cols-2";
 
@@ -45,11 +41,21 @@ export function PluginsTab() {
     <div className="flex flex-col gap-8">
       <CustomizeSearch value={query} onChange={setQuery} placeholder="Search plugins" />
       <PoseidonPlugins query={query} />
-      <CustomizeInstances kind="plugins" empty="No enabled connector has plugins of its own.">
-        {(instance) => <InstancePlugins instance={instance} query={query} />}
-      </CustomizeInstances>
+      <HarnessPlugins query={query} />
     </div>
   );
+}
+
+/** One section per enabled instance that has plugins of its own to show. */
+function HarnessPlugins({ query }: { readonly query: string }) {
+  const atoms = useAppAtoms();
+  const connectorsResult = useAtomValue(atoms.connectorsAtom);
+  if (!AsyncResult.isSuccess(connectorsResult)) {
+    return null;
+  }
+  return instancesWith(connectorsResult.value, "plugins").map((instance) => (
+    <InstancePlugins key={instance.connectorInstanceId} instance={instance} query={query} />
+  ));
 }
 
 function PoseidonPlugins({ query }: { readonly query: string }) {
@@ -114,7 +120,6 @@ function PoseidonPlugins({ query }: { readonly query: string }) {
   const shown =
     state?.plugins.filter((plugin) => matchesQuery(query, [plugin.name, plugin.description])) ?? [];
   const { builtin, global } = splitBySource(shown);
-  const hasGlobal = state?.plugins.some((plugin) => plugin.source === "global") ?? false;
 
   return (
     <section className="flex flex-col gap-4">
@@ -129,12 +134,10 @@ function PoseidonPlugins({ query }: { readonly query: string }) {
             Code, a plugin's MCP servers stay while a session in the same project still uses them.
           </p>
         </div>
-        {hasGlobal ? (
-          <Button variant="outline" size="sm" onClick={() => void showFolder()}>
-            <FolderOpen variant="bold" />
-            Open folder
-          </Button>
-        ) : null}
+        <Button variant="outline" size="sm" onClick={() => void showFolder()}>
+          <FolderOpen variant="bold" />
+          Plugins folder
+        </Button>
       </div>
 
       {AsyncResult.isFailure(result) ? (
@@ -145,32 +148,6 @@ function PoseidonPlugins({ query }: { readonly query: string }) {
         <CustomizeEmpty>No plugins match “{query.trim()}”.</CustomizeEmpty>
       ) : (
         <div className={GRID}>{[...builtin, ...global].map(card)}</div>
-      )}
-
-      {state === null || hasGlobal ? null : (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <FolderOpen variant="bold" />
-            </EmptyMedia>
-            <EmptyTitle>No global plugins</EmptyTitle>
-            <EmptyDescription>
-              Put a plugin folder in{" "}
-              <span className="font-mono break-all text-foreground">{state.globalDir}</span> and it
-              shows here.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent className="flex-row justify-center">
-            <Button variant="outline" size="sm" onClick={() => void copyPath(state.globalDir)}>
-              <Copy variant="bold" />
-              Copy path
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => void showFolder()}>
-              <FolderOpen variant="bold" />
-              Open folder
-            </Button>
-          </EmptyContent>
-        </Empty>
       )}
     </section>
   );
@@ -196,23 +173,29 @@ function InstancePlugins({
       : undefined) ?? instance.displayName;
 
   if (AsyncResult.isFailure(result)) {
-    return <CustomizeEmpty>Could not list {owner}’s plugins.</CustomizeEmpty>;
+    return (
+      <InstanceSection instance={instance}>
+        <CustomizeEmpty>Could not list {owner}’s plugins.</CustomizeEmpty>
+      </InstanceSection>
+    );
   }
   const plugins = AsyncResult.isSuccess(result) ? result.value : [];
   const shown = plugins.filter((plugin) => matchesQuery(query, [plugin.name, plugin.description]));
 
-  if (plugins.length === 0) {
-    return <CustomizeEmpty>No plugins installed in {owner}.</CustomizeEmpty>;
-  }
+  // Nothing installed, still loading, or nothing matching the search: no section.
   if (shown.length === 0) {
-    return <CustomizeEmpty>No plugins match “{query.trim()}”.</CustomizeEmpty>;
+    return null;
   }
   return (
-    <div className={GRID}>
-      {shown.map((plugin) => {
-        const model = harnessPluginCard(plugin, owner, instance.connectorInstanceId);
-        return <PluginCard key={model.key} plugin={model} readOnlyReason={`Managed by ${owner}`} />;
-      })}
-    </div>
+    <InstanceSection instance={instance}>
+      <div className={GRID}>
+        {shown.map((plugin) => {
+          const model = harnessPluginCard(plugin, owner, instance.connectorInstanceId);
+          return (
+            <PluginCard key={model.key} plugin={model} readOnlyReason={`Managed by ${owner}`} />
+          );
+        })}
+      </div>
+    </InstanceSection>
   );
 }
