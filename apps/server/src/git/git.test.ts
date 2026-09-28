@@ -465,12 +465,24 @@ describe("w8 git", () => {
         const root = makeRepo();
         const { projectId, git: gitService } = yield* stack(root);
         writeFileSync(nodePath.join(root, "fresh.txt"), "brand new\n");
-        const tempIndexes = () =>
-          readdirSync(tmpdir()).filter((name) => name.startsWith("poseidon-index-"));
-        const before = new Set(tempIndexes());
+        // A temp folder of this test's own: the shared one also holds the
+        // index folders of diffs other test files run at the same time.
+        const privateTmp = mkdtempSync(nodePath.join(tmpdir(), "poseidon-private-tmp-"));
+        yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            const previous = process.env["TMPDIR"];
+            process.env["TMPDIR"] = privateTmp;
+            return previous;
+          }),
+          (previous) =>
+            Effect.sync(() => {
+              if (previous === undefined) delete process.env["TMPDIR"];
+              else process.env["TMPDIR"] = previous;
+            }),
+        );
+        expect(tmpdir()).toBe(privateTmp);
         yield* gitService.diff({ projectId }, {});
-        const leaked = tempIndexes().filter((name) => !before.has(name));
-        expect(leaked).toEqual([]);
+        expect(readdirSync(privateTmp)).toEqual([]);
       }),
     ),
   );
