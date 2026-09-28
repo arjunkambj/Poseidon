@@ -15,6 +15,13 @@ import * as Layer from "effect/Layer";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import type { SqlError } from "effect/unstable/sql/SqlError";
 
+import {
+  clearMessageIndex,
+  removeThreadMessages,
+  searchMessages,
+  syncThreadMessages,
+  type MessageSearchHit,
+} from "./MessageIndex";
 import { layer as migrationsLayer } from "./Migrations";
 
 import {
@@ -82,6 +89,11 @@ export class ReadModelStore extends Context.Service<
     readonly projectorVersion: (projector: string) => Effect.Effect<number, SqlError>;
     /** Drops every projection row — the first half of a rebuild. */
     readonly clearProjections: Effect.Effect<void, SqlError>;
+    /** Threads whose message text contains `query`; see `MessageIndex`. */
+    readonly searchMessages: (
+      query: string,
+      limit?: number,
+    ) => Effect.Effect<ReadonlyArray<MessageSearchHit>, SqlError>;
   }
 >()("server/persistence/ReadModelStore") {
   static readonly layer = Layer.effect(
@@ -123,10 +135,12 @@ export class ReadModelStore extends Context.Service<
             status = excluded.status,
             doc_json = excluded.doc_json,
             updated_at = excluded.updated_at
-        `.pipe(Effect.asVoid);
+        `.pipe(Effect.andThen(syncThreadMessages(sql, doc)));
 
       const removeThread = (threadId: ThreadId) =>
-        sql`DELETE FROM threads WHERE thread_id = ${threadId}`.pipe(Effect.asVoid);
+        sql`DELETE FROM threads WHERE thread_id = ${threadId}`.pipe(
+          Effect.andThen(removeThreadMessages(sql, threadId)),
+        );
 
       const getThreadDoc = (threadId: ThreadId) =>
         sql<ThreadRow>`
@@ -208,6 +222,7 @@ export class ReadModelStore extends Context.Service<
       const clearProjections = Effect.all([
         sql`DELETE FROM threads`,
         sql`DELETE FROM projects`,
+        clearMessageIndex(sql),
       ]).pipe(Effect.asVoid);
 
       return ReadModelStore.of({
@@ -225,6 +240,7 @@ export class ReadModelStore extends Context.Service<
         setWatermark,
         projectorVersion,
         clearProjections,
+        searchMessages: (query, limit) => searchMessages(sql, query, limit),
       });
     }),
   ).pipe(Layer.provide(migrationsLayer));

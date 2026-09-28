@@ -45,6 +45,8 @@ describe("migrations", () => {
         "threads",
         "settings",
         "permission_rules",
+        "thread_messages",
+        "thread_messages_fts",
       ]) {
         expect(names).toContain(table);
       }
@@ -215,7 +217,7 @@ describe("0007_dock_keys_new_task", () => {
         `;
       }
       const applied = yield* runMigrations;
-      expect(applied.map(([id]) => id)).toEqual([7]);
+      expect(applied.map(([id]) => id)).toContain(7);
       const rows = yield* sql<{ readonly value_json: string }>`
         SELECT value_json FROM settings WHERE key = 'settings'
       `;
@@ -276,5 +278,101 @@ describe("0007_dock_keys_new_task", () => {
         expect(yield* migrate(row)).toBe(row);
       }
     }),
+  );
+});
+
+describe("0008_message_search", () => {
+  /** Every migration before 0008. */
+  const upTo0007 = Migrator.make({})({
+    loader: Migrator.fromRecord(
+      Object.fromEntries(
+        Object.entries(migrations).filter(([key]) => Number(key.split("_")[0]) < 8),
+      ),
+    ),
+    table: "schema_migrations",
+  });
+
+  const item = (kind: string, fields: Record<string, unknown>) => ({
+    itemId: `item-${kind}-${String(fields.text ?? "none").slice(0, 6)}`,
+    kind,
+    status: "completed",
+    ...fields,
+  });
+
+  /** Stores a thread row the way an older build left it. */
+  const insertThread = (threadId: string, items: ReadonlyArray<unknown>) =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      const doc = JSON.stringify({ threadId, projectId: "p1", title: "Old", items });
+      yield* sql`
+        INSERT INTO threads (
+          thread_id, project_id, title, status, doc_json, created_at, updated_at
+        ) VALUES (
+          ${threadId}, 'p1', 'Old', 'idle', ${doc},
+          '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'
+        )
+      `;
+    });
+
+  const matching = (query: string) =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      const rows = yield* sql<{ readonly thread_id: string; readonly role: string }>`
+        SELECT m.thread_id, m.role FROM thread_messages m
+        WHERE m.rowid IN (
+          SELECT rowid FROM thread_messages_fts WHERE thread_messages_fts MATCH ${`"${query}"`}
+        )
+        ORDER BY m.rowid
+      `;
+      return rows.map((row) => [row.thread_id, row.role]);
+    });
+
+  it.effect("backfills the user and assistant text of stored threads, and nothing else", () =>
+    Effect.gen(function* () {
+      yield* upTo0007;
+      yield* insertThread("t1", [
+        item("user_message", { text: "Fix the Parser please" }),
+        item("assistant_message", { text: "The parser is fixed" }),
+        item("command_execution", { command: { cmd: "ls", output: "parser.ts zebracorn" } }),
+        item("tool_call", { tool: { name: "Read", input: {}, output: "okapi parser" } }),
+        item("file_change", { fileChange: { path: "a.ts", kind: "edit", diff: "+quokka" } }),
+        item("reasoning", { text: "wombat parser thoughts" }),
+        item("user_message", { text: "" }),
+        item("assistant_message", {}),
+      ]);
+      yield* insertThread("t2", []);
+      const applied = yield* runMigrations;
+      expect(applied.map(([id]) => id)).toContain(8);
+
+      expect(yield* matching("parser")).toEqual([
+        ["t1", "user"],
+        ["t1", "assistant"],
+      ]);
+      for (const query of ["zebracorn", "okapi", "quokka", "wombat"]) {
+        expect(yield* matching(query)).toEqual([]);
+      }
+      const sql = yield* SqlClient.SqlClient;
+      const rows = yield* sql<{ readonly n: number }>`SELECT COUNT(*) AS n FROM thread_messages`;
+      expect(rows[0]?.n).toBe(2);
+    }).pipe(Effect.provide(testLayer())),
+  );
+
+  it.effect("keeps the index in step with its table through the triggers", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* runMigrations;
+      yield* sql`
+        INSERT INTO thread_messages (thread_id, item_id, role, text)
+        VALUES ('t1', 'i1', 'user', 'first draft')
+      `;
+      yield* sql`UPDATE thread_messages SET text = 'second draft' WHERE item_id = 'i1'`;
+      expect(yield* matching("first")).toEqual([]);
+      expect(yield* matching("second")).toEqual([["t1", "user"]]);
+      yield* sql`DELETE FROM thread_messages`;
+      expect(yield* matching("draft")).toEqual([]);
+      // An integrity check fails on an external-content index that was told
+      // the wrong old text.
+      yield* sql`INSERT INTO thread_messages_fts (thread_messages_fts) VALUES ('integrity-check')`;
+    }).pipe(Effect.provide(testLayer())),
   );
 });

@@ -1070,6 +1070,20 @@ and a rebuild is a pure fold. `ThreadDoc`
 plus the bookkeeping the decider needs and the wire never sees: the full open
 approval set, pending user inputs, the list preview, the `deleted` flag.
 
+`thread_messages` is the message-search index: one row per user or assistant
+message with non-empty text (`thread_id`, `item_id`, `role`, `text`), under an
+external-content FTS5 table, `thread_messages_fts`, with the trigram tokenizer,
+so a query matches any case-insensitive substring of three characters or more.
+Tool output, command output, diffs and reasoning are never indexed.
+`ReadModelStore.putThread` syncs the thread's rows in the same transaction as
+its document (`persistence/MessageIndex.ts`): new messages are inserted, a
+message whose text changed is reindexed, an unchanged one is left alone, and a
+message no longer in the document is dropped. `removeThread` and
+`clearProjections` empty it with the rest. `ReadModelStore.searchMessages`
+answers one hit per thread (its newest matching message) with a one-line
+snippet around the match, most recently active thread first, archived threads
+included and marked, at most 50.
+
 `worktree` is on the wire too, on `ThreadDetailSnapshot` and `ThreadSummary`:
 the git worktree a thread works in — its absolute `path`, its `branch` and the
 `baseBranch` it was cut from — or absent for a local thread on the project's
@@ -1170,6 +1184,7 @@ provides the migrations layer, so the graph itself says the schema exists first.
 | `0005_events_type_index`   | `events(type, sequence)`                                              |
 | `0006_terminal_keybinding` | `terminal.toggle` → `Cmd+J` in a stored keybinding table              |
 | `0007_dock_keys_new_task`  | stored dock keys' `threadOpen` clause → `threadOpen \|\| newTaskOpen` |
+| `0008_message_search`      | `thread_messages` and its FTS5 index, backfilled from `threads`       |
 
 ### Rebuilding projections
 
