@@ -7,9 +7,9 @@
  *
  * "Open in Changes" switches the Changes tab to Branch vs base — a choice
  * remembered for every thread, as picking it there is — and links to the
- * file through the pane's own deep link (`?pane=changes&file=`), which opens
- * that file and scrolls it into view. The link names the file only: the
- * pane does not scroll to a line.
+ * comment's file and line through the pane's own deep link
+ * (`?pane=changes&file=&line=`), which opens that file, marks the line in its
+ * diff and centres it. A comment on the whole file links to the file alone.
  */
 
 import type { ThreadId } from "@poseidon/contracts/ids";
@@ -35,12 +35,18 @@ export const useCommentActions = (threadId: ThreadId): CommentActions => {
         toast.success("Added the comment to your message");
         dispatch("composer.focus");
       },
-      onOpenInChanges: (path: string) => {
+      onOpenInChanges: (path: string, line: number | null) => {
         setChangesScope("branch");
         void navigate({
           to: "/t/$threadId",
           params: { threadId },
-          search: (previous) => ({ ...previous, pane: "changes", turn: undefined, file: path }),
+          search: (previous) => ({
+            ...previous,
+            pane: "changes",
+            turn: undefined,
+            file: path,
+            line: line ?? undefined,
+          }),
           replace: true,
         });
       },

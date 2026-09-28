@@ -34,6 +34,15 @@ describe("changes deep links", () => {
     expect(parseChangesLink({ turn: ["refs/a"] })).toEqual({ turn: undefined, file: undefined });
   });
 
+  it("keeps a line only as a positive whole number", () => {
+    expect(parseChangesLink({ file: "src/a.ts", line: 12 })).toMatchObject({ line: 12 });
+    // The address hands it back as text after a reload.
+    expect(parseChangesLink({ file: "src/a.ts", line: "12" })).toMatchObject({ line: 12 });
+    for (const line of [0, -3, 1.5, "12a", "", null, [12]]) {
+      expect(parseChangesLink({ file: "src/a.ts", line }).line).toBeUndefined();
+    }
+  });
+
   it("links a turn by its checkpoint, and a turn without one to the latest", () => {
     expect(changesLink("refs/a", "src/a.ts")).toEqual({ turn: "refs/a", file: "src/a.ts" });
     expect(changesLink("refs/a")).toEqual({ turn: "refs/a" });

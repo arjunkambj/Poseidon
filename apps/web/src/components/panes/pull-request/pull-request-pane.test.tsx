@@ -244,7 +244,7 @@ describe("the comment actions", () => {
     );
   });
 
-  it("Open in Changes shows the branch's diff at the thread's file", () => {
+  it("Open in Changes shows the branch's diff at the thread's file and line", () => {
     renderToStaticMarkup(<Harness />);
     seen.clicks.get("Open in Changes")?.[0]?.();
     expect(seen.setChangesScope).toHaveBeenCalledWith("branch");
@@ -257,6 +257,7 @@ describe("the comment actions", () => {
       pane: "changes",
       turn: undefined,
       file: "src/parse.ts",
+      line: 12,
     });
   });
 });

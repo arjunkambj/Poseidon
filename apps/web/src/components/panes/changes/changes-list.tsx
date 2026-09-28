@@ -28,6 +28,7 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import { PaneMessage } from "@/components/panes/files/pane-message";
 import type { DiffStyle } from "@/state/ui";
 
+import type { ChangesReveal } from "./deep-link";
 import { useGitAtoms } from "./git-atoms";
 import { ReviewList } from "./review-list";
 import {
@@ -78,8 +79,8 @@ export function ChangesList({
   connected: boolean;
   diffStyle: DiffStyle;
   diffView: DiffViewSettings;
-  /** A file a link asked to open and scroll to once the files are in, or `null`. */
-  reveal: string | null;
+  /** A file (and line) a link asked to open and scroll to once the files are in, or `null`. */
+  reveal: ChangesReveal | null;
   onRevealed: () => void;
   onRetry: () => void;
 }) {

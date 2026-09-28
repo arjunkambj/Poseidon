@@ -11,7 +11,8 @@
  * the top (`stepFile` picks which). A file a link asks for (`reveal`) is
  * opened and scrolled to the same way, once, as soon as the files are in —
  * found by `linkedFileIndex`, since the timeline's path is often absolute.
- * Picking a file in the tree beside the files (`FileTree`, shown or hidden
+ * When the link names a line too, that line is marked in the file's diff and
+ * centred once the diff has rendered it (`./reveal-line`). Picking a file in the tree beside the files (`FileTree`, shown or hidden
  * from the summary line and remembered for the app session) does the same;
  * each of these goes through `revealFile`. In a list narrower than
  * `TREE_ASIDE_MIN_WIDTH` the tree folds into a dropdown in the summary line
@@ -35,12 +36,13 @@ import { useChangesTreeOpen } from "@/state/changes-view";
 import { useChangesReview, type DiffStyle } from "@/state/ui";
 
 import { ChangeMarkers } from "./change-markers";
-import { linkedFileIndex } from "./deep-link";
+import { linkedFileIndex, type ChangesReveal } from "./deep-link";
 import { DiscardAllButton } from "./discard-dialog";
 import { FileJumpMenu } from "./file-jump-menu";
 import { FileSection } from "./file-section";
 import { treeLayout } from "./file-tree";
 import { FileTree } from "./file-tree-view";
+import { whenDiffLine } from "./reveal-line";
 import {
   everyFileOpen,
   isOpen,
@@ -72,7 +74,7 @@ export function ReviewList({
   prefix: string;
   diffStyle: DiffStyle;
   diffView: DiffViewSettings;
-  reveal: string | null;
+  reveal: ChangesReveal | null;
   onRevealed: () => void;
 }) {
   const [review, updateReview] = useChangesReview(threadId);
@@ -162,6 +164,14 @@ export function ReviewList({
     moveCursor,
   });
 
+  // The line a link named, marked in its file until another link replaces it;
+  // `index` is where the file's section was when the link came in.
+  const [marked, setMarked] = React.useState<{
+    path: string;
+    line: number;
+    index: number;
+  } | null>(null);
+
   // A file this comparison does not have is dropped all the same: the link has
   // been answered, and a later comparison that has it must not jump to it.
   React.useEffect(() => {
@@ -171,13 +181,28 @@ export function ReviewList({
     onRevealed();
     const index = linkedFileIndex(
       files.map((file) => file.path),
-      reveal,
+      reveal.file,
     );
     const file = files[index];
-    if (file !== undefined) {
-      revealRef.current(file.path);
+    if (file === undefined) {
+      return;
     }
+    revealRef.current(file.path);
+    setMarked(reveal.line === null ? null : { path: file.path, line: reveal.line, index });
   }, [reveal, onRevealed, files]);
+
+  // Once the marked file's diff has rendered the line, centre it — once per
+  // link, so a refresh of the files leaves the scroll where the person put it.
+  React.useEffect(() => {
+    const scroller = scrollerRef.current;
+    const section = marked === null ? undefined : contentRef.current?.children[marked.index];
+    if (marked === null || scroller === null || section === undefined) {
+      return;
+    }
+    return whenDiffLine<Element>(section, marked.line, (row) =>
+      scrollWithin(scroller, row, "center"),
+    );
+  }, [marked]);
 
   // Beside the diffs when the list is wide enough, else behind a dropdown.
   const listRef = React.useRef<HTMLDivElement>(null);
@@ -246,6 +271,7 @@ export function ReviewList({
                   }
                   diffStyle={diffStyle}
                   diffView={diffView}
+                  markedLine={marked?.path === file.path ? marked.line : null}
                 />
               ))}
             </div>

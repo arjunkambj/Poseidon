@@ -24,10 +24,11 @@
  * (`use-changes-refresh.ts`) — rereads every git read of the project, so the
  * header's branch picker and git actions follow along with the pane.
  *
- * A link from the timeline (`./deep-link`) arrives as the route's `turn` and
- * `file` search params. The pane reads them itself, so the dock needs to know
- * nothing about them: it picks that turn, hands the file to the list to open
- * and scroll to once, and clears both params straight away.
+ * A link from the timeline or a pull request comment (`./deep-link`) arrives
+ * as the route's `turn`, `file` and `line` search params. The pane reads them
+ * itself, so the dock needs to know nothing about them: it picks that turn,
+ * hands the file and line to the list to open and scroll to once, and clears
+ * the params straight away.
  */
 
 import * as React from "react";
@@ -48,7 +49,7 @@ import { useChangesScope, useDiffStyle } from "@/state/ui";
 
 import { BaseLine, RestoreProgress } from "./changes-header";
 import { ComparisonBody, queryValue } from "./changes-list";
-import { linkedTurnChoice } from "./deep-link";
+import { linkedTurnChoice, type ChangesReveal } from "./deep-link";
 import { discardBlockedReason, reviewScopeFields } from "./discard";
 import { useGitAtoms } from "./git-atoms";
 import { RestoreCheckpointButton } from "./restore-dialog";
@@ -87,9 +88,9 @@ export function ChangesPane({ snapshot }: { snapshot: ThreadDetailView }) {
   // reload or a back step does not scroll again. The file waits in `reveal`
   // until the list for the linked turn has answered.
   const threadId = snapshot.threadId;
-  const { turn: linkedTurn, file: linkedFile } = useSearch({ strict: false });
+  const { turn: linkedTurn, file: linkedFile, line: linkedLine } = useSearch({ strict: false });
   const navigate = useNavigate();
-  const [reveal, setReveal] = React.useState<string | null>(null);
+  const [reveal, setReveal] = React.useState<ChangesReveal | null>(null);
   const onRevealed = React.useCallback(() => setReveal(null), []);
   React.useEffect(() => {
     if (linkedTurn === undefined && linkedFile === undefined) {
@@ -99,14 +100,14 @@ export function ChangesPane({ snapshot }: { snapshot: ThreadDetailView }) {
       setChangesScope("turn");
       setTurnChoice(linkedTurnChoice(checkpoints, linkedTurn));
     }
-    setReveal(linkedFile ?? null);
+    setReveal(linkedFile === undefined ? null : { file: linkedFile, line: linkedLine ?? null });
     void navigate({
       to: "/t/$threadId",
       params: { threadId },
-      search: (previous) => ({ ...previous, turn: undefined, file: undefined }),
+      search: (previous) => ({ ...previous, turn: undefined, file: undefined, line: undefined }),
       replace: true,
     });
-  }, [linkedTurn, linkedFile, checkpoints, navigate, threadId, setChangesScope]);
+  }, [linkedTurn, linkedFile, linkedLine, checkpoints, navigate, threadId, setChangesScope]);
   // A thread with no checkpoints yet has no turn to show; the working tree is
   // the nearest thing to one.
   const shownScope = changesScope === "turn" && turn === null ? "uncommitted" : changesScope;

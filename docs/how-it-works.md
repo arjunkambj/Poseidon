@@ -1896,9 +1896,11 @@ Each comment has **Add to chat**, which appends a quote to the thread's
 message (`` `src/app.ts:12` — @author: `` followed by the body as a
 blockquote) and focuses the composer, the way the Files and Changes menus add
 a path; nothing is sent. Each review thread has **Open in Changes**, which sets
-the Changes tab to Branch vs base and opens it on that file through its deep
-link (`?pane=changes&file=`); the pane opens the file but does not scroll to
-the line.
+the Changes tab to Branch vs base and opens it on that file and line through
+its deep link (`?pane=changes&file=&line=`): the pane opens the file, marks the
+line on the diff's new side and centres it once the diff has rendered. A
+comment on the whole file, or a line the branch's diff does not show, lands on
+the file alone.
 
 Under the summary sit the lifecycle actions (`pr-actions.ts`,
 `pr-actions-menu.tsx`): the first one the pull request offers is a button and
@@ -2057,7 +2059,11 @@ names the checkpoint each turn left, "Open in Changes" navigates to
 `?pane=changes&turn=<checkpoint ref>` and each listed path adds
 `&file=<path>`. The pane picks that turn — the latest when the turn left no
 checkpoint or the ref is gone — opens the file and scrolls it into view once,
-then clears both params so a reload does not scroll again.
+then clears the params so a reload does not scroll again. A link may also
+carry `&line=<n>` (a pull request comment's): the list then selects that line
+of the file's new side in its diff and centres it, looking for the rendered
+row once a frame for about two seconds (`reveal-line.ts`), since the diff
+highlights off the main thread.
 
 A Split toggle beside the select lays each patch out side by side
 (`InlineDiff`'s `diffStyle`, passed to `@pierre/diffs`); it defaults to

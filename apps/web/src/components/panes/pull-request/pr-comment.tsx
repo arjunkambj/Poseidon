@@ -21,8 +21,8 @@ import { visibleBody } from "./pr-format";
 export interface CommentActions {
   /** Append `text` to the thread's message and focus the composer. */
   readonly onAddToChat: (text: string) => void;
-  /** Open the Changes tab on the branch's diff at `path`. */
-  readonly onOpenInChanges: (path: string) => void;
+  /** Open the Changes tab on the branch's diff at `path`, and at `line` when it has one. */
+  readonly onOpenInChanges: (path: string, line: number | null) => void;
 }
 
 function IconAction({

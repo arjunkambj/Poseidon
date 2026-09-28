@@ -43,6 +43,7 @@ export interface DiffLineNumberClick {
  * offers split and wrapped lines, and only it passes `onLineNumberClick` (its
  * per-line blame). The callback is
  * read through a ref, so a new one each render does not rebuild the options.
+ * A `markedLine` — a line of the new side a link pointed at — is selected.
  */
 export function InlineDiff({
   patch,
@@ -50,12 +51,14 @@ export function InlineDiff({
   diffStyle,
   wrap,
   onLineNumberClick,
+  markedLine = null,
 }: {
   patch: string;
   className?: string;
   diffStyle?: DiffStyle;
   wrap?: boolean;
   onLineNumberClick?: ((click: DiffLineNumberClick) => void) | undefined;
+  markedLine?: number | null;
 }) {
   const { resolvedTheme } = useTheme();
   const clickRef = React.useRef(onLineNumberClick);
@@ -79,6 +82,13 @@ export function InlineDiff({
         }
       : base;
   }, [resolvedTheme, diffStyle, wrap, clickable]);
+  const selectedLines = React.useMemo(
+    () =>
+      markedLine === null
+        ? null
+        : { start: markedLine, end: markedLine, side: "additions" as const },
+    [markedLine],
+  );
   // `PatchDiff` renders an empty element for a patch it cannot parse, which
   // reads exactly like "no changes". Show the text the server actually sent
   // instead — a malformed or truncated patch is information, not silence.
@@ -98,6 +108,7 @@ export function InlineDiff({
     <PatchDiff
       patch={patch}
       options={options}
+      selectedLines={selectedLines}
       className={cn("overflow-hidden rounded-lg text-xs", className)}
     />
   );

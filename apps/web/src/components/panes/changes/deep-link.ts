@@ -3,9 +3,11 @@
  * turn summaries — with no React in the way.
  *
  * A link is the thread route's search: `?pane=changes&turn=<checkpoint
- * ref>&file=<path>`. `turn` picks that turn in the Compare menu and `file`
- * opens that file and scrolls it into view, once: the pane clears both as soon
- * as it has acted on them, so a reload or a back step does not scroll again.
+ * ref>&file=<path>&line=<n>`. `turn` picks that turn in the Compare menu and
+ * `file` opens that file and scrolls it into view, once; `line` — a pull
+ * request review comment's — then marks that line of the file's new side and
+ * centres it. The pane clears them all as soon as it has acted on them, so a
+ * reload or a back step does not scroll again.
  * A turn that never got a checkpoint links with `LATEST_TURN`, and so does a
  * ref the thread no longer has — both land on the latest turn rather than on
  * a comparison git cannot make.
@@ -25,15 +27,34 @@ export const LATEST_TURN = "latest";
 export interface ChangesLink {
   readonly turn?: string | undefined;
   readonly file?: string | undefined;
+  readonly line?: number | undefined;
+}
+
+/** What the pane hands its list once a link names a file: that file, and a line in it or `null`. */
+export interface ChangesReveal {
+  readonly file: string;
+  readonly line: number | null;
 }
 
 const nonEmpty = (value: unknown): string | undefined =>
   typeof value === "string" && value !== "" ? value : undefined;
 
-/** The route's `validateSearch` for the link's params: anything not a non-empty string is dropped. */
+/** A line number: a positive integer, or its digits as the address carried them. */
+const lineNumber = (value: unknown): number | undefined => {
+  const number = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
+  return typeof number === "number" && Number.isSafeInteger(number) && number > 0
+    ? number
+    : undefined;
+};
+
+/**
+ * The route's `validateSearch` for the link's params: anything not a
+ * non-empty string — or, for `line`, a positive whole number — is dropped.
+ */
 export const parseChangesLink = (search: Readonly<Record<string, unknown>>): ChangesLink => ({
   turn: nonEmpty(search["turn"]),
   file: nonEmpty(search["file"]),
+  line: lineNumber(search["line"]),
 });
 
 /** The link to one turn's changes, and to one file in them when `file` is given. */

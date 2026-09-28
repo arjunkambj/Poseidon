@@ -82,7 +82,7 @@ function ReviewThread({
         {thread.isOutdated ? <Badge variant="outline">Outdated</Badge> : null}
         {thread.isResolved ? <Badge variant="outline">Resolved</Badge> : null}
         <span className="ml-auto flex shrink-0 items-center">
-          <OpenInChangesAction onClick={() => actions.onOpenInChanges(thread.path)} />
+          <OpenInChangesAction onClick={() => actions.onOpenInChanges(thread.path, thread.line)} />
         </span>
       </div>
       {thread.comments.map((comment) => (

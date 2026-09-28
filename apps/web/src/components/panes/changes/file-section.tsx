@@ -84,6 +84,7 @@ export function FileSection({
   onViewedChange,
   diffStyle,
   diffView,
+  markedLine = null,
 }: {
   threadId: string;
   file: GitDiffFile;
@@ -95,6 +96,8 @@ export function FileSection({
   onViewedChange: (viewed: boolean) => void;
   diffStyle: DiffStyle;
   diffView: DiffViewSettings;
+  /** A line of the new side a link pointed at, marked in the diff. */
+  markedLine?: number | null;
 }) {
   const Glyph = KIND_ICON[file.kind];
   const expandable = file.diff !== "";
@@ -173,6 +176,7 @@ export function FileSection({
             wrap={diffView.wrapLines}
             className="rounded-none"
             onLineNumberClick={review.onLineNumberClick}
+            markedLine={markedLine}
           />
         </div>
       ) : null}
