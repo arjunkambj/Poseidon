@@ -282,7 +282,9 @@ Owns the operating system. Nothing about orchestration lives here.
   browser-bridge connections, and leaves alone a partition that was never
   written to disk. `poseidon:browser-clear-all` is the Browser
   settings page's "Clear browsing data": every `thread-<id>` directory under
-  `Partitions`, cleared the same way. `poseidon:browser-capture` answers a PNG
+  `Partitions`, cleared the same way. `poseidon:browser-clear-stale` takes the
+  ids of every thread that still exists and clears each `thread-<id>`
+  directory not among them, refusing an empty list. `poseidon:browser-capture` answers a PNG
   of a pane tab by its guest's `webContents` id, for "screenshot to chat";
   both answer only a `window` sender, and capture only a registered pane guest.
   A key pressed inside a pane page goes to the guest and never reaches the
@@ -591,7 +593,10 @@ selected tab as a passive `location`, whether or not the pane is open. It
 drops an archived thread's tabs at once, and a deleted one's — gone from the
 list for 2 s while connected, 10 s when the list is empty, since that is also
 what a resnapshot looks like before its snapshot lands — and asks the shell to
-clear that thread's partition. On quit the webviews go with the window. The
+clear that thread's partition. Threads deleted while it was not watching (the
+app closed, another client, a quit inside the grace) are caught once per
+launch: after the connected list has been non-empty and unchanged for 10 s,
+the host hands its ids to `clearStale` (`use-partition-sweep.ts`). On quit the webviews go with the window. The
 web renderer has no preload bridge, so the host renders nothing there.
 
 **Closed by default.** Nothing opens the dock or the Browser pane, and

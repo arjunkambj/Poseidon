@@ -44,6 +44,7 @@ import {
   useThreadTeardown,
 } from "./use-host-bridge";
 import { useElementRect, useLastPaneRect, useViewport } from "./use-host-geometry";
+import { usePartitionSweep } from "./use-partition-sweep";
 
 type PaneBridge = NonNullable<NonNullable<Window["poseidon"]>["browserPane"]>;
 
@@ -63,6 +64,7 @@ function InAppBrowserHost({ bridge }: { readonly bridge: PaneBridge }) {
   useGuestInput(bridge);
   useLocationSync(state);
   useThreadTeardown(bridge, state, threads, connected, setTabs);
+  usePartitionSweep(bridge, threads, connected);
   useGuestKeys(bridge, state);
   useHistoryRecorder(state, threads);
   const pointers = useAgentPointers(bridge);

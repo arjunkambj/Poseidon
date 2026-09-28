@@ -138,6 +138,8 @@ declare global {
         readonly clearThread?: (threadId: string) => Promise<void>;
         /** Wipes every thread's browsing data; resolves how many were cleared. */
         readonly clearAll?: () => Promise<number>;
+        /** Wipes the browsing data of every thread not in `live`; resolves how many. */
+        readonly clearStale?: (live: ReadonlyArray<string>) => Promise<number>;
         /** A PNG of the pane tab whose guest is `wcId`. */
         readonly capture?: (wcId: number) => Promise<Uint8Array>;
         /** Hands the shell the `browser.*` chords to match inside pane pages. */

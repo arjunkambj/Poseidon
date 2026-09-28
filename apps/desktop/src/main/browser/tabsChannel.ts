@@ -31,6 +31,12 @@ export const CLEAR_THREAD_CHANNEL = "poseidon:browser-clear-thread";
 export const CAPTURE_CHANNEL = "poseidon:browser-capture";
 /** The window asks main to clear every thread's partition (Browser settings). */
 export const CLEAR_ALL_CHANNEL = "poseidon:browser-clear-all";
+/**
+ * The window hands main the ids of every thread that still exists, and main
+ * clears each partition on disk whose thread is not among them: threads
+ * deleted while this window was not there to see it (`./clearThread`).
+ */
+export const CLEAR_STALE_CHANNEL = "poseidon:browser-clear-stale";
 
 /** What a window with no tab host answers; the preload sends it on the renderer's behalf. */
 export const NO_TAB_HOST = "the Poseidon window cannot open browser tabs";

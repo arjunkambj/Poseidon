@@ -21,7 +21,8 @@
  * The window answers tab requests (`./browser/tabsChannel.ts`) on its own
  * channel, asks for a deleted thread's partition to be cleared
  * (`./browser/clearThread.ts`, which first cuts the thread's bridge
- * connections), and asks for a PNG of a pane tab.
+ * connections) or those of threads deleted while it was not watching, and
+ * asks for a PNG of a pane tab.
  */
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -31,7 +32,7 @@ import type { WebContents } from "electron";
 
 import type { ServerSupervisor } from "../backend/ServerSupervisor";
 
-import { makeClearAll, makeClearThread } from "./browser/clearThread";
+import { makeClearAll, makeClearStale, makeClearThread } from "./browser/clearThread";
 import {
   CHORDS_CHANNEL,
   COMMAND_CHANNEL,
@@ -47,6 +48,7 @@ import { makePopupGate } from "./browser/popups";
 import {
   CAPTURE_CHANNEL,
   CLEAR_ALL_CHANNEL,
+  CLEAR_STALE_CHANNEL,
   CLEAR_THREAD_CHANNEL,
   TAB_ANSWER_CHANNEL,
   type TabsChannel,
@@ -107,6 +109,15 @@ export function registerIpc(supervisor: ServerSupervisor, pane: PaneGuests) {
   ipcMain.handle(CLEAR_ALL_CHANNEL, async (event) => {
     if (event.sender.getType() !== "window") throw new Error("not a window");
     return clearAll();
+  });
+  const clearStale = makeClearStale({
+    ...partitionOptions,
+    disconnect: pane.disconnect,
+    listPartitions: () => (existsSync(partitions()) ? readdirSync(partitions()) : []),
+  });
+  ipcMain.handle(CLEAR_STALE_CHANNEL, async (event, live: unknown) => {
+    if (event.sender.getType() !== "window") throw new Error("not a window");
+    return clearStale(live);
   });
   // Only the window may ask, and only for a pane guest: never the window itself.
   ipcMain.handle(CAPTURE_CHANNEL, async (event, wcId: unknown) => {

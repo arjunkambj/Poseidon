@@ -14,6 +14,12 @@
  * thread partition on disk, by the directory names Electron gave them, each
  * cleared the same way.
  *
+ * `makeClearStale` catches what the window's live watch cannot: a thread
+ * deleted while the app was closed, from another client, or during the grace
+ * before the window counted it gone. Once per launch the window hands over
+ * the ids of every thread that still exists, and each partition on disk whose
+ * thread is not among them is cleared.
+ *
  * Electron-free: `../ipc.ts` passes in how to find and open the partition.
  */
 import { BRIDGE_THREAD_ID } from "@poseidon/shared/browserBridge";
@@ -67,6 +73,35 @@ export const makeClearAll =
     let cleared = 0;
     for (const threadId of threadsOnDisk(options.listPartitions())) {
       if (await clear(threadId)) cleared += 1;
+    }
+    return cleared;
+  };
+
+/** The most ids a stale sweep accepts; a real thread list is far shorter. */
+const MAX_LIVE_THREADS = 100_000;
+
+/**
+ * Resolves how many partitions of threads outside `live` were cleared. `live`
+ * comes from the renderer, so anything but a non-empty list of strings is
+ * refused: an empty list is what a list still loading looks like, and must
+ * never read as "every thread was deleted".
+ */
+export const makeClearStale =
+  (options: ClearThreadOptions & { readonly listPartitions: () => ReadonlyArray<string> }) =>
+  async (live: unknown): Promise<number> => {
+    if (
+      !Array.isArray(live) ||
+      live.length === 0 ||
+      live.length > MAX_LIVE_THREADS ||
+      !live.every((threadId) => typeof threadId === "string")
+    ) {
+      throw new Error("not a thread list");
+    }
+    const keep = new Set<string>(live);
+    const clear = makeClearThread(options);
+    let cleared = 0;
+    for (const threadId of threadsOnDisk(options.listPartitions())) {
+      if (!keep.has(threadId) && (await clear(threadId))) cleared += 1;
     }
     return cleared;
   };

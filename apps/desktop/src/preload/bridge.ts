@@ -30,6 +30,7 @@ import {
 import {
   CAPTURE_CHANNEL,
   CLEAR_ALL_CHANNEL,
+  CLEAR_STALE_CHANNEL,
   CLEAR_THREAD_CHANNEL,
   NO_TAB_HOST,
   TAB_ANSWER_CHANNEL,
@@ -181,6 +182,9 @@ export const makePoseidonBridge = (ipc: PreloadIpc) => {
       },
       /** Wipes every thread's browsing data; resolves how many were cleared. */
       clearAll: (): Promise<number> => ipc.invoke(CLEAR_ALL_CHANNEL) as Promise<number>,
+      /** Wipes the partitions of threads not in `live`; resolves how many. */
+      clearStale: (live: ReadonlyArray<string>): Promise<number> =>
+        ipc.invoke(CLEAR_STALE_CHANNEL, live) as Promise<number>,
       setChords: async (chords: ReadonlyArray<GuestChord>): Promise<void> => {
         await ipc.invoke(CHORDS_CHANNEL, chords);
       },
