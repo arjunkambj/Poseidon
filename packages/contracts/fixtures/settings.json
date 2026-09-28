@@ -59,5 +59,13 @@
       "setupScript": "pnpm install"
     }
   },
-  "browser": { "openPaneOnAgentUse": false }
+  "browser": { "openPaneOnAgentUse": false },
+  "notifications": {
+    "finished": true,
+    "failed": true,
+    "needsYou": true,
+    "sound": false,
+    "dockBadge": true,
+    "keepAwake": true
+  }
 }

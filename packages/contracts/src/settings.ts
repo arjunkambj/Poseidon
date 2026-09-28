@@ -304,6 +304,42 @@ export type BrowserSettings = typeof BrowserSettings.Type;
 
 export const DEFAULT_BROWSER_SETTINGS: BrowserSettings = { openPaneOnAgentUse: false };
 
+const toggle = (label: string, description: string) =>
+  Schema.Boolean.pipe(settingsForm({ label, description, control: "toggle" }));
+
+/**
+ * Attention: which thread transitions post a system notification, whether they
+ * play a sound, the Dock badge counting threads that need you, and holding the
+ * machine awake while an agent runs.
+ */
+export const NotificationSettings = Schema.Struct({
+  finished: toggle(
+    "When a thread finishes",
+    "Notify when a thread you are not looking at finishes.",
+  ),
+  failed: toggle("When a thread fails", "Notify when a thread you are not looking at fails."),
+  needsYou: toggle(
+    "When a thread needs you",
+    "Notify when a thread waits on an approval, a question or a ready plan.",
+  ),
+  sound: toggle("Play a sound", "A short sound with each notification."),
+  dockBadge: toggle("Show a badge on the Dock icon", "Count the threads that need you."),
+  keepAwake: toggle(
+    "Keep the Mac awake while agents run",
+    "Stop the machine sleeping while any thread is running.",
+  ),
+});
+export type NotificationSettings = typeof NotificationSettings.Type;
+
+export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  finished: true,
+  failed: true,
+  needsYou: true,
+  sound: false,
+  dockBadge: true,
+  keepAwake: true,
+};
+
 export const Settings = Schema.Struct({
   connectors: Schema.Array(ConnectorInstanceConfig).pipe(
     settingsForm({ label: "Connectors", control: "hidden" }),
@@ -368,6 +404,11 @@ export const Settings = Schema.Struct({
     Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_BROWSER_SETTINGS)),
     settingsForm({ label: "Browser", control: "hidden" }),
   ),
+  // Defaulted on decode like `browser`: older rows get the defaults.
+  notifications: NotificationSettings.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_NOTIFICATION_SETTINGS)),
+    settingsForm({ label: "Notifications", control: "hidden" }),
+  ),
 });
 export type Settings = typeof Settings.Type;
 
@@ -384,6 +425,7 @@ export const SettingsPatch = Schema.Struct({
   git: Schema.optional(GitSettings),
   projectSettings: Schema.optional(Schema.Record(Schema.String, ProjectSettings)),
   browser: Schema.optional(BrowserSettings),
+  notifications: Schema.optional(NotificationSettings),
 });
 export type SettingsPatch = typeof SettingsPatch.Type;
 
@@ -405,4 +447,5 @@ export const defaultSettings = (): Settings => ({
   git: { branchPrefix: DEFAULT_BRANCH_PREFIX },
   projectSettings: {},
   browser: DEFAULT_BROWSER_SETTINGS,
+  notifications: DEFAULT_NOTIFICATION_SETTINGS,
 });

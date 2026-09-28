@@ -2727,12 +2727,15 @@ Settings
   git                { branchPrefix }           what a new worktree's branch starts with
   projectSettings    { [projectId]: { setupScript? } }
   browser            { openPaneOnAgentUse }     off by default
+  notifications      { finished, failed, needsYou, sound, dockBadge, keepAwake }
 ```
 
 `git` and `projectSettings`, like the two font sizes, are defaulted on decode
 (`poseidon/` and `{}`), so a row written before they existed still reads. So is
 `browser`, whose `openPaneOnAgentUse` comes back as `false`, and `chatWidth`,
 which comes back as `comfortable`.
+`notifications` is defaulted the same way: every alert, the Dock badge and
+keep-awake on, the sound off.
 
 `chatWidth` sets how far the thread column runs. One helper,
 `chatWidthClasses` in `apps/web/src/lib/chat-width.ts`, maps it to literal
@@ -2744,7 +2747,18 @@ General, beside the font sizes, and stepped by the palette's "Cycle chat width"
 (`chatWidth.cycle`, unbound by default); Reset appearance puts it back on
 `comfortable`.
 
-Both are edited on the Git & worktrees page. The branch prefix saves on blur,
+Settings → Notifications (`apps/web/src/components/Settings/notifications-panel.tsx`,
+linked from the settings sidebar and the command palette) edits it: a checkbox
+each for a thread finishing, failing and needing you (an approval, a question
+or a plan ready), the sound, the Dock badge (marked desktop-only in a browser)
+and "Keep the Mac awake while agents run", under which a muted line says
+whether the desktop app is holding the machine awake now
+(`keepAwakeHoldingAtom`). The server merges a patch one key deep, so each click
+sends the whole `notifications` object. In a plain browser whose page has not
+been asked yet, an "Allow browser notifications" button requests permission;
+the app never asks on its own.
+
+`git` and `projectSettings` are edited on the Git & worktrees page. The branch prefix saves on blur,
 Enter or Save, trimmed, and only when it changed; a prefix git would refuse
 (a leading `-` or `/`, spaces, `..`, `@{`, `~^:?*[\`) is named under the input
 and not saved, though `git.worktree.create` still has the last word. A setup

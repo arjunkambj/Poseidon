@@ -16,6 +16,7 @@ import { SettingsWindowChrome } from "@/components/Layout/window-chrome";
 import { SidebarPrimaryNav } from "@/components/sidebar/sidebar-primary-nav";
 import {
   Archive,
+  Bell,
   Brain,
   Connect,
   GitBranch,
@@ -33,6 +34,7 @@ const ITEMS = [
   { to: "/settings/permissions", label: "Permissions", icon: Lock },
   { to: "/settings/git", label: "Git & worktrees", icon: GitBranch },
   { to: "/settings/browser", label: "Browser", icon: Globe },
+  { to: "/settings/notifications", label: "Notifications", icon: Bell },
   { to: "/settings/archived", label: "Archived threads", icon: Archive },
 ] as const;
 

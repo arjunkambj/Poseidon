@@ -9,6 +9,7 @@ import {
   DEFAULT_BRANCH_PREFIX,
   DEFAULT_CHAT_WIDTH,
   DEFAULT_FONT_SIZE,
+  DEFAULT_NOTIFICATION_SETTINGS,
   MAX_FONT_SIZE,
   PermissionRule,
   Settings,
@@ -125,6 +126,7 @@ describe("settingsForm annotations", () => {
         "keybindings",
         "keybindingsFormat",
         "mainFontSize",
+        "notifications",
         "permissions",
         "projectSettings",
         "sidebarFontSize",
@@ -285,6 +287,59 @@ describe("browser settings", () => {
     Effect.gen(function* () {
       const exit = yield* Effect.exit(
         Schema.decodeUnknownEffect(SettingsPatch)({ browser: { openPaneOnAgentUse: "yes" } }),
+      );
+      expect(exit._tag).toBe("Failure");
+    }),
+  );
+});
+
+describe("notification settings", () => {
+  it.effect("notify on every transition, silently, with the badge and keep-awake on", () =>
+    Effect.gen(function* () {
+      const settings = yield* Effect.sync(defaultSettings);
+      expect(settings.notifications).toEqual({
+        finished: true,
+        failed: true,
+        needsYou: true,
+        sound: false,
+        dockBadge: true,
+        keepAwake: true,
+      });
+    }),
+  );
+
+  it.effect("decode a stored document that predates them as the defaults", () =>
+    Effect.gen(function* () {
+      const { notifications: _notifications, ...older } = Schema.encodeUnknownSync(Settings)(
+        defaultSettings(),
+      ) as Record<string, unknown>;
+      const decoded = yield* Schema.decodeUnknownEffect(Settings)(older);
+      expect(decoded.notifications).toEqual(DEFAULT_NOTIFICATION_SETTINGS);
+    }),
+  );
+
+  it.effect("round-trip through a patch", () =>
+    Effect.gen(function* () {
+      const patch = { notifications: { ...DEFAULT_NOTIFICATION_SETTINGS, sound: true } };
+      const encoded = yield* Schema.encodeUnknownEffect(SettingsPatch)(patch);
+      const decoded = yield* Schema.decodeUnknownEffect(SettingsPatch)(
+        JSON.parse(JSON.stringify(encoded)),
+      );
+      expect(decoded).toEqual(patch);
+      const applied = yield* Schema.decodeUnknownEffect(Settings)({
+        ...(Schema.encodeUnknownSync(Settings)(defaultSettings()) as object),
+        ...decoded,
+      });
+      expect(applied.notifications.sound).toBe(true);
+    }),
+  );
+
+  it.effect("reject a patch that is not a boolean", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(
+        Schema.decodeUnknownEffect(SettingsPatch)({
+          notifications: { ...DEFAULT_NOTIFICATION_SETTINGS, dockBadge: "yes" },
+        }),
       );
       expect(exit._tag).toBe("Failure");
     }),
