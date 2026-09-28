@@ -8,6 +8,7 @@ import {
   ConnectorInstanceConfig,
   DEFAULT_BRANCH_PREFIX,
   DEFAULT_CHAT_WIDTH,
+  DEFAULT_DIFF_VIEW_SETTINGS,
   DEFAULT_FONT_SIZE,
   DEFAULT_NOTIFICATION_SETTINGS,
   MAX_FONT_SIZE,
@@ -122,6 +123,7 @@ describe("settingsForm annotations", () => {
         "chatWidth",
         "connectors",
         "defaults",
+        "diffView",
         "git",
         "keybindings",
         "keybindingsFormat",
@@ -361,6 +363,51 @@ describe("plugin overrides", () => {
     Effect.gen(function* () {
       const exit = yield* Effect.exit(
         Schema.decodeUnknownEffect(SettingsPatch)({ plugins: { "builtin:browser": "off" } }),
+      );
+      expect(exit._tag).toBe("Failure");
+    }),
+  );
+});
+
+describe("diff view settings", () => {
+  it.effect("start with both options off", () =>
+    Effect.gen(function* () {
+      const settings = yield* Effect.sync(defaultSettings);
+      expect(settings.diffView).toEqual({ ignoreWhitespace: false, wrapLines: false });
+    }),
+  );
+
+  it.effect("decode a stored document that predates them with the defaults", () =>
+    Effect.gen(function* () {
+      const { diffView: _diffView, ...older } = Schema.encodeUnknownSync(Settings)(
+        defaultSettings(),
+      ) as Record<string, unknown>;
+      const decoded = yield* Schema.decodeUnknownEffect(Settings)(older);
+      expect(decoded.diffView).toEqual(DEFAULT_DIFF_VIEW_SETTINGS);
+    }),
+  );
+
+  it.effect("apply through a patch", () =>
+    Effect.gen(function* () {
+      const patch = { diffView: { ignoreWhitespace: true, wrapLines: true } };
+      const decoded = yield* Schema.decodeUnknownEffect(SettingsPatch)(
+        JSON.parse(JSON.stringify(patch)),
+      );
+      expect(decoded).toEqual(patch);
+      const applied = yield* Schema.decodeUnknownEffect(Settings)({
+        ...(Schema.encodeUnknownSync(Settings)(defaultSettings()) as object),
+        ...decoded,
+      });
+      expect(applied.diffView).toEqual({ ignoreWhitespace: true, wrapLines: true });
+    }),
+  );
+
+  it.effect("reject a patch that is not a boolean", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(
+        Schema.decodeUnknownEffect(SettingsPatch)({
+          diffView: { ignoreWhitespace: "yes", wrapLines: false },
+        }),
       );
       expect(exit._tag).toBe("Failure");
     }),

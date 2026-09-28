@@ -60,6 +60,7 @@
     }
   },
   "browser": { "openPaneOnAgentUse": false },
+  "diffView": { "ignoreWhitespace": false, "wrapLines": false },
   "notifications": {
     "finished": true,
     "failed": true,

@@ -309,6 +309,21 @@ export type BrowserSettings = typeof BrowserSettings.Type;
 
 export const DEFAULT_BROWSER_SETTINGS: BrowserSettings = { openPaneOnAgentUse: false };
 
+/**
+ * How the Changes pane draws its diffs, picked from its View menu: compare
+ * ignoring whitespace (git's `-w`), and wrap long lines instead of scrolling.
+ */
+export const DiffViewSettings = Schema.Struct({
+  ignoreWhitespace: Schema.Boolean,
+  wrapLines: Schema.Boolean,
+});
+export type DiffViewSettings = typeof DiffViewSettings.Type;
+
+export const DEFAULT_DIFF_VIEW_SETTINGS: DiffViewSettings = {
+  ignoreWhitespace: false,
+  wrapLines: false,
+};
+
 const toggle = (label: string, description: string) =>
   Schema.Boolean.pipe(settingsForm({ label, description, control: "toggle" }));
 
@@ -409,6 +424,11 @@ export const Settings = Schema.Struct({
     Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_BROWSER_SETTINGS)),
     settingsForm({ label: "Browser", control: "hidden" }),
   ),
+  // Defaulted on decode like `browser`: older rows get both options off.
+  diffView: DiffViewSettings.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_DIFF_VIEW_SETTINGS)),
+    settingsForm({ label: "Diff view", control: "hidden" }),
+  ),
   // Defaulted on decode like `browser`: older rows get the defaults.
   notifications: NotificationSettings.pipe(
     Schema.withDecodingDefaultKey(Effect.succeed(DEFAULT_NOTIFICATION_SETTINGS)),
@@ -445,6 +465,7 @@ export const SettingsPatch = Schema.Struct({
   git: Schema.optional(GitSettings),
   projectSettings: Schema.optional(Schema.Record(Schema.String, ProjectSettings)),
   browser: Schema.optional(BrowserSettings),
+  diffView: Schema.optional(DiffViewSettings),
   notifications: Schema.optional(NotificationSettings),
   preferredEditor: Schema.optional(Schema.String),
   plugins: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
@@ -469,6 +490,7 @@ export const defaultSettings = (): Settings => ({
   git: { branchPrefix: DEFAULT_BRANCH_PREFIX },
   projectSettings: {},
   browser: DEFAULT_BROWSER_SETTINGS,
+  diffView: DEFAULT_DIFF_VIEW_SETTINGS,
   notifications: DEFAULT_NOTIFICATION_SETTINGS,
   plugins: {},
 });
