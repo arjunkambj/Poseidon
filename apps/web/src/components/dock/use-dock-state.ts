@@ -17,6 +17,11 @@
  *   (`noteDockShown`); only the user's own moves are reopened on arrival.
  * - The toggle opens on the last tab, else on the launcher with its first row
  *   focused; the Files key focuses the Files search.
+ * - The strip shows the tabs opened here (`openTabs`, `dockStripTabs`), and
+ *   closing one (`closeTab`, `closeDockTab`) only changes the memory — unless
+ *   it was the active tab, when the dock moves to the tab that replaces it
+ *   through the same path as any other user move, so closing the Browser is
+ *   exactly switching away from it.
  *
  * It also publishes `dockOpen` while the dock is open.
  */
@@ -29,8 +34,11 @@ import { useDockMemory } from "@/state/ui";
 
 import {
   DOCK_HOME,
+  closeDockTab,
   dockArrivalTarget,
+  dockStripTabs,
   dockToggleTarget,
+  isDockTab,
   noteDockShown,
   rememberDockMove,
   type DockPane,
@@ -62,9 +70,18 @@ export const useDockState = ({
   // onto one) leaves the focus where it is.
   const [focusLauncher, setFocusLauncher] = React.useState(false);
 
+  // The active tab the user just closed, until the route moves off it: the
+  // memory drops it at once, but `?pane=` still names it for a render or two,
+  // and the strip must not put it back meanwhile.
+  const closing = React.useRef<DockTab | null>(null);
+  if (closing.current !== null && dockTab !== closing.current) {
+    closing.current = null;
+  }
+
   /** Every dock move the user makes: remembered, and noted. */
   const setDockTab = React.useCallback(
     (tab: DockPane | null) => {
+      closing.current = null;
       setFocusFilesSearch(false);
       setFocusLauncher(false);
       onUserMove?.(dockTab, tab ?? undefined);
@@ -94,6 +111,30 @@ export const useDockState = ({
     setDockTab(tab);
     setFocusFilesSearch(focus && tab === "files");
   };
+  /**
+   * Closes `tab`. Closing another tab than the one shown touches the memory
+   * only; closing the one shown is a user move to its neighbour (or the
+   * launcher, focusing its first row).
+   */
+  const closeTab = React.useCallback(
+    (tab: DockTab) => {
+      if (dockTab === undefined) {
+        return;
+      }
+      const { pane: next } = closeDockTab(dockMemory, tab, dockTab);
+      if (next === dockTab) {
+        updateDockMemory((memory) => closeDockTab(memory, tab, dockTab).memory);
+        return;
+      }
+      setFocusFilesSearch(false);
+      setFocusLauncher(next === DOCK_HOME);
+      onUserMove?.(dockTab, next);
+      updateDockMemory((memory) => closeDockTab(memory, tab, dockTab).memory);
+      closing.current = isDockTab(dockTab) ? dockTab : null;
+      navigateDock(next);
+    },
+    [dockTab, dockMemory, onUserMove, updateDockMemory, navigateDock],
+  );
   const onFilesSearchFocused = React.useCallback(() => setFocusFilesSearch(false), []);
   const onLauncherFocused = React.useCallback(() => setFocusLauncher(false), []);
 
@@ -106,6 +147,10 @@ export const useDockState = ({
     heldDockTab.current = dockTab;
   }
   const shownDockTab = dockTab ?? heldDockTab.current;
+  const openTabs =
+    closing.current !== null && closing.current === shownDockTab
+      ? (dockMemory?.openTabs ?? [])
+      : dockStripTabs(dockMemory, shownDockTab);
 
   return {
     setDockTab,
@@ -119,5 +164,8 @@ export const useDockState = ({
     phase,
     /** What the dock shows, held through its close. */
     shownDockTab,
+    /** The tabs the strip shows: those opened here, in opening order. */
+    openTabs,
+    closeTab,
   };
 };

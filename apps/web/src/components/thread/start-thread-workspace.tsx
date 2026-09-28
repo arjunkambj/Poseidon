@@ -73,6 +73,8 @@ export function StartThreadWorkspace({
           pane={dock.shownDockTab}
           phase={dock.phase}
           onPaneChange={dock.setDockTab}
+          openTabs={dock.openTabs}
+          onCloseTab={dock.closeTab}
           scope={{ projectId, draftId }}
           focusFilesSearch={dock.focusFilesSearch}
           onFilesSearchFocused={dock.onFilesSearchFocused}

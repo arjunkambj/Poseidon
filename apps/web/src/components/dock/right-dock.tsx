@@ -24,11 +24,15 @@
  * session, else to the launcher (`./dock-launcher`): one row per tab with its
  * key, so opening the dock never drops the user into a tab they did not ask
  * for. The launcher reads nothing, so an open dock loads nothing until a tab
- * is picked; while it shows, the top row holds no tabs.
+ * is picked.
  *
- * Once a tab is open the strip is a `tablist` of icons: each tab controls the
- * panel below it, and Left and Right move along the strip (and open the tab
- * they land on).
+ * The strip (`./dock-tab-strip`) holds only the tabs opened in this thread
+ * (or project) this session, in opening order (`openTabs`), each with a close
+ * button; closing the last shows the launcher again, with the dock still
+ * open. It is a `tablist`: each tab controls the panel below it, and Left and
+ * Right move along the open tabs (and open the tab they land on). Only the
+ * active tab's pane is mounted; a closed tab is hidden exactly as switching
+ * away from it hides it.
  *
  * With less than 640px beside the sidebar, the dock overlays the thread
  * column: two columns in that width leave neither readable, and simply
@@ -141,6 +145,8 @@ export function RightDock({
   pane,
   phase,
   onPaneChange,
+  openTabs,
+  onCloseTab,
   scope,
   focusFilesSearch = false,
   onFilesSearchFocused,
@@ -150,6 +156,10 @@ export function RightDock({
   pane: DockPane;
   phase: Presence;
   onPaneChange: (pane: DockPane | null) => void;
+  /** The tabs opened here this session, in opening order. */
+  openTabs: ReadonlyArray<DockTab>;
+  /** Close this tab; the dock stays open. */
+  onCloseTab: (tab: DockTab) => void;
   scope: DockScope;
   /** Focus the Files search as the Files tab mounts — set by its key. */
   focusFilesSearch?: boolean;
@@ -210,7 +220,13 @@ export function RightDock({
           phase !== "shown" && "min-w-70",
         )}
       >
-        <DockTabStrip baseId={baseId} tabs={tabs} pane={pane} onTabChange={onPaneChange} />
+        <DockTabStrip
+          baseId={baseId}
+          openTabs={openTabs}
+          pane={pane}
+          onTabChange={onPaneChange}
+          onCloseTab={onCloseTab}
+        />
         <div
           id={dockPanelId(baseId)}
           role={isDockTab(pane) ? "tabpanel" : undefined}

@@ -270,6 +270,8 @@ export function ThreadView({
           pane={dock.shownDockTab}
           phase={dock.phase}
           onPaneChange={setDockTab}
+          openTabs={dock.openTabs}
+          onCloseTab={dock.closeTab}
           scope={{ snapshot }}
           focusFilesSearch={dock.focusFilesSearch}
           onFilesSearchFocused={dock.onFilesSearchFocused}
