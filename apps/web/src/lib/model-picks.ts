@@ -12,6 +12,7 @@
 import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
 import type { ConnectorSummary, ModelOption } from "@poseidon/contracts/connectors";
+import type { Effort } from "@poseidon/contracts/enums";
 import type { ThreadSettingsPatch } from "@poseidon/contracts/orchestration";
 import { isString } from "effect/Predicate";
 
@@ -49,6 +50,8 @@ export interface ModelPickerItem {
   readonly value: string;
   readonly label: string;
   readonly description?: string;
+  /** The model's effort ladder as its connector lists it; absent for a verbatim current value. */
+  readonly efforts?: ReadonlyArray<Effort>;
   readonly disabled: boolean;
 }
 
@@ -75,6 +78,7 @@ export const modelPickerGroups = (
         }),
         label: model.label,
         description: model.family,
+        efforts: model.efforts,
         disabled: locked,
       })),
     };
