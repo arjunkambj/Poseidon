@@ -2753,7 +2753,7 @@ each for a thread finishing, failing and needing you (an approval, a question
 or a plan ready), the sound, the Dock badge (marked desktop-only in a browser)
 and "Keep the Mac awake while agents run", under which a muted line says
 whether the desktop app is holding the machine awake now
-(`keepAwakeHoldingAtom`). The server merges a patch one key deep, so each click
+(`keepAwakeHoldingAtom`), or that it is not because the switch is off. The server merges a patch one key deep, so each click
 sends the whole `notifications` object. In a plain browser whose page has not
 been asked yet, an "Allow browser notifications" button requests permission;
 the app never asks on its own.

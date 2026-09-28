@@ -141,12 +141,14 @@ function DockBadge() {
 
 function KeepAwake() {
   const holding = useAtomValue(keepAwakeHoldingAtom);
+  const { settings } = useNotificationSettings();
+  const enabled = settings?.keepAwake ?? DEFAULT_NOTIFICATION_SETTINGS.keepAwake;
   return (
     <Section title="Keep awake">
       <Toggle
         field="keepAwake"
         label="Keep the Mac awake while agents run"
-        note={keepAwakeNote(hasDesktopAttention(), holding)}
+        note={keepAwakeNote(hasDesktopAttention(), enabled, holding)}
       />
     </Section>
   );
