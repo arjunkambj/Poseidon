@@ -1592,7 +1592,10 @@ as a `thread.settings.update`, and the server's rules keep the pair consistent
 `xhigh` once it is on. The row passes every other pick through
 `settleUltracode`, which adds `ultracode: false` to an effort pick and to a
 model it is not offered on — the same rules, so the start screen's local
-settings, which reach the server only with `thread.create`, read the same.
+settings, which reach the server only with `thread.create`, read the same. The
+composer's `/model` rows add `ultracode: false` to such a model too
+(`slashMenuItems` in `apps/web/src/components/composer/slash-menu.tsx`); an
+`/effort` pick is left to the server's rule.
 
 Without the toggle, the word "ultracode" in a prompt opts that one turn into
 Claude Code's Workflow tool: the CLI's own keyword trigger, which Poseidon

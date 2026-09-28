@@ -148,6 +148,7 @@ export function Composer({
       efforts: currentModel?.efforts,
       capabilities,
       canCompact: compactable,
+      ultracode: doc?.settings.ultracode === true,
     });
   }, [
     trigger,
@@ -156,6 +157,7 @@ export function Composer({
     harnessCommands,
     models,
     doc?.settings.model,
+    doc?.settings.ultracode,
     capabilities,
     compactable,
   ]);

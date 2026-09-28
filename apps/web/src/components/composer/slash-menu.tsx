@@ -6,6 +6,10 @@
  * `/mode` offer what the header pickers offer: the model's rungs in the
  * contract's order, and the modes the connector can honour.
  *
+ * A `/model` pick while ultracode is on carries `ultracode: false` when the
+ * picked model cannot run it (`ultracodeOffered`), the rule the header's
+ * model picker applies; an `/effort` pick is left to the server's rule.
+ *
  * `/compact` is listed only when the thread's bound session declared
  * `capabilities.compaction` (`canCompact`, passed in rather than read from
  * `capabilities`, which are the instance's): picking it starts the same
@@ -37,6 +41,7 @@ import {
   type TriggerMenuItem,
 } from "@/components/composer/trigger-menu";
 import { orderEfforts, withNote } from "@/lib/efforts";
+import { ultracodeOffered } from "@/lib/ultracode";
 import { RUNTIME_MODE_LABELS, runtimeModeOptions } from "@/lib/runtime-modes";
 import {
   Brain,
@@ -71,6 +76,7 @@ export interface SlashPatch {
   readonly effort?: Effort;
   readonly runtimeMode?: RuntimeMode;
   readonly interactionMode?: InteractionMode;
+  readonly ultracode?: boolean;
 }
 
 export interface SlashMenuItem extends TriggerMenuItem {
@@ -109,8 +115,11 @@ export const slashMenuItems = (input: {
   readonly capabilities: ConnectorCapabilities | null;
   /** The thread's bound session can compact on demand (`canCompact`). */
   readonly canCompact: boolean;
+  /** The thread has ultracode on; absent reads as off. */
+  readonly ultracode?: boolean;
 }): ReadonlyArray<SlashMenuItem> => {
   const { level, skills, harnessCommands, models, efforts, capabilities, canCompact } = input;
+  const ultracode = input.ultracode === true;
   const query = level === "root" ? input.query : subQuery(input.query);
 
   if (level === "model") {
@@ -121,7 +130,13 @@ export const slashMenuItems = (input: {
         label: model.label,
         description: model.description ?? model.family,
         icon: Brain,
-        action: { type: "settings", patch: { model: model.id } },
+        action: {
+          type: "settings",
+          patch:
+            ultracode && !ultracodeOffered(capabilities, model)
+              ? { model: model.id, ultracode: false }
+              : { model: model.id },
+        },
       }));
   }
 

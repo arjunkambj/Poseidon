@@ -974,7 +974,8 @@ rules, since it is what the session already did. The composer's Ultracode
 toggle (`apps/web/src/lib/ultracode.ts`) is offered where the instance's
 capabilities carry `ultracode` and the model lists `xhigh`, and applies the
 same rules to New task's local settings before `thread.create`, plus one more:
-a model pick the toggle is not offered on switches ultracode off.
+a model pick the toggle is not offered on switches ultracode off, from the
+model picker and from the composer's `/model` rows alike.
 
 `ModelOption.hidden` is optional: a connector may list a model it does not want
 offered by default. The settings document's `modelPicker` holds the user's
