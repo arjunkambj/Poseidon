@@ -17,6 +17,16 @@
  *   guest view reloads the whole app window — and `Page.bringToFront` selects
  *   the pane tab.
  *
+ * A page is laid out at its pane's size, and `Emulation` is granted method by
+ * method rather than as a domain so that it stays that way. The calls that
+ * would lay the page out at a size or scale of their own are refused: a
+ * device metrics override is not a view onto the pane, it replaces it, and
+ * the guest keeps it for as long as the client stays attached. This is
+ * hardening, not a fix for anything seen: none of the agent's browser tools
+ * sends an `Emulation` call (the server's catalogue has no `set` command), and
+ * only a CLI holding the launch key could. The person sizes the page by
+ * resizing the dock.
+ *
  * The list fails closed: a method this file does not name is refused, so a
  * new agent-browser or Electron release that needs more shows up as an
  * error in the tool result rather than as silently widened access. Re-check it
@@ -81,7 +91,6 @@ const PAGE_DOMAINS = new Set([
   "Accessibility",
   "Input",
   "Network",
-  "Emulation",
   "CSS",
   "DOMSnapshot",
   "Overlay",
@@ -112,6 +121,31 @@ const PAGE_DENIED = new Map<string, string>([
   ["Network.clearBrowserCache", "clearing browsing data is the user's"],
   ["Network.setCookieControls", "the cookie jar is not granted"],
   ["Network.continueInterceptedRequest", "request rewriting goes through Fetch"],
+]);
+
+/**
+ * The `Emulation` calls a page session may make: none of them changes the
+ * size or scale the page is laid out at. What agent-browser sends for
+ * `set media`, `set geo`, `set timezone`, `set locale` and a user agent, plus
+ * the two clears, which only put the page back as the pane shows it.
+ */
+const EMULATION_GRANTED = new Set([
+  "Emulation.setEmulatedMedia",
+  "Emulation.setGeolocationOverride",
+  "Emulation.clearGeolocationOverride",
+  "Emulation.setLocaleOverride",
+  "Emulation.setTimezoneOverride",
+  "Emulation.setUserAgentOverride",
+  "Emulation.clearDeviceMetricsOverride",
+]);
+
+/** Calls that would lay the page out at a size or scale other than the pane's. */
+const SIZE_OVERRIDES = new Set([
+  "Emulation.setDeviceMetricsOverride",
+  "Emulation.setVisibleSize",
+  "Emulation.setPageScaleFactor",
+  // Removed from the protocol, refused by name in case a Chromium still has it.
+  "Page.setDeviceMetricsOverride",
 ]);
 
 /** Page methods that carry a URL, and the param it is in. */
@@ -160,6 +194,14 @@ const classifyPage = (method: string, params: Params): PolicyDecision => {
   }
   if (domain === "Target" || domain === "Browser") {
     return deny(`${method} is browser-wide and denied`);
+  }
+  if (SIZE_OVERRIDES.has(method)) {
+    return deny(
+      `${method}: the page is laid out at the browser pane's size, which the person sets by resizing the dock`,
+    );
+  }
+  if (domain === "Emulation") {
+    return EMULATION_GRANTED.has(method) ? FORWARD : deny(`${method} is not granted`);
   }
   if (!PAGE_DOMAINS.has(domain)) {
     return deny(`${method} is outside this target`);

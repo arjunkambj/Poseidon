@@ -333,6 +333,38 @@ describe("page sessions", () => {
     expect(port.calls.filter((call) => call.op !== "attachChild")).toEqual([]);
   });
 
+  it("never lets an emulated viewport reach the guest, so the page keeps the pane's size", async () => {
+    const { port, session, sent } = await attached();
+    // `agent-browser set viewport 1280 720`, as it sends it, then the other sizing calls.
+    const sizing: ReadonlyArray<readonly [string, Record<string, unknown>]> = [
+      [
+        "Emulation.setDeviceMetricsOverride",
+        { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false },
+      ],
+      ["Browser.getWindowForTarget", { targetId: "OWN-TARGET" }],
+      ["Emulation.setVisibleSize", { width: 1280, height: 720 }],
+      ["Emulation.setPageScaleFactor", { pageScaleFactor: 2 }],
+    ];
+    for (const [index, [method, params]] of sizing.entries()) {
+      await session.receive({ id: 10 + index, method, sessionId: "SESSION-1", params });
+      expect(errorOf(replyTo(sent, 10 + index)), method).toBeDefined();
+    }
+    expect(errorOf(replyTo(sent, 10))).toContain("the browser pane's size");
+    expect(port.calls.filter((call) => call.op !== "attachChild")).toEqual([]);
+
+    // The emulation that leaves the size alone still reaches the page.
+    await session.receive({
+      id: 20,
+      method: "Emulation.setEmulatedMedia",
+      sessionId: "SESSION-1",
+      params: { features: [{ name: "prefers-color-scheme", value: "dark" }] },
+    });
+    expect(errorOf(replyTo(sent, 20))).toBeUndefined();
+    expect(port.calls.filter((call) => call.op === "send")).toMatchObject([
+      { op: "send", method: "Emulation.setEmulatedMedia" },
+    ]);
+  });
+
   it("opens a background tab only when createTarget asks for one", async () => {
     const { port, session } = openSession(THREAD);
     await session.receive({

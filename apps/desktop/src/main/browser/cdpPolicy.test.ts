@@ -163,6 +163,59 @@ describe("classify on a page session", () => {
     expect(kind("page", method, {})).toBe("deny");
   });
 
+  it("never lets an emulated viewport replace the pane's size", () => {
+    // What `agent-browser set viewport 1280 720` sends first.
+    expect(
+      classify("page", "Emulation.setDeviceMetricsOverride", {
+        width: 1280,
+        height: 720,
+        deviceScaleFactor: 1,
+        mobile: false,
+      }),
+    ).toEqual({
+      kind: "deny",
+      reason:
+        "Emulation.setDeviceMetricsOverride: the page is laid out at the browser pane's size, which the person sets by resizing the dock",
+    });
+    for (const method of [
+      "Emulation.setVisibleSize",
+      "Emulation.setPageScaleFactor",
+      "Page.setDeviceMetricsOverride",
+    ]) {
+      expect(classify("page", method, {})).toMatchObject({
+        kind: "deny",
+        reason: expect.stringContaining("the browser pane's size"),
+      });
+    }
+  });
+
+  it("grants Emulation only method by method", () => {
+    for (const method of [
+      "Emulation.setEmulatedMedia",
+      "Emulation.setGeolocationOverride",
+      "Emulation.clearGeolocationOverride",
+      "Emulation.setLocaleOverride",
+      "Emulation.setTimezoneOverride",
+      "Emulation.setUserAgentOverride",
+      "Emulation.clearDeviceMetricsOverride",
+    ]) {
+      expect(kind("page", method, {})).toBe("forward");
+    }
+    for (const method of [
+      "Emulation.setSafeAreaInsetsOverride",
+      "Emulation.setDisplayFeaturesOverride",
+      "Emulation.setVirtualTimePolicy",
+      "Emulation.setTouchEmulationEnabled",
+      "Emulation.setScriptExecutionDisabled",
+      "Emulation.setSomethingNew",
+    ]) {
+      expect(classify("page", method, {})).toEqual({
+        kind: "deny",
+        reason: `${method} is not granted`,
+      });
+    }
+  });
+
   it("refuses navigation anywhere but the web", () => {
     for (const url of [
       "file:///etc/passwd",
