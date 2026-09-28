@@ -1,16 +1,16 @@
 /**
  * What the sidebar offers for several picked threads at once: archive them,
- * delete them, or let go of the selection. It shows under the tree while
+ * mark them unread, delete them, or let go of the selection. It shows under the tree while
  * anything is picked — see `./thread-selection` for how rows get picked. It
  * stays mounted when nothing is, so the delete confirmation outlives the
  * selection it was opened for.
  *
- * Both actions are the row menu's own, one thread at a time: archive through
+ * Each action is the row menu's own: archive and mark unread through
  * `./use-sidebar-actions`, delete through `./use-delete-thread`, so each thread
  * keeps its own refusal toast and its own worktree flow. Archive skips the
  * threads that already are archived and toasts once, with an Undo for the
- * lot; delete asks first, once for the lot, with the same worktree opt-in the
- * single-thread dialog offers.
+ * lot; mark unread is one undo entry for the lot; delete asks first, once for
+ * the lot, with the same worktree opt-in the single-thread dialog offers.
  */
 
 import * as React from "react";
@@ -31,7 +31,7 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 import { THREAD_DELETE_DESCRIPTION } from "@/components/sidebar/thread-actions";
 import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
-import { Archive, Close, Trash } from "@honeyicons/react";
+import { Archive, Close, Email, Trash } from "@honeyicons/react";
 
 /** `THREAD_DELETE_DESCRIPTION`, for many. */
 const THREADS_DELETE_DESCRIPTION =
@@ -160,6 +160,11 @@ export function ThreadSelectionBar({
     void actions.archive(targets);
   };
 
+  const markUnread = () => {
+    actions.markUnread(threads);
+    onClear();
+  };
+
   return (
     <>
       {threads.length === 0 ? null : (
@@ -171,6 +176,9 @@ export function ThreadSelectionBar({
           <span className="min-w-0 flex-1 truncate tabular-nums">{threads.length} selected</span>
           <BarAction label="Archive" onClick={archive}>
             <Archive variant="bold" />
+          </BarAction>
+          <BarAction label="Mark unread" onClick={markUnread}>
+            <Email variant="bold" />
           </BarAction>
           <BarAction label="Delete" onClick={() => setDeleting(threads)}>
             <Trash variant="bold" />

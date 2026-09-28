@@ -349,7 +349,9 @@ rename, pin or unpin, mark unread, a Copy submenu (the workspace path, the
 branch of a worktree thread, the thread ID), open terminal here (the thread
 with its terminal drawer open), new thread in this project (in the same
 worktree for a worktree thread), then archive or unarchive and delete. An
-archived row, listed only while it is open, offers the menu alone. "Mark unread" lights the dot and the bold title
+archived row, listed only while it is open, offers the menu alone. The
+selection bar under the tree archives, marks unread or deletes every picked
+thread. "Mark unread" lights the dot and the bold title
 until the thread is opened again. Pinned threads leave their project for a
 "Pinned" group above Projects (`apps/web/src/components/sidebar/pinned-threads.tsx`),
 newest pin first, whether or not their project is folded. Archive, pin and

@@ -31,8 +31,8 @@
  * `./visible-threads`.
  *
  * Cmd/Ctrl-click and Shift-click pick several thread rows; the picked ones
- * can be archived or deleted together from the bar under the tree — see
- * `./thread-selection` and `./thread-selection-bar`.
+ * can be archived, marked unread or deleted together from the bar under the
+ * tree — see `./thread-selection` and `./thread-selection-bar`.
  *
  * Every row has an overflow menu, revealed on hover: for a thread, rename,
  * pin, mark unread, copy, open a terminal, start a thread beside it, archive
