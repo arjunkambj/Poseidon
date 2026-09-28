@@ -31,11 +31,11 @@ import {
 } from "./connectors";
 import { EDITOR_RPC_METHODS, EditorsListRpc, EditorsOpenRpc } from "./editors";
 import {
-  FILES_STAT_MAX_PATHS,
-  FileContent,
-  FileCreated,
-  FileSearchResult,
-  FileStat,
+  FILE_RPC_METHODS,
+  FilesCreateRpc,
+  FilesReadRpc,
+  FilesSearchRpc,
+  FilesStatRpc,
 } from "./files";
 import { FsBrowseError, FsListing } from "./fs";
 import { HarnessCommand } from "./harnessCommands";
@@ -249,10 +249,7 @@ export const RPC_METHODS = {
   connectorsList: "connectors.list",
   connectorsModels: "connectors.models",
   connectorsDescribe: "connectors.describe",
-  filesSearch: "files.search",
-  filesRead: "files.read",
-  filesStat: "files.stat",
-  filesCreate: "files.create",
+  ...FILE_RPC_METHODS,
   fsBrowse: "fs.browse",
   attachmentsStage: "attachments.stage",
   attachmentsRead: "attachments.read",
@@ -369,68 +366,6 @@ const ConnectorsModelsRpc = Rpc.make(RPC_METHODS.connectorsModels, {
 const ConnectorsDescribeRpc = Rpc.make(RPC_METHODS.connectorsDescribe, {
   payload: empty,
   success: Schema.Array(ConnectorDescriptor),
-  error: PoseidonRpcError,
-});
-
-/**
- * `threadId`, on this and the other workspace reads below, reads the thread's
- * own root — its worktree, when it has one — instead of the project's.
- */
-const FilesSearchRpc = Rpc.make(RPC_METHODS.filesSearch, {
-  payload: Schema.Struct({
-    projectId: ProjectId,
-    threadId: Schema.optional(ThreadId),
-    query: Schema.String,
-    limit: Schema.optional(NonNegativeInt),
-  }),
-  success: Schema.Array(FileSearchResult),
-  error: PoseidonRpcError,
-});
-
-const FilesReadRpc = Rpc.make(RPC_METHODS.filesRead, {
-  payload: Schema.Struct({
-    projectId: ProjectId,
-    threadId: Schema.optional(ThreadId),
-    path: NonEmptyString,
-    offset: Schema.optional(NonNegativeInt),
-    limit: Schema.optional(NonNegativeInt),
-  }),
-  success: FileContent,
-  error: PoseidonRpcError,
-});
-
-/**
- * Which of up to `FILES_STAT_MAX_PATHS` paths exist inside the workspace root.
- * A relative path resolves against the root, an absolute one counts only when
- * it lies inside it. A missing, escaping or unreadable path is left out of the
- * answer rather than failing the call, so one bad candidate never costs the
- * others theirs.
- */
-const FilesStatRpc = Rpc.make(RPC_METHODS.filesStat, {
-  payload: Schema.Struct({
-    projectId: ProjectId,
-    threadId: Schema.optional(ThreadId),
-    paths: Schema.Array(NonEmptyString).check(Schema.isMaxLength(FILES_STAT_MAX_PATHS)),
-  }),
-  success: Schema.Array(FileStat),
-  error: PoseidonRpcError,
-});
-
-/**
- * Writes a new Markdown file into the workspace — a plan saved from its card.
- * It only ever creates: `path` is relative to the root, stays inside it
- * (symlinks followed), ends in `FILES_CREATE_EXTENSION`, and must not exist
- * yet — an existing file fails `conflict` and is left as it was, anything
- * else refused fails `invalid`. Missing folders on the way are made.
- */
-const FilesCreateRpc = Rpc.make(RPC_METHODS.filesCreate, {
-  payload: Schema.Struct({
-    projectId: ProjectId,
-    threadId: Schema.optional(ThreadId),
-    path: NonEmptyString,
-    content: Schema.String,
-  }),
-  success: FileCreated,
   error: PoseidonRpcError,
 });
 
