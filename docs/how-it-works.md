@@ -2610,6 +2610,16 @@ around it, and an answer with no object is read as plain lines, the first
 being the subject or title. Every call stops after 120 seconds, and a client
 that cancels stops the harness's process with it.
 
+**Thread titles.** A thread's first turn, while it is still called "New
+thread" and "Name new threads automatically" is on, also asks for a title
+from the first message: 3 to 8 words, under 40 characters. The turn never
+waits for it. The title is applied only if the thread is still called "New
+thread" when it arrives, so a rename made meanwhile wins, and any failure
+leaves the title as it was without a word. Only live turns count: a restart
+does not go back and name old threads. `thread.regenerateTitle` writes a
+title from the last 8 000 characters of the conversation and applies it with
+`thread.rename` whatever the title is, since the user asked.
+
 ### Opening the workspace in an editor
 
 The thread header's "Open in" control

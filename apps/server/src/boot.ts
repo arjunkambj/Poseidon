@@ -60,6 +60,7 @@ import { layer as directoryBrowserLayer } from "./fs/Directories";
 import { layer as gitCheckpointHookLayer } from "./git/CheckpointHook";
 import { layer as fileServiceLayer } from "./git/Files";
 import { TextGeneration } from "./generation/TextGeneration";
+import { TitleReactor } from "./generation/TitleReactor";
 import { layer as gitServiceLayer } from "./git/Git";
 import { GhRunner } from "./git/GitHubCli";
 import { WorktreesRoot } from "./git/Worktrees";
@@ -279,9 +280,14 @@ export const boot = (options: BootOptions) =>
       permissions,
       pluginRegistry,
       // Generated text resolves its writer through the same registry and
-      // settings store as everything else, and dispatches through the engine
-      // every command goes through.
-      TextGeneration.layer.pipe(Layer.provide(Layer.mergeAll(persistence, sharedSettings, engine))),
+      // settings store as everything else; the title reactor rides along,
+      // listening to the one engine every command goes through.
+      TitleReactor.pipe(
+        Layer.provideMerge(
+          TextGeneration.layer.pipe(Layer.provide(Layer.mergeAll(persistence, sharedSettings))),
+        ),
+        Layer.provide(Layer.mergeAll(engine, sharedSettings)),
+      ),
     );
 
     // ── Shutting down with clients attached ──

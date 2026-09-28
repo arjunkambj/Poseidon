@@ -1669,6 +1669,7 @@ exception: one fiber per session, forked by the session manager.
 | `SessionSupervisor`                  | boot scan + lifecycle      | resumes or marks lost                                                                                                                                       |
 | `CheckpointReactor`                  | the event stream           | capture on turn completion, restore on a work order, prune on deletion                                                                                      |
 | `AttachmentReactor`                  | the event stream + boot    | purges a deleted thread's attachments and sweeps unreferenced staged files                                                                                  |
+| `TitleReactor`                       | the event stream (live)    | names a thread still called "New thread" from its first message, beside its first turn                                                                      |
 
 `TerminalService` (`apps/server/src/terminal/TerminalService.ts`) carries one
 more watcher of its own, subscribed the same eager way inside its layer: on
@@ -1751,6 +1752,19 @@ receipt, with no turn since the restore, is sent at layer build, which covers a
 stop between `restored` and the send. No restart loses the edited message,
 and none sends it twice. Thread deletion and project removal each prune
 the hidden refs under the thread's prefix.
+
+**`TitleReactor`** (`apps/server/src/generation/TitleReactor.ts`). It listens
+to the live PubSub only and never reads the log, so a boot does not retitle a
+thread the user left as "New thread". On a thread's first
+`thread.turn.requested` — no user message from an earlier turn — while
+`generation.autoTitle` is on (read at that moment) and the title is exactly
+`DEFAULT_THREAD_TITLE`, it forks a job into its own scope and goes back to
+listening, so the turn is never waited on. The job asks
+`TextGeneration.autoTitle`, which writes a title from the first message and
+appends `thread.renamed` (actor `system`) through `appendThreadEvents` with a
+function of the document: the title is checked again inside the write, so a
+rename the user made meanwhile stands. A thread gets one attempt per process.
+Every failure goes to the log and nowhere else; the title stays.
 
 **`SessionManager`.** Not a reactor but the thing reactors act through: one
 driver per thread, being the turn-scoped handle plus the ingestion fiber

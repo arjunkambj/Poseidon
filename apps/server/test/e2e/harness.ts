@@ -58,6 +58,7 @@ import type {
   ThreadSettingsPatch,
 } from "@poseidon/contracts/orchestration";
 import { defaultSettings } from "@poseidon/contracts/settings";
+import { DEFAULT_GENERATION_SETTINGS } from "@poseidon/contracts/generation";
 import type { ConnectorInstanceConfig } from "@poseidon/contracts/settings";
 import { replayConfig } from "@poseidon/testkit/replayCmdProcess";
 import { describe, it } from "@effect/vitest";
@@ -248,7 +249,7 @@ export const forEachDriver = (title: string, body: (driver: Driver) => void): vo
  * Without one the connector manager treats the home as a fresh install and
  * seeds its own `cmd` instance — which is right for a first run and wrong for
  * a test, because then the test cannot say which binary the instance points
- * at.
+ * at. Automatic thread titles are switched off in it.
  */
 export const seedSettings = (
   home: E2EHome,
@@ -263,7 +264,13 @@ export const seedSettings = (
         yield* Layer.build(SettingsStore.layer.pipe(Layer.provide(sqlite))),
         SettingsStore,
       );
-      yield* store.update({ ...defaultSettings(), connectors });
+      // Automatic titles off: they would add a one-shot harness call to every
+      // first turn, and a recording holds only the session it was made from.
+      yield* store.update({
+        ...defaultSettings(),
+        connectors,
+        generation: { ...DEFAULT_GENERATION_SETTINGS, autoTitle: false },
+      });
     }),
   ).pipe(Effect.orDie);
 
