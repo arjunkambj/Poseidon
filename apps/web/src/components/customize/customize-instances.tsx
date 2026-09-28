@@ -1,8 +1,8 @@
 /**
  * One section per connector instance that manages a kind. Skills and MCP
  * servers belong to each harness's own files, so a tab lists them instance by
- * instance, under the instance's name and generic icon, rather than merging
- * lists that different harnesses load differently.
+ * instance, under the instance's name and its logo or generic icon, rather
+ * than merging lists that different harnesses load differently.
  */
 
 import { useAtomValue } from "@effect/atom-react";
@@ -10,8 +10,9 @@ import type { ConnectorSummary } from "@poseidon/contracts/connectors";
 import type * as React from "react";
 import { AsyncResult } from "effect/unstable/reactivity";
 
+import { connectorIconFor } from "@/components/ui/icons/brand-icons";
+import { useConnectorIconKeys } from "@/components/ui/icons/use-connector-icon-keys";
 import { useAppAtoms } from "@/lib/app-runtime";
-import { connectorIconFor } from "@/lib/connector-icon";
 import { instancesWith, type InstanceExtension } from "@/lib/customize-instances";
 
 import { CustomizeEmpty } from "./customize-list";
@@ -52,9 +53,10 @@ export function CustomizeInstances({
 }
 
 /**
- * One instance's section: its heading, under the instance's name and generic
- * icon, then whatever it lists. A tab that hides an instance with nothing to
- * show renders this itself, only once it knows there is something.
+ * One instance's section: its heading, under the instance's name and its
+ * logo or generic icon, then whatever it lists. A tab that hides an instance
+ * with nothing to show renders this itself, only once it knows there is
+ * something.
  */
 export function InstanceSection({
   instance,
@@ -65,12 +67,7 @@ export function InstanceSection({
   readonly actions?: React.ReactNode;
   readonly children: React.ReactNode;
 }) {
-  const atoms = useAppAtoms();
-  const descriptorsResult = useAtomValue(atoms.connectorDescriptorsAtom);
-  const descriptors = AsyncResult.isSuccess(descriptorsResult) ? descriptorsResult.value : [];
-  const Icon = connectorIconFor(
-    descriptors.find((descriptor) => descriptor.kind === instance.kind)?.metadata.iconKey,
-  );
+  const Icon = connectorIconFor(useConnectorIconKeys().get(instance.kind));
 
   return (
     <section className="flex flex-col gap-4">

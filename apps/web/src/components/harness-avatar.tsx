@@ -1,8 +1,7 @@
 /**
- * A harness drawn as a small round avatar. The repo ships no harness logos
- * (`connector-icon.ts` maps generic glyphs only), so the avatar is always the
- * monogram `harnessMonograms` gives the instance's name. It is decorative: the
- * name is always said beside it or in its tooltip.
+ * A harness drawn as a small round avatar: the monogram `harnessMonograms`
+ * gives the instance's name. It is decorative: the name is always said beside
+ * it or in its tooltip.
  */
 
 import { Avatar, AvatarFallback } from "@poseidon/ui/components/avatar";

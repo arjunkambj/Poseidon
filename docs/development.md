@@ -240,8 +240,14 @@ and passes.
 patterns `command code` (spaced or not), the literal `"cmd"`, and `claude`,
 `codex` and `opencode` as words are refused anywhere under it, in file names as
 well as contents. One path is exempt, `apps/web/src/components/ui/icons`, so a
-connector's own logo can be shipped under its own name; nothing lives there
-today.
+connector's own logo can be shipped under its own name. Its `brand-icons.ts` is
+the one brand → icon mapping: `connectorIconFor` (a connector's `iconKey` → the
+monochrome mark for a heading, or a generic glyph), `harnessLogoFor` (the
+colour logo for an avatar, or nothing so the monogram stays), `editorIconFor`
+and `providerKey`/`providerMarkFor`. Its map keys are unquoted, because the
+connector-leak rule still refuses a quoted kind there. Callers pass data (an
+`iconKey` from `useConnectorIconKeys`, an editor, a model's id and family) and
+draw what comes back.
 
 **Reference names.** The products Poseidon was compared against while it was
 built are never named — not in `apps/`, `packages/`, `scripts/` or the

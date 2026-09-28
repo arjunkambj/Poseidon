@@ -204,7 +204,9 @@ exemption is by exact path, with its reason beside it:
 not), the quoted literal `"cmd"`, and `claude`, `codex` and `opencode` as words
 must not appear anywhere under `apps/web/src` — in any file, whatever its extension, and in file names as well
 as contents. One path is exempt, `apps/web/src/components/ui/icons`, so a
-connector's own logo can ship under its own name; nothing lives there today.
+connector's own logo can ship under its own name: `brand-icons.ts` there maps a
+connector's `iconKey`, an editor and a model's provider to the Honeyicons logo
+or glyph the renderer draws, and nothing outside it names a harness.
 The renderer renders whichever connector is configured; a connector's name in a
 CSS class, an SVG title or a JSON label breaks that as surely as one in a string
 literal. This is why a connector's name, icon key and docs link arrive as

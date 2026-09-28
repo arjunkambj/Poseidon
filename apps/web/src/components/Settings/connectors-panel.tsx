@@ -31,8 +31,8 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { connectorIconFor } from "@/components/ui/icons/brand-icons";
 import { useAppAtoms } from "@/lib/app-runtime";
-import { connectorIconFor } from "@/lib/connector-icon";
 
 import { ConnectorStatusBadge, ConnectorStatusLine } from "./connector-status";
 import { SchemaForm, StructForm, type SelectOption } from "./schema-form";
