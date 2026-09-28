@@ -484,12 +484,12 @@ whitespace (`detectComposerTrigger` in
 `packages/client-runtime/src/composerTrigger.ts`), and each closes at the next
 whitespace:
 
-| Trigger | Lists                                                | A pick writes                       | The turn carries it as |
-| ------- | ---------------------------------------------------- | ----------------------------------- | ---------------------- |
-| `/`     | commands, then the instance's skills                 | the command, or `/name ` as text    | text                   |
-| `#`     | the project's files                                  | `#path ` and a chip                 | `mentions`             |
-| `@`     | the instance's plugins, then its skills, never files | `@plugin ` or `$skill `, and a chip | `references`           |
-| `$`     | the instance's skills alone                          | `$skill ` and a chip                | `references`           |
+| Trigger | Lists                                                                 | A pick writes                       | The turn carries it as |
+| ------- | --------------------------------------------------------------------- | ----------------------------------- | ---------------------- |
+| `/`     | commands, then the instance's skills, then the harness's own commands | the command, or `/name ` as text    | text                   |
+| `#`     | the project's files                                                   | `#path ` and a chip                 | `mentions`             |
+| `@`     | the instance's plugins, then its skills, never files                  | `@plugin ` or `$skill `, and a chip | `references`           |
+| `$`     | the instance's skills alone                                           | `$skill ` and a chip                | `references`           |
 
 The start screen's composer (`start-thread.tsx`) opens the same `#`, `@` and
 `$` menus through the same hook (`use-mention-menus.tsx`), asking the instance
