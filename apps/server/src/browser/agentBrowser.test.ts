@@ -28,9 +28,11 @@ import {
   daemonPidPath,
   decodeResult,
   ensureOwnConfig,
+  launchEnvFor,
   makeAgentBrowser,
   modeFor,
   namespaceFor,
+  OWNED_CHROME_ARGS,
   ownConfigPath,
   readBridgeConfig,
   sessionEnvFor,
@@ -316,6 +318,83 @@ describe("agentBrowser", () => {
         expect(agentBrowser.mode).toBe("owned-chromium");
         yield* agentBrowser.session("thread-1").exec(["open"]);
         expect(runs[0]?.env.AGENT_BROWSER_CDP).toBeUndefined();
+      }),
+    );
+
+    it("gives only owned Chromium's non-close commands the launch args", () => {
+      const owned = { AGENT_BROWSER_ARGS: OWNED_CHROME_ARGS };
+      expect(OWNED_CHROME_ARGS.split(",")).toContain("--use-mock-keychain");
+      expect(OWNED_CHROME_ARGS).not.toContain("headless");
+      expect(launchEnvFor(null, ["open"])).toEqual(owned);
+      expect(launchEnvFor(null, ["get", "title"])).toEqual(owned);
+      expect(launchEnvFor(null, ["close"])).toEqual({});
+      for (const bridge of ["disabled", { base: BASE, key: KEY }] as const) {
+        expect(launchEnvFor(bridge, ["open"])).toEqual({});
+        expect(launchEnvFor(bridge, ["close"])).toEqual({});
+      }
+    });
+
+    it.effect("owned, launches its Chrome with a mock keychain through the env alone", () =>
+      Effect.gen(function* () {
+        const { runs, run } = capture();
+        const agentBrowser = makeAgentBrowser({
+          binary: "agent-browser",
+          version: "0.38.1",
+          bridge: null,
+          env: {
+            PATH: "/usr/bin",
+            AGENT_BROWSER_ARGS: "--remote-debugging-port=9222",
+            AGENT_BROWSER_HEADED: "1",
+          },
+          run,
+        });
+        const session = agentBrowser.session("thread-1");
+        yield* session.exec(["open"]);
+        yield* session.shutdown;
+
+        const [open, close] = runs;
+        expect(open?.args).toEqual(["--session", sessionNameFor("thread-1"), "--json", "open"]);
+        // Ours replaces the operator's, and they cannot turn headless off.
+        expect(open?.env.AGENT_BROWSER_ARGS).toBe(OWNED_CHROME_ARGS);
+        expect(open?.env.AGENT_BROWSER_HEADED).toBeUndefined();
+        // Args make the CLI launch before any command: `close` goes without.
+        expect(close?.args.slice(-1)).toEqual(["close"]);
+        expect(close?.env.AGENT_BROWSER_ARGS).toBeUndefined();
+      }),
+    );
+
+    it.effect("in-app, passes no launch args", () =>
+      Effect.gen(function* () {
+        const { runs, run } = capture();
+        const agentBrowser = makeAgentBrowser({
+          binary: "agent-browser",
+          version: "0.38.1",
+          bridge: { base: BASE, key: KEY },
+          env: { PATH: "/usr/bin", AGENT_BROWSER_ARGS: "--use-mock-keychain" },
+          run,
+        });
+        yield* agentBrowser.session("thread-1").exec(["open"]);
+        expect(runs[0]?.env.AGENT_BROWSER_ARGS).toBeUndefined();
+      }),
+    );
+
+    it.live("owned, reaps without launch args", () =>
+      Effect.gen(function* () {
+        const { runs, run } = reapRunner();
+        const { home } = homeWithLeftovers("poseidon-ours");
+        const agentBrowser = makeAgentBrowser({
+          binary: "agent-browser",
+          version: "0.38.1",
+          bridge: null,
+          env: { HOME: home, PATH: "/usr/bin" },
+          namespace: "poseidon-ours",
+          run,
+        });
+        yield* agentBrowser.reap;
+        NodeFS.rmSync(home, { recursive: true, force: true });
+        expect(runs[0]?.args).toEqual(["--json", "close", "--all"]);
+        expect(runs.some((entry) => entry.args.includes("list"))).toBe(true);
+        for (const entry of runs) expect(entry.env.AGENT_BROWSER_ARGS).toBeUndefined();
       }),
     );
 

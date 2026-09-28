@@ -17,7 +17,8 @@
  * - **disabled** — the shell ran with `POSEIDON_REMOTE_DEBUG=0`. There is no
  *   bridge and no fallback: every call reports the in-app browser disabled.
  * - **owned-chromium** — no desktop at all (the web renderer, or
- *   `pnpm -F server dev`): agent-browser runs its own headless Chrome.
+ *   `pnpm -F server dev`): agent-browser runs its own headless Chrome,
+ *   launched with `OWNED_CHROME_ARGS` so it never asks for the OS keychain.
  *
  * Every daemon we start lives in our own agent-browser namespace,
  * `poseidon-<hash of POSEIDON_HOME>` (`namespaceFor`), so `close --all` reaps
@@ -274,6 +275,23 @@ export type BridgeConfig =
   | { readonly base: string; readonly key: string }
   | typeof BRIDGE_DISABLED
   | null;
+
+/**
+ * Owned Chromium's launch args (`AGENT_BROWSER_ARGS`, comma separated): no
+ * macOS "Chromium Safe Storage" keychain prompt, no Linux keyring unlock.
+ * agent-browser adds `--headless=new` itself; recent releases add these too.
+ */
+export const OWNED_CHROME_ARGS = "--use-mock-keychain,--password-store=basic";
+
+/**
+ * A session command's launch env: owned Chromium only, and never for `close`,
+ * because set args make the CLI send `launch` first — a Chrome only to close.
+ */
+export const launchEnvFor = (
+  bridge: BridgeConfig,
+  argv: ReadonlyArray<string>,
+): Readonly<Record<string, string>> =>
+  bridge === null && argv[0] !== "close" ? { AGENT_BROWSER_ARGS: OWNED_CHROME_ARGS } : {};
 
 const LAUNCH_KEY = /^[0-9a-f]{64}$/;
 
@@ -606,12 +624,12 @@ export const makeAgentBrowser = (options: {
     options.kill ?? ((session) => killDaemonAt(daemonPidPath(home, namespace, session)));
   const missingMessage = agentBrowserMissingMessage(modeFor(bridge));
 
-  /** One run of the binary in our namespace, with `cdp` as its bridge URL. */
+  /** One run of the binary in our namespace; `extra` is our own session env. */
   const invoke = (
     argv: ReadonlyArray<string>,
     invocation: {
       readonly session?: string;
-      readonly cdp?: string;
+      readonly extra?: Readonly<Record<string, string>>;
       readonly timeoutMs: number;
     },
   ): Effect.Effect<Record<string, unknown>, ExecError> =>
@@ -621,8 +639,6 @@ export const makeAgentBrowser = (options: {
         return Effect.fail(new AgentBrowserUnavailable({ message: missingMessage }));
       }
       const command = `agent-browser ${argv.join(" ")}`;
-      const extra: Record<string, string> =
-        invocation.cdp === undefined ? {} : { AGENT_BROWSER_CDP: invocation.cdp };
       const args = [
         ...(invocation.session === undefined ? [] : ["--session", invocation.session]),
         "--json",
@@ -631,7 +647,7 @@ export const makeAgentBrowser = (options: {
       return Effect.andThen(
         prepare,
         run(binary, args, {
-          env: browserEnv(env, sessionEnvFor(namespace, configPath, extra)),
+          env: browserEnv(env, sessionEnvFor(namespace, configPath, invocation.extra)),
           timeoutMs: invocation.timeoutMs,
         }),
       ).pipe(
@@ -685,7 +701,7 @@ export const makeAgentBrowser = (options: {
         }
         return invoke(argv, {
           session: name,
-          ...(cdp === undefined ? {} : { cdp }),
+          extra: cdp === undefined ? launchEnvFor(bridge, argv) : { AGENT_BROWSER_CDP: cdp },
           timeoutMs: execOptions.timeoutMs ?? COMMAND_TIMEOUT_MS,
         });
       });
