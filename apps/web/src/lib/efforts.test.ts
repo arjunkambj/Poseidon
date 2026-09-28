@@ -1,7 +1,7 @@
 import { EFFORT_ORDER } from "@poseidon/contracts/enums";
 import { describe, expect, it } from "vitest";
 
-import { orderEfforts, stepEffort } from "./efforts";
+import { EFFORT_LABELS, orderEfforts, stepEffort } from "./efforts";
 
 describe("orderEfforts", () => {
   it("offers the whole ladder when the model states none", () => {
@@ -46,5 +46,18 @@ describe("stepEffort", () => {
   it("does nothing with a single rung", () => {
     expect(stepEffort("high", ["high"], 1)).toBe("high");
     expect(stepEffort("high", ["high"], -1)).toBe("high");
+  });
+});
+
+describe("EFFORT_LABELS", () => {
+  it("names every rung in words, lowest first", () => {
+    expect(EFFORT_ORDER.map((effort) => EFFORT_LABELS[effort])).toEqual([
+      "Minimal",
+      "Low",
+      "Medium",
+      "High",
+      "Extra high",
+      "Max",
+    ]);
   });
 });

@@ -2,7 +2,7 @@
  * The Models page: `defaults` (model, effort, runtime mode) — what a new
  * thread starts with — rendered by `StructForm` off the schema's
  * `settingsForm` annotations; effort and runtime mode take their options from
- * their contract enums.
+ * their contract enums, each shown by its readable label.
  *
  * The default model is not a plain select but the composer's harness picker
  * (`DefaultModelRow`): it lists only what the harness and model switches leave
@@ -19,15 +19,13 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import { toast } from "sonner";
 
 import { describeExitError, useAppAtoms } from "@/lib/app-runtime";
+import { EFFORT_LABELS } from "@/lib/efforts";
 import { RUNTIME_MODE_LABELS } from "@/lib/runtime-modes";
 
 import { DefaultModelRow } from "./default-model-row";
 import { HarnessModelsSection } from "./harness-models-section";
-import { StructForm, type SelectOption } from "./schema-form";
+import { StructForm } from "./schema-form";
 import { SettingsPageHeader, SettingsSection } from "./settings-section";
-
-const enumOptions = (literals: ReadonlyArray<string>): ReadonlyArray<SelectOption> =>
-  literals.map((value) => ({ value, label: value }));
 
 export function ModelsPanel() {
   const atoms = useAppAtoms();
@@ -78,7 +76,7 @@ export function ModelsPanel() {
           optionsFor={(key) => {
             switch (key) {
               case "effort":
-                return enumOptions(Effort.literals);
+                return Effort.literals.map((value) => ({ value, label: EFFORT_LABELS[value] }));
               case "runtimeMode":
                 return RuntimeMode.literals.map((value) => ({
                   value,
