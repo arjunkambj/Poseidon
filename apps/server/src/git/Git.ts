@@ -1,9 +1,10 @@
 /**
  * The real `GitService` behind the `git.status`/`git.diff`/`checkpoints.list`,
- * branch, commit, push, pull-request and worktree RPCs: argv-form git over
- * `process.ts`, porcelain-v2 parsing for status, and unified patches split per
- * file for the changes pane. Branch listing, creation and switching live in
- * `Branches.ts`, commit and push in `Commits.ts`, pull requests in
+ * discard, branch, commit, push, pull-request and worktree RPCs:
+ * argv-form git over `process.ts`, porcelain-v2 parsing for status, and
+ * unified patches split per file for the changes pane. Branch listing,
+ * creation and switching live in `Branches.ts`, commit and push in
+ * `Commits.ts`, discard in `Review.ts`, pull requests in
  * `GitHubCli.ts`, worktrees in `Worktrees.ts` and the setup script in
  * `SetupScript.ts`; this layer resolves the root, reads the settings those
  * need, and adds the guards that need the read models — no switch or commit
@@ -46,6 +47,7 @@ import { make as checkpointStore } from "./CheckpointStore";
 import { commit, push } from "./Commits";
 import { createPullRequest, GhRunner, pullRequestBlocker } from "./GitHubCli";
 import { GitError, isRepository, run } from "./process";
+import { discard, discardBase, repositoryTop } from "./Review";
 import { runSetupScript, setupsStopped } from "./SetupScript";
 import {
   createWorktree,
@@ -463,6 +465,23 @@ export const layer = Layer.effect(
             prefix: prefix.stdout.replace(/\n$/, ""),
             files: toDiffFiles(patch, numstat, options.ignoreWhitespace),
           };
+        }).pipe(Effect.mapError(asRpcError)),
+
+      /** Run from the repository's top level: the pane's paths are relative to it. */
+      discard: (scope, options) =>
+        Effect.gen(function* () {
+          const root = yield* repositoryRoot(scope);
+          yield* requireIdle(root, "discarding changes");
+          if (options.paths === undefined && (options.source ?? options.mergeBase) !== undefined) {
+            return yield* Effect.fail(
+              new PoseidonRpcError({
+                code: "invalid",
+                message: "Discarding everything is only possible in the uncommitted scope.",
+              }),
+            );
+          }
+          const top = yield* repositoryTop(root);
+          yield* discard(top, yield* discardBase(top, options), options.paths);
         }).pipe(Effect.mapError(asRpcError)),
 
       branches: (scope) =>

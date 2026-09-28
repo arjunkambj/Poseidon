@@ -64,6 +64,10 @@
       "types": "./src/scripts.ts",
       "import": "./src/scripts.ts"
     },
+    "./git-review": {
+      "types": "./src/git-review.ts",
+      "import": "./src/git-review.ts"
+    },
     "./rpc": {
       "types": "./src/rpc.ts",
       "import": "./src/rpc.ts"

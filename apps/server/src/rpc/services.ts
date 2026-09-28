@@ -184,6 +184,20 @@ export class GitService extends Context.Service<
         readonly ignoreWhitespace?: boolean;
       },
     ) => Effect.Effect<GitDiff, PoseidonRpcError>;
+    /**
+     * Discards the change to `paths` (top-relative) back to `source`, the
+     * merge base with `mergeBase`, or `HEAD`; everything uncommitted when
+     * `paths` is omitted. `invalid` for an unsafe path, `conflict` while a
+     * turn or restore runs in the same root.
+     */
+    readonly discard: (
+      scope: WorkspaceScope,
+      options: {
+        readonly paths?: ReadonlyArray<string> | undefined;
+        readonly source?: string | undefined;
+        readonly mergeBase?: string | undefined;
+      },
+    ) => Effect.Effect<void, PoseidonRpcError>;
     readonly branches: (scope: WorkspaceScope) => Effect.Effect<GitBranchList, PoseidonRpcError>;
     /** Cuts an untracked branch, and switches to it when `checkout` is set. */
     readonly createBranch: (
@@ -254,6 +268,7 @@ export class GitService extends Context.Service<
       diff: (_scope, options) =>
         Effect.succeed({ from: options.from ?? null, to: options.to ?? null, files: [] }),
       checkpoints: () => Effect.succeed([]),
+      discard: () => Effect.fail(gitUnavailable),
       branches: () => Effect.fail(gitUnavailable),
       createBranch: () => Effect.fail(gitUnavailable),
       checkout: () => Effect.fail(gitUnavailable),

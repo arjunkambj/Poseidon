@@ -115,6 +115,8 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
       "git.status": ({ projectId, threadId }) => git.status({ projectId, threadId }),
       "git.diff": ({ projectId, threadId, from, to, path, mergeBase, ignoreWhitespace }) =>
         git.diff({ projectId, threadId }, { from, to, path, mergeBase, ignoreWhitespace }),
+      "git.discard": ({ projectId, threadId, paths, source, mergeBase }) =>
+        git.discard({ projectId, threadId }, { paths, source, mergeBase }).pipe(Effect.as({})),
       "git.branches": ({ projectId, threadId }) => git.branches({ projectId, threadId }),
       "git.branch.create": ({ projectId, threadId, name, from, checkout }) =>
         git.createBranch({ projectId, threadId }, { name, from, checkout }),

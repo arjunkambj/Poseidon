@@ -238,3 +238,18 @@ describe("git.diff", () => {
     expect(decode({ projectId, ignoreWhitespace: "yes" })._tag).toBe("Failure");
   });
 });
+
+describe("git.discard", () => {
+  const projectId = "0190aaaa-0000-7000-8000-000000000001";
+
+  it("discards named paths, or everything when none are named, never an empty list", () => {
+    const rpc = PoseidonRpcGroup.requests.get(RPC_METHODS.gitDiscard);
+    expect(rpc).toBeDefined();
+    const decode = Schema.decodeUnknownExit(rpc!.payloadSchema);
+    expect(decode({ projectId })._tag).toBe("Success");
+    expect(decode({ projectId, paths: ["a.txt"], source: "refs/x" })._tag).toBe("Success");
+    expect(decode({ projectId, paths: ["a.txt"], mergeBase: "main" })._tag).toBe("Success");
+    expect(decode({ projectId, paths: [] })._tag).toBe("Failure");
+    expect(decode({ projectId, paths: [""] })._tag).toBe("Failure");
+  });
+});
