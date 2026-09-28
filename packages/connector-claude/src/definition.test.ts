@@ -3,7 +3,7 @@
  * form `connectors.describe` serves — and what an instance of it offers.
  */
 
-import { eraseConnectorDefinition } from "@poseidon/connector-sdk/definition";
+import { eraseConnectorDefinition, SpawnFailed } from "@poseidon/connector-sdk/definition";
 import { makeConnectorInstanceId } from "@poseidon/contracts/ids";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
@@ -13,8 +13,14 @@ import { replay } from "../test/replay";
 import { testServices } from "../test/services";
 import { CLAUDE_CAPABILITIES } from "./capabilities";
 import { ClaudeConnectorConfig } from "./configSchema";
-import { claudeConnectorDefinition } from "./definition";
+import {
+  claudeConnectorDefinition,
+  isMissingConversation,
+  NO_CONVERSATION_WARNING,
+  resumeOrStartFresh,
+} from "./definition";
 import { CLAUDE_KIND } from "./kind";
+import { handshakeFailureMessage } from "./session";
 
 describe("claudeConnectorDefinition", () => {
   it.effect("presents itself through its own metadata", () =>
@@ -79,5 +85,70 @@ describe("claudeConnectorDefinition", () => {
       // One replayed handshake; a second launch would have found none left to play.
       expect(replayed.pids()).toHaveLength(1);
     }).pipe(Effect.scoped),
+  );
+});
+
+describe("a resume the CLI no longer has the conversation for", () => {
+  const instanceId = makeConnectorInstanceId();
+  /** The SDK's own words for a CLI that exited during the handshake. */
+  const EXITED = "Claude Code process exited with code 1";
+  /** The CLI's stderr line for `--resume` of a conversation it does not have (2.1.280). */
+  const NO_CONVERSATION =
+    "No conversation found with session ID: 0b7d1f0e-4c1a-4f55-9d8e-2f1c3a9b7e21";
+  const failed = (message: string) => new SpawnFailed({ kind: CLAUDE_KIND, instanceId, message });
+
+  it("carries the CLI's stderr tail into the handshake's message", () => {
+    expect(handshakeFailureMessage(EXITED, `\n${NO_CONVERSATION}\n`)).toBe(
+      `${EXITED}: ${NO_CONVERSATION}`,
+    );
+    expect(handshakeFailureMessage(EXITED, "  \n")).toBe(EXITED);
+    const clipped = handshakeFailureMessage(EXITED, `${"x".repeat(2000)}${NO_CONVERSATION}`);
+    expect(clipped.length).toBeLessThan(EXITED.length + 510);
+    expect(clipped.endsWith(NO_CONVERSATION)).toBe(true);
+  });
+
+  it("is only recognised from the stderr the message carries", () => {
+    expect(isMissingConversation(failed(EXITED))).toBe(false);
+    expect(isMissingConversation(failed(handshakeFailureMessage(EXITED, NO_CONVERSATION)))).toBe(
+      true,
+    );
+  });
+
+  it.effect("starts fresh, and says why", () =>
+    Effect.gen(function* () {
+      const warnings: Array<string> = [];
+      const started = yield* resumeOrStartFresh(
+        Effect.fail(failed(handshakeFailureMessage(EXITED, NO_CONVERSATION))),
+        (warning) =>
+          Effect.sync(() => {
+            warnings.push(warning);
+            return "fresh";
+          }),
+      );
+      expect(started).toBe("fresh");
+      expect(warnings).toEqual([NO_CONVERSATION_WARNING]);
+      expect(NO_CONVERSATION_WARNING).toBe(
+        "Claude Code no longer has this thread's conversation, so it starts a new one.",
+      );
+    }),
+  );
+
+  it.effect("lets every other failed start through", () =>
+    Effect.gen(function* () {
+      let freshStarts = 0;
+      const error = yield* Effect.flip(
+        resumeOrStartFresh(
+          Effect.fail(failed(handshakeFailureMessage(EXITED, "Error: something else broke"))),
+          () =>
+            Effect.sync(() => {
+              freshStarts += 1;
+              return "fresh";
+            }),
+        ),
+      );
+      expect(error._tag).toBe("SpawnFailed");
+      expect(error.message).toContain("something else broke");
+      expect(freshStarts).toBe(0);
+    }),
   );
 });

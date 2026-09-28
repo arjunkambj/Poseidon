@@ -119,6 +119,22 @@ export interface ClaudeSessionOptions {
 
 /** How long the CLI may take to answer the SDK's initialize request. */
 const HANDSHAKE_TIMEOUT = "60 seconds";
+/** How long a CLI that failed its handshake may take to finish exiting. */
+const STDERR_SETTLE = "2 seconds";
+/** At most this much of the CLI's stderr goes into a failed handshake's message. */
+const HANDSHAKE_TAIL = 500;
+
+/**
+ * A failed handshake's message: the SDK's own, then the end of the CLI's
+ * stderr. The SDK reads no stderr from a custom spawn (`spawn.ts`), and the
+ * CLI's reason — "No conversation found with session ID: …" for a resume of
+ * a conversation it no longer has — is only there.
+ */
+export const handshakeFailureMessage = (cause: string, stderrTail: string): string => {
+  const tail = stderrTail.trim();
+  if (tail === "") return cause;
+  return `${cause}: ${tail.length > HANDSHAKE_TAIL ? `…${tail.slice(-HANDSHAKE_TAIL)}` : tail}`;
+};
 
 interface ActiveTurn {
   readonly turnId: TurnId;
@@ -270,25 +286,33 @@ export const makeClaudeSession = (
       yield* group.stop;
     });
 
-    yield* Effect.tryPromise({
-      try: () => session.initializationResult(),
-      catch: (cause) =>
-        new SpawnFailed({
+    /**
+     * The handshake failed: why, with what the CLI said on stderr, read before
+     * the teardown stops it. A CLI that failed has exited, and its last lines
+     * are waited for; one that never answered is still running.
+     */
+    const handshakeFailed = (detail: string, exited: boolean) =>
+      Effect.gen(function* () {
+        const child = group.latest();
+        if (exited && child !== undefined) {
+          yield* Effect.promise(() => child.exited).pipe(Effect.timeoutOption(STDERR_SETTLE));
+        }
+        return yield* new SpawnFailed({
           kind: CLAUDE_KIND,
           instanceId: options.instanceId,
-          message: messageOf(cause),
-        }),
+          message: handshakeFailureMessage(detail, child?.stderrTail() ?? ""),
+        });
+      });
+
+    yield* Effect.tryPromise({
+      try: () => session.initializationResult(),
+      catch: messageOf,
     }).pipe(
+      Effect.catch((detail) => handshakeFailed(detail, true)),
       Effect.timeoutOrElse({
         duration: HANDSHAKE_TIMEOUT,
         orElse: () =>
-          Effect.fail(
-            new SpawnFailed({
-              kind: CLAUDE_KIND,
-              instanceId: options.instanceId,
-              message: "Claude Code did not answer the SDK's initialize request",
-            }),
-          ),
+          handshakeFailed("Claude Code did not answer the SDK's initialize request", false),
       }),
       Effect.tapError(() => teardown),
     );

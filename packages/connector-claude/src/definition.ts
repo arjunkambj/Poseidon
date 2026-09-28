@@ -7,7 +7,11 @@
  */
 
 import * as NodeOS from "node:os";
-import type { ConnectorDefinition, StartSessionInput } from "@poseidon/connector-sdk/definition";
+import type {
+  ConnectorDefinition,
+  ConnectorError,
+  StartSessionInput,
+} from "@poseidon/connector-sdk/definition";
 import { SpawnFailed } from "@poseidon/connector-sdk/definition";
 import type { ModelOption } from "@poseidon/contracts/connectors";
 import * as Effect from "effect/Effect";
@@ -23,8 +27,31 @@ import type { SessionLimits } from "./queryOptions";
 import { makeClaudeSession } from "./session";
 import { parseSessionRef, type ClaudeSessionRef } from "./sessionRef";
 
-/** What the CLI says when `--resume` names a conversation it does not have. */
+/**
+ * What the CLI says on stderr when `--resume` names a conversation it does not
+ * have — "No conversation found with session ID: <id>" in 2.1.280 — which the
+ * session carries into its failed handshake's message.
+ */
 const NO_CONVERSATION = /No conversation found/i;
+
+/** What the thread is told when its conversation is gone and a new one starts. */
+export const NO_CONVERSATION_WARNING =
+  "Claude Code no longer has this thread's conversation, so it starts a new one.";
+
+/** A resume the CLI refused because it no longer has the conversation. */
+export const isMissingConversation = (error: ConnectorError): boolean =>
+  error._tag === "SpawnFailed" && NO_CONVERSATION.test(error.message);
+
+/**
+ * The resumed session, or — when the CLI no longer has the conversation — a
+ * fresh one that says why: the thread goes on in a new session rather than
+ * not at all. Every other failure is the resume's own.
+ */
+export const resumeOrStartFresh = <A, R>(
+  resumed: Effect.Effect<A, ConnectorError, R>,
+  fresh: (warning: string) => Effect.Effect<A, ConnectorError, R>,
+): Effect.Effect<A, ConnectorError, R> =>
+  resumed.pipe(Effect.catchIf(isMissingConversation, () => fresh(NO_CONVERSATION_WARNING)));
 
 export interface ClaudeConnectorOptions {
   /**
@@ -116,19 +143,8 @@ export const makeClaudeConnectorDefinition = (
               "The previous Claude Code session could not be read back, so this thread starts a new one.",
             );
           }
-          // `--resume` against a conversation the CLI no longer has fails its
-          // handshake with "No conversation found with session ID"; the
-          // thread goes on in a new session rather than not at all.
-          return start(input, ref).pipe(
-            Effect.catchIf(
-              (error) => error._tag === "SpawnFailed" && NO_CONVERSATION.test(error.message),
-              () =>
-                start(
-                  input,
-                  undefined,
-                  "Claude Code no longer has this thread's conversation, so it starts a new one.",
-                ),
-            ),
+          return resumeOrStartFresh(start(input, ref), (warning) =>
+            start(input, undefined, warning),
           );
         },
         listModels,

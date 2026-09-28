@@ -575,9 +575,12 @@ totalCostUsd? }`:
   resumed CLI carries on from its transcript.
 
 A ref that does not parse (another connector's, a session id that is not a
-uuid) starts a fresh session with a `session.warning`. A resume the CLI answers
-with "No conversation found" in its handshake does the same. `resume` is the
-recording that will show a second turn recalling the first after a restart.
+uuid) starts a fresh session with a `session.warning`. A resume the CLI refuses
+with "No conversation found with session ID: …" does the same. The CLI says it
+on stderr, which the SDK does not read from a custom spawn, so a failed
+handshake's `SpawnFailed` carries the end of the CLI's stderr (at most 500
+characters) after the SDK's own message. `resume` is the recording that will
+show a second turn recalling the first after a restart.
 
 Rollback and fork are not offered (`rollback: false`, `fork: false`). The SDK
 can rewind (`resumeSessionAt`) and fork (`forkSession`), but nothing recorded
