@@ -1521,12 +1521,16 @@ A fork can also be native (`nativeFork.ts`). When the source's bound session
 declares the `fork` capability, nothing runs in the source, the fork point is
 its latest turn (or the whole thread), and the fork stays on the source's
 connector instance (pinned in its settings) and in the source's workspace,
-the `ThreadFork` also records `session: { connectorInstanceId, sessionRef }`.
-The fork's first session then comes from `resumeSession({ sessionRef, fork:
-true })` on that instance instead of `startSession`, and the harness copies the
-conversation itself. The transcript is recorded anyway: if that resume fails,
-the session manager starts a fresh session and the transcript goes ahead of the
-first message as for any other fork. Every other fork — an earlier message, a
+the `ThreadFork` also records `session: { connectorInstanceId, sessionRef,
+afterTurnId }`, `afterTurnId` being the source's latest turn then. The fork's
+first session then comes from `resumeSession({ sessionRef, fork: true })` on
+that instance instead of `startSession`, and the harness copies the
+conversation itself. The harness copies the session as it stands on the fork's
+first turn, so the session manager first reads the source again
+(`sourceStillAt`): it must be idle, on the same `sessionRef`, with no turn
+after `afterTurnId`. The transcript is recorded anyway: if the source has run
+on since, or that resume fails, the session manager starts a fresh session and
+the transcript goes ahead of the first message as for any other fork. Every other fork — an earlier message, a
 running source, another harness or workspace, a harness without `fork` —
 is a copy.
 

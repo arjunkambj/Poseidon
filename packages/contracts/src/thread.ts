@@ -214,13 +214,16 @@ export type ThreadForkRequest = typeof ThreadForkRequest.Type;
 
 /**
  * The harness session a fork continues natively, when it does: the source's
- * connector instance and the session reference it had bound. Its first turn
- * resumes that session with `fork: true`, so the harness itself copies the
- * conversation into a new session and leaves the source's alone.
+ * connector instance, the session reference it had bound, and its latest turn
+ * then (`afterTurnId`). Its first turn resumes that session with `fork: true`,
+ * so the harness itself copies the conversation into a new session and leaves
+ * the source's alone — but only while the source is still where it was, since
+ * the harness copies the session as it stands when the fork's turn runs.
  */
 export const ForkSession = Schema.Struct({
   connectorInstanceId: ConnectorInstanceId,
   sessionRef: Schema.Unknown,
+  afterTurnId: Schema.optional(TurnId),
 });
 export type ForkSession = typeof ForkSession.Type;
 

@@ -11,10 +11,13 @@
  *
  * The decider picks (`nativeForkSession`), `thread.created` records the
  * source's session on the fork, and the session manager resumes it with
- * `fork: true` on the fork's first turn (`pendingNativeFork`). The transcript
- * is still recorded: if the harness cannot fork after all, the manager starts
- * a fresh session and the transcript goes ahead of the first message as for
- * any other fork.
+ * `fork: true` on the fork's first turn (`pendingNativeFork`). The harness
+ * copies the session as it stands then, not as it stood when the fork was
+ * made, so the manager forks only while the source has not moved on since
+ * (`sourceStillAt`). The transcript is still recorded: if the harness cannot
+ * fork after all, or the source has run another turn, the manager starts a
+ * fresh session and the transcript goes ahead of the first message as for any
+ * other fork.
  */
 
 import type { ThreadWorktree } from "@poseidon/contracts/git";
@@ -73,14 +76,39 @@ export const nativeForkSession = (input: {
   if ((input.worktree?.path ?? null) !== (sourceWorktree?.path ?? null)) {
     return undefined;
   }
-  return { connectorInstanceId: session.connectorInstanceId, sessionRef: session.sessionRef };
+  const afterTurnId = latestTurnId(source.items);
+  return {
+    connectorInstanceId: session.connectorInstanceId,
+    sessionRef: session.sessionRef,
+    ...(afterTurnId === null ? {} : { afterTurnId }),
+  };
+};
+
+/**
+ * Whether the source is still where `recorded` found it: idle, on the same
+ * session, and with no turn after the one it had then. A source that ran
+ * another turn since has a longer session, and a harness fork now would copy
+ * turns the fork was made without.
+ */
+export const sourceStillAt = (recorded: ForkSession, source: ThreadDoc | null): boolean => {
+  if (source === null || source.deleted || source.currentTurn !== null) {
+    return false;
+  }
+  const session = source.session;
+  return (
+    session !== null &&
+    session.connectorInstanceId === recorded.connectorInstanceId &&
+    JSON.stringify(session.sessionRef) === JSON.stringify(recorded.sessionRef) &&
+    (recorded.afterTurnId === undefined || latestTurnId(source.items) === recorded.afterTurnId)
+  );
 };
 
 /**
  * The source session to fork when this thread's session starts, or `null`.
  * Only a fork that recorded one, has no session of its own yet, and is on its
  * first turn: a fork that has since run turns of its own and lost its
- * session would lose them by forking the source again.
+ * session would lose them by forking the source again. The caller still
+ * checks the source has not moved on (`sourceStillAt`).
  */
 export const pendingNativeFork = (doc: ThreadDoc): ForkSession | null => {
   const session = forkOf(doc)?.session;

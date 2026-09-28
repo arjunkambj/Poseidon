@@ -1648,7 +1648,11 @@ describe("forking a thread", () => {
 
     it("records the source's session for a fork of its latest turn", () => {
       const result = fork({}, forkable, ask2);
-      expect(sessionOf(result)).toEqual({ connectorInstanceId: instance, sessionRef });
+      expect(sessionOf(result)).toEqual({
+        connectorInstanceId: instance,
+        sessionRef,
+        afterTurnId: t2,
+      });
       // The transcript is kept anyway, for when the harness cannot fork after all.
       expect(result.accepted && result.events[0]!.payload).toMatchObject({
         fork: { transcript: expect.stringContaining("User:\nTest it.") },
@@ -1660,6 +1664,7 @@ describe("forking a thread", () => {
       expect(sessionOf(fork({}, forkable, null))).toEqual({
         connectorInstanceId: instance,
         sessionRef,
+        afterTurnId: t2,
       });
     });
 
@@ -1701,6 +1706,7 @@ describe("forking a thread", () => {
       expect(sessionOf(fork({ worktree }, inWorktree, ask2))).toEqual({
         connectorInstanceId: instance,
         sessionRef,
+        afterTurnId: t2,
       });
     });
   });

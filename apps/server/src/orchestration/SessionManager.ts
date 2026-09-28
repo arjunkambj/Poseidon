@@ -42,7 +42,7 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 
 import { EngineEnv, OrchestrationEngine } from "./Engine";
-import { pendingNativeFork } from "./nativeFork";
+import { forkOf, pendingNativeFork, sourceStillAt } from "./nativeFork";
 import { ingestSession, type SessionLifecycle } from "./RuntimeIngestion";
 import type { ThreadDoc } from "./state";
 
@@ -173,15 +173,23 @@ export class SessionManager extends Context.Service<
       /**
        * A fork's first session, forked by the harness from its source's
        * (`pendingNativeFork`), in a scope of its own. `null` when the thread
-       * is not one, and when the fork fails — the source's instance is gone,
-       * or the harness no longer has the session — so the caller starts a
-       * fresh session and the fork's transcript goes out with its first
+       * is not one, when the source has run on since the fork was made
+       * (`sourceStillAt`), and when the fork fails — the source's instance is
+       * gone, or the harness no longer has the session — so the caller starts
+       * a fresh session and the fork's transcript goes out with its first
        * message instead.
        */
       const forkNatively = (doc: ThreadDoc, input: StartSessionInput) =>
         Effect.gen(function* () {
           const source = pendingNativeFork(doc);
-          if (source === null) {
+          const sourceId = forkOf(doc)?.threadId;
+          if (source === null || sourceId === undefined) {
+            return null;
+          }
+          const sourceDoc = yield* engine
+            .threadDoc(sourceId)
+            .pipe(Effect.catch((error) => Effect.logWarning("fork source read failed", error)));
+          if (!sourceStillAt(source, sourceDoc ?? null)) {
             return null;
           }
           const scope = yield* Scope.make();

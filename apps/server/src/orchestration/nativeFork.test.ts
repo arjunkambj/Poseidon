@@ -109,6 +109,8 @@ const runTurn = (engine: OrchestrationEngine["Service"], threadId: ThreadId, tex
 const forkAndRun = (options: {
   readonly through: "latest" | "earlier";
   readonly refuseFork?: boolean;
+  /** Runs one more source turn after the fork is made, before its first. */
+  readonly sourceMovesOn?: boolean;
 }) =>
   Effect.gen(function* () {
     const { fake, instance, resumes } = yield* openForkable(options.refuseFork ?? false);
@@ -143,6 +145,9 @@ const forkAndRun = (options: {
       );
       expect(receipt.status).toBe("accepted");
       const forked = (yield* engine.threadDoc(forkId))!;
+      if (options.sourceMovesOn === true) {
+        yield* runTurn(engine, sourceId, "meanwhile");
+      }
       yield* runTurn(engine, forkId, "and now?");
       return { sourceRef: source.session?.sessionRef, forked };
     }).pipe(Effect.provide(stackLayer({ instance })));
@@ -178,6 +183,21 @@ describe("a fork the harness makes itself", () => {
       expect(forkResumes.map((input) => input.fork)).toEqual([true]);
       expect(sent).toHaveLength(1);
       expect(sent[0]).toContain("User:\nhello");
+      expect(sent[0]!.endsWith("The user's new message:\n\nand now?")).toBe(true);
+    }),
+  );
+
+  it.effect("copies instead when the source ran another turn before the fork's first", () =>
+    Effect.gen(function* () {
+      const { forked, sent, forkResumes } = yield* forkAndRun({
+        through: "latest",
+        sourceMovesOn: true,
+      });
+      expect((forked.fork as { session?: unknown }).session).toBeDefined();
+      expect(forkResumes).toEqual([]);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toContain("User:\nagain");
+      expect(sent[0]).not.toContain("meanwhile");
       expect(sent[0]!.endsWith("The user's new message:\n\nand now?")).toBe(true);
     }),
   );

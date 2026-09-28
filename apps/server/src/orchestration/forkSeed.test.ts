@@ -5,7 +5,7 @@ import type { TurnId } from "@poseidon/contracts/ids";
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 
 import { forkTranscript, OMITTED_MARKER, withForkContext } from "./forkSeed";
-import { pendingNativeFork } from "./nativeFork";
+import { pendingNativeFork, sourceStillAt } from "./nativeFork";
 import type { ThreadDoc } from "./state";
 
 const NOW = "2026-01-02T03:04:05.000Z";
@@ -130,6 +130,7 @@ describe("withForkContext", () => {
     expect(withForkContext(resent, t1, input).text).toContain(fork.transcript);
   });
 
+
   it("leaves the first turn alone when the harness forked the source's session", () => {
     const first = row("user_message", t1, "Now test it.");
     expect(withForkContext(doc({ fork, items: [first] }), t1, input, true)).toBe(input);
@@ -170,8 +171,53 @@ describe("pendingNativeFork", () => {
     expect(pendingNativeFork(later)).toBeNull();
   });
 
+
   it("never for a copy, or a thread that is not a fork", () => {
     expect(pendingNativeFork(doc({ fork: { ...fork, session: undefined } }))).toBeNull();
     expect(pendingNativeFork(doc({}))).toBeNull();
+  });
+});
+
+describe("sourceStillAt", () => {
+  const instance = "instance" as never;
+  const recorded = { connectorInstanceId: instance, sessionRef: { sessionId: "a", last: "m1" } };
+  const source = (fields: Partial<ThreadDoc>): ThreadDoc =>
+    ({
+      deleted: false,
+      currentTurn: null,
+      items: [row("user_message", t1, "go")],
+      session: {
+        connectorInstanceId: instance,
+        connectorKind: "cmd",
+        sessionRef: recorded.sessionRef,
+      },
+      ...fields,
+    }) as ThreadDoc;
+
+  it("holds while the source is idle on the session the fork recorded", () => {
+    expect(sourceStillAt(recorded, source({}))).toBe(true);
+    expect(sourceStillAt({ ...recorded, afterTurnId: t1 }, source({}))).toBe(true);
+  });
+
+  it("fails once the source has moved on, is busy or is gone", () => {
+    const moved = { sessionRef: { sessionId: "a", last: "m2" } };
+    expect(sourceStillAt(recorded, source({ session: { ...source({}).session!, ...moved } }))).toBe(
+      false,
+    );
+    const another = source({
+      items: [row("user_message", t1, "go"), row("user_message", t2, "on")],
+    });
+    expect(sourceStillAt({ ...recorded, afterTurnId: t1 }, another)).toBe(false);
+    expect(
+      sourceStillAt(
+        recorded,
+        source({
+          currentTurn: { turnId: t2, input: { text: "on", attachments: [], mentions: [] } },
+        }),
+      ),
+    ).toBe(false);
+    expect(sourceStillAt(recorded, source({ session: null }))).toBe(false);
+    expect(sourceStillAt(recorded, source({ deleted: true }))).toBe(false);
+    expect(sourceStillAt(recorded, null)).toBe(false);
   });
 });
