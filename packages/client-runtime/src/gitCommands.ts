@@ -4,7 +4,7 @@
  *
  * - `worktreeCreate` — `git.worktree.create`: cuts a new thread's branch
  *   and directory, and resolves with the `ThreadWorktree` that `thread.create`
- *   records.
+ *   records. A `notice` in the answer goes to `onWorktreeNotice`, not to it.
  * - `worktreeSetupAtom` — `git.worktree.setup`: runs the project's setup
  *   script in that worktree. It is a stream, and the atom's value is the run
  *   so far (`WorktreeSetupProgress`), updated as each frame arrives — the
@@ -129,6 +129,12 @@ const scopePayload = (scope: GitScope) => ({
 export interface GitCommandsOptions {
   /** The pull request reads an opened pull request rereads. */
   readonly pullRequests?: Pick<PullRequestAtoms, "refreshPullRequests">;
+  /**
+   * Told a created worktree's `notice` — it could not start from origin and
+   * was cut from the local base instead — before the worktree is returned
+   * without it.
+   */
+  readonly onWorktreeNotice?: (notice: string) => void;
 }
 
 export const makeGitCommands = (
@@ -150,6 +156,9 @@ export const makeGitCommands = (
           }),
         );
         registry.refresh(git.gitBranchesAtom({ projectId: input.projectId }));
+        if (created.notice !== undefined) {
+          options.onWorktreeNotice?.(created.notice);
+        }
         // Only what `thread.create` records: the answer's `notice` is not part
         // of a thread's worktree, and the command's schema would refuse it.
         const worktree: ThreadWorktree = {

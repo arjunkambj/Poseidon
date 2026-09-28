@@ -15,6 +15,7 @@ import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
+import { isObject } from "effect/Predicate";
 import * as Layer from "effect/Layer";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
@@ -32,6 +33,7 @@ import {
 import {
   emptySetupProgress,
   makeGitCommands,
+  type GitCommandsOptions,
   scanSetupFrame,
   type WorktreeSetupProgress,
 } from "./gitCommands";
@@ -63,6 +65,11 @@ const branchList = (branches: ReadonlyArray<string>): GitBranchList => ({
   branches: branches.map((name) => ({ name, kind: "local" as const, isCurrent: name === "main" })),
 });
 
+/** A worktree cut from `OFFLINE` answers with `OFFLINE_NOTICE`. */
+const OFFLINE = "offline";
+const OFFLINE_NOTICE =
+  "Couldn't fetch offline from origin, so the worktree starts from your local offline.";
+
 /** A commit whose message is `SLOW` waits for `gate` before it answers. */
 const SLOW = "slow";
 
@@ -85,7 +92,10 @@ const fakeClient = (
           return (payload: unknown) =>
             Effect.sync(() => {
               calls.create.push(payload);
-              return { ...WORKTREE, baseBranch: "main" };
+              // A base origin cannot serve is cut from the local branch, with a notice.
+              return isObject(payload) && "baseBranch" in payload && payload.baseBranch === OFFLINE
+                ? { ...WORKTREE, baseBranch: OFFLINE, notice: OFFLINE_NOTICE }
+                : { ...WORKTREE, baseBranch: "main" };
             });
         case "git.worktree.setup":
           return (payload: { readonly path: string }) => {
@@ -163,44 +173,47 @@ const fakeClient = (
     },
   });
 
-const setupWith = Effect.gen(function* () {
-  const calls: Calls = {
-    create: [],
-    setup: [],
-    remove: [],
-    branches: [],
-    commit: [],
-    push: [],
-    pullRequest: [],
-    status: [],
-    interrupted: [],
-  };
-  const gate = yield* Deferred.make<void>();
-  const frames = yield* Queue.unbounded<WorktreeSetupFrame, Cause.Done>();
-  const setupFrames = new Map<string, Frames>();
-  const stateRef = yield* SubscriptionRef.make<ConnectionState>({
-    status: "connected",
-    serverInstanceId: null,
+const setupWithOptions = (options: GitCommandsOptions) =>
+  Effect.gen(function* () {
+    const calls: Calls = {
+      create: [],
+      setup: [],
+      remove: [],
+      branches: [],
+      commit: [],
+      push: [],
+      pullRequest: [],
+      status: [],
+      interrupted: [],
+    };
+    const gate = yield* Deferred.make<void>();
+    const frames = yield* Queue.unbounded<WorktreeSetupFrame, Cause.Done>();
+    const setupFrames = new Map<string, Frames>();
+    const stateRef = yield* SubscriptionRef.make<ConnectionState>({
+      status: "connected",
+      serverInstanceId: null,
+    });
+    const layer = Layer.mergeAll(
+      Layer.succeed(Connection, {
+        client: Effect.succeed(fakeClient(calls, frames, setupFrames, gate)),
+        state: stateRef,
+      }),
+      Layer.succeed(ConnectionStateRef, stateRef),
+    );
+    const base = makeRuntime(layer);
+    const git = makeGitAtoms(base.runtime);
+    return {
+      calls,
+      frames,
+      setupFrames,
+      gate,
+      registry: AtomRegistry.make(),
+      git,
+      ...makeGitCommands(base.runtime, git, options),
+    };
   });
-  const layer = Layer.mergeAll(
-    Layer.succeed(Connection, {
-      client: Effect.succeed(fakeClient(calls, frames, setupFrames, gate)),
-      state: stateRef,
-    }),
-    Layer.succeed(ConnectionStateRef, stateRef),
-  );
-  const base = makeRuntime(layer);
-  const git = makeGitAtoms(base.runtime);
-  return {
-    calls,
-    frames,
-    setupFrames,
-    gate,
-    registry: AtomRegistry.make(),
-    git,
-    ...makeGitCommands(base.runtime, git),
-  };
-});
+
+const setupWith = setupWithOptions({});
 
 /** Resolves on the first result matching the predicate — no timers in logic. */
 const awaitResult = <A, E>(
@@ -404,6 +417,31 @@ describe("git commands", () => {
         ),
       );
       expect(AsyncResult.isSuccess(refreshed)).toBe(true);
+    }),
+  );
+
+  it.live("a create's notice goes to onWorktreeNotice and not into the worktree", () =>
+    Effect.gen(function* () {
+      const projectId = makeProjectId();
+      const notices: Array<string> = [];
+      const { registry, worktreeCreate } = yield* setupWithOptions({
+        onWorktreeNotice: (notice) => notices.push(notice),
+      });
+
+      const quiet = yield* Effect.promise(() =>
+        worktreeCreate(registry, { projectId, name: "Fix the login", baseBranch: "main" }),
+      );
+      expect(notices).toEqual([]);
+      expect(Exit.isSuccess(quiet) && quiet.value).toEqual({ ...WORKTREE, baseBranch: "main" });
+
+      const created = yield* Effect.promise(() =>
+        worktreeCreate(registry, { projectId, name: "Fix the login", baseBranch: OFFLINE }),
+      );
+      expect(notices).toEqual([OFFLINE_NOTICE]);
+      expect(Exit.isSuccess(created) && created.value).toEqual({
+        ...WORKTREE,
+        baseBranch: OFFLINE,
+      });
     }),
   );
 

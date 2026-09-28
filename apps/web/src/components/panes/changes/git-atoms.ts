@@ -7,6 +7,10 @@
  * `@/lib/app-runtime` adds the settings ones, so they share one WebSocket with
  * the rest of the app instead of opening a second connection.
  *
+ * Every start path cuts its worktree through `worktreeCreate` here, so a
+ * worktree that could not start from origin is announced once, in a toast
+ * (`showWorktreeNotice`), and the notice never reaches `thread.create`.
+ *
  * The writes are one-shot calls on the app's registry, not atoms a component
  * mounts: `useGitCommands` and `useBranchWrites` bind them to the registry in
  * context, and each call resolves with its own `Exit` even when another call
@@ -34,6 +38,7 @@ import {
   type PullRequestAtoms,
 } from "@poseidon/client-runtime/pullRequestAtoms";
 import * as React from "react";
+import { toast } from "sonner";
 
 import { type ClientRuntime, useClientRuntime } from "@/lib/client-runtime";
 import { getAppAtoms } from "@/state/app-runtime";
@@ -66,11 +71,21 @@ export const pullRequestAtomsFor = (
 
 const getGitAtoms = (): GitAtoms => gitAtomsFor(getAppAtoms().runtime);
 
+/**
+ * A new worktree could not start from origin (the fetch failed, or origin has
+ * no such branch) and was cut from the local base instead. The thread still
+ * starts; the toast says what it started from.
+ */
+export const showWorktreeNotice = (notice: string): void => {
+  toast.warning(notice);
+};
+
 const getGitCommands = (): GitCommands => {
   const { runtime } = getAppAtoms();
   const git = getGitAtoms();
   gitCommands ??= makeGitCommands(runtime, git, {
     pullRequests: pullRequestAtomsFor(runtime, git),
+    onWorktreeNotice: showWorktreeNotice,
   });
   return gitCommands;
 };
