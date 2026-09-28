@@ -25,6 +25,7 @@ import type {
 import type { PermissionScope } from "@poseidon/contracts/settings";
 import type { PlannedEvent } from "../persistence/EventStore";
 import { resolveFork } from "./forkSeed";
+import { createdEffortAndUltracode, updatedEffortAndUltracode } from "./settingsRules";
 import type { ProjectDoc, ThreadDoc } from "./state";
 import { userMessageItem } from "./userMessageItem";
 
@@ -254,7 +255,8 @@ export const decide = (
       // fallback. All three of the settings document's defaults are read the
       // same way: a panel that writes a value the decider ignores is worse
       // than no panel at all.
-      const effort = patch.effort ?? ctx.defaultEffort;
+      // Ultracode starts at its own effort, whatever the patch or default says.
+      const effort = createdEffortAndUltracode(patch, patch.effort ?? ctx.defaultEffort);
       return accepted([
         emit("thread.created", {
           threadId: command.threadId,
@@ -264,7 +266,7 @@ export const decide = (
             model,
             runtimeMode: patch.runtimeMode ?? ctx.defaultRuntimeMode ?? DEFAULT_RUNTIME_MODE,
             interactionMode: patch.interactionMode ?? "default",
-            ...(effort === null || effort === undefined ? {} : { effort }),
+            ...effort,
             ...(patch.connectorInstanceId === undefined
               ? {}
               : { connectorInstanceId: patch.connectorInstanceId }),
@@ -458,7 +460,7 @@ export const decide = (
       return accepted([
         emit("thread.settings.updated", {
           ...(command.model === undefined ? {} : { model: command.model }),
-          ...(command.effort === undefined ? {} : { effort: command.effort }),
+          ...updatedEffortAndUltracode(command, thread.settings),
           ...(command.runtimeMode === undefined ? {} : { runtimeMode: command.runtimeMode }),
           ...(command.interactionMode === undefined
             ? {}

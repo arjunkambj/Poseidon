@@ -962,6 +962,16 @@ effort plus standing dynamic-workflow orchestration. Absent is off, which is
 every event written before it existed; it means something only on a session
 whose capabilities carry `ultracode`.
 
+The server keeps the flag to the rules of the harness's own flag-settings
+handler (`apps/server/src/orchestration/settingsRules.ts`), so the stored
+settings never show a combination the session is not in: switching ultracode
+on also sets the effort to `xhigh` (on `thread.create` too, over the patch's
+effort and the Settings default); switching it off keeps the effort; and a
+`thread.settings.update` that names an effort but not ultracode, on a thread
+that has it on, switches it off — picking `xhigh` itself included. A
+`model.changed` that reports ultracode is stored as reported, without these
+rules, since it is what the session already did.
+
 `ModelOption.hidden` is optional: a connector may list a model it does not want
 offered by default. The settings document's `modelPicker` holds the user's
 switches over that — `harnesses` keyed by connector instance id, `models` by
@@ -1602,7 +1612,8 @@ The decider (`forkSeed.ts`) refuses a source that is missing, deleted or in
 another project, an item that is not one of the source's user messages, a
 message of the source's running turn, and the whole thread while a turn runs. Otherwise the title defaults to
 "<source title> (fork)" and the settings to the source's — its model, effort,
-runtime mode and harness (the bound session's instance first), never plan
+runtime mode and harness (the bound session's instance first), and ultracode
+unless the command names an effort of its own, never plan
 mode — under whatever the command names. `thread.created` then carries a
 `ThreadFork`: the source's id and title, the message, and a plain-text
 transcript of the source's user and assistant messages and plans through the

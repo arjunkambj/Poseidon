@@ -221,6 +221,11 @@ export const resolveFork = (
     runtimeMode: settings.runtimeMode,
     ...(settings.effort === undefined ? {} : { effort: settings.effort }),
     ...(connectorInstanceId === undefined ? {} : { connectorInstanceId }),
+    // Ultracode goes with the effort it runs at: a fork that picks its own
+    // effort leaves it behind, as picking one in the thread would.
+    ...(settings.ultracode === true && command.settings?.effort === undefined
+      ? { ultracode: true }
+      : {}),
     ...definedOf(command.settings ?? {}),
   };
   // The harness forks the session itself when it can and the point is the

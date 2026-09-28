@@ -37,6 +37,7 @@ import type { ApprovalRequest, ItemSnapshot, UserQuestion } from "@poseidon/cont
 import { approvalSubject, planSubject, questionSubject } from "@poseidon/shared/decisionSubject";
 
 import { forkedFromField } from "./forkSeed";
+import { patchSettings } from "./settingsRules";
 import { activityStamp, doneSummaryFields, lastActivityOf } from "./threadDone";
 
 export type { ApprovalRequest, ItemSnapshot, QueuedMessage, UserQuestion };
@@ -229,19 +230,6 @@ const waitingOr = (doc: ThreadDoc, fallback: ThreadStatus): ThreadStatus =>
   doc.approvals.length > 0 || doc.userInputs.length > 0 || doc.pendingPlan !== null
     ? "waiting"
     : fallback;
-
-/**
- * The thread's chosen connector after a settings patch: the patch's when it
- * names one, the one already stored otherwise. Spread rather than assigned so
- * a thread that never chose one keeps no `connectorInstanceId` key at all.
- */
-const connectorOf = (
-  patched: unknown,
-  settings: ThreadSettings,
-): Pick<ThreadSettings, "connectorInstanceId"> => {
-  const chosen = (patched as ThreadSettings["connectorInstanceId"]) ?? settings.connectorInstanceId;
-  return chosen === undefined ? {} : { connectorInstanceId: chosen };
-};
 
 // ── Thread fold ───────────────────────────────────────────────
 
@@ -560,22 +548,7 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
       };
     }
     case "thread.settings.updated":
-      return {
-        ...next,
-        settings: {
-          model: (payload.model as string | undefined) ?? doc.settings.model,
-          effort:
-            payload.effort === undefined
-              ? doc.settings.effort
-              : (payload.effort as ThreadSettings["effort"]),
-          runtimeMode:
-            (payload.runtimeMode as ThreadSettings["runtimeMode"]) ?? doc.settings.runtimeMode,
-          interactionMode:
-            (payload.interactionMode as ThreadSettings["interactionMode"]) ??
-            doc.settings.interactionMode,
-          ...connectorOf(payload.connectorInstanceId, doc.settings),
-        },
-      };
+      return { ...next, settings: patchSettings(doc.settings, payload) };
     case "thread.usage.updated":
       return { ...next, usage: payload.usage as TurnUsage };
     case "thread.context.updated":
