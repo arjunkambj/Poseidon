@@ -332,6 +332,35 @@ export const pullRequestFromMessage = (
   return { title: (lines[0] ?? "").trim(), body: lines.slice(1).join("\n").trim() };
 };
 
+/** A pull request's title and body. */
+export interface PullRequestText {
+  readonly title: string;
+  readonly body: string;
+}
+
+/**
+ * The pull request a "Commit, push & create PR" run opens after its commit.
+ * Split from the commit message (`pullRequestFromMessage`), unless that
+ * message was generated and left unchanged: then the pull request is
+ * generated too, lazily — the run asks for it at its pull request step, after
+ * the commit and the push, so it is written from the branch as they left it.
+ * A generation that fails falls back to the split.
+ */
+export const pullRequestForCommit = (
+  choice: { readonly message: string; readonly generated: boolean },
+  generate: () => Promise<StepOutcome<PullRequestText>>,
+): PullRequestText | (() => Promise<PullRequestText>) => {
+  if (!choice.generated) {
+    return pullRequestFromMessage(choice.message);
+  }
+  return async () => {
+    const outcome = await settle(generate);
+    return outcome.ok
+      ? { title: outcome.value.title.trim(), body: outcome.value.body.trim() }
+      : pullRequestFromMessage(choice.message);
+  };
+};
+
 /** The pull-request-only dialog's title: the thread's, else the branch's name. */
 export const pullRequestTitleDraft = (title: string, branch: string | null): string => {
   const trimmed = title.trim();

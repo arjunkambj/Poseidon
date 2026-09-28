@@ -9,6 +9,7 @@ import {
   gitStartOf,
   planGitAction,
   planWithoutCommit,
+  pullRequestForCommit,
   pullRequestFromMessage,
   pullRequestTitleDraft,
   pushTargetOf,
@@ -17,7 +18,9 @@ import {
   TURN_RUNNING_REASON,
   type GitStep,
   type GitStepCalls,
+  type PullRequestText,
   type StepNotice,
+  type StepOutcome,
 } from "./git-actions";
 
 const CHANGED: GitStatus = {
@@ -409,5 +412,81 @@ describe("pull request drafts", () => {
     expect(pullRequestTitleDraft("Fix the login", "poseidon/fix-login")).toBe("Fix the login");
     expect(pullRequestTitleDraft("New thread", "poseidon/fix-login")).toBe("poseidon/fix-login");
     expect(pullRequestTitleDraft("New thread", null)).toBe("");
+  });
+});
+
+describe("the combined commit, push and pull request run", () => {
+  const MESSAGE = "Fix the login redirect\n\n- Keep the next param";
+
+  /** Runs all three steps, opening the pull request with whatever `pullRequest` resolves to. */
+  const combined = async (
+    pullRequest: PullRequestText | (() => Promise<PullRequestText>),
+    log: Array<string>,
+  ) => {
+    const opened: Array<PullRequestText> = [];
+    await runGitSteps(
+      ["commit", "push", "pr"],
+      {
+        commit: async () => {
+          log.push("commit");
+          return { ok: true, value: COMMIT };
+        },
+        push: async () => {
+          log.push("push");
+          return { ok: true, value: { remote: "origin", branch: "b", setUpstream: false } };
+        },
+        pr: async () => {
+          const text = typeof pullRequest === "function" ? await pullRequest() : pullRequest;
+          log.push("pr");
+          opened.push(text);
+          return { ok: true, value: { url: "https://github.com/acme/app/pull/7", created: true } };
+        },
+      },
+      () => {},
+    );
+    return opened;
+  };
+
+  it("generates the pull request after the push when the commit message was generated", async () => {
+    const log: Array<string> = [];
+    const generate = async (): Promise<StepOutcome<PullRequestText>> => {
+      log.push("generate");
+      return { ok: true, value: { title: " Fix the login redirect ", body: "## Summary\n" } };
+    };
+    const opened = await combined(
+      pullRequestForCommit({ message: MESSAGE, generated: true }, generate),
+      log,
+    );
+    expect(log).toEqual(["commit", "push", "generate", "pr"]);
+    expect(opened).toEqual([{ title: "Fix the login redirect", body: "## Summary" }]);
+  });
+
+  it("falls back to the commit message when generating fails or throws", async () => {
+    for (const generate of [
+      async (): Promise<StepOutcome<PullRequestText>> => ({ ok: false, message: "Timed out." }),
+      async (): Promise<StepOutcome<PullRequestText>> => {
+        throw new Error("socket closed");
+      },
+    ]) {
+      const opened = await combined(
+        pullRequestForCommit({ message: MESSAGE, generated: true }, generate),
+        [],
+      );
+      expect(opened).toEqual([pullRequestFromMessage(MESSAGE)]);
+    }
+  });
+
+  it("keeps today's split when the message was not generated", async () => {
+    let asked = false;
+    const pullRequest = pullRequestForCommit({ message: MESSAGE, generated: false }, async () => {
+      asked = true;
+      return { ok: true, value: { title: "Never", body: "" } };
+    });
+    expect(pullRequest).toEqual({
+      title: "Fix the login redirect",
+      body: "- Keep the next param",
+    });
+    expect(await combined(pullRequest, [])).toEqual([pullRequestFromMessage(MESSAGE)]);
+    expect(asked).toBe(false);
   });
 });

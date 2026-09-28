@@ -22,7 +22,8 @@
  * (`@/lib/git-actions`): any action that commits opens the commit dialog
  * first — the message and the files to commit, with the one asked for filled
  * in — and a pull request made in the same run takes its title and body from
- * the commit message. With nothing to commit, a push (from its key) runs
+ * the commit message, or is generated after the push when that message was
+ * generated and left unchanged (`pullRequestForCommit`). With nothing to commit, a push (from its key) runs
  * straight away and a pull request asks only for its title and body. The
  * steps then run in order with one toast each, and stop at the first refusal
  * with the server's message (`./use-git-actions`).
@@ -70,7 +71,7 @@ import {
   gitStartOf,
   planGitAction,
   planWithoutCommit,
-  pullRequestFromMessage,
+  pullRequestForCommit,
   pullRequestTitleDraft,
   pushTargetOf,
   stepsLabel,
@@ -78,6 +79,7 @@ import {
   type GitAction,
 } from "@/lib/git-actions";
 import { projectFolderTurnRunning, turnInFlight } from "@/lib/turn";
+import { showGenerationNotice, useGenerationCommands } from "@/lib/use-generation";
 import { useWindowReturn } from "@/lib/window-return";
 import { useConnectionState, useThreadList } from "@/state/hooks";
 
@@ -144,6 +146,7 @@ export function GitActionsControl({
   // Not known yet (or an older server): offered, and the server says why not.
   const pullRequestBlocker = readiness._tag === "ok" ? readiness.value.reason : null;
   const refreshStatus = useAtomRefresh(statusAtom);
+  const { generatePullRequest } = useGenerationCommands();
   const { run, pullRequestUrl } = useGitActions(
     scope,
     status._tag === "ok" ? status.value.branch : null,
@@ -245,7 +248,13 @@ export function GitActionsControl({
     void execute(action, {
       commit: choice,
       ...(action === "commit-push-pr"
-        ? { pullRequest: pullRequestFromMessage(choice.message) }
+        ? {
+            pullRequest: pullRequestForCommit(choice, async () => {
+              const outcome = await generatePullRequest(scope);
+              if (outcome.ok) showGenerationNotice(outcome.value.notice);
+              return outcome;
+            }),
+          }
         : {}),
     });
 

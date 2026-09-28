@@ -23,15 +23,20 @@ import {
   runGitSteps,
   type GitRunResult,
   type GitStep,
+  type PullRequestText,
   type StepNotice,
   type StepOutcome,
 } from "@/lib/git-actions";
 import { pullRequestLinkKey, usePullRequestLink } from "@/state/ui";
 
-/** What the dialog decided; a commit without `paths` takes every change. */
+/**
+ * What the dialog decided; a commit without `paths` takes every change. A
+ * `pullRequest` given as a function is asked for at the pull request step,
+ * after the commit and the push (`pullRequestForCommit`).
+ */
 export interface GitRunInput {
   readonly commit?: { readonly message: string; readonly paths?: ReadonlyArray<string> };
-  readonly pullRequest?: { readonly title: string; readonly body: string };
+  readonly pullRequest?: PullRequestText | (() => Promise<PullRequestText>);
 }
 
 let runs = 0;
@@ -98,13 +103,17 @@ export const useGitActions = (scope: GitScope, branch: string | null) => {
               ),
         push: async (): Promise<StepOutcome<GitPushResult>> =>
           outcomeOf(await push(scope), "The push was refused."),
-        pr: async (): Promise<StepOutcome<GitPullRequestResult>> =>
-          input.pullRequest === undefined
-            ? { ok: false, message: "There is no pull request title." }
-            : outcomeOf(
-                await openPullRequest({ ...scope, ...input.pullRequest }),
-                "The pull request was not opened.",
-              ),
+        pr: async (): Promise<StepOutcome<GitPullRequestResult>> => {
+          if (input.pullRequest === undefined) {
+            return { ok: false, message: "There is no pull request title." };
+          }
+          const text =
+            typeof input.pullRequest === "function" ? await input.pullRequest() : input.pullRequest;
+          return outcomeOf(
+            await openPullRequest({ ...scope, title: text.title, body: text.body }),
+            "The pull request was not opened.",
+          );
+        },
       },
       toastNotice(runs),
       pushTarget,
