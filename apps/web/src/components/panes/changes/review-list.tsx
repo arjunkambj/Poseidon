@@ -13,7 +13,9 @@
  * found by `linkedFileIndex`, since the timeline's path is often absolute.
  * Picking a file in the tree beside the files (`FileTree`, shown or hidden
  * from the summary line and remembered for the app session) does the same;
- * each of these goes through `revealFile`.
+ * each of these goes through `revealFile`. In a list narrower than
+ * `TREE_ASIDE_MIN_WIDTH` the tree folds into a dropdown in the summary line
+ * (`FileJumpMenu`) instead (`treeLayout`).
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
@@ -25,7 +27,9 @@ import { useChangesTreeOpen } from "@/state/changes-view";
 import { useChangesReview, type DiffStyle } from "@/state/ui";
 
 import { linkedFileIndex } from "./deep-link";
+import { FileJumpMenu } from "./file-jump-menu";
 import { FileSection } from "./file-section";
+import { treeLayout } from "./file-tree";
 import { FileTree } from "./file-tree-view";
 import {
   everyFileOpen,
@@ -37,6 +41,7 @@ import {
   withViewed,
 } from "./review";
 import { ReviewSummary, TreeToggle } from "./review-summary";
+import { useElementWidth } from "./use-element-width";
 
 export function ReviewList({
   threadId,
@@ -132,7 +137,10 @@ export function ReviewList({
     }
   }, [reveal, onRevealed, files]);
 
+  // Beside the diffs when the list is wide enough, else behind a dropdown.
+  const listRef = React.useRef<HTMLDivElement>(null);
   const [treeOpen, setTreeOpen] = useChangesTreeOpen();
+  const layout = treeLayout(useElementWidth(listRef), treeOpen);
   const viewedPaths = React.useMemo(
     () =>
       new Set(
@@ -141,8 +149,10 @@ export function ReviewList({
     [hashed, review],
   );
 
+  const treeProps = { threadId, files, viewed: viewedPaths, selected, onSelect: revealFile };
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div ref={listRef} className="flex min-h-0 flex-1 flex-col">
       <ReviewSummary
         files={files}
         viewed={viewedPaths.size}
@@ -153,18 +163,17 @@ export function ReviewList({
             open,
           )
         }
-        tree={<TreeToggle open={treeOpen} onOpenChange={setTreeOpen} />}
+        tree={
+          layout === "dropdown" ? (
+            <FileJumpMenu {...treeProps} />
+          ) : (
+            <TreeToggle open={treeOpen} onOpenChange={setTreeOpen} />
+          )
+        }
       />
       <div className="flex min-h-0 flex-1 border-t border-border">
-        {treeOpen ? (
-          <FileTree
-            threadId={threadId}
-            files={files}
-            viewed={viewedPaths}
-            selected={selected}
-            onSelect={revealFile}
-            className="w-56 shrink-0 border-r border-border"
-          />
+        {layout === "aside" ? (
+          <FileTree {...treeProps} className="w-56 shrink-0 border-r border-border" />
         ) : null}
         <div ref={scrollerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
           {hashed.map(({ file, hash }) => (

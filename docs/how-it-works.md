@@ -1881,6 +1881,24 @@ shown it publishes `changesOpen`, and `Alt+ArrowDown` / `Alt+ArrowUp`
 (`changes.nextFile` / `previousFile`) open the next or previous file and
 scroll its header to the top.
 
+Beside the files sits a tree of them (`file-tree.ts` for the rules,
+`file-tree-view.tsx` for the tree): folders with chains of single folders
+shown as one row (`apps/web/src`), folders before files, each by name. A file
+row carries its status letter (A, D, R for a rename, M), its name, its
+`+`/`−` counts and a tick once viewed. A filter over it keeps the files whose
+path holds the text, ignoring case, with the folders above them shown open.
+The tree is a WAI-ARIA tree with one row in the tab order: the arrows move,
+Home and End jump, Left folds a folder or goes to its parent, Right unfolds
+one or enters it, and Enter or a click on a file opens it when it has a patch
+and scrolls its header to the top, the same way the file keys and a timeline
+link do. The tree only lists; nothing opens a patch until a file is picked. A
+toggle in the summary line hides or shows it, one choice for every thread
+that lasts the app session; the folded folders and the filter are each
+thread's own, in memory (`state/changes-view.ts`). When the list is narrower
+than 560px the tree leaves the side and the summary line shows a "Changed
+files" button in its place, which opens the same tree in a popover and closes
+it on a pick.
+
 A turn summary in the timeline links into the pane (`deep-link.ts`): the fold
 names the checkpoint each turn left, "Open in Changes" navigates to
 `?pane=changes&turn=<checkpoint ref>` and each listed path adds

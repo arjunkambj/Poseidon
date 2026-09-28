@@ -5,7 +5,9 @@ import {
   filterTree,
   moveFocus,
   statusLetter,
+  TREE_ASIDE_MIN_WIDTH,
   treeFiles,
+  treeLayout,
   visibleRows,
   type TreeFileInput,
   type TreeNode,
@@ -196,5 +198,22 @@ describe("moveFocus", () => {
   it("ignores other keys and an empty tree", () => {
     expect(moveFocus(rows, 0, "Enter")).toBeNull();
     expect(moveFocus([], 0, "ArrowDown")).toBeNull();
+  });
+});
+
+describe("treeLayout", () => {
+  it("puts the tree beside the diffs when there is room and it is on", () => {
+    expect(treeLayout(TREE_ASIDE_MIN_WIDTH, true)).toBe("aside");
+    expect(treeLayout(1200, true)).toBe("aside");
+  });
+
+  it("hides it when turned off and there is room", () => {
+    expect(treeLayout(1200, false)).toBe("hidden");
+  });
+
+  it("folds it into a dropdown below the threshold, on or off", () => {
+    expect(treeLayout(TREE_ASIDE_MIN_WIDTH - 1, true)).toBe("dropdown");
+    expect(treeLayout(320, false)).toBe("dropdown");
+    expect(treeLayout(0, true)).toBe("dropdown");
   });
 });

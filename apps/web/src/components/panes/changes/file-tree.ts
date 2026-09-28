@@ -8,7 +8,8 @@
  * folders above them; `visibleRows` flattens what is open into the rows the
  * tree renders; `moveFocus` is what each navigation key does to them. A
  * folder is known by its full path — the deepest folder of a compressed
- * chain — which is also what the pane remembers as collapsed.
+ * chain — which is also what the pane remembers as collapsed. `treeLayout`
+ * says where the tree goes for the width the list has.
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
@@ -222,3 +223,13 @@ export const moveFocus = (
       return null;
   }
 };
+/** How much room the tree needs beside the diffs, in px; narrower, it folds into a dropdown. */
+export const TREE_ASIDE_MIN_WIDTH = 560;
+
+/**
+ * Where the tree goes in a list `width` px wide: beside the diffs when there
+ * is room and the user has it on, nowhere when they turned it off, and behind
+ * a dropdown in the summary line when there is no room.
+ */
+export const treeLayout = (width: number, open: boolean): "aside" | "dropdown" | "hidden" =>
+  width < TREE_ASIDE_MIN_WIDTH ? "dropdown" : open ? "aside" : "hidden";

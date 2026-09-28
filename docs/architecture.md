@@ -536,7 +536,9 @@ branch, the Changes pane's scope and diff style and, in memory only, each
 thread's review there (which files are open and which are marked viewed), the
 "last seen" stamp behind the unread dot and the sidebar's pinned threads
 (`apps/web/src/components/sidebar/thread-pins.ts`)
-— and in `apps/web/src/state/terminal-ui.ts`, which threads have their
+— in `apps/web/src/state/changes-view.ts`, in memory only, whether the Changes
+pane's file tree is shown and each thread's folded folders and filter in it,
+and in `apps/web/src/state/terminal-ui.ts`, which threads have their
 terminal drawer open and how tall it is. The terminals themselves are the
 server's: the drawer's tabs are a fold of `terminal.list`
 (`apps/web/src/components/terminal/drawer-state.ts`), kept in memory per
