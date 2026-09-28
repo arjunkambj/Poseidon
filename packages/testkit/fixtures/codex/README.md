@@ -66,5 +66,8 @@ plain turn with nothing unmapped, an approval allowed once and a plan turn.
 Run again the same day after the review fixes, ten passed and the approval
 case timed out once: the model applied its patch through the CLI's `exec`
 tool, which wrote the file with no approval request and then hung. Run on its
-own, the case passed. A live run that disagrees with a recording means the
+own, the case passed. Approval required then ran in the `workspace-write`
+sandbox; after it moved to `read-only`, the bearer was blanked in commands
+and every session was recorded again, the suite ran once more the same day
+and all eleven cases passed. A live run that disagrees with a recording means the
 recording is stale.
