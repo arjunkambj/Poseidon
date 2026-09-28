@@ -237,7 +237,12 @@ UUID. `send` is `turn/start` and returns `TurnInProgress` while a turn runs.
 `interrupt` is `turn/interrupt`, which ends the turn and leaves the thread, so
 the same process answers the next one (`interrupt`). `close` ends stdin — the
 app-server exits 0 on end of input — then signals the group and proves it
-gone; afterwards the handle answers `SessionClosed`. An app-server that exits
+gone; afterwards the handle answers `SessionClosed`. That proof covers the
+app-server's own process group only. The CLI runs each of the model's shell
+commands in a session and group of its own (unified exec) and cleans those up
+itself on a clean exit; if the close has to escalate to SIGTERM or SIGKILL, a
+command that ignores the hangup of its closed terminal (a `nohup`'d server)
+can outlive the session. An app-server that exits
 by itself is a fatal `runtime.error` followed by `session.ended` with reason
 `crashed`.
 

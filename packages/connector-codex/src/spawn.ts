@@ -2,17 +2,26 @@
  * Starting `codex` children, and proving they have stopped.
  *
  * Every child is spawned `detached`, so it leads a process group of its own,
- * and every signal goes to the whole group (`kill(-pid)`): a shell command the
- * model started is a grandchild of the app-server, and signalling the group is
- * the only way it goes with its parent rather than outliving it in the
- * server's own group.
+ * and every signal goes to the whole group (`kill(-pid)`): the npm install's
+ * `node` wrapper and the native binary it starts go together, and so does
+ * anything else the app-server leaves in its group.
+ *
+ * What the group does not hold: the shell commands the model runs. The CLI
+ * starts each in a session and process group of its own (unified exec — the
+ * recordings carry its `processId` — and the binary imports `setsid`,
+ * `setpgid` and `killpg`), and cleans those groups up itself when it shuts
+ * down cleanly, which is what closing stdin asks for. After an escalation to
+ * SIGTERM or SIGKILL the CLI may not have run that cleanup; its commands then
+ * end with the hangup of their closed terminal, and one that ignores SIGHUP
+ * (a `nohup`'d dev server, say) can outlive the session. So `isGone` proves
+ * the app-server's own group gone, not every command the model started.
  *
  * `stop` is not best-effort. It first closes the child's stdin — the
  * app-server's stdio transport ends the process on EOF, cleanly, with exit 0 —
  * then signals the group with SIGTERM if the leader has not gone within a
  * grace, escalates to SIGKILL after another, and sweeps whatever members are
- * left. `isGone` is the proof: signal 0 to the group fails with ESRCH once no
- * member is left.
+ * left. `isGone` is the proof for that group: signal 0 to it fails with
+ * ESRCH once no member is left.
  *
  * A group that is gone is never signalled again. Its id is free for the
  * kernel to hand out once no member is left, so a later `kill(-pid)` — or a
