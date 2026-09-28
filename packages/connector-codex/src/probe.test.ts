@@ -22,6 +22,7 @@ import {
   PROBE_SERVER_ARGS,
   describeAccount,
   isBelowOldestTested,
+  missingHomeMessage,
   parseLoginStatus,
   parseVersion,
   probe,
@@ -127,6 +128,27 @@ describe("probe", () => {
       const home = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "codex-home-"));
       const result = yield* probe({ binaryPath: replayed.binaryPath, codexHome: home });
       expect(result.loginCommand).toBe(`CODEX_HOME=${home} ${replayed.binaryPath} login`);
+    }),
+  );
+
+  it.effect("is an error naming the path when the instance's codex home does not exist", () =>
+    Effect.gen(function* () {
+      const replayed = replay("probe");
+      const home = NodePath.join(
+        NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "codex-home-")),
+        "not-made",
+      );
+      const result = yield* probe({ binaryPath: replayed.binaryPath, codexHome: home });
+      expect(result).toMatchObject({
+        status: "error",
+        installed: true,
+        version: "0.156.1",
+        message: missingHomeMessage(home),
+        auth: "unknown",
+        models: [],
+      });
+      // Only --version ran: login status and the handshake would fail there too.
+      expect(replayed.pids().length).toBe(1);
     }),
   );
 

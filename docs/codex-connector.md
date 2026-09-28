@@ -128,7 +128,8 @@ form the connectors page renders, served over `connectors.describe`.
 `HOME` is never changed. The CLI keeps its login, its `config.toml`, its
 sessions (rollouts) and its skills under `CODEX_HOME`, `~/.codex` when unset,
 so a second account is a second `CODEX_HOME`. The directory must exist: the
-CLI refuses a `CODEX_HOME` that does not (`failed to resolve CODEX_HOME`).
+CLI refuses a `CODEX_HOME` that does not ("CODEX_HOME points to …, but that
+path does not exist"), and the probe says so (below).
 
 ## The probe
 
@@ -138,6 +139,10 @@ under the environment a session would get, from the system temp directory.
 
 1. `codex --version` → `codex-cli 0.156.1`. A non-zero exit, or output with no
    version in it, is status `error`.
+   If the instance names a `codexHome` that is not a directory, the probe
+   stops here with status `error`: "Codex home <path> does not exist — create
+   it, or clear the setting". Every other command, the login command
+   included, would fail there.
 2. `codex login status` → "Logged in using ChatGPT" is signed in, "Not logged
    in" is not. The CLI prints this to stderr, so both streams are read
    whatever the exit code; anything else is a warning, and the handshake's

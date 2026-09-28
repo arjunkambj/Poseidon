@@ -19,9 +19,15 @@
  *   to the model and it costs nothing (`fixtures/codex/probe/`). A handshake
  *   that fails or hangs is a warning, not a failed probe: the two one-shot
  *   answers still say whether the CLI is there and signed in.
+ *
+ * An instance that names a `CODEX_HOME` which is not a directory is an error
+ * before the last two are asked: every command but `--version` fails there
+ * ("CODEX_HOME points to …, but that path does not exist"), the login command
+ * included, so the fix to name is the path itself.
  */
 
 import { execFile } from "node:child_process";
+import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import type { ModelOption } from "@poseidon/contracts/connectors";
 import type { ConnectorProbe } from "@poseidon/connector-sdk/definition";
@@ -212,6 +218,19 @@ export const readHandshake = (input: {
 
 const detailOf = (result: RunResult): string => result.stderr.trim() || result.stdout.trim();
 
+/** Whether `path` is a directory that exists. */
+const isDirectory = (path: string): boolean => {
+  try {
+    return NodeFS.statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
+/** What the page says when the instance's codex home is not a directory. */
+export const missingHomeMessage = (home: string): string =>
+  `Codex home ${home} does not exist — create it, or clear the setting`;
+
 export const probe = (
   config: CodexConnectorConfig,
   /** How the binary is found; a test swaps in a narrower search. */
@@ -254,6 +273,20 @@ export const probe = (
       warnings.push(
         `codex ${version} is older than ${OLDEST_TESTED_VERSION}, the oldest release Poseidon has been tested against`,
       );
+    }
+
+    if (env.CODEX_HOME !== undefined && !isDirectory(env.CODEX_HOME)) {
+      return {
+        status: "error" as const,
+        probedAt,
+        binaryPath: binary.display,
+        installed: true,
+        version,
+        message: missingHomeMessage(env.CODEX_HOME),
+        auth: "unknown" as const,
+        models: [],
+        warnings,
+      };
     }
 
     const loginRun = yield* runBinary(binary, ["login", "status"], env);
