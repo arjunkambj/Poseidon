@@ -69,6 +69,20 @@ const askAndAnswer = async (run: Run, id: Id, decision: string): Promise<Line> =
   return asked;
 };
 
+/** What the "params" recording's turn named. */
+const TURN_PARAMS = {
+  input: "one",
+  model: "m1",
+  effort: "low",
+  sandboxPolicy: { type: "workspaceWrite", writableRoots: [] },
+} as const;
+
+/** Sends a turn and waits for its result. */
+const startTurn = async (run: Run, id: Id, params: unknown): Promise<void> => {
+  run.send({ id, method: "turn/start", params });
+  await run.awaitLine(responseTo(id));
+};
+
 /** Asks twice back to back, so both approvals are open together. */
 const askTwice = async (run: Run): Promise<void> => {
   await handshake(run, 0);
@@ -162,6 +176,19 @@ beforeAll(async () => {
   asking.child.stdin.end();
   expect((await asking.exited).code).toBe(3);
   finalize("question", questionRaw, ["q1"]);
+
+  // "params": a turn naming its model and effort, then an approval answered
+  // the way an elicitation is, with an action.
+  const [params, paramsRaw] = tee("params");
+  const naming = converse(params, SERVER_ARGS, { cwd: REPO });
+  await handshake(naming, 0);
+  await startTurn(naming, 1, TURN_PARAMS);
+  naming.send({ id: 2, method: "ask", params: {} });
+  const elicited = (await naming.awaitLine(requestOf("approve"))) as { id: number };
+  naming.send({ id: elicited.id, result: { action: "accept", content: {}, _meta: null } });
+  await naming.awaitLine(notificationOf("answered"));
+  expect(await closeAndExit(naming)).toBe(0);
+  finalize("params", paramsRaw, ["one"]);
 
   // An sdk-stream recording, which this replayer refuses.
   const [, streamRaw] = tee("stream");
@@ -311,6 +338,55 @@ describe("stdioJsonRpcReplayer", () => {
     const exit = await other.exited;
     expect(exit.code).toBe(REPLAY_DIVERGED);
     expect(exit.stderr).toContain("answers to different questions");
+  });
+
+  it("checks a request's load-bearing params, and lets the rest differ", async () => {
+    const matched = converse(binaryFor("params"), SERVER_ARGS, { cwd: REPLAY_REPO });
+    await handshake(matched, 0);
+    await startTurn(matched, 1, {
+      ...TURN_PARAMS,
+      input: "another prompt",
+      sandboxPolicy: { type: "workspaceWrite", writableRoots: ["/elsewhere"] },
+    });
+
+    const cases = [
+      [{ ...TURN_PARAMS, effort: undefined }, "a different params.effort"],
+      [{ ...TURN_PARAMS, model: "m2" }, "a different params.model"],
+      [
+        { ...TURN_PARAMS, sandboxPolicy: { type: "dangerFullAccess" } },
+        "params.sandboxPolicy.type",
+      ],
+      [{ ...TURN_PARAMS, collaborationMode: { mode: "plan" } }, "params.collaborationMode.mode"],
+    ] as const;
+    for (const [params, why] of cases) {
+      const run = converse(binaryFor("params"), SERVER_ARGS, { cwd: REPLAY_REPO });
+      await handshake(run, 0);
+      run.send({ id: 1, method: "turn/start", params });
+      const exit = await run.exited;
+      expect(exit.code).toBe(REPLAY_DIVERGED);
+      expect(exit.stderr).toContain(why);
+    }
+    matched.child.kill();
+  });
+
+  it("checks an elicitation's action", async () => {
+    const answer = async (action: string) => {
+      const run = converse(binaryFor("params"), SERVER_ARGS, { cwd: REPLAY_REPO });
+      await handshake(run, 0);
+      await startTurn(run, 1, TURN_PARAMS);
+      run.send({ id: 2, method: "ask", params: {} });
+      const raised = (await run.awaitLine(requestOf("approve"))) as { id: number };
+      run.send({ id: raised.id, result: { action, content: null, _meta: null } });
+      return run;
+    };
+
+    const matched = await answer("accept");
+    await matched.awaitLine(notificationOf("answered"));
+    expect(await closeAndExit(matched)).toBe(0);
+
+    const exit = await (await answer("decline")).exited;
+    expect(exit.code).toBe(REPLAY_DIVERGED);
+    expect(exit.stderr).toContain("a different action");
   });
 
   it("plays the next recorded invocation of each argv class, counted across launches", async () => {

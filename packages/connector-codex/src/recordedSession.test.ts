@@ -19,14 +19,17 @@
  * `recordedInteractions.test.ts`, on the same helpers (`test/replaySession.ts`).
  *
  * Every replay checks what the connector sent against what the recording
- * says it sent, so a request the connector stopped making, or made in
- * another order, fails here; the divergence log must stay empty.
+ * says it sent — each method in order, and each request's load-bearing params
+ * (the model, effort and policies a turn names) — so a request the connector
+ * stopped making, made in another order or on a stale model, fails here; the
+ * divergence log must stay empty.
  */
 
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import type { RuntimeEvent } from "@poseidon/contracts/runtime";
+import { loadStdioJsonRpcRecording } from "@poseidon/testkit/stdioJsonRpcRecording";
 import * as Effect from "effect/Effect";
 
 import {
@@ -42,6 +45,7 @@ import {
   turnWithCard,
 } from "../test/replaySession";
 import { UNREADABLE_REF_WARNING } from "./definition";
+import { CODEX_KIND } from "./kind";
 import { parseSessionRef } from "./sessionRef";
 import { MISSING_THREAD_WARNING } from "./threadOpen";
 
@@ -198,6 +202,15 @@ describe("a Codex session replaying codex/resume-missing", () => {
   );
 });
 
+/** The params of every `turn/start` a scenario's recording sent. */
+const recordedTurnStarts = (scenario: string) =>
+  loadStdioJsonRpcRecording(CODEX_KIND, scenario).invocations.flatMap((invocation) =>
+    invocation.frames.flatMap((frame) => {
+      const data = frame.data as { method?: string; params?: { model?: string; effort?: string } };
+      return frame.dir === "to-harness" && data.method === "turn/start" ? [data.params ?? {}] : [];
+    }),
+  );
+
 describe("a Codex session replaying codex/model-switch", () => {
   it.live("says model.changed at once, and runs the next turn on the new model", () =>
     Effect.scoped(
@@ -212,6 +225,14 @@ describe("a Codex session replaying codex/model-switch", () => {
         assertDone();
 
         expect(ofType(events, "model.changed").map((event) => event.payload)).toEqual([
+          { model: "gpt-6-luna", effort: "low" },
+        ]);
+        // The replay held the live turn/starts to these: the first names
+        // nothing, the second the new model and effort.
+        expect(
+          recordedTurnStarts("model-switch").map(({ model, effort }) => ({ model, effort })),
+        ).toEqual([
+          { model: undefined, effort: undefined },
           { model: "gpt-6-luna", effort: "low" },
         ]);
         expect(stopReasons(events)).toEqual(["end_turn", "end_turn"]);

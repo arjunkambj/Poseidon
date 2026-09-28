@@ -30,10 +30,12 @@
  *   - a frame from the harness is written to its channel;
  *   - at a frame to the harness, the replay blocks on the next line of stdin and
  *     checks it is the same move: a request or notification with the same
- *     `method`, a request where a request was recorded; an answer to a request
- *     the harness made with the same `id`, a result or an error as recorded,
- *     the same `result.decision` for an approval and the same answer keys
- *     (`result.answers`) for a question. Answers to two open harness requests
+ *     `method`, a request where a request was recorded, and the same
+ *     load-bearing params (`LOAD_BEARING_PARAMS`: what a turn runs on, and
+ *     under which policy); an answer to a request the harness made with the
+ *     same `id`, a result or an error as recorded, the same `result.decision`
+ *     for an approval, the same `result.action` for an elicitation and the
+ *     same answer keys (`result.answers`) for a question. Answers to two open harness requests
  *     may arrive in either order, and so may a connector message and the
  *     answer to an open harness request; each is still checked in its
  *     recorded place, and nothing else may cross;
@@ -245,6 +247,26 @@ const decisionOf = (decision) =>
 const keysOf = (value) =>
   isObject(value) ? Object.keys(value).sort().join(",") : JSON.stringify(value);
 
+/**
+ * The params a request must carry as recorded, by dotted path: the model and
+ * effort a turn runs on, and the policies it runs under. The harness answers
+ * a replay the same whatever it is sent, so without these a connector that
+ * dropped one — and ran the next turn on a stale value — would still match.
+ * Absent on both sides is a match; everything else in the params (prompts,
+ * paths, ids) is free to differ.
+ */
+const LOAD_BEARING_PARAMS = [
+  "model",
+  "effort",
+  "approvalPolicy",
+  "sandbox",
+  "sandboxPolicy.type",
+  "collaborationMode.mode",
+];
+
+const at = (value, dotted) =>
+  dotted.split(".").reduce((inner, key) => (isObject(inner) ? inner[key] : undefined), value);
+
 /** Why `live` is not the move `recorded` was, or null when it is. */
 const mismatch = (recorded, live) => {
   if (!isObject(recorded)) return live === recorded ? null : "a different line";
@@ -256,6 +278,11 @@ const mismatch = (recorded, live) => {
       return hasId(recorded)
         ? "a notification where a request was recorded"
         : "a request where a notification was recorded";
+    }
+    for (const path of LOAD_BEARING_PARAMS) {
+      if (JSON.stringify(at(live.params, path)) !== JSON.stringify(at(recorded.params, path))) {
+        return `a different params.${path}`;
+      }
     }
     return null;
   }
@@ -272,6 +299,12 @@ const mismatch = (recorded, live) => {
     decisionOf(said(live).decision) !== decisionOf(said(recorded).decision)
   ) {
     return "a different decision";
+  }
+  if (
+    ("action" in said(recorded) || "action" in said(live)) &&
+    said(live).action !== said(recorded).action
+  ) {
+    return "a different action";
   }
   if (
     ("answers" in said(recorded) || "answers" in said(live)) &&

@@ -807,11 +807,15 @@ rules, with JSON-RPC's moves:
   marker), a session's `app-server` run, or else the exact argv, counted in
   `tmpDir` across launches. A probe asked again hears the last recorded answer
   again; a session with no recorded run left is a divergence.
-- **Gating.** A request or notification must have the same `method`, and be a
-  request where a request was recorded. An answer to a request the harness
-  made must carry the same `id`, be a result or an error as recorded, and
-  carry the same `result.decision` for an approval and the same answer keys
-  (`result.answers`) for a question. Answers to two open harness requests may
+- **Gating.** A request or notification must have the same `method`, be a
+  request where a request was recorded, and carry the same load-bearing params
+  — `model`, `effort`, `approvalPolicy`, `sandbox`, `sandboxPolicy.type` and
+  `collaborationMode.mode`, absent where the recording has them absent — so a
+  connector that stops naming what a turn runs on diverges instead of passing
+  on the harness's unchanged answers. An answer to a request the harness made
+  must carry the same `id`, be a result or an error as recorded, and carry the
+  same `result.decision` for an approval, the same `result.action` for an
+  elicitation and the same answer keys (`result.answers`) for a question. Answers to two open harness requests may
   arrive in either order, and so may a connector message and the answer to an
   open harness request; each is held back and checked in its recorded place.
 - **Id rewriting.** The connector's request ids are its own: each recorded id
