@@ -466,6 +466,17 @@ running turn" in muted text beside the context gauge. All of it reads
 `turnInFlight` (`apps/web/src/lib/turn.ts`) rather than `currentTurnId`, which
 the projection only fills one event later.
 
+The context gauge (`context-meter.tsx`) is a ring and a percentage; clicking it
+opens the used, window and remaining tokens over a progress bar. When the
+thread's bound session declared `capabilities.compaction` — Claude does,
+Command Code does not; before a session binds, nothing has said so — the
+popover also offers "Compact now" (`compact-now.ts`). It dispatches
+`thread.turn.start` with the text `/compact` and no attachments or mentions,
+exactly what a typed `/compact` sends, so the harness runs its own command and
+the timeline shows the compaction row. `use-compact-now.ts` dispatches it
+directly rather than through `use-send-draft.ts`, leaving the draft alone.
+While a turn runs the button is disabled, with the reason beneath it.
+
 Four characters open a menu, each only at the start of the text or after
 whitespace (`detectComposerTrigger` in
 `packages/client-runtime/src/composerTrigger.ts`), and each closes at the next

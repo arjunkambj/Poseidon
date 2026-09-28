@@ -24,7 +24,8 @@
  * runtime-mode picker; narrow, they take a line of their own and the model
  * name truncates, so the pair never wraps inside itself and the runtime mode
  * shows only its icon when even the first line runs short. The context meter
- * (`./composer/context-meter`) stays beside Send either way.
+ * (`./composer/context-meter`) stays beside Send either way, and offers
+ * "Compact now" when the bound session can compact (`./composer/compact-now`).
  *
  * Keys: `ThreadSettingsKeys` (`./thread-settings-keys`) answers plan mode
  * (Shift+Tab in the composer), the runtime-mode cycle, the pickers and the
@@ -61,9 +62,12 @@ import { orderEfforts } from "@/lib/efforts";
 import { findModel, modelPickPatch } from "@/lib/model-picks";
 import { RUNTIME_MODE_LABELS, runtimeModeOptions } from "@/lib/runtime-modes";
 import { CommandKbd } from "@/lib/shortcuts";
+import { turnInFlight } from "@/lib/turn";
 import { Lightning, ListChecks, Lock } from "@honeyicons/react";
 
-import { ContextMeter } from "./composer/context-meter";
+import { canCompact, compactRefusal } from "./composer/compact-now";
+import { type ContextCompact, ContextMeter } from "./composer/context-meter";
+import { useCompactNow } from "./composer/use-compact-now";
 import { type HeaderOption, HeaderSelect, NEXT_TURN_HINT, RESTART_TOOLTIP } from "./header-select";
 import { ThreadSettingsKeys } from "./thread-settings-keys";
 import { ModelPicker } from "./model-picker";
@@ -100,6 +104,7 @@ export function HeaderControls({
   const runtimeModes = runtimeModeOptions(instanceCapabilities(instanceId, connectors));
 
   const [error, setError] = React.useState<string | null>(null);
+  const compactNow = useCompactNow(threadId);
 
   const update = React.useCallback(
     (patch: ThreadSettingsPatch) => {
@@ -121,6 +126,7 @@ export function HeaderControls({
   if (doc === null) {
     return null;
   }
+  const shownError = error ?? compactNow.error;
 
   return (
     <div className={cn("contents", className)}>
@@ -134,11 +140,23 @@ export function HeaderControls({
         canPlan={capabilities?.planMode ?? true}
         runtimeModes={runtimeModes}
         context={doc.context}
+        compact={
+          canCompact(doc.session?.capabilities)
+            ? {
+                onCompact: compactNow.compact,
+                disabledReason: compactRefusal({
+                  running: turnInFlight(doc),
+                  pending: compactNow.compacting,
+                }),
+                pending: compactNow.compacting,
+              }
+            : undefined
+        }
         onChange={update}
       />
-      {error === null ? null : (
+      {shownError === null ? null : (
         <p className="order-4 basis-full text-xs text-destructive" role="alert">
-          {error}
+          {shownError}
         </p>
       )}
     </div>
@@ -155,6 +173,7 @@ export function ThreadSettingsControls({
   canPlan = true,
   runtimeModes = RuntimeMode.literals,
   context = null,
+  compact,
   onChange,
 }: {
   readonly settings: ThreadSettingsPatch;
@@ -171,6 +190,8 @@ export function ThreadSettingsControls({
   readonly runtimeModes?: ReadonlyArray<RuntimeMode>;
   /** The thread's last reported usage; `null` before its first turn reports. */
   readonly context?: ContextWindowUsage | null;
+  /** "Compact now" in the context meter; only when the bound session can. */
+  readonly compact?: ContextCompact;
   readonly onChange: (patch: ThreadSettingsPatch) => void;
 }) {
   const currentModel =
@@ -290,7 +311,12 @@ export function ThreadSettingsControls({
           </div>
         </div>
         {contextLimit > 0 ? (
-          <ContextMeter className="order-2" used={context?.used ?? 0} limit={contextLimit} />
+          <ContextMeter
+            className="order-2"
+            used={context?.used ?? 0}
+            limit={contextLimit}
+            compact={compact}
+          />
         ) : null}
       </div>
     </TooltipProvider>
