@@ -140,6 +140,17 @@ const stackOver = (persistence: ReturnType<typeof persistenceLayer>, hook: HookS
   return Layer.mergeAll(engine, reactor);
 };
 
+/**
+ * The boot replay runs on a fiber of its own, forked in the layer build and
+ * interrupted when the layer's scope closes: give it every chance to run
+ * before asserting on what it did or did not do.
+ */
+const letReplayRun = Effect.gen(function* () {
+  for (let spin = 0; spin < 200; spin++) {
+    yield* Effect.yieldNow;
+  }
+});
+
 /** The common case: one fresh in-memory database per test. */
 const stack = (hook: HookStub) => stackOver(persistenceLayer(), hook);
 
@@ -627,6 +638,7 @@ describe("CheckpointReactor", () => {
         let restores = 0;
         yield* Effect.gen(function* () {
           const engine = yield* OrchestrationEngine;
+          yield* letReplayRun;
           expect(restores).toBe(0);
           expect(userTexts(yield* engine.threadDoc(threadId))).toEqual([resend.text]);
         }).pipe(
@@ -669,12 +681,9 @@ describe("CheckpointReactor", () => {
               restores += 1;
             }),
         };
-        // The replay runs on a fiber of its own; give it every chance to.
         const settledTexts = Effect.gen(function* () {
           const engine = yield* OrchestrationEngine;
-          for (let spin = 0; spin < 200; spin++) {
-            yield* Effect.yieldNow;
-          }
+          yield* letReplayRun;
           return userTexts(yield* engine.threadDoc(threadId));
         });
         expect(
