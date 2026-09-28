@@ -32,6 +32,7 @@ import {
 import { EDITOR_RPC_METHODS, EditorsListRpc, EditorsOpenRpc } from "./editors";
 import { FILES_STAT_MAX_PATHS, FileContent, FileSearchResult, FileStat } from "./files";
 import { FsBrowseError, FsListing } from "./fs";
+import { HarnessCommand } from "./harnessCommands";
 import {
   GIT_RPC_METHODS,
   GitBranchCheckoutRpc,
@@ -112,6 +113,8 @@ export const STREAM_COALESCE_MS = 50;
 export { FILES_STAT_MAX_PATHS, FileContent, FileSearchResult, FileStat } from "./files";
 
 export { FS_BROWSE_ENTRY_LIMIT, FsBrowseError, FsBrowseFailure, FsEntry, FsListing } from "./fs";
+
+export { HarnessCommand } from "./harnessCommands";
 
 /**
  * One image the composer uploaded, as it now sits under
@@ -239,6 +242,7 @@ export const RPC_METHODS = {
   connectorsSkillsAvailable: "connectors.skills.available",
   connectorsSkillsLink: "connectors.skills.link",
   connectorsPluginsList: "connectors.plugins.list",
+  connectorsCommandsList: "connectors.commands.list",
   connectorsMcpList: "connectors.mcp.list",
   connectorsMcpAdd: "connectors.mcp.add",
   connectorsMcpRemove: "connectors.mcp.remove",
@@ -546,6 +550,16 @@ const ConnectorsPluginsListRpc = Rpc.make(RPC_METHODS.connectorsPluginsList, {
   error: PoseidonRpcError,
 });
 
+/** The harness's own slash commands, for the composer's `/` menu. */
+const ConnectorsCommandsListRpc = Rpc.make(RPC_METHODS.connectorsCommandsList, {
+  payload: Schema.Struct({
+    instanceId: ConnectorInstanceId,
+    projectId: Schema.optional(ProjectId),
+  }),
+  success: Schema.Array(HarnessCommand),
+  error: PoseidonRpcError,
+});
+
 const ConnectorsMcpListRpc = Rpc.make(RPC_METHODS.connectorsMcpList, {
   payload: Schema.Struct({
     instanceId: ConnectorInstanceId,
@@ -726,6 +740,7 @@ export const PoseidonRpcGroup = RpcGroup.make(
   ConnectorsSkillsAvailableRpc,
   ConnectorsSkillsLinkRpc,
   ConnectorsPluginsListRpc,
+  ConnectorsCommandsListRpc,
   ConnectorsMcpListRpc,
   ConnectorsMcpAddRpc,
   ConnectorsMcpRemoveRpc,

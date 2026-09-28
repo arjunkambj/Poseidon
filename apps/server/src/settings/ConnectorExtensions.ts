@@ -1,6 +1,6 @@
 /**
- * `connectors.skills.*`, `connectors.plugins.*` and `connectors.mcp.*`,
- * answered by the instance the call names.
+ * `connectors.skills.*`, `connectors.plugins.*`, `connectors.commands.*` and
+ * `connectors.mcp.*`, answered by the instance the call names.
  *
  * The files these edit belong to the harness, so the code that reads and
  * writes them is the connector's (`connector-sdk/src/extensions.ts`). This
@@ -56,6 +56,11 @@ export const layer = Layer.effect(
     const pluginsOf = (instanceId: ConnectorInstanceId) =>
       Effect.flatMap(extensionsOf(instanceId), (all) => need(instanceId, "plugins", all.plugins));
 
+    const commandsOf = (instanceId: ConnectorInstanceId) =>
+      Effect.flatMap(extensionsOf(instanceId), (all) =>
+        need(instanceId, "harness commands", all.commands),
+      );
+
     const mcpOf = (instanceId: ConnectorInstanceId) =>
       Effect.flatMap(extensionsOf(instanceId), (all) =>
         need(instanceId, "MCP servers", all.mcpServers),
@@ -105,6 +110,12 @@ export const layer = Layer.effect(
           const plugins = yield* pluginsOf(instanceId);
           const scope = yield* scopeOf(projectId);
           return yield* plugins.list(scope).pipe(Effect.mapError(fromExtension));
+        }),
+      commandsList: (instanceId, projectId) =>
+        Effect.gen(function* () {
+          const commands = yield* commandsOf(instanceId);
+          const scope = yield* scopeOf(projectId);
+          return yield* commands.list(scope).pipe(Effect.mapError(fromExtension));
         }),
       mcpList: (instanceId, projectId) =>
         Effect.gen(function* () {

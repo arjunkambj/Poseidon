@@ -3544,6 +3544,14 @@ description, source, scope and whether it is enabled. Command Code has no
 plugins, so its instance answers `unavailable`, and the client runtime's
 `pluginsAtom` reads that as an empty list rather than an error.
 
+**Harness commands** are the slash commands a harness runs itself when a
+message starts with `/name`. An instance that can name them truthfully carries
+a read-only `commands` extension, and `connectors.commands.list` answers each
+one's name (without the `/`), description and argument hint
+(`contracts/src/harnessCommands.ts`). An instance without it answers
+`unavailable`, and the client runtime's `harnessCommandsAtom` reads that as an
+empty list, as `pluginsAtom` does.
+
 ### Attention
 
 `AttentionCoordinator` (`apps/web/src/components/attention/attention-coordinator.tsx`,

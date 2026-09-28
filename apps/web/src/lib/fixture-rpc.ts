@@ -1,7 +1,8 @@
 /**
  * What the fixture client answers over RPC: a `Proxy` shaped like the real
  * `PoseidonRpcClient` whose methods reply from inline data — the file search,
- * reads and existence check, the model and skill menus, the plugins, the keybinding
+ * reads and existence check, the model and skill menus, the plugins, the harness's
+ * slash commands, the keybinding
  * table, the staged attachments, the thread's checkpoints. Anything a fixture page has not taught it
  * dies loudly with the method's name, so a new read shows up the first time a
  * page touches it.
@@ -27,7 +28,7 @@ import type {
   PluginSummary,
   SkillSummary,
 } from "@poseidon/contracts/connectors";
-import type { FileSearchResult } from "@poseidon/contracts/rpc";
+import type { FileSearchResult, HarnessCommand } from "@poseidon/contracts/rpc";
 import { defaultSettings } from "@poseidon/contracts/settings";
 import type { Keybinding } from "@poseidon/contracts/settings";
 import * as Effect from "effect/Effect";
@@ -126,6 +127,12 @@ const FIXTURE_PLUGINS: ReadonlyArray<PluginSummary> = [
     scope: "project",
     enabled: true,
   },
+];
+
+/** The first fixture connector's own slash commands; the second lists none. */
+const FIXTURE_HARNESS_COMMANDS: ReadonlyArray<HarnessCommand> = [
+  { name: "review", description: "Review the current branch", argumentHint: "[focus]" },
+  { name: "cost", description: "Show what this session has spent" },
 ];
 
 /** What the fixture build "ships": the one connector kind above, with a form. */
@@ -252,6 +259,16 @@ export const makeFixtureRpc = (context: FixtureRpcContext): PoseidonRpcClient =>
                   new PoseidonRpcError({
                     code: "unavailable",
                     message: `connector instance ${instanceId} does not manage plugins`,
+                  }),
+                );
+        case "connectors.commands.list":
+          return ({ instanceId }: { instanceId: string }) =>
+            instanceId === context.connectorInstanceId
+              ? Effect.succeed(FIXTURE_HARNESS_COMMANDS)
+              : Effect.fail(
+                  new PoseidonRpcError({
+                    code: "unavailable",
+                    message: `connector instance ${instanceId} does not manage harness commands`,
                   }),
                 );
         case "keybindings.get":

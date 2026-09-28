@@ -150,6 +150,8 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
       "connectors.skills.link": ({ instanceId, entry }) => extensions.skillsLink(instanceId, entry),
       "connectors.plugins.list": ({ instanceId, projectId }) =>
         extensions.pluginsList(instanceId, projectId),
+      "connectors.commands.list": ({ instanceId, projectId }) =>
+        extensions.commandsList(instanceId, projectId),
       "connectors.mcp.list": ({ instanceId, projectId }) =>
         extensions.mcpList(instanceId, projectId),
       "connectors.mcp.add": ({ instanceId, projectId, server }) =>

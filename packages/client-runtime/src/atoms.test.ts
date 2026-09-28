@@ -4,7 +4,7 @@
  * and the `serverInstanceId` reset.
  */
 
-import { PoseidonRpcError, PROTOCOL_VERSION } from "@poseidon/contracts/rpc";
+import { type HarnessCommand, PoseidonRpcError, PROTOCOL_VERSION } from "@poseidon/contracts/rpc";
 import { describe, expect, it } from "@effect/vitest";
 import type { ConnectorInstanceId, ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import {
@@ -136,6 +136,11 @@ interface StubData {
   readonly plugins?: (
     instanceId: ConnectorInstanceId,
   ) => Effect.Effect<ReadonlyArray<PluginSummary>, PoseidonRpcError>;
+  /** Answers `connectors.commands.list`, given the whole payload. */
+  readonly commands?: (payload: {
+    readonly instanceId: ConnectorInstanceId;
+    readonly projectId?: ProjectId;
+  }) => Effect.Effect<ReadonlyArray<HarnessCommand>, PoseidonRpcError>;
 }
 
 /**
@@ -202,6 +207,11 @@ const fakeClient = (
       if (key === "connectors.plugins.list" && data.plugins !== undefined) {
         const plugins = data.plugins;
         return ({ instanceId }: { instanceId: ConnectorInstanceId }) => plugins(instanceId);
+      }
+      if (key === "connectors.commands.list" && data.commands !== undefined) {
+        const commands = data.commands;
+        return (payload: { instanceId: ConnectorInstanceId; projectId?: ProjectId }) =>
+          commands(payload);
       }
       if (key === "settings.subscribe" && data.settings !== undefined) {
         const settings = data.settings;
@@ -786,6 +796,63 @@ describe("atoms", () => {
         expect(error).toMatchObject({ code: "internal" });
 
         expect(asked).toEqual(["with", "without", "broken"]);
+      }),
+    ),
+  );
+
+  it.live("harness commands answer [] for no instance and for one without the extension", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const instance = yield* Ref.make(INSTANCE);
+        const asked: Array<{ instanceId: ConnectorInstanceId; projectId?: ProjectId }> = [];
+        const projectId = makeProjectId();
+        const command: HarnessCommand = { name: "review", argumentHint: "[focus]" };
+        const { registry, harnessCommandsAtom } = yield* runtimeWith(
+          fakeClient(new Map(), instance, {
+            commands: (payload) => {
+              asked.push(payload);
+              if (payload.instanceId === "with") return Effect.succeed([command]);
+              return Effect.fail(
+                new PoseidonRpcError({
+                  code: payload.instanceId === "without" ? "unavailable" : "internal",
+                  message: `no commands on ${payload.instanceId}`,
+                }),
+              );
+            },
+          }),
+          { status: "connected", serverInstanceId: INSTANCE },
+        );
+
+        // No instance: answered locally — nothing is asked.
+        const none = harnessCommandsAtom(null)(projectId);
+        registry.mount(none);
+        const noneResult = yield* Effect.promise(() => awaitSettled(registry, none));
+        expect(AsyncResult.isSuccess(noneResult) && noneResult.value).toEqual([]);
+
+        const listed = harnessCommandsAtom("with" as ConnectorInstanceId)(projectId);
+        registry.mount(listed);
+        const commands = yield* Effect.promise(() =>
+          awaitValue(registry, listed, (value) => value.length > 0),
+        );
+        expect(commands).toEqual([command]);
+
+        // An instance without the extension answers an empty menu group.
+        const without = harnessCommandsAtom("without" as ConnectorInstanceId)(null);
+        registry.mount(without);
+        const withoutResult = yield* Effect.promise(() => awaitSettled(registry, without));
+        expect(AsyncResult.isSuccess(withoutResult) && withoutResult.value).toEqual([]);
+
+        // Any other failure still surfaces.
+        const broken = harnessCommandsAtom("broken" as ConnectorInstanceId)(null);
+        registry.mount(broken);
+        const error = yield* Effect.promise(() => awaitFailure(registry, broken));
+        expect(error).toMatchObject({ code: "internal" });
+
+        expect(asked).toEqual([
+          { instanceId: "with", projectId },
+          { instanceId: "without" },
+          { instanceId: "broken" },
+        ]);
       }),
     ),
   );

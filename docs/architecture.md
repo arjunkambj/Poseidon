@@ -848,7 +848,7 @@ What a connector is, and the promises it must keep.
 - `sessionHandle.ts` — `SessionHandle` and the bounded event queue.
 - `turnScopedHandle.ts` — the turn correlation wrapper.
 - `extensions.ts` — the optional per-instance extensions (skills, plugins, MCP
-  servers).
+  servers, the harness's own slash commands).
 - `approvalGate.ts` — the shared approval flow: ask the permission ladder, and
   on prompt open a request and park until the user answers.
 - `registry.ts` — definitions by kind, live instances by id.
@@ -1595,7 +1595,9 @@ offers (`available`) and a way to link one in (`link`); `plugins` lists the
 plugins a harness that has them has installed (`list` only — each a
 `PluginSummary`: `name`, optional `description`, `source` and `scope` in the
 harness's own words, and `enabled`); `mcpServers` lists, adds (an upsert) and
-removes servers in the harness's own config. Command Code carries `skills` and
+removes servers in the harness's own config; `commands` lists the harness's own
+slash commands (`list` only — each a `HarnessCommand`: `name` without the `/`,
+optional `description` and `argumentHint`). Command Code carries `skills` and
 `mcpServers` but no `plugins`, since it has none. Every extension takes an
 `ExtensionScope` — `{ workspaceRoot: string | null }`, the user scope plus one
 project — and fails with `ConnectorExtensionFailed { code, message }`, never an
@@ -1608,7 +1610,10 @@ the composer's `/`, `@` and `$` menus ask the thread's own instance for its
 skills, and `@` for its plugins too. The client runtime's `pluginsAtom` asks
 one instance for its plugins and reads an `unavailable` answer, like no
 instance at all, as an empty list, so an instance without plugins is not an
-error and `@` just lists its skills.
+error and `@` just lists its skills. `harnessCommandsAtom` reads
+`connectors.commands.list` the same way, so an instance without a commands
+extension lists none. There is no `commands` flag on `ConnectorSummary.extensions`:
+the renderer only ever asks the thread's own instance.
 
 Instances
 are per configuration, not per thread. The registry (`registry.ts`) routes by
@@ -2011,6 +2016,7 @@ the client in the terminal `incompatible` state.
 | `connectors.skills.available` | call   | Shared-folder skills that instance does not load yet; empty when it offers none      |
 | `connectors.skills.link`      | call   | Links one of those into the instance's user skills                                   |
 | `connectors.plugins.list`     | call   | Plugins one instance has installed, user scope plus an optional project              |
+| `connectors.commands.list`    | call   | The harness's own slash commands for one instance; `unavailable` when it lists none  |
 | `connectors.mcp.list`         | call   | MCP servers in one instance's harness config, user and project scope                 |
 | `connectors.mcp.add`          | call   | Adds or replaces one entry we own; refuses one we do not                             |
 | `connectors.mcp.remove`       | call   | Removes one entry we own                                                             |

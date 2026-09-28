@@ -21,6 +21,7 @@ import type {
   PluginSummary,
   SkillSummary,
 } from "@poseidon/contracts/connectors";
+import type { HarnessCommand } from "@poseidon/contracts/harnessCommands";
 import * as Data from "effect/Data";
 import type * as Effect from "effect/Effect";
 
@@ -84,9 +85,22 @@ export interface McpServersExtension {
   ) => Effect.Effect<ReadonlyArray<McpServerConfig>, ConnectorExtensionFailed>;
 }
 
+/**
+ * The harness's own slash commands — the ones it runs itself when a message
+ * starts with `/name` — for the composer's `/` menu. Read-only, and only the
+ * commands the harness can name truthfully: an instance that cannot list them
+ * leaves this out rather than guessing.
+ */
+export interface CommandsExtension {
+  readonly list: (
+    scope: ExtensionScope,
+  ) => Effect.Effect<ReadonlyArray<HarnessCommand>, ConnectorExtensionFailed>;
+}
+
 /** Every extension an instance may carry; each one is optional. */
 export interface ConnectorExtensions {
   readonly skills?: SkillsExtension;
   readonly plugins?: PluginsExtension;
   readonly mcpServers?: McpServersExtension;
+  readonly commands?: CommandsExtension;
 }

@@ -71,6 +71,13 @@ const recordingExtensions = (scopes: Array<ExtensionScope>): InstanceExtensions 
         ];
       }),
   },
+  commands: {
+    list: (scope) =>
+      Effect.sync(() => {
+        scopes.push(scope);
+        return [{ name: "review", description: "Review the branch", argumentHint: "[focus]" }];
+      }),
+  },
   mcpServers: {
     list: (scope) =>
       Effect.sync(() => {
@@ -179,6 +186,19 @@ describe("ConnectorExtensions", () => {
     ),
   );
 
+  it.effect("lists an instance's harness commands", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const f = yield* fixture;
+        const commands = yield* f.extensions.commandsList(f.extendedId, f.projectId);
+        expect(commands).toEqual([
+          { name: "review", description: "Review the branch", argumentHint: "[focus]" },
+        ]);
+        expect(f.scopes).toEqual([{ workspaceRoot: WORKSPACE_ROOT }]);
+      }),
+    ),
+  );
+
   it.effect("keeps the connector's failure code", () =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -200,11 +220,13 @@ describe("ConnectorExtensions", () => {
           f.extensions.skillsAvailable(f.bareId),
           f.extensions.pluginsList(f.bareId),
           f.extensions.pluginsList(f.bareId, f.projectId),
+          f.extensions.commandsList(f.bareId),
           f.extensions.mcpList(f.bareId, f.projectId),
           f.extensions.mcpAdd(f.bareId, undefined, server),
           // Not open at all: nothing to route to.
           f.extensions.mcpList(makeConnectorInstanceId()),
           f.extensions.pluginsList(makeConnectorInstanceId()),
+          f.extensions.commandsList(makeConnectorInstanceId()),
         ];
         for (const call of calls) {
           expect((yield* Effect.flip(call)).code).toBe("unavailable");

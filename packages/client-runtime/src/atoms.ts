@@ -37,6 +37,7 @@ import type {
   BrowserHumanInput,
   BrowserState,
   FileSearchResult,
+  HarnessCommand,
 } from "@poseidon/contracts/rpc";
 import type { Keybinding, Settings } from "@poseidon/contracts/settings";
 import * as Effect from "effect/Effect";
@@ -447,6 +448,35 @@ export const makeRuntime = (connectionLayer: ConnectionLayer) => {
   );
 
   /**
+   * The harness's own slash commands for one connector instance, per project —
+   * the composer's `/` menu asks the thread's instance. An instance without a
+   * commands extension (`unavailable`) and no instance at all both answer
+   * `[]`, as plugins do; any other failure surfaces.
+   */
+  const harnessCommandsAtom = Atom.family((instanceId: ConnectorInstanceId | null) =>
+    Atom.family((projectId: ProjectId | null) =>
+      runtime.atom(
+        instanceId === null
+          ? Effect.succeed([] as ReadonlyArray<HarnessCommand>)
+          : Effect.gen(function* () {
+              const client = yield* (yield* Connection).client;
+              return yield* client["connectors.commands.list"]({
+                instanceId,
+                ...(projectId === null ? {} : { projectId }),
+              });
+            }).pipe(
+              Effect.catchIf(
+                (error) =>
+                  Predicate.isTagged(error, "PoseidonRpcError") && error.code === "unavailable",
+                () => Effect.succeed([] as ReadonlyArray<HarnessCommand>),
+              ),
+            ),
+        { initialValue: [] as ReadonlyArray<HarnessCommand> },
+      ),
+    ),
+  );
+
+  /**
    * The user's keybinding overrides, as the server stores them. The editor and
    * the matcher layer them on `DEFAULT_KEYBINDINGS` with `resolveKeymap`.
    */
@@ -537,6 +567,7 @@ export const makeRuntime = (connectionLayer: ConnectionLayer) => {
     ...makeConnectorAtoms(runtime, connectorsAtom),
     skillsAtom,
     pluginsAtom,
+    harnessCommandsAtom,
     keybindingsAtom,
     keybindingsUpdateAtom,
     browserStateAtom,

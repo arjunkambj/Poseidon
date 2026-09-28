@@ -27,6 +27,7 @@ import type {
   FsListing,
   GitDiff,
   GitStatus,
+  HarnessCommand,
 } from "@poseidon/contracts/rpc";
 import { FsBrowseError, PoseidonRpcError } from "@poseidon/contracts/rpc";
 import type {
@@ -467,7 +468,7 @@ const terminalUnavailable = () =>
 
 /**
  * The per-instance extensions behind `connectors.skills.*`,
- * `connectors.plugins.*` and `connectors.mcp.*`. The real layer (`settings/ConnectorExtensions.ts`)
+ * `connectors.plugins.*`, `connectors.commands.*` and `connectors.mcp.*`. The real layer (`settings/ConnectorExtensions.ts`)
  * resolves the instance and the project's workspace root, then calls the
  * connector; the empty one answers every read with nothing.
  */
@@ -489,6 +490,10 @@ export class ConnectorExtensions extends Context.Service<
       instanceId: ConnectorInstanceId,
       projectId?: ProjectId,
     ) => Effect.Effect<ReadonlyArray<PluginSummary>, PoseidonRpcError>;
+    readonly commandsList: (
+      instanceId: ConnectorInstanceId,
+      projectId?: ProjectId,
+    ) => Effect.Effect<ReadonlyArray<HarnessCommand>, PoseidonRpcError>;
     readonly mcpList: (
       instanceId: ConnectorInstanceId,
       projectId?: ProjectId,
@@ -513,6 +518,7 @@ export class ConnectorExtensions extends Context.Service<
       skillsAvailable: () => Effect.succeed([]),
       skillsLink: () => Effect.succeed([]),
       pluginsList: () => Effect.succeed([]),
+      commandsList: () => Effect.succeed([]),
       mcpList: () => Effect.succeed([]),
       mcpAdd: () => Effect.succeed([]),
       mcpRemove: () => Effect.succeed([]),
