@@ -287,6 +287,47 @@ describe("git.discard", () => {
     ),
   );
 
+  it.live("refuses a folder instead of restoring everything under it", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        write(root, "src/a.txt", "a\n");
+        write(root, "src/b.txt", "b\n");
+        git(root, "add", "-A");
+        git(root, "commit", "-qm", "src");
+        write(root, "src/a.txt", "a edited\n");
+        write(root, "src/b.txt", "b edited\n");
+        const { projectId, git: service } = yield* stack(root);
+
+        const error = yield* service.discard({ projectId }, { paths: ["src"] }).pipe(Effect.flip);
+        expect(error.code).toBe("invalid");
+        expect(read(root, "src/a.txt")).toBe("a edited\n");
+        expect(read(root, "src/b.txt")).toBe("b edited\n");
+      }),
+    ),
+  );
+
+  it.live("deletes a new file that replaced a base folder, leaving the folder's files alone", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const root = makeRepo();
+        write(root, "foo/x.txt", "x\n");
+        git(root, "add", "-A");
+        git(root, "commit", "-qm", "foo");
+        git(root, "rm", "-q", "-r", "foo");
+        write(root, "foo", "now a file\n");
+        const { projectId, git: service } = yield* stack(root);
+
+        yield* service.discard({ projectId }, { paths: ["foo"] });
+        expect(exists(root, "foo")).toBe(false);
+        // The folder's own rows bring it back, one file at a time.
+        yield* service.discard({ projectId }, { paths: ["foo/x.txt"] });
+        expect(read(root, "foo/x.txt")).toBe("x\n");
+        expect(status(root)).toBe("");
+      }),
+    ),
+  );
+
   it.live("rejects paths that could leave the repository, touching nothing", () =>
     Effect.scoped(
       Effect.gen(function* () {

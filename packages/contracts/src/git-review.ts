@@ -66,7 +66,8 @@ export const GIT_REVIEW_RPC_METHODS = {
  * fork point of `HEAD` and `mergeBase` (the branch scope), else `HEAD` — where
  * the index is reset as well. A path the base does not have is removed: from
  * the index and the disk when git tracks it, from the disk when it is
- * untracked; an ignored file is never touched. A rename is discarded by
+ * untracked; an ignored file is never touched, and a folder is refused
+ * (`invalid`) rather than restored or deleted whole. A rename is discarded by
  * naming both of its paths.
  *
  * Omitting `paths` discards everything uncommitted in the repository — every

@@ -70,10 +70,17 @@ const isTracked = (top: string, path: string) => listed(top, ["--cached"], path)
 const isUntracked = (top: string, path: string) =>
   listed(top, ["--others", "--exclude-standard"], path);
 
-/** Whether `ref` has `path` in its tree. */
-const existsIn = (top: string, ref: string, path: string) =>
-  run(top, ["cat-file", "-e", `${ref}:${path}`], { allowNonZeroExit: true }).pipe(
-    Effect.map((result) => result.exitCode === 0),
+/**
+ * What `ref` has at `path`: a `file` (a blob, which covers symlinks, or a
+ * submodule's commit), a `folder` (a tree), or `none`.
+ */
+const entryIn = (top: string, ref: string, path: string) =>
+  run(top, ["cat-file", "-t", `${ref}:${path}`], { allowNonZeroExit: true }).pipe(
+    Effect.map((result): "file" | "folder" | "none" => {
+      if (result.exitCode !== 0) return "none";
+      const type = result.stdout.trim();
+      return type === "tree" ? "folder" : type === "blob" || type === "commit" ? "file" : "none";
+    }),
   );
 
 const fsError = (command: string, top: string, error: unknown) =>
@@ -148,13 +155,16 @@ export const discardBase = (
   });
 
 /**
- * One path back to `base`: restored when the base has it; otherwise deleted
- * when untracked, or removed from the index and the disk when tracked. A path
- * that is on disk but ignored is refused rather than deleted.
+ * One file back to `base`: restored when the base has a file there; otherwise
+ * deleted when untracked, or removed from the index and the disk when
+ * tracked. A folder — on disk or in the base — is refused, never restored or
+ * deleted as a whole, and so is a path that is on disk but ignored. A file
+ * that replaced a base folder is deleted like any file the base lacks.
  */
 const discardPath = (top: string, base: DiscardBase, path: string) =>
   Effect.gen(function* () {
-    if (yield* existsIn(top, base.ref, path)) {
+    const inBase = yield* entryIn(top, base.ref, path);
+    if (inBase === "file") {
       yield* run(top, [
         "restore",
         `--source=${base.ref}`,
@@ -175,13 +185,15 @@ const discardPath = (top: string, base: DiscardBase, path: string) =>
     }
     const onDisk = yield* Effect.sync(() => {
       try {
-        lstatSync(nodePath.join(top, path));
-        return true;
+        return lstatSync(nodePath.join(top, path)).isDirectory() ? "folder" : "file";
       } catch {
-        return false;
+        return "none";
       }
     });
-    if (onDisk) {
+    if (onDisk === "folder" || inBase === "folder") {
+      return yield* Effect.fail(invalid(`${path} is a folder — only files can be discarded.`));
+    }
+    if (onDisk === "file") {
       return yield* Effect.fail(invalid(`${path} is ignored by git — it was not discarded.`));
     }
     // Neither in the base nor anywhere now: already what the base has.

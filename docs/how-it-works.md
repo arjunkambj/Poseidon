@@ -2008,10 +2008,13 @@ prints as a bare header comes back listed with an empty `diff` rather than a
 patch of raw headers; the client's range key includes the flag, so toggling it
 fetches a new comparison instead of showing the cached one. `git.discard`
 (`apps/server/src/git/Review.ts`) throws away the change to the named paths:
-each path the base has is restored from it (`git restore --source`, and the
-index too when the base is `HEAD`), a path it lacks is deleted from disk when
-git lists it as untracked and not ignored, or removed with `git rm -f` when
-tracked; an ignored file is refused, never deleted. The base is the payload's
+each path the base has as a file is restored from it (`git restore --source`,
+and the index too when the base is `HEAD`), a path it lacks is deleted from
+disk when git lists it as untracked and not ignored, or removed with `git rm
+-f` when tracked; an ignored file is refused, never deleted, and so is a
+folder (`git cat-file -t` names a tree in the base, or the path is a directory
+on disk), so one call never reverts a whole directory. A file that replaced a
+base folder is deleted like any file the base lacks. The base is the payload's
 `source` (the turn scope's `from` checkpoint), the fork point for a
 `mergeBase` (the branch scope), else `HEAD`; a rename is discarded by naming
 both of its paths. Without `paths` it discards everything uncommitted —
