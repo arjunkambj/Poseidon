@@ -178,3 +178,20 @@ describe("the stream budget", () => {
     }),
   );
 });
+
+describe("editors.open", () => {
+  const rpc = PoseidonRpcGroup.requests.get(RPC_METHODS.editorsOpen);
+  const projectId = "0190aaaa-0000-7000-8000-000000000001";
+
+  it("names a known app and a positive line, never a command", () => {
+    expect(rpc).toBeDefined();
+    expect(RpcSchema.isStreamSchema(rpc!.successSchema)).toBe(false);
+    const decode = Schema.decodeUnknownExit(rpc!.payloadSchema);
+    expect(decode({ projectId, editor: "cursor" })._tag).toBe("Success");
+    expect(decode({ projectId, editor: "zed", path: "src/a.ts", line: 12 })._tag).toBe("Success");
+    expect(decode({ projectId, editor: "finder", path: "src", reveal: true })._tag).toBe("Success");
+    expect(decode({ projectId, editor: "/bin/sh" })._tag).toBe("Failure");
+    expect(decode({ projectId, editor: "vscode", line: 0 })._tag).toBe("Failure");
+    expect(decode({ projectId, editor: "vscode", line: 1.5 })._tag).toBe("Failure");
+  });
+});

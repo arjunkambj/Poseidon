@@ -39,6 +39,7 @@ import type {
   ThreadWorktree,
   WorktreeSetupFrame,
 } from "@poseidon/contracts/git";
+import type { DetectedEditor, EditorId } from "@poseidon/contracts/editors";
 import type { CheckpointSummary } from "@poseidon/contracts/orchestration";
 import { migrateLegacyKeybindingTable } from "@poseidon/contracts/keybindings";
 import { defaultSettings, Settings } from "@poseidon/contracts/settings";
@@ -325,6 +326,41 @@ export class DevServerDiscovery extends Context.Service<
   static readonly empty = Layer.succeed(
     DevServerDiscovery,
     DevServerDiscovery.of({ discover: () => Effect.succeed([]) }),
+  );
+}
+
+// ── Editors ────────────────────────────────────────────────────
+
+/**
+ * The editors, file manager and terminal installed where the server runs, and
+ * the one launch `editors.open` makes (`../editors/EditorLauncher.ts`). `open`
+ * resolves `path` inside the scope's workspace root and refuses an app `list`
+ * would not name; the empty one has nothing installed.
+ */
+export class EditorLauncher extends Context.Service<
+  EditorLauncher,
+  {
+    readonly list: Effect.Effect<ReadonlyArray<DetectedEditor>>;
+    readonly open: (
+      scope: WorkspaceScope,
+      request: {
+        readonly editor: EditorId;
+        readonly path?: string | undefined;
+        readonly line?: number | undefined;
+        readonly reveal?: boolean | undefined;
+      },
+    ) => Effect.Effect<void, PoseidonRpcError>;
+  }
+>()("server/rpc/EditorLauncher") {
+  static readonly empty = Layer.succeed(
+    EditorLauncher,
+    EditorLauncher.of({
+      list: Effect.succeed([]),
+      open: () =>
+        Effect.fail(
+          new PoseidonRpcError({ code: "unavailable", message: "no editors on this server" }),
+        ),
+    }),
   );
 }
 

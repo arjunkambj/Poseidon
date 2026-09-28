@@ -29,6 +29,7 @@ import {
   PluginSummary,
   SkillSummary,
 } from "./connectors";
+import { EDITOR_RPC_METHODS, EditorsListRpc, EditorsOpenRpc } from "./editors";
 import { FILES_STAT_MAX_PATHS, FileContent, FileSearchResult, FileStat } from "./files";
 import {
   GIT_RPC_METHODS,
@@ -281,6 +282,7 @@ export const RPC_METHODS = {
   gitStatus: "git.status",
   gitDiff: "git.diff",
   ...GIT_RPC_METHODS,
+  ...EDITOR_RPC_METHODS,
   checkpointsList: "checkpoints.list",
   browserSubscribe: "browser.subscribe",
   browserHumanInput: "browser.humanInput",
@@ -765,6 +767,8 @@ export const PoseidonRpcGroup = RpcGroup.make(
   GitWorktreeListRpc,
   GitWorktreeRemoveRpc,
   GitWorktreeSetupRpc,
+  EditorsListRpc,
+  EditorsOpenRpc,
   CheckpointsListRpc,
   BrowserSubscribeRpc,
   BrowserHumanInputRpc,

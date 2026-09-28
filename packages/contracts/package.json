@@ -40,6 +40,10 @@
       "types": "./src/decisions.ts",
       "import": "./src/decisions.ts"
     },
+    "./editors": {
+      "types": "./src/editors.ts",
+      "import": "./src/editors.ts"
+    },
     "./git": {
       "types": "./src/git.ts",
       "import": "./src/git.ts"

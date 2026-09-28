@@ -19,6 +19,7 @@ import {
   ConnectorExtensions,
   DevServerDiscovery,
   DirectoryBrowser,
+  EditorLauncher,
   FileService,
   GitService,
   ServerIdentity,
@@ -53,6 +54,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
     const extensions = yield* ConnectorExtensions;
     const attachments = yield* AttachmentStore;
     const terminals = yield* TerminalService;
+    const editors = yield* EditorLauncher;
 
     return {
       "server.hello": () =>
@@ -123,6 +125,9 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
       "git.worktree.remove": ({ projectId, path, force }) =>
         git.removeWorktree(projectId, { path, force: force ?? false }).pipe(Effect.as({})),
       "git.worktree.setup": ({ projectId, path }) => git.setupWorktree(projectId, path),
+      "editors.list": () => editors.list,
+      "editors.open": ({ projectId, threadId, editor, path, line, reveal }) =>
+        editors.open({ projectId, threadId }, { editor, path, line, reveal }).pipe(Effect.as({})),
       "checkpoints.list": ({ projectId, threadId }) => git.checkpoints(projectId, threadId),
 
       "browser.subscribe": ({ threadId }) => browser.subscribe(threadId),

@@ -21,6 +21,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
+import { DetectedEditor } from "../src/editors";
 import { ItemKind } from "../src/enums";
 import {
   GitBranchList,
@@ -232,6 +233,7 @@ const singles: ReadonlyArray<{ readonly path: string; readonly schema: FixtureSc
   { path: "rpc/git-pull-request-result.json", schema: GitPullRequestResult },
   { path: "rpc/git-worktree-info.json", schema: GitWorktreeInfo },
   { path: "rpc/git-worktree-info.main.json", schema: GitWorktreeInfo },
+  { path: "rpc/detected-editor.json", schema: DetectedEditor },
   { path: "rpc/browser-state.json", schema: BrowserState },
   { path: "rpc/mcp-server-config.json", schema: McpServerConfig },
   { path: "rpc/skill-summary.json", schema: SkillSummary },

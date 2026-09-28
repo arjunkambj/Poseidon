@@ -49,6 +49,7 @@ import { EventStore } from "./persistence/EventStore";
 import { ReadModelStore } from "./persistence/ReadModels";
 import { defaultLayer as sqliteLayer } from "./persistence/Sqlite";
 import { PermissionService } from "./permissions/PermissionService";
+import { layer as editorLauncherLayer } from "./editors/EditorLauncher";
 import { layer as directoryBrowserLayer } from "./fs/Directories";
 import { layer as gitCheckpointHookLayer } from "./git/CheckpointHook";
 import { layer as fileServiceLayer } from "./git/Files";
@@ -228,6 +229,7 @@ export const boot = (options: BootOptions) =>
       sharedSettings,
       fileServiceLayer.pipe(Layer.provide(persistence)),
       directoryBrowserLayer,
+      editorLauncherLayer.pipe(Layer.provide(persistence)),
       // `sharedSettings` again, not a second SettingsStore: one build memoizes
       // it, so the prefix and setup scripts are read from the store the
       // settings RPCs write.

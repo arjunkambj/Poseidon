@@ -59,6 +59,7 @@ import {
   ConnectorCatalog,
   ConnectorExtensions,
   DevServerDiscovery,
+  EditorLauncher,
   FileService,
   GitService,
   ServerIdentity,
@@ -130,6 +131,7 @@ const testStack = (browserLayer: Layer.Layer<BrowserService> = BrowserService.em
       ConnectorExtensions.empty,
       TerminalService.empty,
       DevServerDiscovery.empty,
+      EditorLauncher.empty,
       AttachmentStore.layerAt(mkdtempSync(NodePath.join(NodeOS.tmpdir(), "poseidon-transport-"))),
       SettingsStore.layer.pipe(Layer.provide(sqlite)),
     );
