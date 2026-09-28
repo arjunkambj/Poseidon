@@ -423,8 +423,9 @@ What a send then does is `sendMode` in `send-mode.ts`:
 
 `Mod+Enter` is the `composer.queue` binding, and it always queues, so a
 follow-up meant for after the turn still waits for it on a harness that steers.
-Whether the harness steers is the `steering` capability of the instance the
-thread runs on (`instanceCapabilities`, the same read the attach button uses).
+Whether the harness steers is `capabilities.steering` on the thread's bound
+session (`doc.session.capabilities`), the same fact the decider reads, so a
+thread whose session has not bound yet queues.
 
 Plain Enter and Shift+Enter are fixed. An Enter chord the keymap answers
 belongs to it, so `composer.queue` (`Mod+Enter` by default) is an ordinary
