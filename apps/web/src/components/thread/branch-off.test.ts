@@ -9,6 +9,7 @@ import {
   branchOffHere,
   forkBlockedReason,
   threadForkBlockedReason,
+  threadTurnInFlight,
   forkTitle,
   inNewWorktree,
   sendFirstMessage,
@@ -118,6 +119,15 @@ describe("the fork's title and when a message can be forked from", () => {
     expect(threadForkBlockedReason({ connected: true, running: false })).toBeNull();
     expect(threadForkBlockedReason({ connected: true, running: true })).toBe("Still running");
     expect(threadForkBlockedReason({ connected: false, running: false })).toBe("Offline");
+  });
+
+  it("counts a turn paused on an approval or a question as still in flight", () => {
+    expect(threadTurnInFlight({ status: "running" })).toBe(true);
+    expect(threadTurnInFlight({ status: "waiting", awaiting: "approval" })).toBe(true);
+    expect(threadTurnInFlight({ status: "waiting", awaiting: "question" })).toBe(true);
+    // A proposed plan waits after its turn has settled.
+    expect(threadTurnInFlight({ status: "waiting", awaiting: "plan" })).toBe(false);
+    expect(threadTurnInFlight({ status: "idle" })).toBe(false);
   });
 });
 

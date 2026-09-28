@@ -18,7 +18,7 @@
 
 import type { ThreadWorktree } from "@poseidon/contracts/git";
 import type { ItemId, ThreadId, TurnId } from "@poseidon/contracts/ids";
-import type { Command, ThreadSettings } from "@poseidon/contracts/orchestration";
+import type { Command, ThreadSettings, ThreadSummary } from "@poseidon/contracts/orchestration";
 
 type ThreadCreate = Extract<Command, { readonly type: "thread.create" }>;
 
@@ -153,8 +153,18 @@ export const forkBlockedReason = ({
 };
 
 /**
+ * Whether a turn is in flight, as the sidebar's summary tells it: a running
+ * thread, or one whose turn is paused on an approval or a question — the
+ * status reads `waiting` then, but the turn has not finished.
+ */
+export const threadTurnInFlight = (thread: Pick<ThreadSummary, "status" | "awaiting">): boolean =>
+  thread.status === "running" ||
+  (thread.status === "waiting" &&
+    (thread.awaiting === "approval" || thread.awaiting === "question"));
+
+/**
  * Why the whole thread cannot be forked now, or `null`, as short as a menu
- * item's hint: a running turn's answer is not written yet, so the server
+ * item's hint: a turn in flight has not written its answer yet, so the server
  * refuses the fork until it settles.
  */
 export const threadForkBlockedReason = ({

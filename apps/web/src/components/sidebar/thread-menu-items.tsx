@@ -52,7 +52,7 @@ import { useRenamingThread } from "@/components/sidebar/thread-rename";
 import { useThreadSeen } from "@/components/sidebar/thread-seen";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
 import { useThreadIsDone } from "@/components/sidebar/use-thread-done";
-import { threadForkBlockedReason } from "@/components/thread/branch-off";
+import { threadForkBlockedReason, threadTurnInFlight } from "@/components/thread/branch-off";
 import { useRequestBranchOff } from "@/components/thread/use-branch-off";
 import { copyText } from "@/lib/copy-path";
 import { CommandKbd } from "@/lib/shortcuts";
@@ -144,7 +144,7 @@ export function ThreadMenuItems({
   const markedUnread = seen[thread.threadId] === "";
   const forkBlocked = threadForkBlockedReason({
     connected: connection.status === "connected",
-    running: thread.status === "running",
+    running: threadTurnInFlight(thread),
   });
   const base = () => threadCommandBase(thread.threadId);
   const keys = (command: string) =>
