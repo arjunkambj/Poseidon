@@ -181,6 +181,22 @@ export const stepMatch = (count: number, index: number, direction: "next" | "pre
   return direction === "next" ? (index + 1) % count : (index - 1 + count) % count;
 };
 
+/**
+ * Where a query opened for an item goes first: that item's first match, or
+ * the first match when the item has none (or none is asked for) — the text
+ * a search matched may fold case differently from the bar.
+ */
+export const preferredMatchIndex = (
+  matches: ReadonlyArray<FindMatch>,
+  itemId: string | undefined,
+): number => {
+  if (itemId === undefined) {
+    return 0;
+  }
+  const preferred = matches.findIndex((match) => match.itemId === itemId);
+  return preferred === -1 ? 0 : preferred;
+};
+
 /** The match the reader stepped to, and where it sat in the list then. */
 export interface FindSelection {
   readonly match: FindMatch;

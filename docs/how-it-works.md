@@ -1080,7 +1080,9 @@ the clamp on a long user message — hands the scroll to the reader as the rail
 does, and scrolls the row to 30% down the viewport once the list holds it. The match the reader is on
 keeps its place while a reply streams in more matches. Escape closes the bar
 and puts the focus back in the composer. Pressing Mod+F again with the bar
-open selects its query. While the bar is closed nothing is searched, and
+open selects its query. A message hit in the command palette opens its thread
+with the bar prefilled with the palette's query, searched at once, at the
+first match inside the hit's message (`lib/thread-find-request.ts`). While the bar is closed nothing is searched, and
 while it is open the search reads a deferred copy of the items, so a streamed
 delta is never held up by it.
 

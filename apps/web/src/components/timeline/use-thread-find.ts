@@ -16,6 +16,11 @@
  * lets go. An opened fold brings its rows in on the next render, so the
  * scroll waits until the target row is in the list's rows.
  *
+ * Another surface can open the bar prefilled (`lib/thread-find-request.ts`):
+ * the palette's message hits do, before they navigate. The request's query is
+ * searched at once, without the debounce, and its first reveal goes to the
+ * first match inside the requested message.
+ *
  * Closing the bar clears it and puts the focus back in the composer.
  */
 
@@ -39,8 +44,10 @@ import {
   findMatches,
   locateItem,
   normalizeQuery,
+  preferredMatchIndex,
   stepMatch,
 } from "./thread-find";
+import { useThreadFindRequest } from "./use-thread-find-request";
 
 /** How long typing has to pause before the thread is searched, in ms. */
 const FIND_DEBOUNCE_MS = 150;
@@ -93,6 +100,8 @@ export function useThreadFind({
   // match, or nowhere when it has none: a match a later delta brings in is
   // the reader's to step to, not a jump out from under them.
   const [revealFirst, setRevealFirst] = React.useState(false);
+  // The item a requested query goes to first; spent by its first reveal.
+  const preferItemId = React.useRef<string | undefined>(undefined);
   const setDisclosures = useSetRowDisclosures();
   const threadId = snapshot.threadId;
 
@@ -103,9 +112,20 @@ export function useThreadFind({
     setSelected(undefined);
     setPendingRow(undefined);
     setRevealFirst(false);
+    preferItemId.current = undefined;
   }, []);
   // The timeline stays mounted across threads: another thread starts closed.
   React.useEffect(() => reset, [threadId, reset]);
+
+  useThreadFindRequest(threadId, (request) => {
+    setOpen(true);
+    setQuery(request.query);
+    setDebouncedQuery(request.query);
+    setSelected(undefined);
+    setRevealFirst(true);
+    setFocusKey((key) => key + 1);
+    preferItemId.current = request.itemId;
+  });
 
   useKeybindingCommand("timeline.find", () => {
     setOpen(true);
@@ -113,7 +133,8 @@ export function useThreadFind({
   });
 
   React.useEffect(() => {
-    if (!open) {
+    // A requested query is searched already: nothing to wait for.
+    if (!open || query === debouncedQuery) {
       return;
     }
     const timer = setTimeout(() => {
@@ -122,13 +143,13 @@ export function useThreadFind({
       setRevealFirst(true);
     }, FIND_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [open, query]);
+  }, [open, query, debouncedQuery]);
 
   const searching = open && normalizeQuery(debouncedQuery) !== undefined;
   // A constant while closed, so deferring it schedules nothing.
   const source = React.useMemo(
-    () => (searching ? { items: snapshot.items, options } : null),
-    [searching, snapshot.items, options],
+    () => (searching ? { threadId, items: snapshot.items, options } : null),
+    [searching, threadId, snapshot.items, options],
   );
   const deferred = React.useDeferredValue(source);
   const allOpen = React.useMemo(
@@ -167,16 +188,21 @@ export function useThreadFind({
   goToRef.current = goTo;
 
   // The matches are worked out for the query as soon as there is a projection
-  // to search: the query itself is not deferred, only the items are.
+  // to search: the query itself is not deferred, only the items are. A
+  // request can open the bar as the thread changes under an open bar, so the
+  // deferred items wait until they are this thread's.
+  const searchedThread = deferred?.threadId;
   React.useEffect(() => {
-    if (!revealFirst || allOpen === undefined) {
+    if (!revealFirst || allOpen === undefined || searchedThread !== threadId) {
       return;
     }
     setRevealFirst(false);
+    const itemId = preferItemId.current;
+    preferItemId.current = undefined;
     if (matches.length > 0) {
-      goToRef.current(0);
+      goToRef.current(preferredMatchIndex(matches, itemId));
     }
-  }, [revealFirst, allOpen, matches]);
+  }, [revealFirst, allOpen, matches, searchedThread, threadId]);
 
   // Scroll once the target row is in the list: an opened fold brings it in a render later.
   const rows = projection.rows;

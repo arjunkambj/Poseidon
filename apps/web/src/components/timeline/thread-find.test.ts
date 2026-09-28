@@ -11,6 +11,7 @@ import {
   locateItem,
   normalizeQuery,
   hasMatch,
+  preferredMatchIndex,
   splitHighlights,
   stepMatch,
 } from "./thread-find";
@@ -178,6 +179,23 @@ describe("currentMatchIndex", () => {
       currentMatchIndex([match("a", 0), match("c", 0)], { match: match("b", 4), index: 1 }),
     ).toBe(1);
     expect(currentMatchIndex([match("a", 0)], { match: match("b", 4), index: 5 })).toBe(0);
+  });
+});
+
+describe("preferredMatchIndex", () => {
+  const match = (itemId: string, start: number) =>
+    ({ itemId, field: "text", start, end: start + 3 }) as const;
+  const matches = [match("a", 0), match("b", 2), match("b", 9), match("c", 0)];
+
+  it("goes to the first match inside the item asked for", () => {
+    expect(preferredMatchIndex(matches, "b")).toBe(1);
+    expect(preferredMatchIndex(matches, "c")).toBe(3);
+  });
+
+  it("falls back to the first match without the item or a preference", () => {
+    expect(preferredMatchIndex(matches, "missing")).toBe(0);
+    expect(preferredMatchIndex(matches, undefined)).toBe(0);
+    expect(preferredMatchIndex([], "a")).toBe(0);
   });
 });
 
