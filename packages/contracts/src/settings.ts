@@ -15,6 +15,7 @@ import * as SchemaAST from "effect/SchemaAST";
 import { IsoDateTime, NonEmptyString } from "./base";
 import { DEFAULT_RUNTIME_MODE, Effort, RuntimeMode } from "./enums";
 import { ConnectorInstanceId, ConnectorKind, ProjectId, ThreadId } from "./ids";
+import { ProjectScript } from "./scripts";
 
 /** Every control a settings field can be rendered with. `hidden` renders nothing. */
 export const SettingsFormControl = Schema.Literals([
@@ -215,7 +216,8 @@ export type GitSettings = typeof GitSettings.Type;
 /**
  * One project's own settings. `setupScript` runs with `/bin/sh` in every new
  * worktree of the project — `pnpm install`, copying an `.env` — and is only
- * ever read from here, never taken from a client.
+ * ever read from here, never taken from a client. `scripts` are the ones the
+ * Run button offers, edited from its menu rather than a settings page.
  */
 export const ProjectSettings = Schema.Struct({
   setupScript: Schema.optional(Schema.String).pipe(
@@ -225,6 +227,9 @@ export const ProjectSettings = Schema.Struct({
       control: "text",
       placeholder: "pnpm install",
     }),
+  ),
+  scripts: Schema.optional(Schema.Array(ProjectScript)).pipe(
+    settingsForm({ label: "Scripts", control: "hidden" }),
   ),
 });
 export type ProjectSettings = typeof ProjectSettings.Type;

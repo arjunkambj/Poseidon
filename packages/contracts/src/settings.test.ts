@@ -239,6 +239,35 @@ describe("git settings", () => {
     }),
   );
 
+  it.effect("decode a project without saved scripts, and round-trip one with them", () =>
+    Effect.gen(function* () {
+      const projectId = "0199c0de-0001-7000-8000-000000000001";
+      const stored = Schema.encodeUnknownSync(Settings)({
+        ...defaultSettings(),
+        projectSettings: { [projectId]: { setupScript: "pnpm i" } },
+      });
+      const older = yield* Schema.decodeUnknownEffect(Settings)(stored);
+      expect(older.projectSettings[projectId]?.scripts).toBeUndefined();
+      const settings = {
+        ...defaultSettings(),
+        projectSettings: {
+          [projectId]: {
+            scripts: [
+              { id: "s1", name: "dev", command: "pnpm dev", primary: true },
+              { id: "s2", name: "test", command: "pnpm test" },
+            ],
+          },
+        },
+      };
+      const encoded = Schema.encodeUnknownSync(Settings)(settings);
+      expect(yield* Schema.decodeUnknownEffect(Settings)(encoded)).toEqual(settings);
+      const empty = Schema.decodeUnknownExit(SettingsPatch)({
+        projectSettings: { [projectId]: { scripts: [{ id: "s1", name: "dev", command: "" }] } },
+      });
+      expect(empty._tag).toBe("Failure");
+    }),
+  );
+
   it.effect("hide both from the generic form: a page of their own renders them", () =>
     Effect.gen(function* () {
       const fields = yield* Effect.sync(() => settingsFormFields(Settings));

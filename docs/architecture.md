@@ -780,6 +780,7 @@ Directories, relative to `apps/server/`:
 | `src/git/`           | status/diff, branches, commit/push, gh pull requests, worktrees and their setup script, file search, checkpoints |
 | `src/fs/`            | `fs.browse`                                                                                                      |
 | `src/editors/`       | editor, file manager and terminal detection, path containment, launch argv (`editors.list`, `editors.open`)      |
+| `src/scripts/`       | package.json script detection: workspace patterns, package manager, run commands (`scripts.detect`)              |
 | `src/settings/`      | settings store users, connector manager and host, connector extension routing                                    |
 | `src/attachments/`   | the staging store and its reactor                                                                                |
 
@@ -797,7 +798,7 @@ enabled one.
 ### packages/contracts
 
 Every wire shape, as `effect/Schema` codecs. Modules: `base`, `ids`, `enums`,
-`runtime`, `orchestration`, `decisions`, `git`, `editors`, `search`, `settings`,
+`runtime`, `orchestration`, `decisions`, `git`, `editors`, `search`, `scripts`, `settings`,
 `keybindings`, `connectors`, `terminal`, `rpc`. `keybindings` holds the shipped keymap, the
 chords reserved for features still being built, and how the user's stored
 overrides layer on the keymap, since both server and renderer need it.
@@ -807,10 +808,13 @@ their shapes (`GitBranch`, `GitBranchList`, `GitCommitResult`, `GitPushResult`,
 the setup script streams); they are defined there rather than in `rpc.ts`,
 their names are spread into `RPC_METHODS`, and `rpc.ts` lists them in the
 group. `editors` does the same for `editors.list` and `editors.open`, with
-`EditorId` and `DetectedEditor`, and `search` for `threads.searchMessages`,
-with `MessageSearchHit` and its `MESSAGE_SEARCH_LIMIT` of 50.
-`PoseidonRpcError` lives in `rpcError.ts` so `git`, `editors` and `search` can
-name it without an import cycle, and `rpc` re-exports it. `browser.ts` holds the browser pane's
+`EditorId` and `DetectedEditor`, `search` for `threads.searchMessages`,
+with `MessageSearchHit` and its `MESSAGE_SEARCH_LIMIT` of 50, and `scripts`
+for `scripts.detect`, with `DetectedScript`, `PackageManager` and
+`ProjectScript`, the saved script `settings` holds per project.
+`PoseidonRpcError` lives in `rpcError.ts` so `git`, `editors`, `search` and
+`scripts` can name it without an import cycle, and `rpc` re-exports it.
+`browser.ts` holds the browser pane's
 payloads (`BrowserState`, `BrowserHumanInput`, `DevServer`,
 `BrowserToolStatus`), and `files.ts` the workspace file reads' payloads
 (`FileSearchResult`, `FileContent`, and `FileStat` with the
@@ -2010,6 +2014,7 @@ the client in the terminal `incompatible` state.
 | `git.worktree.setup`          | stream | Runs the project's setup script (from settings) in a worktree, streaming its output  |
 | `editors.list`                | call   | Editors, file manager and terminal installed on the server's machine                 |
 | `editors.open`                | call   | Opens the root or a path inside it in one of those, at a line where supported        |
+| `scripts.detect`              | call   | package.json scripts of the root and its workspace packages, with commands to run    |
 | `checkpoints.list`            | call   | Checkpoints that still exist as refs, read in the thread's root                      |
 | `browser.subscribe`           | stream | The browser pane's state, and frames when the browser is ours                        |
 | `browser.humanInput`          | call   | A human gesture into the browser the agent is driving                                |

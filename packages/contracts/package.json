@@ -56,6 +56,10 @@
       "types": "./src/search.ts",
       "import": "./src/search.ts"
     },
+    "./scripts": {
+      "types": "./src/scripts.ts",
+      "import": "./src/scripts.ts"
+    },
     "./rpc": {
       "types": "./src/rpc.ts",
       "import": "./src/rpc.ts"

@@ -17,6 +17,7 @@ import {
   STREAM_BUDGET_ITEMS,
   STREAM_COALESCE_MS,
 } from "./rpc";
+import { DetectedScript } from "./scripts";
 
 const STREAMING_METHODS = [
   RPC_METHODS.threadsSubscribe,
@@ -193,5 +194,37 @@ describe("editors.open", () => {
     expect(decode({ projectId, editor: "/bin/sh" })._tag).toBe("Failure");
     expect(decode({ projectId, editor: "vscode", line: 0 })._tag).toBe("Failure");
     expect(decode({ projectId, editor: "vscode", line: 1.5 })._tag).toBe("Failure");
+  });
+});
+
+describe("scripts.detect", () => {
+  const rpc = PoseidonRpcGroup.requests.get(RPC_METHODS.scriptsDetect);
+  const projectId = "0190aaaa-0000-7000-8000-000000000001";
+  const script = {
+    id: "pkg:apps/web:dev",
+    name: "dev",
+    packageName: "@acme/web",
+    packageDir: "apps/web",
+    command: "cd 'apps/web' && pnpm run dev",
+    packageManager: "pnpm",
+  };
+
+  it("takes a project and an optional thread, and answers with ready commands", () => {
+    expect(rpc).toBeDefined();
+    expect(RpcSchema.isStreamSchema(rpc!.successSchema)).toBe(false);
+    const payload = Schema.decodeUnknownExit(rpc!.payloadSchema);
+    expect(payload({ projectId })._tag).toBe("Success");
+    expect(payload({})._tag).toBe("Failure");
+    const success = Schema.decodeUnknownExit(rpc!.successSchema);
+    expect(
+      success([script, { ...script, id: "pkg::build", packageDir: "", packageName: null }]),
+    ).toMatchObject({ _tag: "Success" });
+  });
+
+  it("refuses a detected script with no command or an unknown package manager", () => {
+    const decode = Schema.decodeUnknownExit(DetectedScript);
+    expect(decode(script)._tag).toBe("Success");
+    expect(decode({ ...script, command: "" })._tag).toBe("Failure");
+    expect(decode({ ...script, packageManager: "deno" })._tag).toBe("Failure");
   });
 });

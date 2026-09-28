@@ -3052,14 +3052,17 @@ Settings
   keybindingsFormat  "overrides"                absent on a document from before overrides
   permissions        PermissionRule[]           a projection of the permission_rules table
   git                { branchPrefix }           what a new worktree's branch starts with
-  projectSettings    { [projectId]: { setupScript? } }
+  projectSettings    { [projectId]: { setupScript?, scripts? } }
   browser            { openPaneOnAgentUse }     off by default
   notifications      { finished, failed, needsYou, sound, dockBadge, keepAwake }
   preferredEditor    string?                    the "Open in" button's editor; unset until picked
 ```
 
 `git` and `projectSettings`, like the two font sizes, are defaulted on decode
-(`poseidon/` and `{}`), so a row written before they existed still reads. So is
+(`poseidon/` and `{}`), so a row written before they existed still reads.
+A project's `scripts` are its saved runnable scripts (`ProjectScript`: `id`,
+`name`, `command` and an optional `primary`, the one the Run button starts);
+the key is optional, so a project entry from before it decodes without one. So is
 `browser`, whose `openPaneOnAgentUse` comes back as `false`, and `chatWidth`,
 which comes back as `comfortable`.
 `notifications` is defaulted the same way: every alert, the Dock badge and

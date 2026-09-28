@@ -59,6 +59,7 @@ import {
 } from "./orchestration";
 import { FileChangeKind } from "./runtime";
 import { PoseidonRpcError } from "./rpcError";
+import { SCRIPT_RPC_METHODS, ScriptsDetectRpc } from "./scripts";
 import { Keybinding, Settings, SettingsPatch } from "./settings";
 import { THREAD_SEARCH_RPC_METHODS, ThreadsSearchMessagesRpc } from "./search";
 import {
@@ -231,6 +232,7 @@ export const RPC_METHODS = {
   gitDiff: "git.diff",
   ...GIT_RPC_METHODS,
   ...EDITOR_RPC_METHODS,
+  ...SCRIPT_RPC_METHODS,
   checkpointsList: "checkpoints.list",
   browserSubscribe: "browser.subscribe",
   browserHumanInput: "browser.humanInput",
@@ -732,6 +734,7 @@ export const PoseidonRpcGroup = RpcGroup.make(
   GitWorktreeSetupRpc,
   EditorsListRpc,
   EditorsOpenRpc,
+  ScriptsDetectRpc,
   CheckpointsListRpc,
   BrowserSubscribeRpc,
   BrowserHumanInputRpc,

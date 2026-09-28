@@ -12,6 +12,7 @@ import * as Stream from "effect/Stream";
 
 import { AttachmentStore } from "../attachments/AttachmentStore";
 import { ConcurrencyConflict } from "../persistence/EventStore";
+import { ScriptDetection } from "../scripts/ScriptDetection";
 import { OrchestrationEngine } from "../orchestration/Engine";
 import {
   BrowserService,
@@ -57,6 +58,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
     const terminals = yield* TerminalService;
     const editors = yield* EditorLauncher;
     const messageSearch = yield* MessageSearch;
+    const scripts = yield* ScriptDetection;
 
     return {
       "server.hello": () =>
@@ -132,6 +134,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
       "editors.list": () => editors.list,
       "editors.open": ({ projectId, threadId, editor, path, line, reveal }) =>
         editors.open({ projectId, threadId }, { editor, path, line, reveal }).pipe(Effect.as({})),
+      "scripts.detect": ({ projectId, threadId }) => scripts.detect({ projectId, threadId }),
       "checkpoints.list": ({ projectId, threadId }) => git.checkpoints(projectId, threadId),
 
       "browser.subscribe": ({ threadId }) => browser.subscribe(threadId),

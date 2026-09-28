@@ -58,6 +58,7 @@ import { layer as gitServiceLayer } from "./git/Git";
 import { GhRunner } from "./git/GitHubCli";
 import { WorktreesRoot } from "./git/Worktrees";
 import { writeHandshake } from "./rpc/bootstrap";
+import { layer as scriptDetectionLayer } from "./scripts/ScriptDetection";
 import { layer as terminalServiceLayer } from "./terminal/TerminalService";
 import { serverLayer, ServerToken } from "./rpc/server";
 import { ServerIdentity, SettingsStore } from "./rpc/services";
@@ -232,6 +233,7 @@ export const boot = (options: BootOptions) =>
       directoryBrowserLayer,
       editorLauncherLayer.pipe(Layer.provide(persistence)),
       messageSearchLayer.pipe(Layer.provide(persistence)),
+      scriptDetectionLayer.pipe(Layer.provide(persistence)),
       // `sharedSettings` again, not a second SettingsStore: one build memoizes
       // it, so the prefix and setup scripts are read from the store the
       // settings RPCs write.
