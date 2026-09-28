@@ -1871,7 +1871,10 @@ the harness refuses or answers unusably fails with `GenerationFailed`
 beside `SpawnFailed`. Command Code implements it as one print run
 ([command-code-connector.md](command-code-connector.md#writing-one-piece-of-text)),
 Claude Code as one tool-less `query()`
-([claude-code-connector.md](claude-code-connector.md#writing-one-piece-of-text)).
+([claude-code-connector.md](claude-code-connector.md#writing-one-piece-of-text)),
+Codex as one ephemeral thread in the read-only sandbox on an app-server of its
+own, the schema sent as the turn's `outputSchema`
+([codex-connector.md](codex-connector.md#writing-one-piece-of-text)).
 `ConnectorCapabilities` is what the harness can do, and the renderer reads it
 instead of the kind:
 

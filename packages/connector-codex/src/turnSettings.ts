@@ -50,7 +50,8 @@ export const holdsOf = (opened: OpenedThread): ThreadHolds => ({
 });
 
 export const turnTarget = (input: {
-  readonly settings: ThreadSettings;
+  /** Only the model and effort are read, so a one-shot call names just those. */
+  readonly settings: Pick<ThreadSettings, "model" | "effort">;
   readonly opened: OpenedThread;
   readonly factsFor?: (model: string) => CodexModelFacts | undefined;
 }): TurnTarget => {

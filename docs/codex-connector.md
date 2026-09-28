@@ -46,6 +46,7 @@ picks this instance. Adding it changed no existing install's routing.
 | `capabilities.ts`          | what a Codex session can do, and why                                             |
 | `launch.ts`                | the session's argv and environment, with Poseidon's MCP server                   |
 | `session.ts`               | one app-server process per thread: send, steer, interrupt, close                 |
+| `generateText.ts`          | one piece of text outside any session: an ephemeral read-only thread             |
 | `threadOpen.ts`            | `thread/start`, or `thread/resume` with the fallback to a new thread             |
 | `sessionRef.ts`            | the persisted session reference                                                  |
 | `modes.ts`                 | runtime modes → approval policy and sandbox                                      |
@@ -256,6 +257,51 @@ command that ignores the hangup of its closed terminal (a `nohup`'d server)
 can outlive the session. An app-server that exits
 by itself is a fatal `runtime.error` followed by `session.ended` with reason
 `crashed`.
+
+## Writing one piece of text
+
+`generateText` (`generateText.ts`) writes a commit message, a pull request's
+text or a thread title outside any session. It is one `codex app-server` of
+its own, asked for one turn:
+
+1. **Its own launch.** `codex app-server` with no `-c` override — Poseidon's
+   MCP server is not named, so there is no bearer — in a fresh
+   `poseidon-generate-*` directory under the system temp directory, with the
+   same default-deny environment a session gets. The directory is removed
+   after the call, once the process group is gone.
+2. **An ephemeral, read-only thread.** `initialize`, then `thread/start` with
+   `ephemeral: true` (the CLI writes no rollout), `sandbox: "read-only"` and
+   `approvalPolicy: "never"`, so nothing the model tries can write and no
+   request waits on a card. The model is named unless it is `default`. The
+   caller's `system` text goes in as `developerInstructions`, beside the CLI's
+   own instructions rather than in place of them.
+3. **One turn.** `turn/start` with the prompt as one text input, the effort
+   through `turnSettings.ts` — an effort the model does not offer becomes the
+   model's own, and a model that lists none gets none — and `jsonSchema` as
+   the turn's `outputSchema`, which the CLI holds the final message to.
+4. **The answer** is the turn's last completed `agentMessage` (its
+   `final_answer` when marked), read when `turn/completed` arrives. A turn that
+   ends anything but `completed`, an `error` the server will not retry, a
+   server that goes away first, or an answer with no text fails with
+   `GenerationFailed` in the CLI's words; a lost login names the login
+   command, as a session's does.
+5. **Every request is declined**: approvals `decline`, the rest the refusals
+   a session gives (`serverRequests.ts`). Then stdin is closed and the group
+   stopped.
+
+The operator's own MCP servers and plugins from `config.toml` still start in
+the thread: `thread/start`'s `config` merges into the user's tables and cannot
+empty them (tried on 0.156.1, and so is `-c mcp_servers={}`). The read-only
+sandbox is what keeps the call from writing.
+
+`fixtures/codex/generate-text/` is a real run of this exchange on the CLI's
+default model at effort `low`, with a one-field JSON schema; the answer is
+`{"title":"Fix the Flaky Login Test"}`. `generateText.test.ts` replays it
+through the definition with the testkit's tee in front of the replayer, so it
+checks what the connector sent in the replay — `ephemeral`, the sandbox, the
+approval policy, the developer instructions, the effort and the output schema
+— as well as the argv, the temporary directory being gone and the process
+with it. A binary that will not start fails with `GenerationFailed`.
 
 ## The notification catalogue
 
@@ -505,22 +551,23 @@ another model at effort `low`, in the same process).
 
 `CODEX_CAPABILITIES` in `capabilities.ts`, and the recording behind each value:
 
-| Capability     | Value      | Why                                                                                          |
-| -------------- | ---------- | -------------------------------------------------------------------------------------------- |
-| `modelSwitch`  | `per-turn` | `turn/start` names the model; `model-switch`                                                 |
-| `effortSwitch` | `per-turn` | `turn/start` names the effort; `model-switch`                                                |
-| `steering`     | `true`     | `turn/steer` into the running turn; `steering`                                               |
-| `planMode`     | `true`     | `collaborationMode: plan`, the plan item proposed; `plan-accept`                             |
-| `subagents`    | `false`    | collaboration agents become a plain `task` row, not Poseidon's tasks                         |
-| `images`       | `true`     | `localImage` inputs; `image`                                                                 |
-| `resume`       | `true`     | `thread/resume` from a new process; `resume`, `resume-missing`                               |
-| `fork`         | `false`    | `thread/fork` exists; nothing in Poseidon needs it                                           |
-| `interrupt`    | `turn`     | `turn/interrupt`, and the same process answers the next turn; `interrupt`                    |
-| `rollback`     | `false`    | `thread/revert` exists; Poseidon's checkpoints are git                                       |
-| `compaction`   | `true`     | `thread/compact/start`; `compaction`                                                         |
-| `questions`    | `true`     | `item/tool/requestUserInput`; `question`                                                     |
-| `runtimeModes` | all three  | `untrusted` everywhere, the ladder decides; `edit-approval`, `deny`, `sensitive-full-access` |
-| `attachments`  | `files`    | images as inputs, anything else by path                                                      |
+| Capability       | Value      | Why                                                                                          |
+| ---------------- | ---------- | -------------------------------------------------------------------------------------------- |
+| `modelSwitch`    | `per-turn` | `turn/start` names the model; `model-switch`                                                 |
+| `effortSwitch`   | `per-turn` | `turn/start` names the effort; `model-switch`                                                |
+| `steering`       | `true`     | `turn/steer` into the running turn; `steering`                                               |
+| `planMode`       | `true`     | `collaborationMode: plan`, the plan item proposed; `plan-accept`                             |
+| `subagents`      | `false`    | collaboration agents become a plain `task` row, not Poseidon's tasks                         |
+| `images`         | `true`     | `localImage` inputs; `image`                                                                 |
+| `resume`         | `true`     | `thread/resume` from a new process; `resume`, `resume-missing`                               |
+| `fork`           | `false`    | `thread/fork` exists; nothing in Poseidon needs it                                           |
+| `interrupt`      | `turn`     | `turn/interrupt`, and the same process answers the next turn; `interrupt`                    |
+| `rollback`       | `false`    | `thread/revert` exists; Poseidon's checkpoints are git                                       |
+| `compaction`     | `true`     | `thread/compact/start`; `compaction`                                                         |
+| `questions`      | `true`     | `item/tool/requestUserInput`; `question`                                                     |
+| `runtimeModes`   | all three  | `untrusted` everywhere, the ladder decides; `edit-approval`, `deny`, `sensitive-full-access` |
+| `attachments`    | `files`    | images as inputs, anything else by path                                                      |
+| `textGeneration` | `true`     | `generateText`: one ephemeral read-only thread on its own app-server; `generate-text`        |
 
 The conformance suite runs against the `conformance` recording in the gate,
 approval case included.

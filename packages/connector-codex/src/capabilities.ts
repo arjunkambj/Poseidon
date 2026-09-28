@@ -58,4 +58,8 @@ export const CODEX_CAPABILITIES: ConnectorCapabilities = {
   runtimeModes: ["approval-required", "auto-accept-edits", "full-access"],
   // Images go as `localImage` inputs; any other file is named in the prompt.
   attachments: "files",
+  // `generateText` runs one ephemeral, read-only thread on an app-server of
+  // its own, the schema as the turn's `outputSchema` (`generate-text`: a
+  // JSON title on the default model at effort low).
+  textGeneration: true,
 };

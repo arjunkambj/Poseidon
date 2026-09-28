@@ -1,6 +1,7 @@
 /**
  * The Codex connector definition: probe, instance creation, session start and
- * resume, and the skills and MCP server extensions. Everything else — the binary, the environment, the JSON-RPC
+ * resume, one-shot text (`generateText.ts`), and the skills and MCP server
+ * extensions. Everything else — the binary, the environment, the JSON-RPC
  * client, the handshake, the translation — lives in the sibling modules this
  * wires together. Sessions come back raw; the engine's SessionManager adds
  * the turn-scoped wrapper.
@@ -20,6 +21,7 @@ import { resolveBinary, terminalCommand } from "./binary";
 import { CODEX_CAPABILITIES } from "./capabilities";
 import { CodexConnectorConfig } from "./configSchema";
 import { childEnv, expandHome } from "./env";
+import { makeCodexGenerateText } from "./generateText";
 import { makeCodexMcpServers } from "./extensions/mcpServers";
 import { makeCodexSkills } from "./extensions/skills";
 import { CODEX_KIND } from "./kind";
@@ -157,6 +159,17 @@ export const makeCodexConnectorDefinition = (
               : start(input, ref);
           },
           listModels,
+          generateText: makeCodexGenerateText({
+            instanceId,
+            launch: Effect.map(launch, ({ binary, env }) => ({
+              binary,
+              env,
+              loginCommand:
+                binary === null ? "" : terminalCommand(binary, LOGIN_ARGS, env.CODEX_HOME),
+            })),
+            notFound: NOT_FOUND,
+            modelFacts,
+          }),
           extensions: codexExtensions(options, config, writeMutex),
         };
       }),

@@ -51,7 +51,7 @@ const baseParams = (cwd: string, settings: ThreadSettings) => {
 };
 
 /** What the CLI opened, from its answer to `thread/start` or `thread/resume`. */
-const openedFrom = (response: ThreadOpenResponse): OpenedThread => {
+export const openedFrom = (response: ThreadOpenResponse): OpenedThread => {
   const effort = toEffort(response.reasoningEffort);
   return {
     threadId: response.thread.id,
