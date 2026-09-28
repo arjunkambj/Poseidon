@@ -17,13 +17,10 @@
  * them locally.
  */
 
-import { useAtomSet, useAtomValue } from "@effect/atom-react";
+import { useAtomValue } from "@effect/atom-react";
 import { cn } from "@poseidon/ui/lib/utils";
-import { makeCommandId, type ProjectId, type ThreadId } from "@poseidon/contracts/ids";
-import {
-  detectComposerTrigger,
-  replaceComposerTrigger,
-} from "@poseidon/client-runtime/composerTrigger";
+import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
+import { detectComposerTrigger } from "@poseidon/client-runtime/composerTrigger";
 import * as React from "react";
 import { AsyncResult } from "effect/unstable/reactivity";
 
@@ -35,7 +32,7 @@ import { ComposerChips } from "@/components/composer/composer-chips";
 import { composerEnter, keymapChord, menuMove } from "@/components/composer/composer-keys";
 import { ComposerToolbar } from "@/components/composer/composer-toolbar";
 import { canSteer, sendMode } from "@/components/composer/send-mode";
-import { canCompact, compactRefusal } from "@/components/composer/compact-now";
+import { canCompact } from "@/components/composer/compact-now";
 import { PendingCard } from "@/components/composer/pending-card";
 import { QueueStrip } from "@/components/composer/queue-strip";
 import { SlashMenu, slashMenuItems, type SlashMenuItem } from "@/components/composer/slash-menu";
@@ -47,13 +44,13 @@ import { useMentionMenus } from "@/components/composer/use-mention-menus";
 import { usePromptRecall } from "@/components/composer/use-prompt-recall";
 import { useInterrupt } from "@/components/composer/use-interrupt";
 import { useSendDraft } from "@/components/composer/use-send-draft";
+import { useSlashAction } from "@/components/composer/use-slash-action";
 import { useClientRuntime } from "@/lib/client-runtime";
 import { attachmentRefusal } from "@/lib/attachment-support";
 import { instanceCapabilities, threadConnectorInstanceId } from "@/lib/connector-routing";
 import { turnInFlight } from "@/lib/turn";
 import { useKeybindingCommand, useKeybindingFlag, useKeymapAnswers } from "@/lib/shortcuts";
 import { useChatWidth } from "@/lib/use-chat-width";
-import { DISPATCH_UNREACHABLE, receiptError } from "@/lib/dispatch-outcome";
 import { useComposerDraft } from "@/state/ui";
 import { Folder } from "@honeyicons/react";
 
@@ -68,11 +65,9 @@ export function Composer({
 }) {
   const project = useProjects().find((entry) => entry.projectId === projectId);
   const chatWidth = useChatWidth();
-  const { threadDetailAtom, dispatchAtom, connectorsAtom, connectorModelsAtom, skillsAtom } =
-    useClientRuntime();
+  const { threadDetailAtom, connectorsAtom, connectorModelsAtom, skillsAtom } = useClientRuntime();
   const docResult = useAtomValue(threadDetailAtom(threadId));
   const doc = AsyncResult.isSuccess(docResult) ? docResult.value : null;
-  const dispatch = useAtomSet(dispatchAtom, { mode: "promise" });
 
   // Not `doc.session` alone: unbound, the chosen or default instance answers.
   const connectorsResult = useAtomValue(connectorsAtom);
@@ -183,51 +178,19 @@ export function Composer({
     closeMenu();
   };
 
-  const applySlash = (item: SlashMenuItem) => {
-    switch (item.action.type) {
-      case "level":
-        setSlashLevel(item.action.level);
-        return;
-      case "insert":
-        if (trigger !== null) {
-          const next = replaceComposerTrigger(text, trigger, item.action.text);
-          setTextAndCaret(next.text, next.cursor);
-        }
-        return;
-      case "clear-draft":
-        clearDraft();
-        return;
-      case "compact": {
-        closeMenu();
-        setText((current) =>
-          trigger === null ? current : replaceComposerTrigger(current, trigger, "").text.trim(),
-        );
-        const refusal = compactRefusal({ running, pending: compactNow.compacting });
-        if (refusal === null) {
-          compactNow.compact();
-        } else {
-          setError(refusal);
-        }
-        return;
-      }
-      case "settings":
-        closeMenu();
-        setText((current) =>
-          trigger === null ? current : replaceComposerTrigger(current, trigger, "").text.trim(),
-        );
-        void dispatch({
-          commandId: makeCommandId(),
-          createdAt: new Date().toISOString(),
-          type: "thread.settings.update",
-          threadId,
-          ...item.action.patch,
-        }).then(
-          (receipt) => setError(receiptError(receipt, "the server rejected the setting")),
-          () => setError(DISPATCH_UNREACHABLE),
-        );
-        return;
-    }
-  };
+  const applySlash = useSlashAction({
+    threadId,
+    trigger,
+    text,
+    running,
+    compactNow,
+    setText,
+    setTextAndCaret,
+    setSlashLevel,
+    closeMenu,
+    clearDraft,
+    setError,
+  });
 
   const canSend = text.trim().length > 0 || attachments.files.length > 0;
   /** The draft is the composer's; the upload and the dispatch are the hook's. */
