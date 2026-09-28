@@ -29,6 +29,7 @@ connector in the tree.
 | `definition.ts`    | the `ConnectorDefinition`: probe, instance, extensions             |
 | `binary.ts`        | which executable `cmd` means, and how to spell the call            |
 | `probe.ts`         | `status --json`, `--list-models`, version policy, context window   |
+| `modelNames.ts`    | a model's readable name, derived from its id                       |
 | `spawn.ts`         | argv construction, the env allowlist, the process handle           |
 | `turnArgs.ts`      | one turn's prompt and argv, including the plan-mode exception      |
 | `generateText.ts`  | one piece of text outside any session: the one-shot print run      |
@@ -160,13 +161,44 @@ conversation occupies; nothing on the wire carries the ceiling.
 ### `--list-models`
 
 Timeout 60s. The output is a two-column table under section headers; the
-recorded capture is `packages/testkit/fixtures/cmd/probe/list-models.stdout.txt`
-(70 models on 1.55.1). `parseModelList` reads it:
+recorded captures are `packages/testkit/fixtures/cmd/probe/list-models.stdout.txt`
+(70 models on 1.55.1) and
+`packages/testkit/fixtures/cmd/probe-list-models-1.66.0.stdout.txt` (82 models
+plus one decision model on 1.66.0). `--list-models --json` prints the same
+table; there is no machine-readable listing. `parseModelList` reads it:
 
-- A model row is `<id><two or more spaces><description>`. A line without that
+- A model row is `<id><two or more spaces><tagline>`. A line without that
   column gap is a section header and becomes the `family` for the rows under
-  it — seven of them in the recording: `Open Source`, `Anthropic`, `OpenAI`,
-  `Google`, `Sakana`, `Meta`, `xAI`.
+  it — seven of them in the 1.55.1 recording: `Open Source`, `Anthropic`,
+  `OpenAI`, `Google`, `Sakana`, `Meta`, `xAI`; 1.66.0 adds `Stealth` and
+  `Decision models (headless only)`.
+- The table has no name column. The second column is a tagline ("Muse Spark
+  1.2 at ~95% off"), so it becomes the model's `description`, shown only as
+  secondary text, and never its name. The CLI's bundle does know a name, but
+  never prints it, and a minified, self-updating bundle is not something to
+  parse.
+- The `label` is derived from the id by `modelNameFromId`
+  (`packages/connector-cmd/src/modelNames.ts`), which matches the CLI's own
+  names on most rows (`google/gemini-3.5-flash` → "Gemini 3.5 Flash"):
+  1. drop everything up to the last `/` (the provider is the family);
+  2. strip a `:tag` suffix and a trailing `-free` segment; a free one
+     (`:free` or `-free`) appends " (Free)", any other tag appends it in
+     parentheses, so `meituan/longcat-2.0` and `meituan/longcat-2.0:free`
+     never share a name;
+  3. split on `-` and join adjacent short numbers by position
+     (`claude-opus-5-5` → "Claude Opus 5.5");
+  4. capitalise each word; a single letter glued to a version is upper-cased
+     (`v4` → "V4", `k2.5` → "K2.5", `a55b` → "A55B"), as is a parameter count
+     (`27b` → "27B"); a word glued to its version is split (`qwen3.8` → "Qwen
+     3.8"); a small table cases the brand words (GPT, GLM, DeepSeek, MiniMax,
+     MiMo, LongCat), and GPT and GLM keep a hyphen before their version
+     ("GPT-5.4 Mini");
+  5. fall back to the raw id if nothing is left.
+
+  What still differs from the CLI's names is cosmetic ("Flashx" for "FlashX",
+  no "(latest)" suffix), and the fixture tests pin that every name is unique
+  and none is a tagline.
+
 - Splitting on the column gap rather than on a `/` is what keeps the bare ids
   out of the header bucket. Anthropic's and OpenAI's rows are bare model names
   (`claude-opus-5`, `gpt-6-astra`); every other family's are `provider/model`.
@@ -175,7 +207,14 @@ recorded capture is `packages/testkit/fixtures/cmd/probe/list-models.stdout.txt`
   (`meituan/longcat-2.0:free`, `inclusionai/ling-3.0-flash-sante:free`) or its
   description contains `FREE` — which is how `poolside/laguna-s-2.1-free`, whose
   suffix is part of the name rather than a tag, is also marked free.
-- `(default)` and `(recommended)` are stripped from the label, as is `FREE`.
+- `(default)`, `(recommended)`, `FREE` and effort markers are stripped from
+  the description. Free and vision detection read the raw tagline. A row with
+  no tagline has no `description` at all, since the contract rejects an empty
+  one.
+- Rows under a header containing `headless only` (1.66.0's `typesafe/jev`,
+  which answers typed questions with probabilities and cannot run an agent
+  turn) are `hidden`: the pickers leave them out unless the user switches one
+  on in Settings → Models.
 - Table chrome is skipped: lines starting with `Available models`, `Pass the
 full id`, `cmd `, or `Docs:`.
 - An effort ladder is honoured where a row carries one (`[low,medium]`), but no
@@ -1444,7 +1483,9 @@ Beyond the tests, the things to read after an upgrade:
 - `cmd status --json`, for a field that appeared or moved (`context_window` is
   the one the composer depends on).
 - `cmd --list-models`, for a column layout or an id shape the parser does not
-  expect — a new bare-id family, or an effort ladder actually being printed.
+  expect — a new bare-id family, an effort ladder actually being printed, or a
+  name column (or JSON listing) appearing, which would replace
+  `modelNameFromId`.
 - Whether an image flag has appeared, which would replace the whole attachment
   staging path.
 - Whether the hook environment still redacts secret-shaped names, which would

@@ -87,7 +87,8 @@ describe("parseModelList", () => {
     // Truncating the tag would hand `--model` an id the CLI rejects.
     expect(longcat?.id).toBe("meituan/longcat-2.0:free");
     expect(longcat?.free).toBe(true);
-    expect(longcat?.label).toBe("trillion-parameter agentic coding with 1M context");
+    expect(longcat?.label).toBe("LongCat 2.0 (Free)");
+    expect(longcat?.description).toBe("trillion-parameter agentic coding with 1M context");
   });
 
   it("never parses the table's chrome as a model", () => {
@@ -98,14 +99,34 @@ describe("parseModelList", () => {
     expect(models.every((model) => !model.id.includes(" "))).toBe(true);
   });
 
-  it("strips the (default), (recommended) and FREE markers out of the label", () => {
+  it("strips the (default), (recommended) and FREE markers out of the description", () => {
     const flash = models.find((model) => model.id === "deepseek/deepseek-v4-flash");
-    expect(flash?.label).toBe("fast hybrid-attention reasoning");
+    expect(flash?.label).toBe("DeepSeek V4 Flash");
+    expect(flash?.description).toBe("fast hybrid-attention reasoning");
     const sonnet = models.find((model) => model.id === "claude-sonnet-5");
-    expect(sonnet?.label).toBe("best combo of speed & intelligence");
+    expect(sonnet?.label).toBe("Claude Sonnet 5");
+    expect(sonnet?.description).toBe("best combo of speed & intelligence");
     const sante = models.find((model) => model.id === "inclusionai/ling-3.0-flash-sante:free");
     expect(sante?.free).toBe(true);
-    expect(sante?.label).not.toContain("FREE");
+    expect(sante?.label).toBe("Ling 3.0 Flash Sante (Free)");
+    expect(sante?.description).toBe(
+      "health & medicine tuned lightweight-MoE, still strong on code",
+    );
+  });
+
+  it("names every model from its id and never from its tagline", () => {
+    // The owner's report: the second column ("Muse Spark 1.2 at ~95% off")
+    // was shown as the model's name. The table has no name column at all.
+    const muse = models.find((model) => model.id === "meta/muse-spark-1.2-contributor");
+    expect(muse?.label).toBe("Muse Spark 1.2 Contributor");
+    expect(muse?.description).toBe("Muse Spark 1.2 at ~95% off");
+    expect(models.find((model) => model.id === "google/gemini-3.5-flash")?.label).toBe(
+      "Gemini 3.5 Flash",
+    );
+    expect(models.find((model) => model.id === "xai/grok-4.5")?.label).toBe("Grok 4.5");
+    expect(models.every((model) => model.label !== model.description)).toBe(true);
+    expect(models.every((model) => model.description !== undefined)).toBe(true);
+    expect(new Set(models.map((model) => model.label)).size).toBe(models.length);
   });
 
   it("flags the models whose description mentions vision or multimodality", () => {
@@ -141,17 +162,58 @@ describe("parseModelList", () => {
     ]);
   });
 
-  it("labels a bare id with itself and survives an empty output", () => {
+  it("names a bare id, leaves its description out, and survives an empty output", () => {
+    // No `description: ""`: the contract rejects an empty one, and one bad row
+    // would fail decoding of the whole list.
     expect(parseModelList("acme/model-x")).toEqual([
       {
         id: "acme/model-x",
-        label: "acme/model-x",
+        label: "Model X",
         family: "acme",
         efforts: ["low", "medium", "high", "xhigh", "max"],
       },
     ]);
     expect(parseModelList("")).toEqual([]);
     expect(parseModelList("\n\n  \n")).toEqual([]);
+  });
+});
+
+describe("parseModelList on the 1.66.0 table", () => {
+  // A real `cmd --no-auto-update --list-models` from command-code 1.66.0.
+  const table = NodeFS.readFileSync(
+    NodePath.resolve(
+      NodeURL.fileURLToPath(import.meta.url),
+      "../../../testkit/fixtures/cmd/probe-list-models-1.66.0.stdout.txt",
+    ),
+    "utf8",
+  );
+  const models = parseModelList(table);
+
+  it("reads the 82 counted models plus the decision model, Stealth included", () => {
+    // The header counts the 82 coding models; the headless-only decision
+    // model below the footer is not in that count.
+    expect(table).toContain("82 models");
+    expect(models).toHaveLength(83);
+    expect(models.filter((model) => model.hidden !== true)).toHaveLength(82);
+    const bunny = models.find((model) => model.id === "stealth/space-bunny-alpha");
+    expect(bunny?.family).toBe("Stealth");
+    expect(bunny?.label).toBe("Space Bunny Alpha");
+    expect(bunny?.free).toBe(true);
+    expect(bunny?.description).toBe("stealth model with 1M context");
+  });
+
+  it("hides the headless-only decision model and nothing else", () => {
+    const jev = models.find((model) => model.id === "typesafe/jev");
+    expect(jev?.hidden).toBe(true);
+    expect(jev?.family).toBe("Decision models (headless only)");
+    expect(models.filter((model) => model.hidden === true)).toHaveLength(1);
+  });
+
+  it("gives every model a unique name that is not its tagline", () => {
+    expect(new Set(models.map((model) => model.label)).size).toBe(models.length);
+    expect(models.every((model) => model.label !== model.description)).toBe(true);
+    expect(models.find((model) => model.id === "claude-opus-5-5")?.label).toBe("Claude Opus 5.5");
+    expect(models.find((model) => model.id === "meituan/longcat-2.0")?.label).toBe("LongCat 2.0");
   });
 });
 

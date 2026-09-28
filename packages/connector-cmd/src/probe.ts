@@ -29,6 +29,7 @@ import * as Effect from "effect/Effect";
 import { resolveBinary, type ResolvedBinary, terminalCommand } from "./binary";
 import type { CmdConnectorConfig } from "./configSchema";
 import { EXIT_MESSAGES } from "./exitCodes";
+import { modelNameFromId } from "./modelNames";
 import { envAllowlist } from "./spawn";
 
 /**
@@ -185,15 +186,22 @@ const isTableChrome = (line: string): boolean =>
   line.startsWith("Docs:");
 
 /**
- * `cmd --list-models` → `ModelOption`s, parsed against the real 1.55.1 output
- * recorded in `fixtures/cmd/probe/list-models.stdout.txt`.
+ * `cmd --list-models` → `ModelOption`s, parsed against the real 1.55.1 and 1.66.0 output
+ * recorded in `fixtures/cmd/probe/list-models.stdout.txt` and
+ * `fixtures/cmd/probe-list-models-1.66.0.stdout.txt`.
  *
  * The table is two columns under section headers (`Open Source`, `Anthropic`,
- * `OpenAI`, …), which become `family`. A model is free when its id carries a
- * `:free` tag or its description says `FREE`; `(default)` and `(recommended)`
- * are markers, not part of the label. The binary does not print effort ladders
- * today, so `[low,medium]` is honoured where it appears and a row without one
- * offers every rung rather than a ladder nobody measured.
+ * `OpenAI`, …), which become `family`. The first column is the id; the second
+ * is a tagline ("Muse Spark 1.2 at ~95% off"), not a name — the table has no
+ * name column — so the label is derived from the id (`modelNameFromId`) and
+ * the tagline becomes `description`. A model is free when its id carries a
+ * `:free` tag or its tagline says `FREE`; `(default)`, `(recommended)` and
+ * `FREE` are markers, stripped from the description. The binary does not print
+ * effort ladders today, so `[low,medium]` is honoured where it appears and a
+ * row without one offers every rung rather than a ladder nobody measured.
+ * Rows under a `(headless only)` header (1.66.0's `typesafe/jev`, which
+ * answers typed questions with probabilities) cannot run an agent turn, so
+ * they arrive hidden: the pickers leave them out unless Settings turns one on.
  */
 export const parseModelList = (output: string): ReadonlyArray<ModelOption> => {
   const models: Array<ModelOption> = [];
@@ -214,7 +222,7 @@ export const parseModelList = (output: string): ReadonlyArray<ModelOption> => {
     const id = lone ? line : match![1]!;
     const description = lone ? "" : (match![2] ?? "");
     const free = id.endsWith(":free") || /\bFREE\b/.test(description);
-    const label = description
+    const tagline = description
       .replace(/\((?:default|recommended)\)/gi, "")
       .replace(/\bFREE\b/g, "")
       .replace(EFFORT_MARKER, "")
@@ -238,9 +246,12 @@ export const parseModelList = (output: string): ReadonlyArray<ModelOption> => {
     ) as ModelOption["efforts"];
     models.push({
       id,
-      label: label === "" ? id : label,
+      label: modelNameFromId(id),
       family: family === "" ? (id.split("/")[0] ?? id) : family,
       efforts,
+      // The contract rejects an empty description; a bare-id row has none.
+      ...(tagline === "" ? {} : { description: tagline }),
+      ...(/headless only/i.test(family) ? { hidden: true } : {}),
       ...(free ? { free: true } : {}),
       ...(/\bvision\b|\bmultimodal\b/i.test(description) ? { vision: true } : {}),
     });

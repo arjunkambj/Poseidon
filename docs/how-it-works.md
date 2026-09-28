@@ -280,7 +280,10 @@ thread that names no instance still routes to it. For Command Code,
 command-code@latest`. Nothing resolvable at all reports `not-installed`.
 2. run `status --json` (30 s timeout);
 3. run `--list-models` (60 s timeout) and parse the two-column table into
-   `ModelOption`s, with the section headers as `family`.
+   `ModelOption`s, with the section headers as `family`. The table prints an
+   id and a tagline but no name, so the `label` is derived from the id
+   ("Gemini 3.5 Flash") and the tagline becomes the optional `description`;
+   the headless-only decision model arrives `hidden`.
 
 Both probe calls deliberately omit `--no-auto-update`: a probe is the one safe
 moment to let the CLI upgrade itself. Turn spawns keep it, because swapping the

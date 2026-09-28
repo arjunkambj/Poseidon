@@ -136,10 +136,18 @@ that makes its id resumable. It is the evidence behind the filesystem check in
 `packages/connector-cmd/src/sessionRef.ts`, and the counter-example the "opens
 exactly one turn" assertions in `recordedFrames.test.ts` are scoped against.
 
-`probe-insufficient-credits.ndjson` is the one loose file: a real capture from
+`probe-insufficient-credits.ndjson` is a loose file: a real capture from
 2026-09-15, when the account had no credits, and the only recording of
 `run_error` and the exit-10 path. It cannot be made again now the plan is paid
 for, so it is kept in the raw shape the first probe wrote it in.
+
+`probe-list-models-1.66.0.stdout.txt` is the other loose file: a real
+`cmd --no-auto-update --list-models` from command-code 1.66.0 (2026-09-28),
+with the `Stealth` section and the headless-only `typesafe/jev` decision model
+the 1.55.1 table in `probe/` predates. It sits outside `probe/` because
+`scripts/record-probe.mjs` rewrites that whole directory, and the other probe
+tests pin its status, help and version output at 1.55.1. It spends no model
+turn.
 
 ## Scrubbing
 
