@@ -287,6 +287,7 @@ export function GitActionsControl({
       {dialog?.kind === "pull-request" ? (
         <PullRequestDialog
           key={dialog.key}
+          scope={scope}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           actionLabel={

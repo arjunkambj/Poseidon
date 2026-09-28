@@ -5,6 +5,10 @@
  * run commits, the control takes the title and body from the commit message
  * instead and this dialog never opens.
  *
+ * Generate, beside the title (`./generate-button`), writes the title and the
+ * description from the branch's commits and its diff against the base
+ * (`./use-generate-pull-request`).
+ *
  * Mounted fresh (a new `key`) for each opening, like the commit dialog.
  */
 
@@ -21,27 +25,51 @@ import {
 import { Input } from "@poseidon/ui/components/input";
 import { Label } from "@poseidon/ui/components/label";
 import { Textarea } from "@poseidon/ui/components/textarea";
+import type { GitScope } from "@poseidon/client-runtime/gitAtoms";
 
 import { DialogActions } from "@/components/dialog-actions";
 import { DialogBody } from "@/components/dialog-body";
 
-export function PullRequestDialog({
-  open,
-  onOpenChange,
-  actionLabel,
-  initialTitle,
-  branch,
-  onSubmit,
-}: {
+import { GenerateButton, type GenerateControl } from "./generate-button";
+import { useGeneratePullRequest, type PullRequestText } from "./use-generate-pull-request";
+
+interface PullRequestDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly actionLabel: string;
   readonly initialTitle: string;
   readonly branch: string | null;
-  readonly onSubmit: (pullRequest: { readonly title: string; readonly body: string }) => void;
+  readonly onSubmit: (pullRequest: PullRequestText) => void;
+}
+
+export function PullRequestDialog(props: PullRequestDialogProps & { readonly scope: GitScope }) {
+  const [text, setText] = React.useState<PullRequestText>({
+    title: props.initialTitle,
+    body: "",
+  });
+  const generation = useGeneratePullRequest({ scope: props.scope, fill: setText });
+  return (
+    <PullRequestDialogView {...props} text={text} onTextChange={setText} generation={generation} />
+  );
+}
+
+/** The dialog with its title and description held by the caller. */
+export function PullRequestDialogView({
+  open,
+  onOpenChange,
+  actionLabel,
+  branch,
+  onSubmit,
+  text: { title, body },
+  onTextChange,
+  generation,
+}: PullRequestDialogProps & {
+  readonly text: PullRequestText;
+  readonly onTextChange: (text: PullRequestText) => void;
+  readonly generation: GenerateControl;
 }) {
-  const [title, setTitle] = React.useState(initialTitle);
-  const [body, setBody] = React.useState("");
+  const setTitle = (next: string) => onTextChange({ title: next, body });
+  const setBody = (next: string) => onTextChange({ title, body: next });
   const canSubmit = title.trim() !== "";
 
   const submit = () => {
@@ -72,7 +100,10 @@ export function PullRequestDialog({
         >
           <DialogBody className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="pull-request-title">Title</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="pull-request-title">Title</Label>
+                <GenerateButton label="Generate title and description" control={generation} />
+              </div>
               <Input
                 id="pull-request-title"
                 value={title}
