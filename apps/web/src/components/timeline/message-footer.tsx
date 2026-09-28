@@ -1,6 +1,7 @@
 /**
  * The actions under a message. The `user` variant sits right-aligned under
- * the bubble: when it was sent, Copy, and "Restore to here". The `agent`
+ * the bubble: when it was sent, Copy, "Restore to here" and "Fork from here"
+ * (`./fork-from-message`). The `agent`
  * variant sits left-aligned under the final answer of a settled turn: Copy,
  * when the answer began, and how long the turn took.
  *
@@ -36,6 +37,7 @@ import { Button } from "@poseidon/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 
 import { CopyButton } from "@/components/copy-button";
+import { ForkFromMessage } from "@/components/timeline/fork-from-message";
 import { RestoreBeforeTurn } from "@/components/timeline/restore-before-turn";
 import { formatClock, formatDurationMs, formatFullDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -183,6 +185,7 @@ export function MessageFooter(props: MessageFooterProps) {
       {sentAt === undefined ? null : <SentAt ms={sentAt} />}
       <CopyButton text={item.text ?? ""} label="Copy message" tone="muted" />
       <RestoreToHere item={item} steered={props.steered === true} />
+      <ForkFromMessage item={item} />
     </div>
   );
 }

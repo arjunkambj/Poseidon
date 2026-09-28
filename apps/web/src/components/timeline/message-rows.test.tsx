@@ -196,6 +196,49 @@ describe("the user message footer", () => {
   });
 });
 
+describe("the user message footer's fork", () => {
+  const [t1, t2] = [makeTurnId(), makeTurnId()];
+  const thread = (fields: Partial<TimelineThread> = {}): TimelineThread => ({
+    threadId: makeThreadId(),
+    projectId: makeProjectId(),
+    checkpoints: [],
+    restores: [],
+    restoreBlockedReason: null,
+    turnOrder: [t1, t2],
+    workspaceRevision: "0",
+    ...fields,
+  });
+  const inThread = (value: TimelineThread, turnId = t1) =>
+    renderToStaticMarkup(
+      <ClientRuntimeProvider layer={makeFixtureClient().layer}>
+        <TimelineThreadProvider value={value}>
+          <UserMessageRow item={row({ turnId })} />
+        </TimelineThreadProvider>
+      </ClientRuntimeProvider>,
+    );
+  const forkButton = (markup: string) =>
+    /<button[^>]*aria-label="Fork from this message"[^>]*>/.exec(markup)?.[0];
+
+  it("is left out outside a timeline", () => {
+    expect(forkButton(render({ turnId: t1 }))).toBeUndefined();
+  });
+
+  it("is offered on a settled message, even while a later turn runs", () => {
+    const button = forkButton(inThread(thread({ runningTurnId: t2 })));
+    expect(button).toBeDefined();
+    expect(button).not.toContain('aria-disabled="true"');
+  });
+
+  it("waits for the message's own turn to finish, and for the server, saying why", () => {
+    const running = inThread(thread({ runningTurnId: t1 }));
+    expect(forkButton(running)).toContain('aria-disabled="true"');
+    expect(running).toContain("This turn is still running");
+    const offline = inThread(thread({ connected: false }));
+    expect(forkButton(offline)).toContain('aria-disabled="true"');
+    expect(offline).toContain('class="sr-only">Not connected to the server.</span>');
+  });
+});
+
 describe("AssistantMessageRow", () => {
   const answer = (fields: Partial<ItemSnapshot>): ItemSnapshot =>
     row({

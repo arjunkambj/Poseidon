@@ -12,7 +12,9 @@
  *    Open pull request — opens it on its Pull request tab, only while its
  *    branch has one (the row's glyph, `./thread-pr-mark`, for the keyboard).
  * 5. New thread in this project — in the same worktree for a worktree
- *    thread: the server lets several threads share one.
+ *    thread: the server lets several threads share one — and Fork from here,
+ *    which opens the fork dialog for the whole thread
+ *    (`@/components/thread/branch-off-dialog`).
  * 6. Archive or Unarchive, then Delete, each after a separator.
  *
  * `MenuParts` is one menu flavour's parts, so the list is written once.
@@ -49,6 +51,7 @@ import { useRenamingThread } from "@/components/sidebar/thread-rename";
 import { useThreadSeen } from "@/components/sidebar/thread-seen";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
 import { useThreadIsDone } from "@/components/sidebar/use-thread-done";
+import { useRequestBranchOff } from "@/components/thread/use-branch-off";
 import { copyText } from "@/lib/copy-path";
 import { CommandKbd } from "@/lib/shortcuts";
 import { useCreateThread } from "@/lib/use-create-thread";
@@ -63,6 +66,7 @@ import {
   Edit,
   Email,
   GitPullRequest,
+  GitFork,
   Inbox,
   Pin,
   PinOff,
@@ -121,6 +125,7 @@ export function ThreadMenuItems({
   const [, startRename] = useRenamingThread();
   const setDrawerOpen = useSetDrawerOpen();
   const { create, pending } = useCreateThread();
+  const requestBranchOff = useRequestBranchOff();
   const connection = useConnectionState();
   const project = useProjects().find((each) => each.projectId === thread.projectId);
   const pinned = pins.includes(thread.threadId);
@@ -206,6 +211,13 @@ export function ThreadMenuItems({
       >
         <Add variant="bold" />
         New thread in this project
+      </Item>
+      <Item
+        disabled={project === undefined || connection.status !== "connected"}
+        onClick={() => requestBranchOff({ threadId: thread.threadId })}
+      >
+        <GitFork variant="bold" />
+        Fork from here
       </Item>
       <Separator />
       {thread.status === "archived" ? (

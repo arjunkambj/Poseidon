@@ -15,6 +15,7 @@ import { AppShortcuts } from "@/components/Layout/app-shortcuts";
 import { SearchProvider } from "@/components/Layout/search-command";
 import { ShortcutsDialog } from "@/components/keybindings/shortcuts-dialog";
 import { WorktreeForceRemovalHost } from "@/components/sidebar/delete-thread-dialog";
+import { BranchOffHost } from "@/components/thread/branch-off-dialog";
 import { DiffWorkerPoolProvider } from "@/components/timeline/diff-pool";
 import { useAppAtoms } from "@/lib/app-runtime";
 import { ClientRuntimeBridge } from "@/lib/client-runtime";
@@ -153,6 +154,8 @@ function RootComponent() {
                   <Toaster richColors />
                   {/* Beside the toasts whose "Remove anyway" opens it. */}
                   <WorktreeForceRemovalHost />
+                  {/* The fork dialog: it outlives the row or menu that opened it. */}
+                  <BranchOffHost />
                 </DiffWorkerPoolProvider>
               </SearchProvider>
             </KeybindingsProvider>

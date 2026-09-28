@@ -969,7 +969,8 @@ returning focus to the thumbnail.
 Under the bubble, right-aligned, is the message's footer
 (`timeline/message-footer.tsx`): the time it was sent, read from the item's
 UUIDv7 id ("14:05", the full date in the tooltip), a Copy button that copies
-the text exactly as typed, and "Restore to here" (§8). The footer appears
+the text exactly as typed, "Restore to here" (§8), and "Fork from here",
+which opens the fork dialog (§8, "Forking a thread"). The footer appears
 while the pointer is over the row or focus is inside it, and always on a
 coarse pointer such as touch, where there is no hover. Only its opacity
 changes; it always takes its height, so revealing it never reflows a row the
@@ -2703,6 +2704,44 @@ reads "Starting N threads in <project>…", then "Started N threads in
 <project>" naming the models, "Started k of N threads" naming each lane that
 did not start and why, or "Could not start N threads". **Open** goes to the
 first thread that started. The others are beside it in the sidebar.
+
+### Forking a thread
+
+"Fork from here" under a user message, or in a sidebar row's menu, starts a
+new thread from an existing one's conversation. The footer's button forks
+through the end of that message's turn, answers included; the menu's forks
+the whole thread. The button is disabled, with the reason in its tooltip,
+while the message's own turn is still running (its answer is not written
+yet) and while the server is out of reach.
+
+Both open one dialog, mounted above the routes so it outlives the row or
+menu that asked (`apps/web/src/components/thread/branch-off-dialog.tsx`). It
+asks for the title, prefilled "<title> (fork)", and where the fork works:
+**This workspace** — the source's worktree, or the project's folder for a
+local thread — or a **New worktree**, disabled with the reason outside a git
+repository. A new worktree runs the start screen's sequence (§8, "Starting a
+thread in a worktree"): it is cut from the source's branch when the source has
+a worktree, else from the default branch, so uncommitted work is not carried
+over; the setup script's progress shows in the dialog, and a failed script
+offers Start anyway or Discard. Closing the dialog part-way discards the
+worktree. On success the dialog closes and the fork opens with its composer
+focused (`branch-off.ts`, `use-branch-off.ts`).
+
+The fork is `thread.create` with `fork: { threadId, throughItemId }`. It is
+harness-neutral: no session is copied. The server takes the source's settings
+(harness, model, effort, runtime mode; never plan mode), builds a plain
+"User:" / "Assistant:" transcript of the source's messages and plans through
+the chosen turn — tool calls and subagents left out, oldest turns dropped past
+about 60,000 characters — and stores it on `thread.created`. The fork's first
+turn is sent to the harness with that transcript ahead of what the user typed;
+the timeline and message search show only the typed text, and later turns are
+sent as they are. Because the transcript is stored with the fork, renaming or
+deleting the source changes nothing.
+
+A fork names its source: "Forked from <title>" under the greeting while it is
+empty, and a fork icon beside the title in the header, whose tooltip says the
+same. Both link to the source while it exists and are plain text once it is
+gone; the title is the source's when the fork was made.
 
 ### Deleting a worktree thread
 

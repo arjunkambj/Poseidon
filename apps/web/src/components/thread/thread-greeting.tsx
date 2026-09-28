@@ -6,18 +6,23 @@
  *
  * A thread with its own worktree says so underneath, with the branch and the
  * path, because the agent will work there rather than in the project's folder.
+ * A fork names the thread it was forked from (`./forked-from-link`).
  */
 
 import type { ThreadWorktree } from "@poseidon/contracts/git";
-import type { ProjectSummary } from "@poseidon/contracts/orchestration";
+import type { ForkedFrom, ProjectSummary } from "@poseidon/contracts/orchestration";
 import { GitBranch } from "@honeyicons/react";
+
+import { ForkedFromLink } from "@/components/thread/forked-from-link";
 
 export function ThreadGreeting({
   project,
   worktree,
+  forkedFrom,
 }: {
   readonly project: ProjectSummary | undefined;
   readonly worktree?: ThreadWorktree | undefined;
+  readonly forkedFrom?: ForkedFrom | undefined;
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
@@ -47,6 +52,7 @@ export function ThreadGreeting({
           </span>
         </p>
       )}
+      {forkedFrom === undefined ? null : <ForkedFromLink forkedFrom={forkedFrom} />}
     </div>
   );
 }

@@ -438,7 +438,9 @@ rename, pin or unpin, mark unread, mark done or active, a Copy submenu (the work
 branch of a worktree thread, the thread ID), open terminal here (the thread
 with its terminal drawer open), open pull request (only while the branch has
 one), new thread in this project (in the same
-worktree for a worktree thread), then archive or unarchive and delete. An
+worktree for a worktree thread), fork from here (the fork dialog, for the
+whole thread; `apps/web/src/components/thread/branch-off-dialog.tsx`), then
+archive or unarchive and delete. An
 archived row, listed only while it is open, offers the menu alone. The
 selection bar under the tree archives, marks unread, marks done (or active,
 when every picked thread is done) or deletes every picked thread. "Mark unread" lights the dot and the bold title

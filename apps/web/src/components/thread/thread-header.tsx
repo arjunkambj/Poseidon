@@ -41,6 +41,7 @@ import { OpenInControl } from "@/components/open-in/open-in-control";
 import { RunControl } from "@/components/run/run-control";
 import { ThreadHeaderChrome, useThreadHeaderChrome } from "@/components/Layout/window-chrome";
 import { AgentBrowserIndicator } from "@/components/thread/agent-browser-indicator";
+import { ForkedFromIcon } from "@/components/thread/forked-from-link";
 import { HeaderToggles } from "@/components/thread/header-toggles";
 import { cn } from "@/lib/utils";
 import { useProjects } from "@/state/hooks";
@@ -112,6 +113,9 @@ export function ThreadHeader({
         <h1 className="min-w-0 max-w-56 shrink-2 truncate text-sm font-medium text-foreground">
           {snapshot.title}
         </h1>
+        {snapshot.forkedFrom === undefined ? null : (
+          <ForkedFromIcon forkedFrom={snapshot.forkedFrom} />
+        )}
         <BranchPicker snapshot={snapshot} />
       </div>
       <div className="flex-1" />

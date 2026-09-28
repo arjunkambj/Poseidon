@@ -99,7 +99,19 @@ export const useTimelineThreadValue = (snapshot: ThreadDetailSnapshot): Timeline
       restoreBlockedReason: blocked,
       turnOrder: order,
       workspaceRevision,
+      connected,
+      runningTurnId: snapshot.currentTurnId,
     }),
-    [threadId, projectId, checkpoints, restores, blocked, order, workspaceRevision],
+    [
+      threadId,
+      projectId,
+      checkpoints,
+      restores,
+      blocked,
+      order,
+      workspaceRevision,
+      connected,
+      snapshot.currentTurnId,
+    ],
   );
 };

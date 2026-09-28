@@ -109,7 +109,13 @@ const snapshotOf = (result: ThreadDetailResult): ThreadDetailSnapshot | null => 
 /** A fresh thread: the greeting, for the project and worktree the thread works in. */
 function EmptyThread({ snapshot }: { snapshot: ThreadDetailSnapshot }) {
   const project = useProjects().find((entry) => entry.projectId === snapshot.projectId);
-  return <ThreadGreeting project={project} worktree={snapshot.worktree} />;
+  return (
+    <ThreadGreeting
+      project={project}
+      worktree={snapshot.worktree}
+      forkedFrom={snapshot.forkedFrom}
+    />
+  );
 }
 
 function ThreadBody({ result, connected }: { result: ThreadDetailResult; connected: boolean }) {

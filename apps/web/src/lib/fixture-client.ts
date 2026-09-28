@@ -438,6 +438,12 @@ export const makeFixtureClient = (): FixtureClient => {
           events: () => next("thread.settings.updated", settingsPatch(command)),
         };
       }
+      // The fixture holds one thread: forking it is accepted and logged, and
+      // makes nothing a page could open.
+      case "thread.create":
+        return command.fork?.threadId === doc.threadId
+          ? { events: () => {} }
+          : { events: () => {}, reason: "the fixture holds one thread" };
       case "thread.done.mark":
         return { events: () => next("thread.done.marked", {}, command.commandId) };
       case "thread.done.clear":

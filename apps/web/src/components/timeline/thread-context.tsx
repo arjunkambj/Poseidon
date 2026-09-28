@@ -39,6 +39,10 @@ export interface TimelineThread {
    * instead of reading an answer from before files were created or removed.
    */
   readonly workspaceRevision: string;
+  /** Whether the server is reachable; absent reads as connected. */
+  readonly connected?: boolean;
+  /** The turn in flight, whose messages cannot be forked from yet. */
+  readonly runningTurnId?: TurnId | null;
 }
 
 const TimelineThreadContext = React.createContext<TimelineThread | null>(null);
