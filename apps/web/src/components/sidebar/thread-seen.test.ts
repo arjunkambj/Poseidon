@@ -97,6 +97,18 @@ describe("markUnread", () => {
     expect(Object.keys(next).length).toBe(SEEN_LIMIT);
     expect(isUnread(next, { threadId: "fresh", updatedAt: at(0) })).toBe(true);
   });
+
+  it("outlives ordinary stamps when a full map makes room for a new thread", () => {
+    let seen: SeenMap = markUnread({}, "marked");
+    for (let i = 0; i < SEEN_LIMIT - 1; i += 1) {
+      seen = markSeen(seen, `t${i}`, at(i % 60));
+    }
+    for (let i = 0; i < 5; i += 1) {
+      seen = markSeen(seen, `new${i}`, at(59));
+    }
+    expect(Object.keys(seen).length).toBe(SEEN_LIMIT);
+    expect(isUnread(seen, { threadId: "marked", updatedAt: at(0) })).toBe(true);
+  });
 });
 
 describe("restoreSeen", () => {

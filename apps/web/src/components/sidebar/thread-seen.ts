@@ -79,12 +79,13 @@ export const markSeen = (seen: SeenMap, threadId: string, updatedAt: string): Se
   if (keys.length <= SEEN_LIMIT) {
     return next;
   }
-  // Drop the oldest stamps first, but never the one just written: a "mark
-  // unread" stamp (`""`) sorts oldest of all. Older "mark unread" stamps do go
-  // first, which only loses a dot the user asked for.
+  // Drop the oldest stamps first, but never the one just written, and never a
+  // "mark unread" stamp (`""`) before an ordinary one: it sorts oldest of all,
+  // yet it is a mark the user asked for, and only opening the thread clears it.
+  const rank = (key: string) => (next[key] === "" ? "\uffff" : next[key]!);
   const kept = keys
     .filter((key) => key !== threadId)
-    .sort((a, b) => next[b]!.localeCompare(next[a]!))
+    .sort((a, b) => rank(b).localeCompare(rank(a)))
     .slice(0, SEEN_LIMIT - 1);
   return Object.fromEntries([...kept, threadId].map((key) => [key, next[key]!]));
 };
