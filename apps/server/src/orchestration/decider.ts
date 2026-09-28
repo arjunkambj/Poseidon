@@ -24,6 +24,7 @@ import type {
 } from "@poseidon/contracts/orchestration";
 import type { PermissionScope } from "@poseidon/contracts/settings";
 import type { PlannedEvent } from "../persistence/EventStore";
+import { resolveFork } from "./forkSeed";
 import type { ProjectDoc, ThreadDoc } from "./state";
 import { userMessageItem } from "./userMessageItem";
 
@@ -75,6 +76,8 @@ export interface DeciderContext {
   readonly defaultModel: string | null;
   readonly defaultEffort: Effort | null;
   readonly defaultRuntimeMode: RuntimeMode | null;
+  /** The thread a forking `thread.create` names, or `null` when it does not exist. */
+  readonly forkSource?: ThreadDoc | null;
 }
 
 /** Id and clock minting, injected so tests can fix both. */
@@ -232,7 +235,11 @@ export const decide = (
       if (command.worktree !== undefined && !isAbsolute(command.worktree.path)) {
         return rejected(`worktree path ${command.worktree.path} is not absolute`);
       }
-      const patch = command.settings ?? {};
+      const fork = command.fork === undefined ? null : resolveFork(command, ctx.forkSource ?? null);
+      if (typeof fork === "string") {
+        return rejected(fork);
+      }
+      const patch = fork?.patch ?? command.settings ?? {};
       const model = patch.model ?? ctx.defaultModel;
       if (model === null) {
         return rejected(
@@ -248,7 +255,7 @@ export const decide = (
         emit("thread.created", {
           threadId: command.threadId,
           projectId: command.projectId,
-          title: command.title ?? "New thread",
+          title: command.title ?? fork?.title ?? "New thread",
           settings: {
             model,
             runtimeMode: patch.runtimeMode ?? ctx.defaultRuntimeMode ?? DEFAULT_RUNTIME_MODE,
@@ -259,6 +266,7 @@ export const decide = (
               : { connectorInstanceId: patch.connectorInstanceId }),
           },
           ...(command.worktree === undefined ? {} : { worktree: command.worktree }),
+          ...(fork === null ? {} : { fork: fork.fork }),
         }),
       ]);
     }

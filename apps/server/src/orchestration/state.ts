@@ -22,6 +22,7 @@ import type {
   QueuedMessage,
   ThreadActivity,
   ThreadDetailSnapshot,
+  ThreadFork,
   ThreadSession,
   ThreadSettings,
   ThreadStatus,
@@ -35,6 +36,7 @@ import type { ItemKind } from "@poseidon/contracts/enums";
 import type { ApprovalRequest, ItemSnapshot, UserQuestion } from "@poseidon/contracts/runtime";
 import { approvalSubject, planSubject, questionSubject } from "@poseidon/shared/decisionSubject";
 
+import { forkedFromField } from "./forkSeed";
 import { activityStamp, doneSummaryFields, lastActivityOf } from "./threadDone";
 
 export type { ApprovalRequest, ItemSnapshot, QueuedMessage, UserQuestion };
@@ -147,6 +149,8 @@ export interface ThreadDoc {
    */
   readonly doneAt: string | null;
   readonly lastActivityAt?: string;
+  /** The thread this one was forked from; `./forkSeed` reads it, tolerating older documents. */
+  readonly fork?: ThreadFork;
   // Internal bookkeeping, not on the wire.
   readonly approvals: ReadonlyArray<ApprovalRequest>;
   readonly userInputs: ReadonlyArray<PendingUserInput>;
@@ -254,6 +258,7 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
       status: "idle",
       settings: payload.settings as ThreadSettings,
       worktree: (payload.worktree as ThreadWorktree | undefined) ?? null,
+      ...(payload.fork === undefined ? {} : { fork: payload.fork as ThreadFork }),
       snapshotSequence: event.sequence,
       items: [],
       queue: [],
@@ -674,6 +679,7 @@ export const threadSnapshotOf = (doc: ThreadDoc): ThreadDetailSnapshot => ({
   status: doc.status,
   settings: doc.settings,
   ...worktreeField(doc),
+  ...forkedFromField(doc),
   snapshotSequence: doc.snapshotSequence,
   items: doc.items,
   queue: doc.queue,
@@ -767,6 +773,7 @@ export const threadSummaryOf = (doc: ThreadDoc): ThreadSummary => {
       : {}),
     ...worktreeField(doc),
     ...doneSummaryFields(doc),
+    ...forkedFromField(doc),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };

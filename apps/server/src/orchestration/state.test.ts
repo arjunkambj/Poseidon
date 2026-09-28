@@ -1011,3 +1011,38 @@ describe("the thread's done state", () => {
     expect(lastActivityOf(renamed)).toBe(CREATED);
   });
 });
+
+describe("a forked thread", () => {
+  const source = makeThreadId();
+  const fork = { threadId: source, title: "Health check", transcript: "User:\nAdd it." };
+
+  it("names its source on the summary and the snapshot, never the transcript", () => {
+    const doc = foldThread([
+      event("thread.created", {
+        threadId,
+        projectId,
+        title: "Health check (fork)",
+        settings: {
+          model: "fake/model",
+          runtimeMode: "approval-required",
+          interactionMode: "default",
+        },
+        fork,
+      }),
+      turnRequested(),
+    ])!;
+    expect(doc.fork).toEqual(fork);
+    const forkedFrom = { threadId: source, title: "Health check" };
+    expect(threadSummaryOf(doc).forkedFrom).toEqual(forkedFrom);
+    expect(threadSnapshotOf(doc).forkedFrom).toEqual(forkedFrom);
+    expect(JSON.stringify(threadSnapshotOf(doc))).not.toContain("Add it.");
+  });
+
+  it("leaves a thread that is not a fork, or one projected before forks, without one", () => {
+    const doc = foldThread([created()])!;
+    expect(doc).not.toHaveProperty("fork");
+    const stored = JSON.parse(JSON.stringify(doc)) as ThreadDoc;
+    expect(threadSummaryOf(stored)).not.toHaveProperty("forkedFrom");
+    expect(threadSnapshotOf(stored)).not.toHaveProperty("forkedFrom");
+  });
+});

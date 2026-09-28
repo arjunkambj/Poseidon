@@ -47,6 +47,7 @@ import * as Stream from "effect/Stream";
 
 import type { PlannedEvent } from "../persistence/EventStore";
 import { OrchestrationEngine } from "./Engine";
+import { withForkContext } from "./forkSeed";
 import { SessionManager } from "./SessionManager";
 import type { ThreadDoc } from "./state";
 import { userMessageItem } from "./userMessageItem";
@@ -263,12 +264,16 @@ export const ProviderCommandReactor = Layer.effectDiscard(
             const turnId = payload.turnId as TurnId;
             yield* sessions.ensure(doc, threadWorkspaceRoot(doc, project)).pipe(
               Effect.flatMap((handle) =>
-                handle.send(turnId, {
-                  text: payload.text as string,
-                  attachments: (payload.attachments ?? []) as ReadonlyArray<Attachment>,
-                  mentions: (payload.mentions ?? []) as ReadonlyArray<Mention>,
-                  references: (payload.references ?? []) as ReadonlyArray<TurnReference>,
-                }),
+                // A fork's first turn carries its source's transcript.
+                handle.send(
+                  turnId,
+                  withForkContext(doc, turnId, {
+                    text: payload.text as string,
+                    attachments: (payload.attachments ?? []) as ReadonlyArray<Attachment>,
+                    mentions: (payload.mentions ?? []) as ReadonlyArray<Mention>,
+                    references: (payload.references ?? []) as ReadonlyArray<TurnReference>,
+                  }),
+                ),
               ),
               Effect.catch((error) =>
                 failThread(threadId, doc, describeError(error), event.eventId),
@@ -299,8 +304,9 @@ export const ProviderCommandReactor = Layer.effectDiscard(
             const doc = yield* engine.threadDoc(threadId);
             const handle = yield* sessions.handleFor(threadId);
             if (doc !== null && handle !== null && doc.currentTurn !== null) {
+              const { turnId, input } = doc.currentTurn;
               yield* handle
-                .send(doc.currentTurn.turnId, doc.currentTurn.input)
+                .send(turnId, withForkContext(doc, turnId, input))
                 .pipe(Effect.catch((error) => Effect.logWarning("resume resend failed", error)));
             }
             return;

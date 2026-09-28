@@ -281,7 +281,9 @@ export class OrchestrationEngine extends Context.Service<
           // A command that names its model never needs a seed, and asking a
           // chosen instance for its models is not free.
           const model =
-            command.type === "thread.create" && command.settings?.model === undefined
+            command.type === "thread.create" &&
+            command.settings?.model === undefined &&
+            command.fork === undefined
               ? yield* defaultModel(command.settings?.connectorInstanceId)
               : null;
           const defaults =
@@ -300,6 +302,11 @@ export class OrchestrationEngine extends Context.Service<
           const restoring = guardsRestore
             ? (yield* readModels.listThreadDocs).filter((doc) => !doc.deleted && doc.restoring)
             : [];
+          // A fork is decided against its source as the read model has it now.
+          const forkSource =
+            command.type === "thread.create" && command.fork !== undefined
+              ? yield* readModels.getThreadDoc(command.fork.threadId)
+              : null;
           return {
             projectExists: (id) => id === projectId && exists,
             workspaceRootTaken: (root) => roots.includes(root),
@@ -310,6 +317,7 @@ export class OrchestrationEngine extends Context.Service<
             defaultModel: model,
             defaultEffort: defaults.effort,
             defaultRuntimeMode: defaults.runtimeMode,
+            forkSource,
           };
         });
 

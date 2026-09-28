@@ -1473,3 +1473,144 @@ describe("the thread's worktree", () => {
     expect(asked).toEqual([thread]);
   });
 });
+
+describe("forking a thread", () => {
+  const projectId = makeProjectId();
+  const instance = makeConnectorInstanceId();
+  const [t1, t2] = [makeTurnId(), makeTurnId()];
+  const [ask1, answer1, ask2] = [makeItemId(), makeItemId(), makeItemId()];
+  const source = threadDoc({
+    projectId,
+    title: "Health check",
+    settings: {
+      model: "fake/strong",
+      effort: "high",
+      runtimeMode: "full-access",
+      interactionMode: "plan",
+      connectorInstanceId: instance,
+    },
+    items: [
+      { itemId: ask1, kind: "user_message", status: "completed", turnId: t1, text: "Add it." },
+      {
+        itemId: answer1,
+        kind: "assistant_message",
+        status: "completed",
+        turnId: t1,
+        text: "Done.",
+      },
+      { itemId: ask2, kind: "user_message", status: "completed", turnId: t2, text: "Test it." },
+    ],
+  });
+  const fork = (
+    fields: Record<string, unknown> = {},
+    forkSource: ThreadDoc | null = source,
+    through: string | null = ask1,
+  ) =>
+    decide(
+      {
+        ...baseCommand,
+        type: "thread.create",
+        threadId: makeThreadId(),
+        projectId,
+        fork: {
+          threadId: source.threadId,
+          ...(through === null ? {} : { throughItemId: through }),
+        },
+        ...fields,
+      } as Command,
+      { project: null, thread: null },
+      ctx({ forkSource, defaultModel: null }),
+      env,
+    );
+  const rejection = (result: ReturnType<typeof decide>) => (result.accepted ? null : result.reason);
+
+  it("refuses a source that is missing or deleted", () => {
+    expect(rejection(fork({}, null))).toContain("to fork does not exist");
+    expect(rejection(fork({}, { ...source, deleted: true }))).toContain("to fork does not exist");
+  });
+
+  it("refuses a source in another project", () => {
+    expect(rejection(fork({}, { ...source, projectId: makeProjectId() }))).toContain(
+      "belongs to another project",
+    );
+  });
+
+  it("refuses an item that is not one of the source's user messages", () => {
+    expect(rejection(fork({}, source, answer1))).toContain("is not a message of thread");
+    expect(rejection(fork({}, source, makeItemId()))).toContain("is not a message of thread");
+  });
+
+  it("refuses a message of the turn still running", () => {
+    const running = {
+      ...source,
+      status: "running" as const,
+      currentTurn: { turnId: t2, input: { text: "Test it.", attachments: [], mentions: [] } },
+    };
+    expect(rejection(fork({}, running, ask2))).toBe(
+      "cannot fork from a turn that is still running",
+    );
+    // An earlier, settled turn of the same thread still forks.
+    expect(fork({}, running, ask1).accepted).toBe(true);
+  });
+
+  it("titles the fork after its source and starts from the source's settings, out of plan mode", () => {
+    const result = fork();
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    expect(result.events[0]!.payload).toMatchObject({
+      title: "Health check (fork)",
+      settings: {
+        model: "fake/strong",
+        effort: "high",
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        connectorInstanceId: instance,
+      },
+    });
+  });
+
+  it("lets the command's own title and settings win", () => {
+    const result = fork({ title: "Try another way", settings: { model: "fake/quick" } });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    expect(result.events[0]!.payload).toMatchObject({
+      title: "Try another way",
+      settings: { model: "fake/quick", effort: "high", runtimeMode: "full-access" },
+    });
+  });
+
+  it("records the fork with the transcript through the message's turn", () => {
+    const result = fork();
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    expect(result.events[0]!.payload).toMatchObject({
+      fork: {
+        threadId: source.threadId,
+        title: "Health check",
+        throughItemId: ask1,
+        transcript: "User:\nAdd it.\n\nAssistant:\nDone.",
+      },
+    });
+  });
+
+  it("carries the whole thread when no message is named", () => {
+    const result = fork({}, source, null);
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    const payload = result.events[0]!.payload as { fork: Record<string, unknown> };
+    expect(payload.fork).not.toHaveProperty("throughItemId");
+    expect(payload.fork.transcript).toBe("User:\nAdd it.\n\nAssistant:\nDone.\n\nUser:\nTest it.");
+  });
+
+  it("leaves a thread that is not a fork without one", () => {
+    const result = decide(
+      { ...baseCommand, type: "thread.create", threadId: makeThreadId(), projectId } as Command,
+      { project: null, thread: null },
+      ctx(),
+      env,
+    );
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    expect(result.events[0]!.payload).not.toHaveProperty("fork");
+  });
+});

@@ -1280,3 +1280,72 @@ describe("projection determinism", () => {
     }),
   );
 });
+
+describe("forking a thread", () => {
+  it.effect(
+    "sends the fork's first turn with the source's transcript, and shows only what was typed",
+    () =>
+      Effect.gen(function* () {
+        const { fake, instance } = yield* openFake();
+        const forkId = makeThreadId();
+        const forkTurn = (text: string): Command => ({
+          commandId: makeCommandId(),
+          createdAt: NOW,
+          type: "thread.turn.start",
+          threadId: forkId,
+          text,
+          attachments: [],
+          mentions: [],
+          queued: false,
+        });
+        yield* Effect.gen(function* () {
+          const engine = yield* OrchestrationEngine;
+          yield* engine.dispatch(createProject);
+          yield* engine.dispatch(createThread);
+          const sourceDone = yield* awaitEvent(engine, isType("thread.turn.completed"));
+          yield* engine.dispatch(turnStart("hello"));
+          yield* Fiber.join(sourceDone);
+          const asked = (yield* engine.threadDetail(threadId))!.items.find(
+            (item) => item.kind === "user_message",
+          )!;
+
+          const receipt = yield* engine.dispatch({
+            commandId: makeCommandId(),
+            createdAt: NOW,
+            type: "thread.create",
+            threadId: forkId,
+            projectId,
+            fork: { threadId, throughItemId: asked.itemId },
+          });
+          expect(receipt.status).toBe("accepted");
+          const created = yield* engine.threadDetail(forkId);
+          expect(created?.title).toBe("New thread (fork)");
+          expect(created?.forkedFrom).toEqual({ threadId, title: "New thread" });
+
+          for (const text of ["and now?", "one more"]) {
+            const done = yield* awaitEvent(
+              engine,
+              (event) => event.type === "thread.turn.completed" && event.streamId === forkId,
+            );
+            yield* engine.dispatch(forkTurn(text));
+            yield* Fiber.join(done);
+          }
+
+          const rows = (yield* engine.threadDetail(forkId))!.items.filter(
+            (item) => item.kind === "user_message",
+          );
+          expect(rows.map((row) => row.text)).toEqual(["and now?", "one more"]);
+        }).pipe(Effect.provide(stackLayer({ instance })));
+
+        const session = yield* fake.session(forkId);
+        const sent = (yield* session!.calls)
+          .filter((call) => call.method === "send")
+          .map((call) => call.detail.text as string);
+        expect(sent).toHaveLength(2);
+        expect(sent[0]).toContain("User:\nhello\n\nAssistant:\nFake reply to: hello");
+        expect(sent[0]!.endsWith("The user's new message:\n\nand now?")).toBe(true);
+        // Only the first turn carries it; the harness has the context from then on.
+        expect(sent[1]).toBe("one more");
+      }),
+  );
+});

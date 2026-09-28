@@ -1451,8 +1451,10 @@ stream, gathered inside the transaction: whether the project exists, whether a
 workspace root is taken, whether a sibling thread that shares this thread's
 workspace root has a checkpoint restore in flight (the git work covers that
 whole directory, so the exclusion covers every thread working there: all of a
-project's local threads, or all the threads of one worktree), and the settings
-defaults a `thread.create` without them inherits.
+project's local threads, or all the threads of one worktree), the settings
+defaults a `thread.create` without them inherits, and — for a `thread.create`
+that forks — the source thread's document as the read model holds it
+(`forkSource`, `null` when there is none).
 
 `appendThreadEvents` accepts a function of the thread document instead of a
 fixed list. The function runs inside the write transaction on the document as it
@@ -1480,6 +1482,22 @@ each list and its union in lockstep. The value objects the commands, events
 and read models share — `ThreadSettings`, `QueuedMessage`, `ThreadSession` and
 the rest — live in `thread.ts` beside it, and `orchestration.ts` re-exports
 them, so that is still where they are imported from.
+
+`thread.create` may name a thread to fork (`fork: { threadId, throughItemId? }`).
+The decider (`forkSeed.ts`) refuses a source that is missing, deleted or in
+another project, an item that is not one of the source's user messages, and a
+message of the source's running turn. Otherwise the title defaults to
+"<source title> (fork)" and the settings to the source's — its model, effort,
+runtime mode and harness (the bound session's instance first), never plan
+mode — under whatever the command names. `thread.created` then carries a
+`ThreadFork`: the source's id and title, the message, and a plain-text
+transcript of the source's user and assistant messages and plans through the
+end of that message's turn (the whole thread without one), capped near 60,000
+characters by dropping the oldest turns behind an `[earlier turns omitted]`
+line. The transcript lives on the event, so a fork keeps it when the source
+is renamed or deleted; the summary and snapshot carry only
+`forkedFrom: { threadId, title }`. `fork` and `forkedFrom` are optional, so
+events and documents written before forks decode unchanged.
 
 `thread.turn.steer` is how a message reaches a turn that is already running.
 The decider decides it from the thread's bound session: `thread.session.bound`
@@ -1551,10 +1569,14 @@ more watcher of its own, subscribed the same eager way inside its layer: on
 `thread.deleted` or `thread.archived` it kills that thread's shells.
 
 **`ProviderCommandReactor`.** `turn.requested` → ensure the session and
-`handle.send(turnId, turn)`. `turn.steered` → `handle.steer(turnId, turn)`,
-then the user's `user_message` row on that turn once it is delivered; when
-there is no live handle or the steer fails, no row is written there and the
-message is dispatched
+`handle.send(turnId, turn)`. A fork's first turn — no user message of another
+turn exists yet — is sent with the source's transcript and a line saying what
+it is ahead of the user's text (`withForkContext`), here and in the mid-turn
+resend after `session.bound`; the user's row keeps only what they typed, so
+the transcript never reaches the timeline or message search. `turn.steered` →
+`handle.steer(turnId, turn)`, then the user's `user_message` row on that turn
+once it is delivered; when there is no live handle or the steer fails, no row
+is written there and the message is dispatched
 again as `thread.turn.start { queued: true }` — a new turn if the running one
 has ended, the queue if not — and put on the queue directly if even that is
 refused, so it is never lost. `turn.interrupted` → `handle.interrupt(turnId)`,
