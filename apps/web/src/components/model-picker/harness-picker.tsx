@@ -58,6 +58,7 @@ function Flyout({
   index,
   state,
   shown,
+  checked,
   dispatch,
   onChoose,
 }: {
@@ -66,6 +67,7 @@ function Flyout({
   readonly index: number;
   readonly state: PickerState;
   readonly shown: boolean;
+  readonly checked: ReadonlySet<string> | undefined;
   readonly dispatch: (event: PickerEvent) => void;
   readonly onChoose: (pick: ModelPick) => void;
 }) {
@@ -95,6 +97,7 @@ function Flyout({
             id={modelOptionId(base, index, model)}
             item={item}
             active={shown && state.zone === "models" && state.model === model}
+            {...(checked === undefined ? {} : { checked: checked.has(item.value) })}
             onHover={() => dispatch({ type: "hoverModel", index: model })}
             onChoose={() => onChoose(item.pick)}
           />
@@ -110,6 +113,8 @@ export interface HarnessPickerViewProps {
   readonly state: PickerState;
   /** The current model when no harness lists it, shown verbatim above the lists. */
   readonly unlisted?: string;
+  /** Compare mode: the ticked picks (`encodeModelPick`); every row gets a checkbox. */
+  readonly checked?: ReadonlySet<string>;
   readonly inputRef?: React.Ref<HTMLInputElement>;
   readonly dispatch: (event: PickerEvent) => void;
   readonly onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
@@ -122,6 +127,7 @@ export function HarnessPickerView({
   rail,
   state,
   unlisted,
+  checked,
   inputRef,
   dispatch,
   onKeyDown,
@@ -173,6 +179,7 @@ export function HarnessPickerView({
                 index={index}
                 state={state}
                 shown={!searching && state.harness === index}
+                checked={checked}
                 dispatch={dispatch}
                 onChoose={onChoose}
               />
@@ -195,6 +202,9 @@ export function HarnessPickerView({
                       id={resultOptionId(base, index)}
                       item={result.item}
                       harness={rail[result.harnessIndex]}
+                      {...(checked === undefined
+                        ? {}
+                        : { checked: checked.has(result.item.value) })}
                       active={state.result === index}
                       onHover={() => dispatch({ type: "hoverModel", index })}
                       onChoose={() => onChoose(result.item.pick)}
@@ -210,11 +220,17 @@ export function HarnessPickerView({
   );
 }
 
-/** The popup body with its state, opened on the current harness and model. */
+/**
+ * The popup body with its state, opened on the current harness and model.
+ * Given `checked` it is the compare mode's: rows draw checkboxes, and Enter or
+ * a click hands the model to `onPick` as a tick or untick — the caller keeps
+ * the popup open.
+ */
 export function HarnessPicker({
   rail,
   current,
   unlisted,
+  checked,
   inputRef,
   onPick,
   onClose,
@@ -222,16 +238,18 @@ export function HarnessPicker({
   readonly rail: ReadonlyArray<HarnessRailEntry>;
   readonly current: ModelPick | null;
   readonly unlisted?: string;
+  readonly checked?: ReadonlySet<string>;
   readonly inputRef?: React.Ref<HTMLInputElement>;
   readonly onPick: (pick: ModelPick) => void;
   readonly onClose: () => void;
 }) {
   const base = React.useId();
   const [state, setState] = React.useState(() => initialPickerState(rail, current));
+  const options = { multi: checked !== undefined };
 
   const apply = (step: PickerStep) => {
     setState(step.state);
-    if (step.effect?.type === "pick") {
+    if (step.effect?.type === "pick" || step.effect?.type === "toggle") {
       onPick(step.effect.pick);
     } else if (step.effect?.type === "close") {
       onClose();
@@ -252,13 +270,14 @@ export function HarnessPicker({
       rail={rail}
       state={state}
       {...(unlisted === undefined ? {} : { unlisted })}
+      {...(checked === undefined ? {} : { checked })}
       {...(inputRef === undefined ? {} : { inputRef })}
-      dispatch={(event) => apply(pickerReduce(state, event, rail))}
+      dispatch={(event) => apply(pickerReduce(state, event, rail, options))}
       onKeyDown={(event) => {
         if (event.nativeEvent.isComposing) {
           return;
         }
-        const step = keyStep(event.key, state, rail);
+        const step = keyStep(event.key, state, rail, options);
         if (step === null) {
           return;
         }

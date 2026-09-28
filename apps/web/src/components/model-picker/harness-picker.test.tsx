@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { HarnessPickerView } from "@/components/model-picker/harness-picker";
 import { activeOptionId, keyStep } from "@/components/model-picker/picker-keys";
 import { harnessRail, initialPickerState, type PickerState } from "@/lib/harness-picker";
-import { modelPickerGroups, type ModelPick } from "@/lib/model-picks";
+import { encodeModelPick, modelPickerGroups, type ModelPick } from "@/lib/model-picks";
 
 const id = (value: string) => value as ConnectorInstanceId;
 
@@ -48,7 +48,12 @@ const current: ModelPick = { connectorInstanceId: id("a"), model: "deep-2" };
 const railFor = (locked = false) =>
   harnessRail(modelPickerGroups(catalog, { instanceId: id("a"), locked }), current);
 
-const render = (rail: ReturnType<typeof railFor>, state: PickerState, unlisted?: string) =>
+const render = (
+  rail: ReturnType<typeof railFor>,
+  state: PickerState,
+  unlisted?: string,
+  checked?: ReadonlySet<string>,
+) =>
   renderToStaticMarkup(
     <TooltipProvider>
       <HarnessPickerView
@@ -56,6 +61,7 @@ const render = (rail: ReturnType<typeof railFor>, state: PickerState, unlisted?:
         rail={rail}
         state={state}
         {...(unlisted === undefined ? {} : { unlisted })}
+        {...(checked === undefined ? {} : { checked })}
         dispatch={() => {}}
         onKeyDown={() => {}}
         onChoose={() => {}}
@@ -119,6 +125,23 @@ describe("HarnessPickerView", () => {
     expect(results[0]).toContain('aria-label="Swift One, Comet Cloud"');
     expect(results[1]).toContain('aria-label="Swift Mini, Cedar Cove"');
     expect(tagsWith(html, 'role="combobox"')[0]).toContain('aria-activedescendant="p-result-0"');
+  });
+
+  it("draws a checkbox on every row in compare mode, flyouts and search results alike", () => {
+    const ticked = new Set([
+      encodeModelPick({ connectorInstanceId: id("b"), model: "swift-mini" }),
+    ]);
+    const start = initialPickerState(railFor(), current);
+    const flyouts = render(railFor(), start, undefined, ticked);
+    expect(tagsWith(flyouts, 'role="checkbox"')).toHaveLength(3);
+    const options = tagsWith(flyouts, 'id="p-model-');
+    expect(options.map((tag) => tag.includes('aria-checked="true"'))).toEqual([false, false, true]);
+
+    const results = render(railFor(), { ...start, query: "swift" }, undefined, ticked);
+    const rows = tagsWith(results, 'id="p-result-');
+    expect(rows.map((tag) => tag.includes('aria-checked="true"'))).toEqual([false, true]);
+    // Without `checked` no row is a checkbox.
+    expect(render(railFor(), start)).not.toContain('role="checkbox"');
   });
 
   it("says so when nothing matches", () => {

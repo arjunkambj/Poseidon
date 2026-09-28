@@ -1,49 +1,40 @@
 /**
  * "Compare models" on New task, drawn: the toggle beside the workspace picker,
- * and — while the mode is on — a checkbox menu that takes the model picker's
- * place (`ThreadSettingsControls`' `modelPicker`), opened by Choose model as
- * the picker would be. The state is
- * `use-compare-models.ts`; the fan-out it sends is `fan-out-plan.ts`.
+ * and — while the mode is on — the harness picker in compare mode taking the
+ * model picker's place (`ThreadSettingsControls`' `modelPicker`), opened by
+ * Choose model as the picker would be. The state is `use-compare-models.ts`;
+ * the fan-out it sends is `fan-out-plan.ts`.
  *
- * The menu lists every enabled instance's models under the instance's name
- * and its connector's icon, as the model picker does, filtered the same way
- * by Settings → Models (a ticked pick always stays listed). Up to `COMPARE_MAX` can
- * be ticked: past that the unticked ones are disabled, and ticking leaves the
- * menu open. Why a send is refused (fewer than two picks) sits beside the
- * toggle, in the row under the composer, where there is room for it.
+ * It is the model picker's popup — the column of harness avatars, each with a
+ * flyout of its models, and the search across them — with a checkbox on every
+ * model, filtered the same way by Settings → Models (a ticked pick always
+ * stays listed). Up to `COMPARE_MAX` can be ticked: past that the unticked
+ * ones are disabled, and ticking, by Enter or a click, leaves the popup open.
+ * Why a send is refused (fewer than two picks) sits beside the toggle, in the
+ * row under the composer, where there is room for it.
  *
  * With the mode on the workspace picker is disabled — every model starts in a
  * worktree of its own — and on a project that is not a git repository the
  * toggle itself is disabled, with the reason as its tooltip.
  */
 
-import { useAtomValue } from "@effect/atom-react";
 import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
-import type { ConnectorDescriptor } from "@poseidon/contracts/connectors";
 import { Button } from "@poseidon/ui/components/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@poseidon/ui/components/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@poseidon/ui/components/popover";
+import { Separator } from "@poseidon/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
-import { AsyncResult } from "effect/unstable/reactivity";
-import type * as React from "react";
+import * as React from "react";
 
 import type { ModelPickerOpen } from "@/components/header-controls";
+import { HarnessPicker } from "@/components/model-picker/harness-picker";
 import { COMPARE_MAX } from "@/components/thread/fan-out-plan";
 import type { CompareModels } from "@/components/thread/use-compare-models";
 import {
   WorkspaceModePicker,
   type WorkspaceChoice,
 } from "@/components/thread/workspace-mode-picker";
-import { useClientRuntime } from "@/lib/client-runtime";
-import { connectorIconFor } from "@/lib/connector-icon";
-import { encodeModelPick, type ModelPick } from "@/lib/model-picks";
+import { harnessRail, type HarnessRailEntry } from "@/lib/harness-picker";
+import { encodeModelPick, modelPickerGroups, type ModelPick } from "@/lib/model-picks";
 import { visibleCatalog } from "@/lib/model-visibility";
 import { useModelPickerPrefs } from "@/lib/use-model-picker-prefs";
 import { ChevronDown, Columns } from "@honeyicons/react";
@@ -80,47 +71,65 @@ export const compareMenuGroups = (
   }));
 };
 
-/** The menu's body, without the popup: it renders inside any open menu. */
-export function CompareModelsGroups({
+/**
+ * The harness picker's rail for compare mode, with `compareMenuGroups`' state
+ * on it: a model past the cap is disabled, and `checked` holds the ticked
+ * picks (`encodeModelPick`). No harness is locked and none is current.
+ */
+export const compareRail = (
+  catalog: ReadonlyArray<ConnectorModels>,
+  picks: ReadonlyArray<ModelPick>,
+): {
+  readonly rail: ReadonlyArray<HarnessRailEntry>;
+  readonly checked: ReadonlySet<string>;
+} => {
+  const rows = new Map(
+    compareMenuGroups(catalog, picks)
+      .flatMap((group) => group.items)
+      .map((item) => [encodeModelPick(item.pick), item] as const),
+  );
+  const rail = harnessRail(
+    modelPickerGroups(catalog, { instanceId: null, locked: false }),
+    null,
+  ).map((entry) => ({
+    ...entry,
+    items: entry.items.map((item) => ({
+      ...item,
+      disabled: rows.get(item.value)?.disabled ?? item.disabled,
+    })),
+  }));
+  const checked = new Set([...rows].flatMap(([value, item]) => (item.checked ? [value] : [])));
+  return { rail, checked };
+};
+
+/** The popup's body, without the popup: the harness picker with checkboxes, then the cap. */
+export function CompareModelsBody({
   catalog,
-  descriptors,
   picks,
+  inputRef,
   onToggle,
+  onClose,
 }: {
+  /** What the pickers list — already filtered by Settings → Models. */
   readonly catalog: ReadonlyArray<ConnectorModels>;
-  readonly descriptors: ReadonlyArray<ConnectorDescriptor>;
   readonly picks: ReadonlyArray<ModelPick>;
+  readonly inputRef?: React.Ref<HTMLInputElement>;
   readonly onToggle: (pick: ModelPick) => void;
+  readonly onClose: () => void;
 }) {
+  const { rail, checked } = compareRail(catalog, picks);
   return (
     <>
-      {compareMenuGroups(catalog, picks).map((group) => {
-        const Icon = connectorIconFor(
-          descriptors.find((entry) => entry.kind === group.connector.kind)?.metadata.iconKey,
-        );
-        return (
-          <DropdownMenuGroup key={group.connector.connectorInstanceId}>
-            <DropdownMenuLabel>
-              <span className="flex min-w-0 items-center gap-1.5">
-                <Icon variant="bold" className="size-3.5 shrink-0" />
-                <span className="truncate">{group.connector.displayName}</span>
-              </span>
-            </DropdownMenuLabel>
-            {group.items.map((item) => (
-              <DropdownMenuCheckboxItem
-                key={encodeModelPick(item.pick)}
-                checked={item.checked}
-                disabled={item.disabled}
-                onCheckedChange={() => onToggle(item.pick)}
-              >
-                <span className="min-w-0 truncate">{item.label}</span>
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuGroup>
-        );
-      })}
-      <DropdownMenuSeparator />
-      <p className="px-1.5 py-1 text-xs text-muted-foreground">Up to {COMPARE_MAX} models</p>
+      <HarnessPicker
+        rail={rail}
+        current={picks[0] ?? null}
+        checked={checked}
+        {...(inputRef === undefined ? {} : { inputRef })}
+        onPick={onToggle}
+        onClose={onClose}
+      />
+      <Separator />
+      <p className="px-2 text-xs text-muted-foreground">Up to {COMPARE_MAX} models</p>
     </>
   );
 }
@@ -135,37 +144,36 @@ export function CompareModelsPicker({
   readonly compare: CompareModels;
   readonly catalog: ReadonlyArray<ConnectorModels>;
 } & ModelPickerOpen) {
-  const { connectorDescriptorsAtom } = useClientRuntime();
-  const descriptorsResult = useAtomValue(connectorDescriptorsAtom);
-  const descriptors = AsyncResult.isSuccess(descriptorsResult) ? descriptorsResult.value : [];
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const count = compare.picks.length;
   // Only what Settings → Models leaves on, and every pick already ticked.
   const visible = visibleCatalog(catalog, useModelPickerPrefs(), compare.picks);
 
   return (
-    <DropdownMenu open={open} onOpenChange={onOpenChange}>
-      <DropdownMenuTrigger
+    <Popover open={open} onOpenChange={(next) => onOpenChange(next)}>
+      <PopoverTrigger
         render={<Button type="button" variant="ghost" size="sm" className="min-w-0 shrink-0" />}
       >
         <Columns variant="bold" data-icon="inline-start" />
         Compare · {count} {count === 1 ? "model" : "models"}
         <ChevronDown variant="bold" data-icon="inline-end" className="text-muted-foreground" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top" className="w-auto max-w-80 min-w-56">
-        <CompareModelsGroups
+      </PopoverTrigger>
+      <PopoverContent align="start" side="top" className="w-auto" initialFocus={inputRef}>
+        <CompareModelsBody
           catalog={visible}
-          descriptors={descriptors}
           picks={compare.picks}
+          inputRef={inputRef}
           onToggle={compare.toggle}
+          onClose={() => onOpenChange(false)}
         />
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   );
 }
 
 /**
- * What stands in for the model picker: the checkbox menu while the mode is
- * on, taking the picker's open state, else nothing.
+ * What stands in for the model picker: the compare-mode harness picker while
+ * the mode is on, taking the picker's open state, else nothing.
  */
 export const comparePicker = (
   compare: CompareModels,

@@ -1,22 +1,25 @@
 import type { ConnectorModels } from "@poseidon/client-runtime/connectorAtoms";
 import type { ModelOption } from "@poseidon/contracts/connectors";
 import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
-import { DropdownMenu } from "@poseidon/ui/components/dropdown-menu";
 import { TooltipProvider } from "@poseidon/ui/components/tooltip";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { HarnessPicker } from "@/components/model-picker/harness-picker";
+import { keyStep } from "@/components/model-picker/picker-keys";
 import {
   compareMenuGroups,
-  CompareModelsGroups,
+  CompareModelsBody,
   CompareModelsPicker,
+  compareRail,
   CompareModelsToggle,
   comparePicker,
 } from "@/components/thread/compare-models-picker";
 import { compareRefusal } from "@/components/thread/fan-out-plan";
 import type { CompareModels } from "@/components/thread/use-compare-models";
-import type { ModelPick } from "@/lib/model-picks";
+import { initialPickerState } from "@/lib/harness-picker";
+import { encodeModelPick, type ModelPick } from "@/lib/model-picks";
 
 const id = (value: string) => value as ConnectorInstanceId;
 
@@ -59,24 +62,19 @@ const toggle = (compare: Pick<CompareModels, "enabled" | "setEnabled" | "unavail
     </TooltipProvider>,
   );
 
-const groups = (picks: ReadonlyArray<ModelPick>, onToggle: (pick: ModelPick) => void = () => {}) =>
+const body = (picks: ReadonlyArray<ModelPick>) =>
   renderToStaticMarkup(
-    <DropdownMenu open>
-      <CompareModelsGroups catalog={catalog} descriptors={[]} picks={picks} onToggle={onToggle} />
-    </DropdownMenu>,
+    <TooltipProvider>
+      <CompareModelsBody catalog={catalog} picks={picks} onToggle={() => {}} onClose={() => {}} />
+    </TooltipProvider>,
   );
 
-/** Every element in a rendered tree, props first, children after. */
-const elements = (node: React.ReactNode): ReadonlyArray<React.ReactElement> => {
-  if (Array.isArray(node)) {
-    return node.flatMap(elements);
-  }
-  if (!React.isValidElement(node)) {
-    return [];
-  }
-  const props = node.props as { readonly children?: React.ReactNode };
-  return [node, ...elements(props.children)];
-};
+/** The rendered checkboxes' `aria-checked` and `data-disabled`, in order. */
+const checkboxes = (markup: string) =>
+  [...markup.matchAll(/<(?:span|button)[^>]*role="checkbox"[^>]*>/g)].map(([tag]) => ({
+    checked: tag.includes('aria-checked="true"'),
+    disabled: tag.includes("data-disabled"),
+  }));
 
 describe("CompareModelsToggle", () => {
   it("is disabled on a project that is not a git repository, and says why", () => {
@@ -113,34 +111,66 @@ describe("compareMenuGroups", () => {
   });
 });
 
-describe("CompareModelsGroups", () => {
-  it("renders a checkbox per model under each instance's name, with the limit", () => {
-    const markup = groups([pick("a", "m2")]);
-    expect(markup.match(/role="menuitemcheckbox"/g)).toHaveLength(5);
-    expect(markup.match(/aria-checked="true"/g)).toHaveLength(1);
-    expect(markup).toContain("Instance a");
-    expect(markup).toContain("Instance b");
+describe("compareRail", () => {
+  it("puts every model on the harness rail, ticked by the picks, with nothing locked", () => {
+    const { rail, checked } = compareRail(catalog, [pick("b", "m1")]);
+    expect(rail.map((entry) => entry.instanceId)).toEqual(["a", "b"]);
+    expect(rail.some((entry) => entry.locked || entry.current)).toBe(false);
+    expect([...checked]).toEqual([encodeModelPick(pick("b", "m1"))]);
+    expect(rail.flatMap((entry) => entry.items).every((item) => !item.disabled)).toBe(true);
+  });
+
+  it("disables only the unticked models once four are picked", () => {
+    const { rail, checked } = compareRail(catalog, fourPicks);
+    expect(checked.size).toBe(4);
+    const disabled = rail.flatMap((entry) => entry.items).filter((item) => item.disabled);
+    expect(disabled.map((item) => item.pick)).toEqual([pick("b", "m4")]);
+  });
+});
+
+describe("CompareModelsBody", () => {
+  it("draws the harness avatars and a checkbox on every model in their flyouts, with the limit", () => {
+    const markup = body([pick("a", "m2")]);
+    expect(markup).toContain('aria-label="Harnesses"');
+    expect(markup).toContain('aria-label="Instance a models"');
+    expect(markup).toContain('aria-label="Instance b models"');
+    const boxes = checkboxes(markup);
+    expect(boxes).toHaveLength(5);
+    expect(boxes.map((box) => box.checked)).toEqual([false, true, false, false, false]);
+    expect(boxes.some((box) => box.disabled)).toBe(false);
+    expect(markup.match(/role="option"[^>]*aria-checked="true"/g)).toHaveLength(1);
     expect(markup).toContain("Up to 4 models");
-    expect(markup).not.toContain('aria-disabled="true"');
   });
 
   it("disables the fifth checkbox while four are picked", () => {
-    const markup = groups(fourPicks);
-    expect(markup.match(/aria-checked="true"/g)).toHaveLength(4);
-    expect(markup.match(/aria-disabled="true"/g)).toHaveLength(1);
+    const boxes = checkboxes(body(fourPicks));
+    expect(boxes.filter((box) => box.checked)).toHaveLength(4);
+    expect(boxes.map((box) => box.disabled)).toEqual([false, false, false, false, true]);
   });
 
-  it("hands back the pick of the checkbox that was toggled", () => {
+  it("hands a tick to the toggle and keeps the picker open", () => {
     const onToggle = vi.fn<(pick: ModelPick) => void>();
-    const tree = CompareModelsGroups({ catalog, descriptors: [], picks: [], onToggle });
-    const checkboxes = elements(tree).filter(
-      (element) =>
-        typeof (element.props as { onCheckedChange?: unknown }).onCheckedChange === "function",
-    );
-    expect(checkboxes).toHaveLength(5);
-    const bM1 = checkboxes[3]?.props as { onCheckedChange: (checked: boolean) => void };
-    bM1.onCheckedChange(true);
+    const drawn = CompareModelsBody({ catalog, picks: [], onToggle, onClose: () => {} });
+    const picker = (drawn.props as { children: ReadonlyArray<React.ReactElement> }).children[0];
+    expect(picker?.type).toBe(HarnessPicker);
+    const props = picker?.props as React.ComponentProps<typeof HarnessPicker>;
+    expect(props.checked).toBeDefined();
+    props.onPick(pick("b", "m1"));
     expect(onToggle).toHaveBeenCalledExactlyOnceWith(pick("b", "m1"));
+
+    // Enter on a flyout row ticks it: the step toggles and never closes.
+    const { rail } = compareRail(catalog, []);
+    const start = initialPickerState(rail, pick("b", "m1"));
+    const step = keyStep("Enter", start, rail, { multi: true });
+    expect(step?.effect).toEqual({ type: "toggle", pick: pick("b", "m1") });
+  });
+
+  it("will not tick a model past the cap from the keyboard", () => {
+    const { rail } = compareRail(catalog, fourPicks);
+    const onM4 = initialPickerState(rail, pick("b", "m4"));
+    const step = keyStep("Enter", onM4, rail, { multi: true });
+    expect(step?.effect).toBeUndefined();
+    expect(step?.handled).toBe(true);
   });
 });
 
@@ -159,7 +189,7 @@ describe("comparePicker", () => {
     expect(comparePicker({ ...off, enabled: true }, catalog)).toBeDefined();
   });
 
-  it("hands the model picker's open state to the checkbox menu, so Choose model opens it", () => {
+  it("hands the model picker's open state to the compare picker, so Choose model opens it", () => {
     const on: CompareModels = {
       enabled: true,
       setEnabled: () => {},

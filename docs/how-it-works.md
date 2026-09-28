@@ -2742,11 +2742,13 @@ draft, unless the user has begun another one there.
 The button with the columns icon beside the workspace picker turns on
 **Compare models** (`use-compare-models.ts`, drawn by
 `compare-models-picker.tsx`). It is React state on the start composer, not
-remembered. While it is on, a checkbox menu takes the model picker's place,
-grouped by connector instance like the picker, starting with the model the
-composer showed ticked; Choose model (`Mod+Shift+M`) opens it as it would the
-picker. It holds up to 4 models (`COMPARE_MAX`); once four are
-ticked the rest are disabled. The workspace picker is disabled, since every
+remembered. While it is on, the harness picker in compare mode takes the
+model picker's place: the same avatar column, flyouts and search, filtered the
+same way by Settings → Models (a ticked model always stays listed), with a
+checkbox on every model, starting with the model the composer showed ticked.
+Enter or a click ticks or unticks a model and leaves the picker open; Choose
+model (`Mod+Shift+M`) opens it as it would the picker. It holds up to 4 models
+(`COMPARE_MAX`); once four are ticked the rest are disabled. The workspace picker is disabled, since every
 model gets a new worktree of its own whatever it says; the base branch it
 holds still applies. On a project that is not a git repository the toggle is
 disabled and its tooltip says why, and with fewer than two models ticked Send

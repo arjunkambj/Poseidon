@@ -7,6 +7,7 @@
  */
 
 import { Button } from "@poseidon/ui/components/button";
+import { Checkbox } from "@poseidon/ui/components/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 import { cn } from "@poseidon/ui/lib/utils";
 import type * as React from "react";
@@ -94,13 +95,16 @@ export function HarnessRailColumn({
 
 /**
  * One model: its label, its effort ladder in muted text, and a check when it
- * is the current pick. In search results the harness's monogram leads it.
+ * is the current pick. In search results the harness's monogram leads it. In
+ * compare mode (`checked` given) a checkbox leads it instead of the check: the
+ * row is what a click lands on, so the checkbox only shows the state.
  */
 export function PickerRow({
   id,
   item,
   active,
   harness,
+  checked,
   onHover,
   onChoose,
 }: {
@@ -109,6 +113,8 @@ export function PickerRow({
   readonly active: boolean;
   /** The harness the row is under, shown only in search results. */
   readonly harness?: HarnessRailEntry;
+  /** Compare mode: whether the model is ticked. */
+  readonly checked?: boolean;
   readonly onHover: () => void;
   readonly onChoose: () => void;
 }) {
@@ -118,6 +124,7 @@ export function PickerRow({
       id={id}
       aria-selected={active}
       aria-disabled={item.disabled || undefined}
+      aria-checked={checked}
       aria-label={harness === undefined ? undefined : `${item.label}, ${harness.label}`}
       data-current={item.current || undefined}
       title={item.description}
@@ -130,6 +137,9 @@ export function PickerRow({
       onMouseEnter={onHover}
       onClick={item.disabled ? undefined : onChoose}
     >
+      {checked === undefined ? null : (
+        <Checkbox checked={checked} disabled={item.disabled} tabIndex={-1} aria-hidden />
+      )}
       {harness === undefined ? null : <HarnessAvatar monogram={harness.monogram} />}
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {item.efforts === undefined ? null : (
