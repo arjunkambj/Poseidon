@@ -142,7 +142,8 @@ the way it loads any of its own plugins. Poseidon adds the plugin's MCP
 servers itself, as `plugin-<plugin>-<server>`, so both harnesses read them the
 same way ([claude-code-connector.md](claude-code-connector.md)).
 
-**Command Code** gets one `--skill <dir>` per plugin skills folder, at the end
+**Command Code** gets one `--skill <dir>` per plugin skills folder (a single
+skill folder named by the manifest counts as one), at the end
 of the argv, and each plugin MCP server registered for the project as
 `poseidon-plugin-<plugin>-<server>`, reference-counted per project and removed
 when the last session using it ends. Command Code has no plugin loader, so

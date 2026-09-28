@@ -151,7 +151,13 @@ describe("readPlugin", () => {
     expect(listed.error).toBeUndefined();
     expect(listed.contents.skills.map((entry) => entry.name)).toEqual(["base", "more", "single"]);
     expect(listed.contents.commands).toBe(2);
-    expect(session?.skillsDirs).toEqual([join(root, "skills"), join(root, "extra-skills")]);
+    // A single skill folder is a skills directory too, so a harness that only
+    // takes directories still loads it.
+    expect(session?.skillsDirs).toEqual([
+      join(root, "skills"),
+      join(root, "extra-skills"),
+      join(root, "single"),
+    ]);
     expect(session?.mcpServers).toEqual([
       { name: "svc", transport: "http", url: `${root}/sock`, headers: {} },
     ]);

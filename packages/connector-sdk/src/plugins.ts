@@ -43,8 +43,8 @@ export interface SessionPluginSkill {
  * One enabled plugin, ready for a session. `root` is its absolute directory;
  * `builtin` is true for a plugin that ships with the app. `skillsDirs` are the
  * absolute directories that hold its skills (each a directory of
- * `<name>/SKILL.md` folders), for a harness that takes a skills directory
- * rather than one skill at a time.
+ * `<name>/SKILL.md` folders, or one skill folder a manifest named), for a
+ * harness that takes a skills directory rather than one skill at a time.
  */
 export interface SessionPlugin {
   readonly name: string;

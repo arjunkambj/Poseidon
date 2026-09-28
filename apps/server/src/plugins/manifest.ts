@@ -185,10 +185,18 @@ const readSkill = async (dir: string, into: SkillsRead) => {
   });
 };
 
-/** A skill folder itself, or a folder of skill folders. */
+/**
+ * A skill folder itself, or a folder of skill folders. Either one is a
+ * skills directory: a harness that takes directories (Command Code's
+ * `--skill`) accepts a single skill folder as readily as a folder of them.
+ */
 const scanSkills = async (path: string, into: SkillsRead) => {
   if (await isFile(NodePath.join(path, "SKILL.md"))) {
+    const before = into.skills.length;
     await readSkill(path, into);
+    if (into.skills.length > before && !into.skillsDirs.includes(path)) {
+      into.skillsDirs.push(path);
+    }
     return;
   }
   let found = false;
