@@ -163,6 +163,12 @@ export function HeaderControls({
   );
 }
 
+/** The model picker's open state, handed to whatever is drawn in its place. */
+export interface ModelPickerOpen {
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+}
+
 export function ThreadSettingsControls({
   settings,
   catalog,
@@ -193,8 +199,11 @@ export function ThreadSettingsControls({
   readonly context?: ContextWindowUsage | null;
   /** "Compact now" in the context meter; only when the bound session can. */
   readonly compact?: ContextCompact;
-  /** Drawn in place of the model picker (New task's "Compare models"). */
-  readonly modelPicker?: React.ReactNode;
+  /**
+   * Drawn in place of the model picker (New task's "Compare models"), with
+   * the picker's open state, so Choose model opens it instead.
+   */
+  readonly modelPicker?: (control: ModelPickerOpen) => React.ReactNode;
   readonly onChange: (patch: ThreadSettingsPatch) => void;
 }) {
   const currentModel =
@@ -228,6 +237,14 @@ export function ThreadSettingsControls({
   const [modeOpen, setModeOpen] = React.useState(false);
   const [modelOpen, setModelOpen] = React.useState(false);
   const [effortOpen, setEffortOpen] = React.useState(false);
+  // The open state belongs to whichever picker is drawn: switching between
+  // the model picker and a stand-in starts the new one closed.
+  const standIn = modelPicker !== undefined;
+  const [drawnStandIn, setDrawnStandIn] = React.useState(standIn);
+  if (drawnStandIn !== standIn) {
+    setDrawnStandIn(standIn);
+    setModelOpen(false);
+  }
 
   return (
     <TooltipProvider>
@@ -240,7 +257,9 @@ export function ThreadSettingsControls({
         efforts={currentModel?.efforts}
         effortLocked={effortSwitch === "restart"}
         onChange={onChange}
-        onOpenModel={() => setModelOpen(settings.model !== undefined && modelSwitch !== "restart")}
+        onOpenModel={() =>
+          setModelOpen(standIn || (settings.model !== undefined && modelSwitch !== "restart"))
+        }
         onOpenEffort={() => setEffortOpen(effortSwitch !== "restart")}
       />
       <div className="contents">
@@ -283,24 +302,25 @@ export function ThreadSettingsControls({
         ) : null}
         <div className="order-1 flex min-w-0 @max-xl/toolbar:order-3 @max-xl/toolbar:basis-full">
           <div className="flex max-w-full min-w-0 items-center gap-1">
-            {modelPicker ??
-              (settings.model ? (
-                <ModelPicker
-                  catalog={catalog}
-                  instanceId={connectorInstanceId}
-                  model={settings.model}
-                  locked={locked}
-                  title={
-                    modelSwitch === "per-turn" || modelSwitch === "next-turn"
-                      ? NEXT_TURN_HINT
-                      : "Model"
-                  }
-                  disabledReason={modelSwitch === "restart" ? RESTART_TOOLTIP : undefined}
-                  open={modelOpen}
-                  onOpenChange={setModelOpen}
-                  onPick={(pick) => onChange(modelPickPatch(pick, locked))}
-                />
-              ) : null)}
+            {modelPicker !== undefined ? (
+              modelPicker({ open: modelOpen, onOpenChange: setModelOpen })
+            ) : settings.model ? (
+              <ModelPicker
+                catalog={catalog}
+                instanceId={connectorInstanceId}
+                model={settings.model}
+                locked={locked}
+                title={
+                  modelSwitch === "per-turn" || modelSwitch === "next-turn"
+                    ? NEXT_TURN_HINT
+                    : "Model"
+                }
+                disabledReason={modelSwitch === "restart" ? RESTART_TOOLTIP : undefined}
+                open={modelOpen}
+                onOpenChange={setModelOpen}
+                onPick={(pick) => onChange(modelPickPatch(pick, locked))}
+              />
+            ) : null}
             <HeaderSelect
               className="shrink-0"
               icon={Lightning}

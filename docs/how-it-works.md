@@ -2306,7 +2306,8 @@ The button with the columns icon beside the workspace picker turns on
 `compare-models-picker.tsx`). It is React state on the start composer, not
 remembered. While it is on, a checkbox menu takes the model picker's place,
 grouped by connector instance like the picker, starting with the model the
-composer showed ticked. It holds up to 4 models (`COMPARE_MAX`); once four are
+composer showed ticked; Choose model (`Mod+Shift+M`) opens it as it would the
+picker. It holds up to 4 models (`COMPARE_MAX`); once four are
 ticked the rest are disabled. The workspace picker is disabled, since every
 model gets a new worktree of its own whatever it says; the base branch it
 holds still applies. On a project that is not a git repository the toggle is

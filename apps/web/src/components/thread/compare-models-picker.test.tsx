@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   compareMenuGroups,
   CompareModelsGroups,
+  CompareModelsPicker,
   CompareModelsToggle,
   comparePicker,
 } from "@/components/thread/compare-models-picker";
@@ -156,5 +157,23 @@ describe("comparePicker", () => {
     };
     expect(comparePicker(off, catalog)).toBeUndefined();
     expect(comparePicker({ ...off, enabled: true }, catalog)).toBeDefined();
+  });
+
+  it("hands the model picker's open state to the checkbox menu, so Choose model opens it", () => {
+    const on: CompareModels = {
+      enabled: true,
+      setEnabled: () => {},
+      picks: [],
+      toggle: () => {},
+      refusal: null,
+      unavailable: null,
+      plan: () => [],
+    };
+    const onOpenChange = vi.fn();
+    const drawn = comparePicker(on, catalog)?.({ open: true, onOpenChange });
+    expect(React.isValidElement(drawn)).toBe(true);
+    const element = drawn as React.ReactElement<Record<string, unknown>>;
+    expect(element.type).toBe(CompareModelsPicker);
+    expect(element.props).toMatchObject({ open: true, onOpenChange });
   });
 });

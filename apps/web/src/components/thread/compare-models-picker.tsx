@@ -1,7 +1,8 @@
 /**
  * "Compare models" on New task, drawn: the toggle beside the workspace picker,
  * and — while the mode is on — a checkbox menu that takes the model picker's
- * place (`ThreadSettingsControls`' `modelPicker`). The state is
+ * place (`ThreadSettingsControls`' `modelPicker`), opened by Choose model as
+ * the picker would be. The state is
  * `use-compare-models.ts`; the fan-out it sends is `fan-out-plan.ts`.
  *
  * The menu lists every enabled instance's models under the instance's name
@@ -32,6 +33,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components
 import { AsyncResult } from "effect/unstable/reactivity";
 import type * as React from "react";
 
+import type { ModelPickerOpen } from "@/components/header-controls";
 import { COMPARE_MAX } from "@/components/thread/fan-out-plan";
 import type { CompareModels } from "@/components/thread/use-compare-models";
 import {
@@ -121,20 +123,22 @@ export function CompareModelsGroups({
 }
 
 /** Stands in for the model picker while the mode is on. */
-function CompareModelsPicker({
+export function CompareModelsPicker({
   compare,
   catalog,
+  open,
+  onOpenChange,
 }: {
   readonly compare: CompareModels;
   readonly catalog: ReadonlyArray<ConnectorModels>;
-}) {
+} & ModelPickerOpen) {
   const { connectorDescriptorsAtom } = useClientRuntime();
   const descriptorsResult = useAtomValue(connectorDescriptorsAtom);
   const descriptors = AsyncResult.isSuccess(descriptorsResult) ? descriptorsResult.value : [];
   const count = compare.picks.length;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={<Button type="button" variant="ghost" size="sm" className="min-w-0 shrink-0" />}
       >
@@ -154,12 +158,17 @@ function CompareModelsPicker({
   );
 }
 
-/** What stands in for the model picker: the checkbox menu while the mode is on, else nothing. */
+/**
+ * What stands in for the model picker: the checkbox menu while the mode is
+ * on, taking the picker's open state, else nothing.
+ */
 export const comparePicker = (
   compare: CompareModels,
   catalog: ReadonlyArray<ConnectorModels>,
-): React.ReactNode =>
-  compare.enabled ? <CompareModelsPicker compare={compare} catalog={catalog} /> : undefined;
+): ((control: ModelPickerOpen) => React.ReactNode) | undefined =>
+  compare.enabled
+    ? (control) => <CompareModelsPicker compare={compare} catalog={catalog} {...control} />
+    : undefined;
 
 /** The Compare models switch; disabled, with the reason, where it cannot run. */
 export function CompareModelsToggle({
