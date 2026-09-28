@@ -130,3 +130,16 @@ export const forkBlockedReason = ({
   }
   return null;
 };
+
+/**
+ * Why the whole thread cannot be forked now, or `null`, as short as a menu
+ * item's hint: a running turn's answer is not written yet, so the server
+ * refuses the fork until it settles.
+ */
+export const threadForkBlockedReason = ({
+  connected,
+  running,
+}: {
+  readonly connected: boolean;
+  readonly running: boolean;
+}): string | null => (!connected ? "Offline" : running ? "Still running" : null);

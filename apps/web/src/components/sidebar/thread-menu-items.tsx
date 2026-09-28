@@ -14,7 +14,8 @@
  * 5. New thread in this project — in the same worktree for a worktree
  *    thread: the server lets several threads share one — and Fork from here,
  *    which opens the fork dialog for the whole thread
- *    (`@/components/thread/branch-off-dialog`).
+ *    (`@/components/thread/branch-off-dialog`); disabled, with a short
+ *    reason, while the thread runs or the server is out of reach.
  * 6. Archive or Unarchive, then Delete, each after a separator.
  *
  * `MenuParts` is one menu flavour's parts, so the list is written once.
@@ -51,6 +52,7 @@ import { useRenamingThread } from "@/components/sidebar/thread-rename";
 import { useThreadSeen } from "@/components/sidebar/thread-seen";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
 import { useThreadIsDone } from "@/components/sidebar/use-thread-done";
+import { threadForkBlockedReason } from "@/components/thread/branch-off";
 import { useRequestBranchOff } from "@/components/thread/use-branch-off";
 import { copyText } from "@/lib/copy-path";
 import { CommandKbd } from "@/lib/shortcuts";
@@ -73,6 +75,11 @@ import {
   Terminal,
   Trash,
 } from "@honeyicons/react";
+
+/** Why a disabled item is disabled, at the item's end where a shortcut would sit. */
+function MenuHint({ children }: { readonly children: string }) {
+  return <span className="ml-auto text-xs text-muted-foreground">{children}</span>;
+}
 
 /** The item parts of one menu flavour, so both menus share one item list. */
 export type MenuParts = {
@@ -134,6 +141,10 @@ export function ThreadMenuItems({
   const done = useThreadIsDone()(thread);
   // `""` is the stamp "Mark unread" leaves until the thread is opened again.
   const markedUnread = seen[thread.threadId] === "";
+  const forkBlocked = threadForkBlockedReason({
+    connected: connection.status === "connected",
+    running: thread.status === "running",
+  });
   const base = () => threadCommandBase(thread.threadId);
   const keys = (command: string) =>
     active ? (
@@ -213,11 +224,12 @@ export function ThreadMenuItems({
         New thread in this project
       </Item>
       <Item
-        disabled={project === undefined || connection.status !== "connected"}
+        disabled={project === undefined || forkBlocked !== null}
         onClick={() => requestBranchOff({ threadId: thread.threadId })}
       >
         <GitFork variant="bold" />
         Fork from here
+        {forkBlocked === null ? null : <MenuHint>{forkBlocked}</MenuHint>}
       </Item>
       <Separator />
       {thread.status === "archived" ? (

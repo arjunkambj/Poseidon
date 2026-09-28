@@ -7,6 +7,7 @@ import {
   branchOffCreateFields,
   branchOffHere,
   forkBlockedReason,
+  threadForkBlockedReason,
   forkTitle,
   inNewWorktree,
   type BranchOffActions,
@@ -109,6 +110,12 @@ describe("the fork's title and when a message can be forked from", () => {
     expect(forkBlockedReason({ connected: false, runningTurnId: null, turnId: settled })).toBe(
       "Not connected to the server.",
     );
+  });
+
+  it("blocks the whole thread while it runs or the server is out of reach", () => {
+    expect(threadForkBlockedReason({ connected: true, running: false })).toBeNull();
+    expect(threadForkBlockedReason({ connected: true, running: true })).toBe("Still running");
+    expect(threadForkBlockedReason({ connected: false, running: false })).toBe("Offline");
   });
 });
 

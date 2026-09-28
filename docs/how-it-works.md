@@ -2767,7 +2767,8 @@ new thread from an existing one's conversation. The footer's button forks
 through the end of that message's turn, answers included; the menu's forks
 the whole thread. The button is disabled, with the reason in its tooltip,
 while the message's own turn is still running (its answer is not written
-yet) and while the server is out of reach.
+yet) and while the server is out of reach; the menu item likewise, with a
+short reason at its end, while any turn of the thread runs.
 
 Both open one dialog, mounted above the routes so it outlives the row or
 menu that asked (`apps/web/src/components/thread/branch-off-dialog.tsx`). It
