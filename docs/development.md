@@ -374,7 +374,14 @@ setup-script tests prove their process group is killed with a pid file, not
 with a sleep. `gh` is an ordinary tool behind the injectable `GhRunner`
 (`apps/server/src/git/GitHubCli.ts`): the tests swap in a fake whose output
 copies the real CLI's wording, including the not-installed and
-not-authenticated paths, and no test ever opens a real pull request.
+not-authenticated paths, and no test ever opens a real pull request
+(`fakeGh.ts` holds the fake and gh's captured answers). The pull request reads
+(`PullRequests.ts`, `pullRequestJson.ts`) are tested against JSON captured
+read-only from gh 2.92.0 on public repositories — `gh pr view --json`,
+`gh pr list --json` and the review-thread `gh api graphql` read — trimmed,
+with human logins replaced, under `apps/server/src/git/fixtures/`. Capture new
+ones the same way, read-only, and never run a pull request write against a
+real repository.
 
 **Connectors run a shared suite.** `runConnectorConformance`
 (`packages/connector-sdk/src/conformance.ts`) drives a real definition through

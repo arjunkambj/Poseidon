@@ -2218,6 +2218,28 @@ gh is installed and signed in, so the header can say why before a click. Tests
 swap in a fake runner that answers with gh's own wording; nothing talks to
 GitHub.
 
+Reading a pull request lives in `apps/server/src/git/PullRequests.ts`, with
+the decoding of gh's JSON in `pullRequestJson.ts`. `git.pullRequest.view`
+reads the workspace's current branch with git — a detached HEAD or a folder
+that is not a repository answers `none` without asking gh — then asks
+`pullRequestBlocker`, whose reason comes back as `unavailable` rather than an
+error. It runs `gh pr view --json …` in the workspace without naming the
+branch: gh then follows the branch's upstream to a fork, which a bare branch
+name never matches, and finds merged and closed pull requests too. gh's
+`no pull requests found for branch` is `none`; any other refusal is
+`conflict` in gh's words. One `gh api graphql` read (`-F number=` sends an
+Int) adds the review threads and the repository's allowed merge methods; if it
+fails the view keeps everything else, with no threads and every method
+allowed. Checks are bucketed into fail, pending, pass and skipped, a re-run
+replaces the run before it, and failing ones come first; an Actions check
+carries its job id from its URL. `git.pullRequest.marks` runs one
+`gh pr list --state all --limit 50` in the project's folder and matches each
+live thread's branch — its worktree's, or the project folder's for a local
+thread, each root read once — skipping the default branch and detached HEADs,
+preferring an open pull request, then the newest. When no thread is on a
+branch of its own, gh is not asked at all; gh missing, signed out or failing
+is an empty list.
+
 The thread header's git actions control
 (`apps/web/src/components/git/git-actions-control.tsx`) is the client of these
 — and the New task page's header carries it too, before any thread exists,
