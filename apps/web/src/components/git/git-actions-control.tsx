@@ -43,7 +43,9 @@
  *
  * It answers `git.commit` (Mod+Alt+C) as the menu's Commit and `git.push`
  * (Mod+Alt+P) as its Commit & push, which pushes straight away when there is
- * nothing to commit; an action that cannot run does nothing from its key.
+ * nothing to commit; an action that cannot run does nothing from its key, and
+ * neither does either key while a dialog is up (`gitStartOf`), so it cannot
+ * reopen the commit dialog over the message and files the user picked.
  */
 
 import { RegistryContext, useAtomRefresh, useAtomValue } from "@effect/atom-react";
@@ -62,6 +64,7 @@ import { nextGitStep, nextGitStepHint, type GitNextStepView } from "@/lib/git-ne
 import { useKeybindingCommand } from "@/lib/shortcuts";
 import {
   availableActions,
+  gitStartOf,
   planGitAction,
   planWithoutCommit,
   pullRequestFromMessage,
@@ -211,18 +214,18 @@ export function GitActionsControl({
   };
 
   start = (action: GitAction) => {
-    if (ready === null || reasonFor(action) !== null) {
+    if (ready === null) {
       return;
     }
-    const steps = planGitAction(action, ready.status, ready.branches);
-    if (steps.includes("commit")) {
+    const started = gitStartOf({ action, ...ready, reason: reasonFor(action), dialogOpen });
+    if (started === "commit-dialog") {
       refreshStatus();
       setDialog({ kind: "commit", action, key: (dialog?.key ?? 0) + 1 });
       setDialogOpen(true);
-    } else if (steps.includes("pr")) {
+    } else if (started === "pull-request-dialog") {
       setDialog({ kind: "pull-request", action, key: (dialog?.key ?? 0) + 1 });
       setDialogOpen(true);
-    } else {
+    } else if (started === "run") {
       void execute(action, {});
     }
   };

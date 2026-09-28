@@ -6,6 +6,7 @@ import {
   availableActions,
   commitMessageDraft,
   commitSelection,
+  gitStartOf,
   planGitAction,
   planWithoutCommit,
   pullRequestFromMessage,
@@ -160,6 +161,32 @@ describe("availableActions", () => {
     const onMain = available({ ...CHANGED, branch: "main" }, { ...BRANCHES, current: "main" });
     expect(onMain["commit-push"]).toBeNull();
     expect(onMain["commit-push-pr"]).toMatch(/default branch, main/);
+  });
+});
+
+describe("gitStartOf", () => {
+  const start = (
+    action: "commit" | "commit-push" | "commit-push-pr",
+    status: GitStatus,
+    dialogOpen = false,
+    reason: string | null = null,
+  ) => gitStartOf({ action, status, branches: BRANCHES, reason, dialogOpen });
+
+  it("opens the commit dialog for anything that commits, else the pull request dialog or a run", () => {
+    expect(start("commit-push", CHANGED)).toBe("commit-dialog");
+    expect(start("commit-push-pr", { ...CLEAN, ...TRACKED })).toBe("pull-request-dialog");
+    expect(start("commit-push", { ...CLEAN, ...TRACKED, ahead: 2 })).toBe("run");
+  });
+
+  it("does nothing while the action cannot run", () => {
+    expect(start("commit", CHANGED, false, TURN_RUNNING_REASON)).toBe("ignore");
+  });
+
+  // Mod+Alt+C or Mod+Alt+P pressed in the commit dialog's message box must not
+  // reopen it: a fresh dialog would drop the typed message and the unticked files.
+  it("does nothing while a dialog is already up", () => {
+    expect(start("commit", CHANGED, true)).toBe("ignore");
+    expect(start("commit-push", CHANGED, true)).toBe("ignore");
   });
 });
 

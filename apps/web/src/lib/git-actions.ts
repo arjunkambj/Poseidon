@@ -139,6 +139,33 @@ export const availableActions = (input: {
   };
 };
 
+/**
+ * What starting `action` does — from the button, the menu or its key: nothing
+ * while it cannot run or while a dialog is already up (a key pressed in the
+ * commit dialog must not reopen it over what the user typed), else the
+ * commit dialog when it commits, the pull request dialog when it only opens a
+ * pull request, or the remaining steps straight away.
+ */
+export type GitStart = "ignore" | "commit-dialog" | "pull-request-dialog" | "run";
+
+export const gitStartOf = (input: {
+  readonly action: GitAction;
+  readonly status: GitStatus;
+  readonly branches: GitBranchList;
+  readonly reason: string | null;
+  readonly dialogOpen: boolean;
+}): GitStart => {
+  if (input.dialogOpen || input.reason !== null) {
+    return "ignore";
+  }
+  const steps = planGitAction(input.action, input.status, input.branches);
+  return steps.includes("commit")
+    ? "commit-dialog"
+    : steps.includes("pr")
+      ? "pull-request-dialog"
+      : "run";
+};
+
 /** One step's answer, with the server's message when it refused. */
 export type StepOutcome<A> =
   | { readonly ok: true; readonly value: A }
