@@ -12,11 +12,15 @@
  *    `label`, `command` (the catalog command that opens it) and `available`
  *    (which dock scopes offer it);
  * 3. add its renderer to `DOCK_TAB_PANES` in `./dock-tab-panes`;
- * 4. if it has a chord, add the command to the command catalog — it must pass
+ * 4. if `available("project")` is true, add its id to `projectDockTabs` in
+ *    `./dock-toggle` too — the New task route checks `?pane=` against that
+ *    list, and a test holds it equal to the project's kinds here;
+ * 5. if it has a chord, add the command to the command catalog — it must pass
  *    the default-collision test — and answer it where the other dock keys are.
  *
  * Both maps are `Record<DockTab, …>`, so the compiler refuses a kind that is
- * missing from either. The strip, launcher and dock need no change.
+ * missing from either; `projectDockTabs` is a plain list, kept in step by the
+ * registry test instead. The strip, launcher and dock need no change.
  */
 
 import { type HoneyIcon, Folder, GitDiff, Globe } from "@honeyicons/react";

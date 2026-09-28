@@ -1740,12 +1740,17 @@ change to the strip, the launcher or the "+" menu:
    docks offer it (`"thread"`, `"project"`; Browser is a thread's only);
 3. add its renderer to `DOCK_TAB_PANES` in `dock-tab-panes.tsx`, a function of
    the dock's context (scope, snapshot, project, connection);
-4. if it has a chord, add the command to the command catalog (it must pass the
+4. if `available("project")` is true, add its id to `projectDockTabs` in
+   `dock-toggle.ts` as well: the New task route validates `?pane=` against
+   that list (`isProjectDockPane`), and a registry test holds it equal to the
+   project's kinds;
+5. if it has a chord, add the command to the command catalog (it must pass the
    default-collision test, and then shows in the palette and cheatsheet) and
    answer it where the other dock keys are answered.
 
 Both maps are typed `Record<DockTab, …>`, so the compiler refuses a kind
-missing from either.
+missing from either; `projectDockTabs` is a plain list, which the registry
+test keeps in step instead.
 
 ### The Changes pane
 
