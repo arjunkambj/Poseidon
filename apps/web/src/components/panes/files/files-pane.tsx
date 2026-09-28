@@ -14,6 +14,8 @@
  * (`threadId` null), and the tab searches the project's folder.
  *
  * Opening a row swaps the list for `FilePreview`; the breadcrumb goes back.
+ * A right-click on a row opens the file menu (`@/components/open-in`): open
+ * it here or in an editor, reveal it, copy its path, add it to the chat.
  * Everything else — loading, an empty query, no matches, a server error, an
  * offline socket — has its own honest block rather than an empty list.
  *
@@ -38,11 +40,18 @@ import type { FileQuery } from "@poseidon/client-runtime/fileAtoms";
 import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import type { FileSearchResult } from "@poseidon/contracts/rpc";
 import { Button } from "@poseidon/ui/components/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from "@poseidon/ui/components/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 import { Input } from "@poseidon/ui/components/input";
 import * as React from "react";
 import { AsyncResult } from "effect/unstable/reactivity";
 
+import { FileContextItems } from "@/components/open-in/file-menu-items";
+import { FileMenuScopeProvider } from "@/components/open-in/file-menu-scope";
 import { cn } from "@/lib/utils";
 import { workspaceKey } from "@/lib/workspace-key";
 
@@ -70,34 +79,51 @@ type Query = FileQuery<ReadonlyArray<FileSearchResult>> | "broken" | null;
 
 function ResultRow({
   result,
+  chatId,
   onOpen,
 }: {
   readonly result: FileSearchResult;
+  /** The thread "Add to chat" writes into; `null` on the New task page. */
+  readonly chatId: string | null;
   readonly onOpen: (result: FileSearchResult) => void;
 }) {
   const { directory, name } = splitPath(result.path);
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(result)}
-      title={result.path}
-      className={cn(
-        "flex w-full items-center gap-1.5 rounded-lg px-1.5 py-1 text-left outline-none",
-        "hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring",
-      )}
-    >
-      {result.isDirectory ? (
-        <Folder variant="bold" className="size-3.5 shrink-0 text-foreground/85" />
-      ) : (
-        <FileIcon variant="bold" className="size-3.5 shrink-0 text-foreground/85" />
-      )}
-      <span className="min-w-0 truncate type-body text-foreground">{name}</span>
-      {directory === "" ? null : (
-        <span className="ml-auto min-w-0 shrink truncate type-micro text-muted-foreground">
-          {directory}
-        </span>
-      )}
-    </button>
+    <ContextMenu>
+      <ContextMenuTrigger
+        render={
+          <button
+            type="button"
+            onClick={() => onOpen(result)}
+            title={result.path}
+            className={cn(
+              "flex w-full items-center gap-1.5 rounded-lg px-1.5 py-1 text-left outline-none",
+              "hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring",
+            )}
+          />
+        }
+      >
+        {result.isDirectory ? (
+          <Folder variant="bold" className="size-3.5 shrink-0 text-foreground/85" />
+        ) : (
+          <FileIcon variant="bold" className="size-3.5 shrink-0 text-foreground/85" />
+        )}
+        <span className="min-w-0 truncate type-body text-foreground">{name}</span>
+        {directory === "" ? null : (
+          <span className="ml-auto min-w-0 shrink truncate type-micro text-muted-foreground">
+            {directory}
+          </span>
+        )}
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-52">
+        <FileContextItems
+          path={result.path}
+          isDirectory={result.isDirectory}
+          chatId={chatId}
+          onOpenInFiles={() => onOpen(result)}
+        />
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -109,6 +135,7 @@ function SearchBody({
   onRetry,
   connected,
   scroll,
+  chatId,
 }: {
   readonly query: string;
   readonly results: Query;
@@ -119,6 +146,7 @@ function SearchBody({
   readonly connected: boolean;
   /** Keeps the list's scroll across a trip to another tab (`useKeptScroll`). */
   readonly scroll: ReturnType<typeof useKeptScroll>;
+  readonly chatId: string | null;
 }) {
   if (!connected) {
     return <PaneMessage icon={WifiOff} text="Not connected to the server." />;
@@ -160,7 +188,7 @@ function SearchBody({
     >
       <div className="flex flex-col gap-px px-1.5 py-1">
         {results.value.map((result) => (
-          <ResultRow key={result.path} result={result} onOpen={onOpen} />
+          <ResultRow key={result.path} result={result} chatId={chatId} onOpen={onOpen} />
         ))}
       </div>
       {results.value.length >= SEARCH_LIMIT ? (
@@ -288,15 +316,18 @@ export function FilesPane({
         />
       </div>
       {preview === null ? (
-        <SearchBody
-          query={trimmed}
-          results={shown}
-          stale={results === null && shown !== null}
-          onOpen={open}
-          onRetry={refresh}
-          connected={connected}
-          scroll={keptList}
-        />
+        <FileMenuScopeProvider projectId={projectId} threadId={threadId}>
+          <SearchBody
+            query={trimmed}
+            results={shown}
+            stale={results === null && shown !== null}
+            onOpen={open}
+            onRetry={refresh}
+            connected={connected}
+            scroll={keptList}
+            chatId={threadId}
+          />
+        </FileMenuScopeProvider>
       ) : (
         <>
           <div className="flex h-8 shrink-0 items-center gap-1 px-1.5">

@@ -12,7 +12,9 @@
  * The files, the review over them (which are open, which are viewed) and
  * "Add to chat" are the thread pane's own (`ComparisonBody`), keyed by the
  * page's draft (`draftId`) — so "Add to chat" writes into the draft on screen,
- * and the review carries over to the thread that draft becomes.
+ * and the review carries over to the thread that draft becomes. The draft is
+ * not a thread, so the file menus get none: they open paths in the project's
+ * folder and offer no "Open in Files tab".
  *
  * Refresh rereads every git read of the project, so the header's git actions
  * follow along; they refetch on a return to the window too, which reaches this
@@ -25,6 +27,7 @@ import type { ProjectId, ThreadId } from "@poseidon/contracts/ids";
 import type { GitStatus } from "@poseidon/contracts/rpc";
 import * as React from "react";
 
+import { FileMenuScopeProvider } from "@/components/open-in/file-menu-scope";
 import { useKeybindingFlag } from "@/lib/shortcuts";
 import { useConnectionState } from "@/state/hooks";
 import { useChangesScope, useDiffStyle } from "@/state/ui";
@@ -97,18 +100,21 @@ export function ProjectChangesPane({
         onRefresh={refresh}
       />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <ComparisonBody
-          threadId={draftId}
-          range={range}
-          branchList={branchList}
-          mergeBase={mergeBase}
-          status={status}
-          connected={connected}
-          diffStyle={diffStyle}
-          reveal={null}
-          onRevealed={noReveal}
-          onRetry={refresh}
-        />
+        {/* No thread yet: the file menus open paths in the project's folder. */}
+        <FileMenuScopeProvider projectId={projectId} threadId={null}>
+          <ComparisonBody
+            threadId={draftId}
+            range={range}
+            branchList={branchList}
+            mergeBase={mergeBase}
+            status={status}
+            connected={connected}
+            diffStyle={diffStyle}
+            reveal={null}
+            onRevealed={noReveal}
+            onRetry={refresh}
+          />
+        </FileMenuScopeProvider>
       </div>
     </div>
   );

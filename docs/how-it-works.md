@@ -1727,8 +1727,10 @@ marked viewed, is the thread's own and kept per path in memory
 not open everything again. The checkbox on a row marks the file viewed and
 closes it; the mark is stored against a cheap hash of the patch it was made
 on, so a file the agent edits again reads as unviewed with nothing to reset.
-Each row's "…" menu copies the path or appends a reference to it to the
-thread's composer draft; nothing in the pane reverts a file. While the pane is
+Each row's "…" menu, and a right-click anywhere on the row, holds the file
+menu (see "Opening the workspace in an editor" below): open the file in the
+Files tab or an editor, reveal it, copy its path, or append a reference to it
+to the thread's composer draft; nothing in the pane reverts a file. While the pane is
 shown it publishes `changesOpen`, and `Alt+ArrowDown` / `Alt+ArrowUp`
 (`changes.nextFile` / `previousFile`) open the next or previous file and
 scroll its header to the top.
@@ -2017,6 +2019,25 @@ workspace gone, the app uninstalled since the listing — is a toast with the
 server's message. With no editor detected (only the file manager, or nothing
 while offline) the control is not shown, and `Mod+O` and its palette entry go
 with it.
+
+The same apps open single files from the file menus: the Changes "…" menu, a
+right-click on a Changes file header, and a right-click on a row of the dock's
+Files tab all list one set of entries (`fileMenuEntries` in
+`open-in/file-menu.ts`, rendered as dropdown or context-menu items by
+`open-in/file-menu-items.tsx`). In order: "Open in Files tab" (in the Files tab
+itself, "Open"), "Open in <favourite>", "Open with" and a submenu of every
+detected editor, "Reveal in Finder" (the file manager's own label; on Linux it
+opens the folder holding the file), "Copy path" (absolute) and "Copy relative
+path", then "Add to chat". What cannot work there is left out rather than
+disabled: no editor detected drops the two "Open" entries, a directory in the
+Files tab has no preview entry, the New task page has no thread to answer
+"Open in Files tab", and "Copy path" waits for the project list, which names
+the root. The pane that lists the files provides the workspace
+(`FileMenuScopeProvider` in `open-in/file-menu-scope.tsx`): the thread and its
+worktree, or on the New task page the project alone — its Changes list is keyed
+by the page's draft, which is not a thread, so opens go to the project's folder.
+Picking an editor from a file menu opens the file without changing the
+favourite.
 
 ### Worktrees
 

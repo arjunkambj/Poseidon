@@ -1,50 +1,23 @@
 /**
- * The "…" menu at the end of a Changes file row: copy the file's path, or add
- * a reference to it to the thread's draft, the way the browser pane brings a
- * picked element into the conversation (`appendToDraft`). The draft is where
- * it lands — the person reads and sends it; nothing reaches the agent on its
- * own. Nothing here touches the worktree: reverting a file is not an action
- * the pane offers.
+ * The "…" menu at the end of a Changes file row: the file's menu
+ * (`@/components/open-in/file-menu-items`) — open it in the Files tab or an
+ * editor, reveal it in the file manager, copy its path, or add a reference to
+ * it to the thread's draft. The same entries open on a right-click of the row.
+ * Nothing here touches the worktree: reverting a file is not an action the
+ * pane offers.
  */
 
 import { Button } from "@poseidon/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@poseidon/ui/components/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
-import { toast } from "sonner";
 
-import { appendToDraft } from "@/components/panes/browser/page-to-chat";
-import { copyPath } from "@/lib/copy-path";
-import { useKeybindingDispatch } from "@/lib/shortcuts";
-import { useComposerDraft } from "@/state/ui";
+import { FileDropdownItems } from "@/components/open-in/file-menu-items";
 
-import { Chat, Copy, MoreHorizontal } from "@honeyicons/react";
-
-/**
- * "Add to chat", split out so the draft is only subscribed to while the menu
- * is open — its content unmounts on close. A row that read the draft itself
- * would re-render every file in the list on each keystroke in the composer.
- */
-function AddToChatItem({ threadId, path }: { threadId: string; path: string }) {
-  const draft = useComposerDraft(threadId);
-  const dispatch = useKeybindingDispatch();
-  return (
-    <DropdownMenuItem
-      onClick={() => {
-        draft.setText((current) => appendToDraft(current, `\`${path}\``));
-        toast.success("Added the file to your message");
-        dispatch("composer.focus");
-      }}
-    >
-      <Chat variant="bold" />
-      Add to chat
-    </DropdownMenuItem>
-  );
-}
+import { MoreHorizontal } from "@honeyicons/react";
 
 export function FileActions({ threadId, path }: { threadId: string; path: string }) {
   return (
@@ -61,12 +34,8 @@ export function FileActions({ threadId, path }: { threadId: string; path: string
         </TooltipTrigger>
         <TooltipContent>More</TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem onClick={() => void copyPath(path)}>
-          <Copy variant="bold" />
-          Copy path
-        </DropdownMenuItem>
-        <AddToChatItem threadId={threadId} path={path} />
+      <DropdownMenuContent align="end" className="w-52">
+        <FileDropdownItems path={path} chatId={threadId} />
       </DropdownMenuContent>
     </DropdownMenu>
   );

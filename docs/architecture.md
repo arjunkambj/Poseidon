@@ -914,7 +914,10 @@ Everything a client needs that is not React.
   editor from the stored `preferredEditor`, falling back to the first editor
   found. The thread header's split button (`open-in/open-in-control.tsx`)
   reads both, and remembers an editor picked from its menu as the favourite
-  (`open-in/use-open-in.ts`).
+  (`open-in/use-open-in.ts`). The file menus of the Changes and Files panes
+  (`open-in/file-menu.ts`, `open-in/file-menu-items.tsx`) open single files
+  through the same call, in the workspace their pane provides
+  (`open-in/file-menu-scope.tsx`).
 - `oneShot.ts` — `runOneShot`, how every git write but the setup runs: a
   fresh atom per call, held until it settles. A shared `runtime.fn` atom would
   interrupt a call still in flight when the next one starts and hand the first

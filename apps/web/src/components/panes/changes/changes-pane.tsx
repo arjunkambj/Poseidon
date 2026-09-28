@@ -3,7 +3,8 @@
  *
  * The toolbar's Compare menu picks what to compare (`selection.ts`): what one
  * turn changed, the branch against its base, or the uncommitted working tree. `ChangesList` renders that comparison's files.
- * Every read runs in the thread's own root — its worktree, when it has one.
+ * Every read runs in the thread's own root — its worktree, when it has one —
+ * and the file menus open and copy paths in that root (`FileMenuScopeProvider`).
  *
  * `git.status` is read alongside it because the server answers a missing
  * project or a non-repository root with an empty status rather than an error,
@@ -34,6 +35,7 @@ import type { GitBranchList } from "@poseidon/contracts/git";
 import type { CheckpointSummary } from "@poseidon/contracts/orchestration";
 import type { GitStatus } from "@poseidon/contracts/rpc";
 
+import { FileMenuScopeProvider } from "@/components/open-in/file-menu-scope";
 import { useKeybindingFlag } from "@/lib/shortcuts";
 import { turnInFlight } from "@/lib/turn";
 import { useConnectionState } from "@/state/hooks";
@@ -218,7 +220,11 @@ export function ChangesPane({ snapshot }: { snapshot: ThreadDetailView }) {
           <RestoreProgress restoring={restoring} failure={restoreFailure} />
         </div>
       ) : null}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{body}</div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <FileMenuScopeProvider projectId={projectId} threadId={threadId}>
+          {body}
+        </FileMenuScopeProvider>
+      </div>
     </div>
   );
 }
