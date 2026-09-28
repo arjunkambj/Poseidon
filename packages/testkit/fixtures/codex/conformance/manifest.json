@@ -19,7 +19,9 @@
         "-c",
         "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
         "-c",
-        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\"",
+        "-c",
+        "shell_environment_policy.set.POSEIDON_CODEX_MCP_TOKEN=\"\""
       ],
       "cwd": "<SCRATCH>/conformance",
       "file": "invocation-1.ndjson",
@@ -32,7 +34,9 @@
         "-c",
         "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
         "-c",
-        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\"",
+        "-c",
+        "shell_environment_policy.set.POSEIDON_CODEX_MCP_TOKEN=\"\""
       ],
       "cwd": "<SCRATCH>/conformance",
       "file": "invocation-2.ndjson",
@@ -45,7 +49,9 @@
         "-c",
         "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
         "-c",
-        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\"",
+        "-c",
+        "shell_environment_policy.set.POSEIDON_CODEX_MCP_TOKEN=\"\""
       ],
       "cwd": "<SCRATCH>/conformance",
       "file": "invocation-3.ndjson",
@@ -58,7 +64,9 @@
         "-c",
         "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
         "-c",
-        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\"",
+        "-c",
+        "shell_environment_policy.set.POSEIDON_CODEX_MCP_TOKEN=\"\""
       ],
       "cwd": "<SCRATCH>/conformance",
       "file": "invocation-4.ndjson",
@@ -71,7 +79,9 @@
         "-c",
         "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
         "-c",
-        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\"",
+        "-c",
+        "shell_environment_policy.set.POSEIDON_CODEX_MCP_TOKEN=\"\""
       ],
       "cwd": "<SCRATCH>/conformance",
       "file": "invocation-5.ndjson",
@@ -84,7 +94,9 @@
         "-c",
         "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
         "-c",
-        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\"",
+        "-c",
+        "shell_environment_policy.set.POSEIDON_CODEX_MCP_TOKEN=\"\""
       ],
       "cwd": "<SCRATCH>/conformance",
       "file": "invocation-6.ndjson",

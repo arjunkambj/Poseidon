@@ -14,6 +14,8 @@
  * `edit-approval`, `deny` and `sensitive-full-access`: the CLI's approval
  * requests reaching the ladder and a card, and the card's answer reaching the
  * CLI — accept, decline, and a read of `.env` stopped even under full access.
+ * `bearer-hidden`: a command the model ran sees the MCP bearer's variable
+ * empty.
  *
  * Plan mode, questions, steering and compaction replay in
  * `recordedInteractions.test.ts`, on the same helpers (`test/replaySession.ts`).
@@ -46,6 +48,7 @@ import {
 } from "../test/replaySession";
 import { UNREADABLE_REF_WARNING } from "./definition";
 import { CODEX_KIND } from "./kind";
+import { MCP_BEARER_ENV } from "./launch";
 import { parseSessionRef } from "./sessionRef";
 import { MISSING_THREAD_WARNING } from "./threadOpen";
 
@@ -350,6 +353,34 @@ describe("a Codex session replaying codex/sensitive-full-access", () => {
         expect(request).toMatchObject({ kind: "command", input: { command: "cat .env" } });
         expect(rows(events, "command_execution").map((row) => row.status)).toEqual(["failed"]);
         expect(stopReasons(events)).toEqual(["end_turn"]);
+        expect(ofType(events, "session.warning")).toEqual([]);
+      }),
+    ),
+  );
+});
+
+describe("a Codex session replaying codex/bearer-hidden", () => {
+  it.live("runs the model's command with the MCP bearer's variable blanked", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { open, assertDone, replayed } = yield* replaying("bearer-hidden", {
+          ...SETTINGS,
+          runtimeMode: "full-access",
+        });
+        const session = yield* open();
+        yield* turnWithCard(session, text(prompts("bearer-hidden")[0]!), "allow-once");
+        const events = yield* closed(session);
+        assertDone();
+
+        // The CLI's MCP client reads the bearer from the process; the command
+        // it ran for the model saw the variable empty.
+        const [ran] = rows(events, "command_execution");
+        expect(ran!.command?.output).toBe("token=[]\n");
+        const manifest = loadStdioJsonRpcRecording(CODEX_KIND, "bearer-hidden").manifest;
+        expect(manifest.invocations[0]!.argv).toContain(
+          `shell_environment_policy.set.${MCP_BEARER_ENV}=""`,
+        );
+        expect(replayed.pids().length).toBe(1);
         expect(ofType(events, "session.warning")).toEqual([]);
       }),
     ),

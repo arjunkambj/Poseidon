@@ -33,6 +33,8 @@ const PROMPTS = {
   sensitive: "cat .env",
   stopEdit: "Create stop.txt containing hi",
   closeEdit: "Create close.txt containing hi",
+  bearer:
+    'Run exactly this command and reply with its output: echo "token=[$POSEIDON_CODEX_MCP_TOKEN]"',
 } as const;
 
 /** The scratch `.env` of `sensitive-full-access`: a stand-in, nothing secret. */
@@ -230,6 +232,31 @@ describe("session recordings", () => {
           yield* answerCards(recording, "deny");
           yield* turn(recording, text(PROMPTS.sensitive));
           yield* closed(recording);
+        }),
+    ),
+  );
+
+  it.live.skipIf(!RECORD)("bearer-hidden: a command reads the MCP bearer's variable", () =>
+    recordScenario(
+      {
+        scenario: "bearer-hidden",
+        description:
+          "Full access: the model runs a command that echoes the MCP bearer's variable. The session's shell environment override blanks it, so the command prints token=[] while the CLI's own MCP client keeps the value.",
+        prompts: [PROMPTS.bearer],
+        settings: { ...SETTINGS, runtimeMode: "full-access" },
+      },
+      (session) =>
+        Effect.gen(function* () {
+          const recording = yield* session.open();
+          yield* answerCards(recording, "allow-once");
+          yield* turn(recording, text(PROMPTS.bearer));
+          yield* closed(recording);
+          const outputs = (yield* recording.collector.collected).flatMap((event) =>
+            event.type === "item.completed" && event.payload.item.kind === "command_execution"
+              ? [JSON.stringify(event.payload.item)]
+              : [],
+          );
+          expect(outputs.some((row) => row.includes("token=[]"))).toBe(true);
         }),
     ),
   );

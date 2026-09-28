@@ -2,13 +2,15 @@
   "formatVersion": 1,
   "kind": "codex",
   "transport": "stdio-jsonrpc",
-  "scenario": "steering",
-  "description": "Full access: a turn runs `sleep 5; echo one`, and once the command's row shows a second message is steered in (turn/steer); the one turn ends with an answer naming the steered word.",
+  "scenario": "bearer-hidden",
+  "description": "Full access: the model runs a command that echoes the MCP bearer's variable. The session's shell environment override blanks it, so the command prints token=[] while the CLI's own MCP client keeps the value.",
   "cliVersion": "0.156.1",
   "recordedOn": "2026-09-28",
   "model": "gpt-6-astra",
   "real": true,
-  "prompts": ["Run: sleep 5; echo one", "Also, end your reply with the word pineapple."],
+  "prompts": [
+    "Run exactly this command and reply with its output: echo \"token=[$POSEIDON_CODEX_MCP_TOKEN]\""
+  ],
   "invocations": [
     {
       "argv": [
@@ -20,7 +22,7 @@
         "-c",
         "shell_environment_policy.set.POSEIDON_CODEX_MCP_TOKEN=\"\""
       ],
-      "cwd": "<SCRATCH>/steering",
+      "cwd": "<SCRATCH>/bearer-hidden",
       "file": "invocation-1.ndjson",
       "exitCode": 0,
       "signal": null

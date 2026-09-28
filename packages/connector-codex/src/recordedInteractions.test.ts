@@ -14,6 +14,7 @@
 
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 
 import {
   closed,
@@ -61,7 +62,7 @@ describe("a Codex session replaying codex/plan-accept", () => {
         // Proposed inside the plan turn, just before it ended.
         const completions = ofType(events, "turn.completed");
         expect(events.indexOf(proposals[0]!)).toBe(events.indexOf(completions[0]!) - 1);
-        expect(request).toMatchObject({ kind: "command", toolName: "Shell" });
+        expect(request).toMatchObject({ kind: "file_write", toolName: "Edit" });
         expect(stopReasons(events)).toEqual(["end_turn", "end_turn"]);
         expect(ofType(events, "event.unmapped")).toEqual([]);
         expect(ofType(events, "runtime.error")).toEqual([]);
@@ -128,10 +129,13 @@ describe("a Codex session replaying codex/steering", () => {
           (event) =>
             event.type === "item.started" && event.payload.item.kind === "command_execution",
         );
-        yield* session.handle.steer!(text(steered!));
+        // The CLI may answer the steer only once the command's card is
+        // answered (as recorded), so the two run side by side.
+        const steering = yield* Effect.forkChild(session.handle.steer!(text(steered!)));
         const card = yield* session.collector.awaitItem((event) => event.type === "request.opened");
         if (card.type !== "request.opened") throw new Error("no card");
         yield* session.handle.respondToRequest(card.payload.request.requestId, "allow-once");
+        yield* Fiber.join(steering);
         yield* session.collector.awaitItem((event) => event.type === "turn.completed");
         // With the turn over, a steer is refused for the server to queue.
         const late = yield* Effect.flip(session.handle.steer!(text(steered!)));
