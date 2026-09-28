@@ -154,7 +154,7 @@ export const converse = (
  * to exit") in the moment between a SIGKILL and the zombie, which a loaded
  * machine can stretch long enough to be seen.
  */
-export const pidAlive = (pid: number): boolean => {
+const pidAlive = (pid: number): boolean => {
   try {
     process.kill(pid, 0);
   } catch {
@@ -168,4 +168,18 @@ export const pidAlive = (pid: number): boolean => {
   } catch {
     return false;
   }
+};
+
+/**
+ * Whether `pid` is gone within `withinMs`. A group SIGKILL reaches each member
+ * on its own schedule: the leader's exit can be seen before a busy machine has
+ * taken down the rest of the group, so a check made at once can race it.
+ */
+export const pidGoneWithin = async (pid: number, withinMs: number): Promise<boolean> => {
+  const deadline = Date.now() + withinMs;
+  while (pidAlive(pid)) {
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return true;
 };

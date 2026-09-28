@@ -19,7 +19,7 @@ import {
   loadSdkStreamRecording,
   makeTeeLauncher,
 } from "./sdkStreamRecording";
-import { converse, pidAlive, writeCounterpart } from "./stdioCounterpart";
+import { converse, pidGoneWithin, writeCounterpart } from "./stdioCounterpart";
 
 const ROOT = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "sdk-stream-tee-"));
 const REPO = NodePath.join(ROOT, "scratch", "repo");
@@ -112,7 +112,7 @@ describe("the stdio tee", () => {
     process.kill(-run.child.pid!, "SIGKILL");
     expect((await run.exited).signal).toBe("SIGKILL");
 
-    expect(pidAlive(ready.pid)).toBe(false);
+    expect(await pidGoneWithin(ready.pid, 2_000)).toBe(true);
     expect(rawFrames(rawDir, 1).map(shape)).toEqual([
       "from-harness stdout ready",
       "to-harness stdin note",
