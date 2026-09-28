@@ -5,7 +5,8 @@
  * The keymap itself (`DEFAULT_KEYBINDINGS`) says which chord fires a command;
  * this says what the command is called and where it is listed. The palette
  * offers the entries marked `palette` whose surface is mounted, grouped by
- * area. A command with no default chord (`mcp.open`, `chatWidth.cycle`) is still here, so it can
+ * area. A command with no default chord (`mcp.open`, `chatWidth.cycle`,
+ * `thread.regenerateTitle`) is still here, so it can
  * be found and bound.
  *
  * `palette: false` is for a command the palette already reaches another way,
@@ -154,6 +155,9 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
     description: "The freshest thread that needs you, else the freshest unread",
   }),
   command("Threads", "thread.rename", "Rename thread", Edit),
+  command("Threads", "thread.regenerateTitle", "Regenerate title", Sparkles, {
+    description: "Writes a new title from the conversation",
+  }),
   command("Threads", "thread.archive", "Archive thread", Archive, {
     description: "Unarchives an archived thread",
   }),

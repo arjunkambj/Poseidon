@@ -11,6 +11,8 @@
  * unarchives a thread that is already archived, as the menu offers. Delete
  * opens the confirmation, unless Settings → General says not to ask
  * (`use-confirm-thread-delete`).
+ * `thread.regenerateTitle` (no default chord) is answered here too, while
+ * something can write text (`./regenerate-title`).
  *
  * `DockShortcuts` holds the right dock's keys: `dock.toggle`, `dock.changes`
  * and `dock.files`, with the targets from `@/components/dock/dock-toggle`: the
@@ -39,6 +41,8 @@ import { useDeleteThread } from "@/components/sidebar/use-delete-thread";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
 import { useKeybindingCommand } from "@/lib/shortcuts";
 import { useThreadList } from "@/state/hooks";
+
+import { RegenerateTitleShortcut } from "./regenerate-title";
 
 type OpenDialog = "rename" | "delete" | null;
 
@@ -101,6 +105,7 @@ export function ThreadShortcuts({
         onOpenChange={(next) => setDialog(next ? "delete" : null)}
         onConfirm={(target, removeWorktree) => void remove(target, removeWorktree)}
       />
+      {gone ? null : <RegenerateTitleShortcut threadId={threadId} />}
     </>
   );
 }

@@ -3,7 +3,10 @@
  * row's overflow dropdown and its right-click context menu — so the two list
  * the same things in the same order:
  *
- * 1. Rename — starts the inline rename in the row (`./thread-rename`).
+ * 1. Rename — starts the inline rename in the row (`./thread-rename`) — and
+ *    Regenerate title, which has a model write one from the conversation
+ *    (`@/components/thread/regenerate-title`); disabled, with a short
+ *    reason, while offline or when no harness can write text.
  * 2. Pin / Unpin, Mark unread, then Mark done / Mark active
  *    (`./use-sidebar-actions`, undoable; `./thread-done` for the split).
  * 3. Copy ▸ the workspace path, the branch and the thread ID
@@ -53,6 +56,7 @@ import { useThreadSeen } from "@/components/sidebar/thread-seen";
 import { useSidebarActions } from "@/components/sidebar/use-sidebar-actions";
 import { useThreadIsDone } from "@/components/sidebar/use-thread-done";
 import { threadForkBlockedReason, threadTurnInFlight } from "@/components/thread/branch-off";
+import { regenerateTitleHint, useRegenerateTitle } from "@/components/thread/regenerate-title";
 import { useRequestBranchOff } from "@/components/thread/use-branch-off";
 import { copyText } from "@/lib/copy-path";
 import { CommandKbd } from "@/lib/shortcuts";
@@ -72,6 +76,7 @@ import {
   Inbox,
   Pin,
   PinOff,
+  Sparkles,
   Terminal,
   Trash,
 } from "@honeyicons/react";
@@ -146,6 +151,8 @@ export function ThreadMenuItems({
     connected: connection.status === "connected",
     running: threadTurnInFlight(thread),
   });
+  const title = useRegenerateTitle();
+  const titleHint = regenerateTitleHint(title.reason);
   const base = () => threadCommandBase(thread.threadId);
   const keys = (command: string) =>
     active ? (
@@ -173,6 +180,11 @@ export function ThreadMenuItems({
         <Edit variant="bold" />
         Rename
         {keys("thread.rename")}
+      </Item>
+      <Item disabled={titleHint !== null} onClick={() => title.regenerate(thread.threadId)}>
+        <Sparkles variant="bold" />
+        Regenerate title
+        {titleHint === null ? keys("thread.regenerateTitle") : <MenuHint>{titleHint}</MenuHint>}
       </Item>
       <Item onClick={() => actions.setPinned(thread, !pinned)}>
         {pinned ? <PinOff variant="bold" /> : <Pin variant="bold" />}

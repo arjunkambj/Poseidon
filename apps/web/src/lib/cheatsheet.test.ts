@@ -72,6 +72,7 @@ describe("cheatsheetSections", () => {
     expect(row(sections, "plugins.open")?.chords).toEqual([]);
     expect(row(sections, "chatWidth.cycle")?.chords).toEqual([]);
     expect(row(sections, "dock.agents")?.chords).toEqual([]);
+    expect(row(sections, "thread.regenerateTitle")?.chords).toEqual([]);
     const removed = effectiveKeybindings([{ command: "-sidebar.toggle", shortcut: "Mod+B" }]);
     expect(
       row(cheatsheetSections(COMMAND_CATALOG, removed, "", "meta"), "sidebar.toggle")?.chords,

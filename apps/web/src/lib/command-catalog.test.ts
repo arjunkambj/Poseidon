@@ -54,6 +54,19 @@ describe("COMMAND_CATALOG", () => {
     expect(DEFAULT_KEYBINDINGS.filter((row) => row.command === "dock.agents")).toEqual([]);
   });
 
+  it("offers Regenerate title under Threads with no default chord", () => {
+    const entry = COMMAND_CATALOG.find((c) => c.id === "thread.regenerateTitle");
+    expect(entry?.palette).toBe(true);
+    expect(entry?.area).toBe("Threads");
+    expect(entry?.title).toBe("Regenerate title");
+    expect(DEFAULT_KEYBINDINGS.filter((row) => row.command === "thread.regenerateTitle")).toEqual(
+      [],
+    );
+    expect(RESERVED_KEYBINDINGS.filter((row) => row.command === "thread.regenerateTitle")).toEqual(
+      [],
+    );
+  });
+
   it("lists the plugins page with no default chord, reached from Navigation", () => {
     const entry = COMMAND_CATALOG.find((c) => c.id === "plugins.open");
     expect(entry?.area).toBe("General");
