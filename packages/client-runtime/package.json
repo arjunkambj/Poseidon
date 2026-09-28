@@ -28,6 +28,10 @@
       "types": "./src/oneShotCommands.ts",
       "import": "./src/oneShotCommands.ts"
     },
+    "./gitReview": {
+      "types": "./src/gitReview.ts",
+      "import": "./src/gitReview.ts"
+    },
     "./editors": {
       "types": "./src/editors.ts",
       "import": "./src/editors.ts"

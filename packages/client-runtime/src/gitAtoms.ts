@@ -15,6 +15,8 @@
  * - `checkpointsAtom(key)` — `checkpoints.list`, the thread's checkpoints that
  *   still exist in the repository, which the timeline intersects with its own
  *   fold before it offers a restore.
+ * - `gitRead` — the shape every read here shares, for the review reads
+ *   (`./gitReview`) to build theirs on.
  * - `createBranch` / `checkout` — the picker's two writes, each a one-shot
  *   call (`./oneShot`) that resolves with its own `Exit`: the new branch list,
  *   or the server's refusal. A success refetches every git read of the
@@ -323,6 +325,7 @@ export const makeGitAtoms = (runtime: Atom.AtomRuntime<Connection | ConnectionSt
     createBranch,
     checkout,
     refreshProject,
+    gitRead,
   };
 };
 
