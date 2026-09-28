@@ -2059,6 +2059,8 @@ the client in the terminal `incompatible` state.
 | `git.push`                    | call   | Pushes the current branch, `-u` to its remote on the first push                                                                         |
 | `git.pullRequest.create`      | call   | Opens (or finds) the branch's pull request with `gh`; `unavailable` without gh                                                          |
 | `git.pullRequest.readiness`   | call   | Why `gh` cannot open a pull request (missing, signed out); `null` reason when it can                                                    |
+| `git.pullRequest.view`        | call   | The current branch's pull request, checks and reviews via `gh`; `unavailable`/`none` |
+| `git.pullRequest.marks`       | call   | Each thread's pull request state, from one `gh pr list`; empty without gh            |
 | `git.worktree.create`         | call   | Cuts a new thread's worktree and branch under the Poseidon home                                                                         |
 | `git.worktree.list`           | call   | The repository's worktrees, the project's own checkout first                                                                            |
 | `git.worktree.remove`         | call   | Removes one, keeping its branch; `conflict` on unsaved work unless `force`                                                              |

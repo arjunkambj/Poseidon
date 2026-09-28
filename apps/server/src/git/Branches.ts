@@ -130,7 +130,7 @@ const lines = (stdout: string) =>
 // ── Reads ──────────────────────────────────────────────────────
 
 /** The checked-out branch, or `null` on a detached HEAD. Unborn branches count. */
-const currentBranch = (cwd: string) =>
+export const currentBranch = (cwd: string) =>
   run(cwd, ["symbolic-ref", "--quiet", "--short", "HEAD"], { allowNonZeroExit: true }).pipe(
     Effect.map((result) => (result.exitCode === 0 ? result.stdout.trim() || null : null)),
   );

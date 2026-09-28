@@ -42,6 +42,7 @@ import type {
 } from "@poseidon/contracts/git";
 import type { GitBlame } from "@poseidon/contracts/git-review";
 import type { DetectedEditor, EditorId } from "@poseidon/contracts/editors";
+import type { PullRequestMarks, PullRequestView } from "@poseidon/contracts/pullRequest";
 import type { CheckpointSummary } from "@poseidon/contracts/orchestration";
 import type { MessageSearchHit } from "@poseidon/contracts/search";
 import { migrateLegacyKeybindingTable } from "@poseidon/contracts/keybindings";
@@ -238,6 +239,14 @@ export class GitService extends Context.Service<
     readonly pullRequestReadiness: (
       scope: WorkspaceScope,
     ) => Effect.Effect<GitPullRequestReadiness, PoseidonRpcError>;
+    /** The pull request of the workspace's current branch, read through the GitHub CLI. */
+    readonly viewPullRequest: (
+      scope: WorkspaceScope,
+    ) => Effect.Effect<PullRequestView, PoseidonRpcError>;
+    /** The pull request marks of the project's live threads; empty when gh cannot answer. */
+    readonly pullRequestMarks: (
+      projectId: ProjectId,
+    ) => Effect.Effect<PullRequestMarks, PoseidonRpcError>;
     /**
      * Cuts a worktree for a new thread under the Poseidon home, on a branch
      * named from the settings' prefix and `name`, from `baseBranch` or the
@@ -287,6 +296,9 @@ export class GitService extends Context.Service<
       push: () => Effect.fail(gitUnavailable),
       createPullRequest: () => Effect.fail(gitUnavailable),
       pullRequestReadiness: () => Effect.fail(gitUnavailable),
+      viewPullRequest: () =>
+        Effect.succeed({ state: "unavailable" as const, reason: gitUnavailable.message }),
+      pullRequestMarks: () => Effect.succeed({ marks: [] }),
       createWorktree: () => Effect.fail(gitUnavailable),
       listWorktrees: () => Effect.fail(gitUnavailable),
       removeWorktree: () => Effect.fail(gitUnavailable),

@@ -1,0 +1,60 @@
+{
+  "author": {
+    "id": "U_scrubbed",
+    "is_bot": false,
+    "login": "user-4",
+    "name": ""
+  },
+  "baseRefName": "master",
+  "comments": [
+    {
+      "id": "IC_kwDOAToIks8AAAABXWFL0A",
+      "author": {
+        "login": "user-5"
+      },
+      "authorAssociation": "CONTRIBUTOR",
+      "body": "This issue is currently awaiting triage.",
+      "createdAt": "2026-09-28T01:16:34Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/kubernetes/kubernetes/pull/142465#issuecomment-5861624784",
+      "viewerDidAuthor": false
+    }
+  ],
+  "headRefName": "benchmark-namespace-dead-index-fields",
+  "headRefOid": "9245225ff412534f69bbe76d42a880a671be929f",
+  "isDraft": false,
+  "mergeable": "MERGEABLE",
+  "number": 142465,
+  "reviewDecision": "",
+  "reviews": [],
+  "state": "OPEN",
+  "statusCheckRollup": [
+    {
+      "__typename": "StatusContext",
+      "context": "tide",
+      "startedAt": "2026-09-28T01:17:26Z",
+      "state": "PENDING",
+      "targetUrl": "https://prow.k8s.io/pr?query=is%3Apr+repo%3Akubernetes%2Fkubernetes+author%3AJefftree+head%3Abenchmark-namespace-dead-index-fields"
+    },
+    {
+      "__typename": "StatusContext",
+      "context": "EasyCLA",
+      "startedAt": "2026-09-28T01:16:31Z",
+      "state": "SUCCESS",
+      "targetUrl": "https://easycla.lfx.linuxfoundation.org/#/?version=2"
+    },
+    {
+      "__typename": "StatusContext",
+      "context": "pull-kubernetes-cmd",
+      "startedAt": "2026-09-28T01:25:55Z",
+      "state": "SUCCESS",
+      "targetUrl": "https://prow.k8s.io/view/gs/kubernetes-ci-logs/pr-logs/pull/142465/pull-kubernetes-cmd/2104379679308779520"
+    }
+  ],
+  "title": "Drop namespace IndexFields from store list benchmark",
+  "updatedAt": "2026-09-28T01:21:16Z",
+  "url": "https://github.com/kubernetes/kubernetes/pull/142465"
+}

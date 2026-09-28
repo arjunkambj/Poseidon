@@ -1,0 +1,83 @@
+{
+  "author": {
+    "is_bot": true,
+    "login": "app/github-actions"
+  },
+  "baseRefName": "trunk",
+  "comments": [
+    {
+      "id": "IC_kwDODKw3uc8AAAABT9Hqzg",
+      "author": {
+        "login": "user-3"
+      },
+      "authorAssociation": "MEMBER",
+      "body": "Closing for https://github.com/cli/cli/pull/14428 to kick off the next one.",
+      "createdAt": "2026-09-11T12:01:59Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/cli/cli/pull/14423#issuecomment-5634124494",
+      "viewerDidAuthor": false
+    }
+  ],
+  "headRefName": "bump-go-1.27.1",
+  "headRefOid": "d183ba011ed26152e63aa9e8150c9253cb366f26",
+  "isDraft": false,
+  "mergeable": "MERGEABLE",
+  "number": 14423,
+  "reviewDecision": "REVIEW_REQUIRED",
+  "reviews": [
+    {
+      "id": "PRR_kwDODKw3uc8AAAABNHgV7g",
+      "author": {
+        "login": "copilot-pull-request-reviewer"
+      },
+      "authorAssociation": "CONTRIBUTOR",
+      "body": "### \ud83d\udfe1 Changes recommended",
+      "submittedAt": "2026-09-11T05:28:08Z",
+      "includesCreatedEdit": false,
+      "reactionGroups": [],
+      "state": "COMMENTED",
+      "commit": {
+        "oid": "d183ba011ed26152e63aa9e8150c9253cb366f26"
+      }
+    }
+  ],
+  "state": "CLOSED",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-11T05:22:41Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/cli/cli/actions/runs/34558150720/job/103156845106",
+      "name": "CodeQL-Build (go, manual, ./.github/codeql/codeql-config.yml)",
+      "startedAt": "2026-09-11T05:20:09Z",
+      "status": "COMPLETED",
+      "workflowName": "Code Scanning"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-11T05:22:59Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/cli/cli/actions/runs/34558150659/job/103156848953",
+      "name": "lint",
+      "startedAt": "2026-09-11T05:20:12Z",
+      "status": "COMPLETED",
+      "workflowName": "Lint"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-11T05:20:55Z",
+      "conclusion": "FAILURE",
+      "detailsUrl": "https://github.com/cli/cli/actions/runs/34558150659/job/103156848767",
+      "name": "govulncheck",
+      "startedAt": "2026-09-11T05:20:10Z",
+      "status": "COMPLETED",
+      "workflowName": "Lint"
+    }
+  ],
+  "title": "Bump Go to 1.27.1",
+  "updatedAt": "2026-09-11T12:02:00Z",
+  "url": "https://github.com/cli/cli/pull/14423"
+}

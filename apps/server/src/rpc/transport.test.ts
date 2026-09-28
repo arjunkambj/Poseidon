@@ -417,6 +417,21 @@ describe("transport", () => {
     ),
   );
 
+  it.live("the pull request reads answer over the wire without gh behind them", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { url } = yield* testStack();
+        const connection = yield* connect(url, TOKEN);
+        const client = yield* connection.client;
+        expect(yield* client["git.pullRequest.view"]({ projectId, threadId })).toEqual({
+          state: "unavailable",
+          reason: "git is not available on this server",
+        });
+        expect(yield* client["git.pullRequest.marks"]({ projectId })).toEqual({ marks: [] });
+      }),
+    ),
+  );
+
   it.live("a wrong token gets a 401 on the upgrade", () =>
     Effect.scoped(
       Effect.gen(function* () {

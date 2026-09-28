@@ -1,0 +1,125 @@
+{
+  "author": {
+    "id": "U_scrubbed",
+    "is_bot": false,
+    "login": "user-1",
+    "name": ""
+  },
+  "baseRefName": "trunk",
+  "comments": [
+    {
+      "id": "IC_kwDODKw3uc8AAAABW8vLUw",
+      "author": {
+        "login": "github-actions"
+      },
+      "authorAssociation": "CONTRIBUTOR",
+      "body": "Thanks for your pull request! While it doesn't meet all of our standard requirements, it appears to ",
+      "createdAt": "2026-09-25T15:34:01Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/cli/cli/pull/14519#issuecomment-5835049811",
+      "viewerDidAuthor": false
+    },
+    {
+      "id": "IC_kwDODKw3uc8AAAABW8xGmg",
+      "author": {
+        "login": "user-1"
+      },
+      "authorAssociation": "CONTRIBUTOR",
+      "body": "> While it doesn't meet all of our standard requirements\r",
+      "createdAt": "2026-09-25T15:36:12Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/cli/cli/pull/14519#issuecomment-5835081370",
+      "viewerDidAuthor": false
+    }
+  ],
+  "headRefName": "document-search-operator-support",
+  "headRefOid": "97577e407ff3aee505aec675da081da75a24224a",
+  "isDraft": false,
+  "mergeable": "MERGEABLE",
+  "number": 14519,
+  "reviewDecision": "CHANGES_REQUESTED",
+  "reviews": [
+    {
+      "id": "PRR_kwDODKw3uc8AAAABPRLGDg",
+      "author": {
+        "login": "copilot-pull-request-reviewer"
+      },
+      "authorAssociation": "CONTRIBUTOR",
+      "body": "<!-- ccr-overview-v2 -->",
+      "submittedAt": "2026-09-25T15:38:36Z",
+      "includesCreatedEdit": false,
+      "reactionGroups": [],
+      "state": "COMMENTED",
+      "commit": {
+        "oid": "33d0240d4fe01138d7ac11798003c13b1f6dd24e"
+      }
+    },
+    {
+      "id": "PRR_kwDODKw3uc8AAAABPTPOlg",
+      "author": {
+        "login": "user-2"
+      },
+      "authorAssociation": "MEMBER",
+      "body": "",
+      "submittedAt": "2026-09-25T19:22:21Z",
+      "includesCreatedEdit": false,
+      "reactionGroups": [],
+      "state": "CHANGES_REQUESTED",
+      "commit": {
+        "oid": "61c9b23fa405a2c3f677ffa921d9bb32a4b3786f"
+      }
+    }
+  ],
+  "state": "OPEN",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-26T06:51:53Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/cli/cli/actions/runs/36225027797/job/108357271590",
+      "name": "label-external",
+      "startedAt": "2026-09-26T06:51:53Z",
+      "status": "COMPLETED",
+      "workflowName": "PR Triaging"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-26T06:48:41Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/cli/cli/actions/runs/36224759478/job/108356509553",
+      "name": "CodeQL-Build (go, manual, ./.github/codeql/codeql-config.yml)",
+      "startedAt": "2026-09-26T06:46:28Z",
+      "status": "COMPLETED",
+      "workflowName": "Code Scanning"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-26T06:48:50Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/cli/cli/actions/runs/36224759479/job/108356509446",
+      "name": "lint",
+      "startedAt": "2026-09-26T06:46:28Z",
+      "status": "COMPLETED",
+      "workflowName": "Lint"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-26T06:51:53Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/cli/cli/actions/runs/36225027797/job/108357294367",
+      "name": "close-from-default-branch",
+      "startedAt": "2026-09-26T06:52:03Z",
+      "status": "COMPLETED",
+      "workflowName": "PR Triaging"
+    }
+  ],
+  "title": "Document search operator support in `gh search` help",
+  "updatedAt": "2026-09-26T06:51:47Z",
+  "url": "https://github.com/cli/cli/pull/14519"
+}

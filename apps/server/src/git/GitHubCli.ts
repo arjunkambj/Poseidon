@@ -74,7 +74,7 @@ const resolveGh = (): string | null => {
 /** Long enough for a slow API round trip, short enough that a stall is reported. */
 const GH_TIMEOUT_MS = 2 * 60 * 1000;
 
-const NOT_AVAILABLE = "gh not available: install the GitHub CLI and run gh auth login";
+export const NOT_AVAILABLE = "gh not available: install the GitHub CLI and run gh auth login";
 
 const runGh = (args: ReadonlyArray<string>, cwd: string): Effect.Effect<GhOutput, GhMissing> =>
   Effect.callback<GhOutput, GhMissing>((resume) => {
@@ -117,7 +117,7 @@ const runGh = (args: ReadonlyArray<string>, cwd: string): Effect.Effect<GhOutput
 
 const unavailable = (message: string) => new PoseidonRpcError({ code: "unavailable", message });
 
-const NOT_AUTHENTICATED =
+export const NOT_AUTHENTICATED =
   "gh is not authenticated: run gh auth login in a terminal, then try again.";
 
 /**

@@ -4,12 +4,12 @@
  * argv-form git over `process.ts`, porcelain-v2 parsing for status, and
  * unified patches split per file for the changes pane. Branch listing,
  * creation and switching live in `Branches.ts`, commit and push in
- * `Commits.ts`, discard and blame in `Review.ts`, pull requests in
- * `GitHubCli.ts`, worktrees in `Worktrees.ts` and the setup script in
- * `SetupScript.ts`; this layer resolves the root, reads the settings those
- * need, and adds the guards that need the read models — no switch or commit
- * while a turn runs in the same root, no removing a worktree a thread still
- * works in. Each call runs in the thread's own root when it names a thread (see
+ * `Commits.ts`, discard and blame in `Review.ts`, opening pull requests in
+ * `GitHubCli.ts` and reading them in `PullRequests.ts`, worktrees in
+ * `Worktrees.ts` and the setup script in `SetupScript.ts`; this layer resolves
+ * the root, reads the settings those need, and adds the guards that need the
+ * read models — no switch or commit while a turn runs in the same root, no
+ * removing a worktree a thread still works in. Each call runs in the thread's own root when it names a thread (see
  * `orchestration/workspaceRoot.ts`). A missing `projectId` or a non-repository
  * root answers `isRepository: false` with empty results rather than an RPC
  * error, so the pane can say "not a git repository" instead of showing what
@@ -30,6 +30,7 @@ import { worktreeOf } from "../orchestration/state";
 import {
   projectRootedAt,
   resolveWorkspaceRoot,
+  threadWorkspaceRoot,
   workspaceRootBusy,
   worktreeInUse,
 } from "../orchestration/workspaceRoot";
@@ -47,6 +48,7 @@ import { make as checkpointStore } from "./CheckpointStore";
 import { commit, push } from "./Commits";
 import { createPullRequest, GhRunner, pullRequestBlocker } from "./GitHubCli";
 import { GitError, isRepository, run } from "./process";
+import { pullRequestMarks, viewWorkspacePullRequest } from "./PullRequests";
 import { blame, discard, discardBase, repositoryTop } from "./Review";
 import { runSetupScript, setupsStopped } from "./SetupScript";
 import {
@@ -571,6 +573,37 @@ export const layer = Layer.effect(
           // No folder, no repository: the header offers no git action at all.
           return { reason: root === null ? null : yield* pullRequestBlocker(gh, root) };
         }).pipe(Effect.mapError(toRpcError)),
+
+      viewPullRequest: (scope) =>
+        Effect.gen(function* () {
+          const root = yield* workspaceRoot(scope);
+          if (root === null) {
+            return yield* Effect.fail(
+              new PoseidonRpcError({ code: "not-found", message: "unknown project" }),
+            );
+          }
+          return yield* viewWorkspacePullRequest(gh, root);
+        }).pipe(Effect.mapError(asRpcError)),
+
+      pullRequestMarks: (projectId) =>
+        Effect.gen(function* () {
+          const project = yield* readModels.getProjectDoc(projectId);
+          if (project === null || project.removed) {
+            return yield* Effect.fail(
+              new PoseidonRpcError({ code: "not-found", message: "unknown project" }),
+            );
+          }
+          const threads = (yield* readModels.listThreadDocs)
+            .filter((doc) => !doc.deleted && doc.projectId === projectId)
+            .map((doc) => ({ threadId: doc.threadId, root: threadWorkspaceRoot(doc, project) }));
+          return yield* pullRequestMarks(gh, project.workspaceRoot, threads);
+        }).pipe(
+          Effect.mapError((error) =>
+            error instanceof PoseidonRpcError
+              ? error
+              : new PoseidonRpcError({ code: "internal", message: error.message }),
+          ),
+        ),
 
       createWorktree: (projectId, options) =>
         Effect.gen(function* () {

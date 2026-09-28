@@ -1,0 +1,99 @@
+{
+  "data": {
+    "repository": {
+      "mergeCommitAllowed": true,
+      "squashMergeAllowed": true,
+      "rebaseMergeAllowed": true,
+      "pullRequest": {
+        "reviewThreads": {
+          "nodes": [
+            {
+              "id": "PRRT_kwDODKw3uc6mIKpX",
+              "isResolved": false,
+              "isOutdated": false,
+              "path": "pkg/cmd/search/issues/issues.go",
+              "line": 38,
+              "originalLine": 42,
+              "comments": {
+                "nodes": [
+                  {
+                    "author": {
+                      "login": "user-2"
+                    },
+                    "body": "Suggest: Somewhere around here I think there should be a link to https://docs.github.com/en/enterpri",
+                    "createdAt": "2026-09-25T19:20:59Z",
+                    "url": "https://github.com/cli/cli/pull/14519#discussion_r4107885267"
+                  },
+                  {
+                    "author": {
+                      "login": "user-2"
+                    },
+                    "body": "Suggestion applies to both comments.",
+                    "createdAt": "2026-09-25T19:22:56Z",
+                    "url": "https://github.com/cli/cli/pull/14519#discussion_r4107899463"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDODKw3uc6mIHmT",
+              "isResolved": false,
+              "isOutdated": true,
+              "path": "pkg/cmd/search/issues/issues.go",
+              "line": null,
+              "originalLine": 39,
+              "comments": {
+                "nodes": [
+                  {
+                    "author": {
+                      "login": "user-2"
+                    },
+                    "body": "Issue: the list of host availability should be removed since this list is not exhaustive and it pres",
+                    "createdAt": "2026-09-25T19:18:21Z",
+                    "url": "https://github.com/cli/cli/pull/14519#discussion_r4107865905"
+                  },
+                  {
+                    "author": {
+                      "login": "user-1"
+                    },
+                    "body": "Sure \u2014 I modeled this after the existing wording in `item list`:",
+                    "createdAt": "2026-09-25T20:28:18Z",
+                    "url": "https://github.com/cli/cli/pull/14519#discussion_r4108367439"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDODKw3uc6mD3eD",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "pkg/cmd/search/issues/issues.go",
+              "line": null,
+              "originalLine": 40,
+              "comments": {
+                "nodes": [
+                  {
+                    "author": {
+                      "login": "copilot-pull-request-reviewer"
+                    },
+                    "body": "\ud83d\uded1 Requirement: Scope this guidance to advanced-search-capable API calls",
+                    "createdAt": "2026-09-25T15:38:35Z",
+                    "url": "https://github.com/cli/cli/pull/14519#discussion_r4106126529"
+                  },
+                  {
+                    "author": {
+                      "login": "user-1"
+                    },
+                    "body": "Addressed in [8e55103](https://github.com/cli/cli/compare/33d0240d4fe01138d7ac11798003c13b1f6dd24e..",
+                    "createdAt": "2026-09-25T16:17:55Z",
+                    "url": "https://github.com/cli/cli/pull/14519#discussion_r4106458120"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

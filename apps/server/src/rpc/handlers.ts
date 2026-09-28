@@ -131,6 +131,9 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
         git.createPullRequest({ projectId, threadId }, { title, body, base }),
       "git.pullRequest.readiness": ({ projectId, threadId }) =>
         git.pullRequestReadiness({ projectId, threadId }),
+      "git.pullRequest.view": ({ projectId, threadId }) =>
+        git.viewPullRequest({ projectId, threadId }),
+      "git.pullRequest.marks": ({ projectId }) => git.pullRequestMarks(projectId),
       "git.worktree.create": ({ projectId, name, baseBranch }) =>
         git.createWorktree(projectId, { name, baseBranch }),
       "git.worktree.list": ({ projectId }) => git.listWorktrees(projectId),
