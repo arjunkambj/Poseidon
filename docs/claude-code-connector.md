@@ -19,7 +19,9 @@ machine was signed out. So they show the launch, the handshake, the control
 requests, the message receipts and the CLI's refusals exactly, but no model
 answer, tool call, plan, question or subagent. The scenarios that will show
 those are written and wait for a signed-in CLI
-(`packages/testkit/fixtures/claude/README.md` lists them). Where a claim about
+(`packages/testkit/fixtures/claude/README.md` lists them, and
+[Needs a signed-in run](#needs-a-signed-in-run) lists everything that waits,
+with the commands). Where a claim about
 that half rests on the SDK's declarations or on reading the CLI's own bundled
 code instead of a recording, this document says so, and names the recording
 that will pin it. Until those exist their replays are skipped in the gate
@@ -671,6 +673,26 @@ fails the row. A compaction of a real conversation costs a summarisation
 request, so a signed-in `/compact` is recorded only with the operator's
 approval.
 
+## Harness slash commands
+
+The composer's `/` menu lists the CLI's own commands under a Harness heading,
+from the instance's `commands` extension (see [The probe](#the-probe)).
+Choosing one only inserts `/<name> ` into the draft; the message goes out as
+plain text, the form the CLI reads a slash command from, as a typed `/compact`
+does. A command the CLI answers itself comes back as a `<synthetic>` assistant
+snapshot, which the translator reads as any answer (`local-command`).
+
+- **What is listed:** only the CLI's built-in and bundled commands, since the
+  listing handshake runs with `settingSources: []`. The user's and the
+  project's own commands, plugin commands and MCP prompts are missing from the
+  menu, though the CLI still runs them when typed.
+- **What is left out** (`slash-menu.tsx`): every name Poseidon's own entries
+  take (`model`, `effort`, `mode`, `plan`, `default`, `clear-draft`, and
+  `compact` even while it is hidden), every enabled skill's name, and `clear`,
+  which would reset the conversation behind the timeline.
+- **Command Code** has no such extension; its `/` menu shows no Harness group
+  ([command-code-connector.md](command-code-connector.md)).
+
 ## Attachments
 
 `attachments.ts` sniffs each attached file's bytes
@@ -690,6 +712,14 @@ answering from an image.
 the same CLI, with no `turn.started`. It fails `NotSteerable` when no turn is
 running or the turn is stopping, and the server then puts the message on the
 queue ([how-it-works.md](how-it-works.md#steering)).
+
+The steered message's `user_message` row is written by the server, not the
+connector, and only once `steer` has succeeded: the decider emits
+`thread.turn.steered` alone, and the provider command reactor appends the row
+on the running turn after the delivery. A steer the session refuses leaves no
+row behind in the turn it missed; the message gets its one row when the queue
+runs it. A server that restarts between the steer and that append loses the
+row, which is accepted.
 
 The CLI queues the message and takes it one of two ways:
 
@@ -797,6 +827,111 @@ comments say which recording will pin each.
   `mcp_tool_ui_meta_v1`. 2.1.150's init has no `capabilities` field and it
   sends no receipts (`receiptless-steer`).
 - **A probe's handshake is stopped, not ended:** its recorded exit is 143.
+
+## Needs a signed-in run
+
+Every claim below still rests on the SDK's declarations, on reading the CLI's
+bundled code, or on unit tests of the pure pieces, because the CLI on the
+recording machine is signed out. Each is settled by a recording or a live run
+once it is signed in ([Owner commands](#owner-commands)).
+
+**The scenarios waiting for a signed-in CLI**, their tests in place and skipped
+under replay (`packages/testkit/fixtures/claude/README.md` has the table):
+
+- `plain-reply`: one answered turn, streamed text, usage, `end_turn`.
+- `interrupt`: a turn stopped after its first text, and whether the same
+  process serves the next.
+- `resume`: two turns with the server restarted between, the second launch
+  `--resume`, and whether that init names the same session id
+  (`resume.test.ts` compares them).
+- `edit-approval`: a write asked about in approval-required, allowed once.
+- `deny`: `touch denied.txt` denied at every card, the file absent.
+- `sensitive-full-access`: `cat .env` under `bypassPermissions` still opens a
+  card, which pins that a hook's `ask` reaches `canUseTool` in every mode.
+- `plan-accept`: ExitPlanMode's plan card, accepted, then implemented out of
+  plan mode.
+- `question`: AskUserQuestion as a card, answered with its first option.
+- `subagent`: a Task delegation with its rows nested under the task row.
+- `model-switch`: the model and the effort switched between two turns in one
+  process.
+- `image`: a model answering from an image content block.
+- `steering`: a message folded into a running agent loop.
+
+**Conformance and the live suites:**
+
+- `conformance` re-recorded signed in, so the suite's turns are answered ones,
+  with its approval case (a file write stopped on a card and allowed once),
+  which the replay runs only once the recording has it.
+- One run of the `POSEIDON_LIVE_CLAUDE=1` suites on the CLI's default model.
+
+**The provisional capability values** (`capabilities.ts`): `effortSwitch` and
+`steering` are backed only by signed-out recordings; `interrupt` (`session`)
+has no recording of what an interrupt leaves behind; `rollback` and `fork` stay
+`false` until a recording shows `resumeSessionAt` or `forkSession`.
+
+**This round's fixes and additions:**
+
+- The resume fallback's wording on a real missing conversation: that the CLI's
+  stderr, carried into `SpawnFailed`, says "No conversation found with session
+  ID: …" (read from the 2.1.280 binary with `strings`, never from a run).
+- The no-permission tools: that Agent, TodoWrite, ToolSearch, EnterPlanMode and
+  the task-list tools run without a card in approval-required and plan turns,
+  and that Skill is still asked.
+- A thinking block whose snapshot comes back with no text: that its streamed
+  row settles, and what the CLI's default thinking display (without
+  `--thinking-display`) shows in it.
+- `system/local_command_output` from a harness command: 2.1.280 answered local
+  commands as `<synthetic>` snapshots signed out; a signed-in CLI may write it.
+- The harness command list as a signed-in CLI reports it. The recorder scrubs
+  the list to one `scrubbed-entry`, so this is read in the running app's `/`
+  menu rather than from a recording.
+- The notices: `rate_limit_event` on every turn (status `allowed` maps to
+  nothing) and its warning statuses, `api_retry`, the model-refusal messages,
+  and the `informational` and `notification` shapes. A fallback model's
+  `retracted_message_uuids` leave the refused rows on the timeline.
+- Foreground subagents: the order of the Task `tool_result` and
+  `task_notification`, since a late `task_updated` could show a finished task
+  row as running again.
+- Background agents (`run_in_background`): whether the headless CLI holds its
+  `result` until they finish, as its bundle suggests, or runs a turn of its own
+  that would close the wrong Poseidon turn.
+- `lastAssistantUuid` taking a synthetic local-command snapshot's uuid, which
+  matters only once rollback is offered.
+
+### Owner commands
+
+Run these in your own shell, from the repository root. The recording and live
+commands spend the account's subscription on the CLI's default model.
+
+Sign in, and check it took (the document must say `"loggedIn": true`):
+
+```sh
+claude auth login
+claude auth status
+```
+
+Record the waiting scenarios through the server:
+
+```sh
+POSEIDON_RECORD_CLAUDE=1 pnpm -F server exec vitest run test/e2e-claude/turn.test.ts test/e2e-claude/interrupt.test.ts test/e2e-claude/resume.test.ts test/e2e-claude/approval.test.ts test/e2e-claude/plan.test.ts test/e2e-claude/question.test.ts test/e2e-claude/subagent.test.ts test/e2e-claude/model.test.ts test/e2e-claude/attachment.test.ts test/e2e-claude/steering.test.ts
+```
+
+Re-record the conformance suite signed in:
+
+```sh
+POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/conformance.test.ts
+```
+
+Run the live suites once:
+
+```sh
+POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/liveConformance.test.ts
+POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_LIVE_CLAUDE=1 pnpm exec vitest run apps/server/test/e2e-claude
+```
+
+A replay skipped for want of its recording runs by itself once the recording
+exists. Then check the capability values above against the new recordings, and
+move each item they settle off this list.
 
 ## After a new CLI release
 
