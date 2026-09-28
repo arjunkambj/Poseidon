@@ -296,15 +296,35 @@ export const repositoryOf = (
   return match === null ? null : { host: match[1]!, owner: match[2]!, name: match[3]! };
 };
 
-// ── The repository's list ──────────────────────────────────────
+/**
+ * The owner in a git remote's URL — `https://github.com/octo/app.git`,
+ * `git@github.com:octo/app.git`, `ssh://git@host/octo/app` — or `null` for
+ * one without a host, such as a local path.
+ */
+export const remoteOwner = (url: string): string | null => {
+  const match =
+    /^[a-z][a-z0-9+.-]*:\/\/(?:[^@/]+@)?[^/]+\/([^/]+)\/[^/]+?\/?$/i.exec(url.trim()) ??
+    /^(?:[^@/:]+@)?[^/:]+:([^/]+)\/[^/]+?\/?$/.exec(url.trim());
+  return match === null ? null : match[1]!;
+};
 
-/** One row of `gh pr list --json number,url,state,isDraft,headRefName,updatedAt,statusCheckRollup`. */
+// ── The branch's list ──────────────────────────────────────────
+
+/**
+ * One row of `gh pr list --json number,url,state,isDraft,headRefName,
+ * headRepositoryOwner,isCrossRepository,updatedAt,statusCheckRollup`.
+ * `headOwner` is who owns the head branch: gh's `headRepositoryOwner`, or the
+ * base repository's owner for a row that is not from a fork; `null` when gh
+ * says neither.
+ */
 export interface ListedPullRequest {
   readonly number: number;
   readonly url: string;
   readonly state: PullRequestState;
   readonly isDraft: boolean;
   readonly headRefName: string;
+  readonly headOwner: string | null;
+  readonly crossRepository: boolean;
   readonly updatedAt: string;
   readonly failing: boolean;
 }
@@ -315,6 +335,10 @@ export const decodePullRequestList = (json: unknown): Array<ListedPullRequest> =
     const url = nonEmpty(row.url);
     const headRefName = nonEmpty(row.headRefName);
     if (typeof row.number !== "number" || url === null || headRefName === null) return [];
+    const crossRepository = row.isCrossRepository === true;
+    const headOwner =
+      nonEmpty(record(row.headRepositoryOwner).login) ??
+      (crossRepository ? null : (repositoryOf(url)?.owner ?? null));
     return [
       {
         number: row.number,
@@ -322,20 +346,33 @@ export const decodePullRequestList = (json: unknown): Array<ListedPullRequest> =
         state: stateOf(row.state),
         isDraft: row.isDraft === true,
         headRefName,
+        headOwner,
+        crossRepository,
         updatedAt: text(row.updatedAt),
         failing: decodeChecks(row.statusCheckRollup).some((check) => check.bucket === "fail"),
       },
     ];
   });
 
-/** A branch's pull request out of a list: an open one first, then the newest. */
+/**
+ * A branch's pull request out of a list: an open one first, then the newest.
+ * A name like `patch-1` is shared by many forks, so a row counts only when
+ * its head is `owner`'s — the owner of the remote the branch pushes to — or,
+ * with no such owner, when it is not from a fork at all.
+ */
 export const pullRequestForBranch = (
   rows: ReadonlyArray<ListedPullRequest>,
   branch: string,
+  owner: string | null,
 ): ListedPullRequest | null => {
   let best: ListedPullRequest | null = null;
   for (const row of rows) {
     if (row.headRefName !== branch) continue;
+    if (
+      owner === null ? row.crossRepository : row.headOwner?.toLowerCase() !== owner.toLowerCase()
+    ) {
+      continue;
+    }
     if (
       best === null ||
       (row.state === "open" && best.state !== "open") ||

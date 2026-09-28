@@ -13,6 +13,7 @@ import {
   decodeReviewData,
   jobIdOf,
   pullRequestForBranch,
+  remoteOwner,
   repositoryOf,
 } from "./pullRequestJson";
 
@@ -211,14 +212,55 @@ describe("decodePullRequestList", () => {
     const rows = decodePullRequestList(fixture("gh-pr-list.json"));
     const open = rows.find((row) => row.number === 14519)!;
     const closedNewer = { ...open, number: 1, state: "closed" as const, updatedAt: "2026-12-01" };
-    expect(pullRequestForBranch([closedNewer, open], open.headRefName)).toBe(open);
+    expect(pullRequestForBranch([closedNewer, open], open.headRefName, null)).toBe(open);
     const closedOlder = { ...closedNewer, number: 2, updatedAt: "2026-01-01" };
-    expect(pullRequestForBranch([closedOlder, closedNewer], open.headRefName)).toBe(closedNewer);
-    expect(pullRequestForBranch(rows, "no-such-branch")).toBeNull();
+    expect(pullRequestForBranch([closedOlder, closedNewer], open.headRefName, null)).toBe(
+      closedNewer,
+    );
+    expect(pullRequestForBranch(rows, "no-such-branch", null)).toBeNull();
+  });
+
+  it("reads who owns each row's head, the base's owner when gh leaves it out", () => {
+    const byHead = fixture("gh-pr-list.by-head.json") as Record<string, unknown>;
+    const forks = decodePullRequestList(byHead["patch-1"]);
+    expect(forks.map((row) => [row.number, row.headOwner, row.crossRepository])).toEqual([
+      [14515, "user-2", true],
+      [14373, "user-3", true],
+      [14212, "user-4", true],
+    ]);
+    const own = decodePullRequestList(byHead["bump-go-1.27.1"]);
+    expect(own.map((row) => [row.headOwner, row.crossRepository])).toEqual([
+      ["cli", false],
+      ["cli", false],
+    ]);
+    // The older listing asked for neither field.
+    const bare = decodePullRequestList(fixture("gh-pr-list.json"));
+    expect(bare[0]).toMatchObject({ headOwner: "cli", crossRepository: false });
+  });
+
+  it("matches only the branch owner's pull request, or one from no fork", () => {
+    const byHead = fixture("gh-pr-list.by-head.json") as Record<string, unknown>;
+    const forks = decodePullRequestList(byHead["patch-1"]);
+    expect(pullRequestForBranch(forks, "patch-1", null)).toBeNull();
+    expect(pullRequestForBranch(forks, "patch-1", "someone-else")).toBeNull();
+    expect(pullRequestForBranch(forks, "patch-1", "User-3")?.number).toBe(14373);
+    expect(pullRequestForBranch(forks, "patch-1", "user-2")?.number).toBe(14515);
+    const own = decodePullRequestList(byHead["bump-go-1.27.1"]);
+    expect(pullRequestForBranch(own, "bump-go-1.27.1", null)?.number).toBe(14442);
+    expect(pullRequestForBranch(own, "bump-go-1.27.1", "cli")?.number).toBe(14442);
   });
 });
 
 describe("urls", () => {
+  it("reads a git remote's owner, and none for a remote without a host", () => {
+    expect(remoteOwner("https://github.com/octo/app.git\n")).toBe("octo");
+    expect(remoteOwner("https://github.com/octo/app")).toBe("octo");
+    expect(remoteOwner("git@github.com:octo/app.git")).toBe("octo");
+    expect(remoteOwner("ssh://git@ghe.example.com:22/octo/app.git")).toBe("octo");
+    expect(remoteOwner("/tmp/remotes/app.git")).toBeNull();
+    expect(remoteOwner("../app.git")).toBeNull();
+  });
+
   it("reads a pull request's repository and a check's job", () => {
     expect(repositoryOf("https://github.com/cli/cli/pull/14519")).toEqual({
       host: "github.com",

@@ -21,13 +21,14 @@ import { PoseidonRpcError } from "@poseidon/contracts/rpc";
 
 import { currentBranch, listBranches } from "./Branches";
 import { GhRunner, NOT_AVAILABLE, pullRequestBlocker } from "./GitHubCli";
-import { isRepository } from "./process";
+import { isRepository, run } from "./process";
 import {
   ALL_MERGE_METHODS,
   decodePullRequestList,
   decodePullRequestView,
   decodeReviewData,
   pullRequestForBranch,
+  remoteOwner,
   repositoryOf,
 } from "./pullRequestJson";
 
@@ -55,11 +56,16 @@ const LIST_FIELDS = [
   "state",
   "isDraft",
   "headRefName",
+  "headRepositoryOwner",
+  "isCrossRepository",
   "updatedAt",
   "statusCheckRollup",
 ].join(",");
 
-/** How many of one head branch's pull requests, newest first, the marks look through. */
+/**
+ * How many of one head branch's pull requests, newest first, the marks look
+ * through: enough that a name shared by many forks still reaches ours.
+ */
 const MARKS_LIST_LIMIT = 20;
 
 /** How many branches' listings run at once. */
@@ -186,12 +192,38 @@ export interface ThreadRoot {
 }
 
 /**
+ * The owner of the remote `branch` pushes to (its upstream's, failing that),
+ * read from the remote's URL: whose fork a pull request from this branch
+ * comes from. `null` when the branch has no such remote or the remote is not
+ * on a host, such as a local path.
+ */
+const pushOwner = (cwd: string, branch: string) =>
+  Effect.gen(function* () {
+    const refs = yield* run(
+      cwd,
+      [
+        "for-each-ref",
+        "--format=%(push:remotename)%00%(upstream:remotename)",
+        `refs/heads/${branch}`,
+      ],
+      { allowNonZeroExit: true },
+    );
+    const [push = "", upstream = ""] = refs.stdout.trim().split("\0");
+    const remote = push || upstream;
+    if (refs.exitCode !== 0 || remote === "" || remote === ".") return null;
+    const url = yield* run(cwd, ["remote", "get-url", remote], { allowNonZeroExit: true });
+    return url.exitCode === 0 ? remoteOwner(url.stdout) : null;
+  });
+
+/**
  * A mark for each thread whose branch has a pull request. Each distinct
- * root's branch is read once; the default branch and a detached HEAD are
- * never matched, and when no thread is left on a branch of its own gh is not
- * asked at all. Otherwise gh lists each distinct branch's own pull requests
- * (`gh pr list --head`), so a long-running one is found however many newer
- * ones the repository has. Anything that goes wrong — gh missing or
+ * root's branch is read once, with the owner of the remote it pushes to; the
+ * default branch and a detached HEAD are never matched, and when no thread is
+ * left on a branch of its own gh is not asked at all. Otherwise gh lists each
+ * distinct branch's own pull requests (`gh pr list --head`), so a
+ * long-running one is found however many newer ones the repository has, and
+ * a fork's pull request from a branch of the same name is told apart by its
+ * owner (`pullRequestForBranch`). Anything that goes wrong — gh missing or
  * signed out, a git read that fails — is no marks rather than an error, and
  * a failed listing leaves just that branch's threads unmarked.
  */
@@ -206,17 +238,24 @@ export const pullRequestMarks = (
     const remote = remotes.find((name) => defaultBranch?.startsWith(`${name}/`) === true);
     const defaultName =
       remote === undefined ? defaultBranch : defaultBranch!.slice(remote.length + 1);
-    const branchOfRoot = new Map<string, string | null>();
+    const headOfRoot = new Map<string, { branch: string; owner: string | null } | null>();
     for (const { root } of threads) {
-      if (branchOfRoot.has(root)) continue;
+      if (headOfRoot.has(root)) continue;
       const branch = yield* currentBranch(root).pipe(
         Effect.catchTag("GitError", () => Effect.succeed(null)),
       );
-      branchOfRoot.set(root, branch === defaultName ? null : branch);
+      if (branch === null || branch === defaultName) {
+        headOfRoot.set(root, null);
+        continue;
+      }
+      const owner = yield* pushOwner(root, branch).pipe(
+        Effect.catchTag("GitError", () => Effect.succeed(null)),
+      );
+      headOfRoot.set(root, { branch, owner });
     }
     const onBranches = threads.flatMap(({ threadId, root }) => {
-      const branch = branchOfRoot.get(root) ?? null;
-      return branch === null ? [] : [{ threadId, branch }];
+      const head = headOfRoot.get(root) ?? null;
+      return head === null ? [] : [{ threadId, ...head }];
     });
     if (onBranches.length === 0) return { marks: [] };
     if ((yield* pullRequestBlocker(gh, projectRoot)) !== null) return { marks: [] };
@@ -252,8 +291,8 @@ export const pullRequestMarks = (
     );
     const rowsOf = new Map(listings);
     const marks: Array<PullRequestMark> = [];
-    for (const { threadId, branch } of onBranches) {
-      const row = pullRequestForBranch(rowsOf.get(branch) ?? [], branch);
+    for (const { threadId, branch, owner } of onBranches) {
+      const row = pullRequestForBranch(rowsOf.get(branch) ?? [], branch, owner);
       if (row === null) continue;
       marks.push({
         threadId,

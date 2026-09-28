@@ -220,9 +220,9 @@ export const GitPullRequestViewRpc = Rpc.make(PULL_REQUEST_RPC_METHODS.gitPullRe
 
 /**
  * A mark for every live thread of the project whose branch has a pull request,
- * from one listing per distinct branch of that branch's own pull requests.
- * Empty, not an error, when gh is missing or signed out or the project is not
- * a repository.
+ * from one listing per distinct branch of that branch's own pull requests, a
+ * fork's from a branch of the same name told apart by its owner. Empty, not an
+ * error, when gh is missing or signed out or the project is not a repository.
  */
 export const GitPullRequestMarksRpc = Rpc.make(PULL_REQUEST_RPC_METHODS.gitPullRequestMarks, {
   payload: Schema.Struct({ projectId: ProjectId }),

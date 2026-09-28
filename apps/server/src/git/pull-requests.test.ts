@@ -57,7 +57,8 @@ const listByHead = (args: ReadonlyArray<string>): GhOutput => {
   return ok(JSON.stringify(rows ?? []));
 };
 
-const LIST_JSON = "number,url,state,isDraft,headRefName,updatedAt,statusCheckRollup";
+const LIST_JSON =
+  "number,url,state,isDraft,headRefName,headRepositoryOwner,isCrossRepository,updatedAt,statusCheckRollup";
 
 const listCall = (branch: string) => [
   "pr",
@@ -245,10 +246,19 @@ describe("git.pullRequest.marks", () => {
   it.live("marks each thread by its own branch's pull request", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        // The project's folder is on the open pull request's branch; one worktree is on a branch with a merged and
+        // The project's folder is on a fork's open pull request's branch and
+        // pushes to that fork; one worktree is on a branch with a merged and
         // a closed, failing pull request, another on the draft's, a third on
         // the default branch and a fourth on a branch with none.
         const root = makeRepo("document-search-operator-support");
+        git(root, "remote", "add", "fork", "https://github.com/user-1/cli.git");
+        git(root, "config", "branch.document-search-operator-support.remote", "fork");
+        git(
+          root,
+          "config",
+          "branch.document-search-operator-support.merge",
+          "refs/heads/document-search-operator-support",
+        );
         const merged = addWorktree(root, "bump-go-1.27.1");
         const draft = addWorktree(root, "williammartin-clean-git-test-seams");
         const onDefault = addWorktree(root, "main", false);
@@ -310,6 +320,29 @@ describe("git.pullRequest.marks", () => {
         const { marks } = yield* service.pullRequestMarks(projectId);
         expect(marks).toEqual([expect.objectContaining({ threadId: thread, number: 14355 })]);
         expect(gh.calls.at(-1)).toEqual(listCall("williammartin-clean-git-test-seams"));
+      }),
+    ),
+  );
+
+  it.live("leaves a branch unmarked when only other people's forks have one of its name", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        // `patch-1` has three fork pull requests, one open, none of them ours:
+        // unpushed, the branch matches none; pushed to user-3's fork, it
+        // matches that fork's open one.
+        const root = makeRepo("patch-1");
+        const gh = signedIn({ list: listByHead });
+        const { projectId, addThread, git: service } = yield* stack(root, gh.runner);
+        const thread = yield* addThread();
+        expect(yield* service.pullRequestMarks(projectId)).toEqual({ marks: [] });
+
+        git(root, "remote", "add", "origin", "git@github.com:user-3/cli.git");
+        git(root, "config", "branch.patch-1.remote", "origin");
+        git(root, "config", "branch.patch-1.merge", "refs/heads/patch-1");
+        const { marks } = yield* service.pullRequestMarks(projectId);
+        expect(marks).toEqual([
+          expect.objectContaining({ threadId: thread, number: 14373, state: "open" }),
+        ]);
       }),
     ),
   );

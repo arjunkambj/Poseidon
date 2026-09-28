@@ -2347,11 +2347,16 @@ allowed. Checks are bucketed into fail, pending, pass and skipped, a re-run
 replaces the run before it, and failing ones come first; an Actions check
 carries its job id from its URL. `git.pullRequest.marks` reads each live
 thread's branch — its worktree's, or the project folder's for a local thread,
-each root read once — skipping the default branch and detached HEADs. It then
-runs one `gh pr list --state all --head=<branch> --limit 20` per distinct
-branch in the project's folder, a few at a time, so a long-running pull
-request is found however many newer ones the repository has, preferring an
-open pull request, then the newest. When no thread is on a branch of its own,
+each root read once — skipping the default branch and detached HEADs — with
+the owner of the remote that branch pushes to (its upstream's, failing that),
+taken from the remote's URL. It then runs one
+`gh pr list --state all --head=<branch> --limit 20` per distinct branch in the
+project's folder, a few at a time, so a long-running pull request is found
+however many newer ones the repository has. A row counts only when its head is
+that owner's — or, for a branch with no such owner, when it is not from a
+fork — so another person's fork pull request from a branch named `patch-1`
+never marks a local `patch-1`. Of the rows left it prefers an open pull
+request, then the newest. When no thread is on a branch of its own,
 gh is not asked at all; gh missing or signed out is an empty list, and a
 failed listing leaves just that branch's threads unmarked.
 
