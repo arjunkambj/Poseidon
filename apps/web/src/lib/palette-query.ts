@@ -7,6 +7,20 @@
 
 import { defaultFilter } from "cmdk";
 
+/**
+ * The keyword a message-search hit carries. The server already matched the
+ * hit's text, so the palette keeps it for any query rather than fuzzy-matching
+ * its title against the query a second time.
+ */
+export const MESSAGE_HIT_KEYWORD = "palette-message-hit";
+
+/**
+ * A message hit's score: above zero, so it stays and counts as a result (the
+ * "No results found" row keys off that count), and below any real fuzzy
+ * match, so title hits rank first — cmdk orders its groups by their best item.
+ */
+const MESSAGE_HIT_SCORE = 1e-9;
+
 export type PaletteQuery = {
   readonly commandsOnly: boolean;
   readonly query: string;
@@ -33,7 +47,20 @@ export function paletteFilter(
   keywords?: ReadonlyArray<string>,
 ): number {
   const { query } = paletteQuery(search);
-  return query === ""
-    ? 1
-    : defaultFilter(value, query, keywords === undefined ? undefined : [...keywords]);
+  if (query === "") {
+    return 1;
+  }
+  if (keywords?.includes(MESSAGE_HIT_KEYWORD) === true) {
+    return MESSAGE_HIT_SCORE;
+  }
+  return defaultFilter(value, query, keywords === undefined ? undefined : [...keywords]);
+}
+
+/**
+ * The text the palette sends to message search: the query, once it is past
+ * two characters and not a ">" command search. Null when nothing is asked.
+ */
+export function messageSearchQuery(search: string): string | null {
+  const { commandsOnly, query } = paletteQuery(search);
+  return commandsOnly || Array.from(query).length <= 2 ? null : query;
 }

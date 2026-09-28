@@ -460,6 +460,17 @@ groups:
   a second way back to an archived thread besides its settings page. The
   first nine rows of the sidebar show their `Mod+1`…`Mod+9` chord, numbered
   in sidebar order (`useThreadTargets`, shared with `AppShortcuts`).
+- The messages. Past two characters, once typing pauses for 200 ms, the
+  palette also asks `threads.searchMessages` for threads whose message text
+  holds the query, across every project
+  (`apps/web/src/components/Layout/palette-message-hits.tsx`). A disabled
+  "Searching messages…" row stands in while it waits; each newer query cancels
+  the older call. Each hit shows the thread's title, its project (archived
+  threads marked) and a one-line snippet with the match in a `<mark>`. The
+  hits carry a keyword the palette's matcher scores just above zero, so they
+  are never dropped by the fuzzy filter and always rank after the title hits.
+  Picking one opens the thread with the find bar prefilled with the query, at
+  the match inside that message (`apps/web/src/lib/thread-find-request.ts`).
 
 The command groups are built from the command catalog
 (`apps/web/src/lib/command-catalog.ts`). Each row shows its chord with the
@@ -488,7 +499,7 @@ fixed keys, searchable by name, id or key (`apps/web/src/lib/cheatsheet.ts`).
 Settings → Keybindings has a button that fires the same command.
 
 A leading `>` narrows the list to
-commands and hides the threads; the text after it is matched by the usual fuzzy
+commands and hides the threads and the message search; the text after it is matched by the usual fuzzy
 filter (`apps/web/src/lib/palette-query.ts`). A footer names the keys: arrows
 to move, Enter to open, Escape to close, `>` for commands.
 

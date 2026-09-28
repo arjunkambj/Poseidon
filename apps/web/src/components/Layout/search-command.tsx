@@ -19,6 +19,7 @@ import {
   SettingsGroup,
   ThreadsGroup,
 } from "@/components/Layout/palette-groups";
+import { MessageHitsGroup } from "@/components/Layout/palette-message-hits";
 import { paletteFilter, paletteQuery } from "@/lib/palette-query";
 import { CommandKbd, useKeybindingCommand } from "@/lib/shortcuts";
 import { Search as SearchIcon } from "@honeyicons/react";
@@ -140,7 +141,7 @@ function PaletteContent({ onDone }: { onDone: () => void }) {
       <CommandInput
         value={search}
         onValueChange={setSearch}
-        placeholder="Search threads, or type > for commands…"
+        placeholder="Search threads and messages, or type > for commands…"
       />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
@@ -149,6 +150,7 @@ function PaletteContent({ onDone }: { onDone: () => void }) {
         <PaletteCommands onDone={onDone} />
         <SettingsGroup onDone={onDone} />
         {commandsOnly ? null : <ThreadsGroup onDone={onDone} />}
+        {commandsOnly ? null : <MessageHitsGroup search={search} onDone={onDone} />}
       </CommandList>
       <div className="-mx-1 -mb-1 mt-1 flex items-center gap-3 border-t px-3 py-2 type-micro text-muted-foreground">
         <KeyHint keys={["↑", "↓"]} label="navigate" />

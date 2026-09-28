@@ -289,6 +289,9 @@ export const makeFixtureRpc = (context: FixtureRpcContext): PoseidonRpcClient =>
             ]);
         case "editors.open":
           return () => Effect.succeed({});
+        // No message index here; the palette's Messages group stays empty.
+        case "threads.searchMessages":
+          return () => Effect.succeed([]);
         default:
           return () => Effect.die(new Error(`fixture: unimplemented rpc ${String(key)}`));
       }

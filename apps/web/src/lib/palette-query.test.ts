@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { paletteFilter, paletteQuery } from "./palette-query";
+import {
+  MESSAGE_HIT_KEYWORD,
+  messageSearchQuery,
+  paletteFilter,
+  paletteQuery,
+} from "./palette-query";
 
 describe("paletteQuery", () => {
   it("reads a bare > as commands only with nothing to match", () => {
@@ -46,5 +51,43 @@ describe("paletteFilter", () => {
 
   it("matches keywords too", () => {
     expect(paletteFilter("General", "prefs", ["prefs"])).toBeGreaterThan(0);
+  });
+});
+
+describe("paletteFilter on message hits", () => {
+  it("scores a message hit above zero but below a real title match", () => {
+    const title = paletteFilter("Fix login flow", "login");
+    const message = paletteFilter("message t-1", "login", [MESSAGE_HIT_KEYWORD]);
+    expect(message).toBeGreaterThan(0);
+    expect(message).toBeLessThan(title);
+  });
+
+  it("keeps a message hit whose own text does not match the query", () => {
+    expect(paletteFilter("message t-1", "zzz", [MESSAGE_HIT_KEYWORD])).toBeGreaterThan(0);
+  });
+
+  it("gives a message hit the full score when there is nothing to match", () => {
+    expect(paletteFilter("message t-1", "", [MESSAGE_HIT_KEYWORD])).toBe(1);
+  });
+});
+
+describe("messageSearchQuery", () => {
+  it("asks for a plain query past two characters", () => {
+    expect(messageSearchQuery("  login ")).toBe("login");
+    expect(messageSearchQuery("abc")).toBe("abc");
+  });
+
+  it("asks nothing for two characters or fewer", () => {
+    expect(messageSearchQuery("ab")).toBeNull();
+    expect(messageSearchQuery("  ab  ")).toBeNull();
+    expect(messageSearchQuery("")).toBeNull();
+  });
+
+  it("counts characters rather than UTF-16 units", () => {
+    expect(messageSearchQuery("😀😀")).toBeNull();
+  });
+
+  it("asks nothing for a command search", () => {
+    expect(messageSearchQuery("> settings")).toBeNull();
   });
 });
