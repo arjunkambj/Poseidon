@@ -361,8 +361,8 @@ button — adds its tab if it is absent and activates it. Closing a tab only
 hides its pane, as switching away does; closing the last one shows the
 launcher with the dock still open.
 The New task page, before any thread exists, has the same frame for the
-picked project's own folder: a one-row header with the git actions and the
-terminal and dock toggles, the project's terminal drawer, and a dock with
+picked project's own folder: a one-row header with Run, the git actions and
+the terminal and dock toggles, the project's terminal drawer, and a dock with
 Changes (the folder's uncommitted work, or its branch against the default
 branch) and Files — no Browser, which is a thread's — answering the same keys
 but `browserPane.toggle`.
@@ -962,7 +962,9 @@ Everything a client needs that is not React.
   `scripts.detect` for a project or one thread's root, asked once per
   connected epoch while mounted. It is not kept alive and nothing preloads
   it: only the open Run menu reads it, so detection runs when the menu opens.
-  A failed call is the empty list.
+  A failed call is the empty list. The renderer builds it once per client
+  runtime (`run/script-atoms.ts`) for the header's Run control
+  (`run/run-control.tsx`).
 - `oneShot.ts` — `runOneShot`, how every git write but the start panel's
   setup atom runs (a setup nothing watches, `worktreeSetupRun`, is one too): a
   fresh atom per call, held until it settles. A shared `runtime.fn` atom would

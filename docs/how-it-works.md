@@ -2182,6 +2182,10 @@ by the page's draft, which is not a thread, so opens go to the project's folder.
 Picking an editor from a file menu opens the file without changing the
 favourite.
 
+The Run control sits just before "Open in" in the thread header, and before
+the git actions in the New task header once a project is picked: it runs the
+project's scripts in the terminal drawer ("Running scripts", §11).
+
 ### Worktrees
 
 `git.worktree.create` (`apps/server/src/git/Worktrees.ts`) gives a new thread a
@@ -3028,6 +3032,48 @@ from text already in the draft and from what the user types next. It writes
 the per-thread draft the composer renders from, then moves focus to the
 composer's input with the caret after the quote, so the user can type the
 question straight away.
+
+### Running scripts
+
+The Run control (`apps/web/src/components/run/run-control.tsx`) is a split
+button in the thread header and, once a project is picked, in the New task
+header. Its main half runs the project's primary saved script — the one
+marked primary, else the first (`primaryScript` in `run/project-scripts.ts`)
+— as a script terminal (`terminal.open` with `script`) in a new tab of the
+owner's drawer, titled with the script's name, and opens the drawer on it.
+While that script runs the main half is Stop; below `@lg` it keeps only its
+icon and tooltip. With no saved script there is no main half, only a Run
+trigger for the menu.
+
+The chevron's menu lists the project's saved scripts, then the package.json
+scripts the server detects in the workspace root and its monorepo packages
+(`scripts.detect`; a nested one is named with its directory, as in
+"dev (apps/web)"), then "Edit scripts…". Detection runs only while the menu
+is open (`run/run-menu.tsx`): a spinner stands in until it answers, and an
+empty answer leaves the group out. A running script is marked "running",
+with a Stop item under it. Picking a script runs it; one whose tab is still
+running is brought to the front instead, and one whose tab has exited gets a
+fresh tab and the old one is closed (`planRun`). `useRunScript`
+(`run/use-run-script.ts`) opens the terminal first, adds its tab to the
+drawer's state and only then opens the drawer, since an open drawer with no
+tabs starts a shell of its own. A refusal — the ninth terminal, say — is a
+toast.
+
+Stop, on the control, in the menu or on the script's drawer tab, writes
+Ctrl-C to the terminal, which the pty turns into SIGINT for the script's
+foreground process group; the tab's close button stays the hard kill. Only
+the tab in front has an xterm attached, so the exit of a script in another
+tab, or in a closed drawer, shows on the next `terminal.list`: the control
+reads the owner's listing, folds it into the drawer's tabs while the drawer is
+closed, and reads it again when the menu opens and shortly after a Stop.
+
+"Edit scripts…" opens a dialog (`run/edit-scripts-dialog.tsx`) with a row
+per saved script — name, command, a Primary checkbox that clears the others,
+and a remove button — plus "Add script". It edits a local draft; Save checks
+it (`validateScripts`: a name and a command, names unique, one primary at
+most) with each problem under its row, then writes the whole
+`projectSettings` record from the latest settings (`withScripts`), keeping
+the project's setup script and every other project's settings.
 
 ---
 

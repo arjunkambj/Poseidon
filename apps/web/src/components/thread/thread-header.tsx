@@ -14,7 +14,9 @@
  * the right, before the status: commit, push and open a pull request from
  * the thread's workspace. The "Open in" control
  * (`components/open-in/open-in-control.tsx`) comes just before it, opening
- * the workspace in an editor. The terminal and dock toggles end the row
+ * the workspace in an editor, and the Run control
+ * (`components/run/run-control.tsx`) before that, running the project's
+ * scripts in the thread's terminal drawer. The terminal and dock toggles end the row
  * (`./header-toggles`, shared with the New task page's header).
  *
  * A narrow header (a small window, the dock open) squeezes the project, the
@@ -36,6 +38,7 @@ import type { DockPane } from "@/components/dock/dock-toggle";
 import { BranchPicker } from "@/components/git/branch-picker";
 import { GitActionsControl } from "@/components/git/git-actions-control";
 import { OpenInControl } from "@/components/open-in/open-in-control";
+import { RunControl } from "@/components/run/run-control";
 import { ThreadHeaderChrome, useThreadHeaderChrome } from "@/components/Layout/window-chrome";
 import { AgentBrowserIndicator } from "@/components/thread/agent-browser-indicator";
 import { HeaderToggles } from "@/components/thread/header-toggles";
@@ -114,6 +117,11 @@ export function ThreadHeader({
       <div className="flex-1" />
       <div className={cn("flex shrink-0 items-center gap-2", chrome && "app-region-no-drag")}>
         {onShowBrowser === null ? null : <AgentBrowserIndicator onShow={onShowBrowser} />}
+        <RunControl
+          projectId={snapshot.projectId}
+          threadId={snapshot.threadId}
+          ownerKey={snapshot.threadId}
+        />
         <OpenInControl projectId={snapshot.projectId} threadId={snapshot.threadId} />
         <GitActionsControl projectId={snapshot.projectId} snapshot={snapshot} />
         {/* Idle is the resting state, not news: the pill shows only while
