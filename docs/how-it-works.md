@@ -2739,8 +2739,13 @@ fields entirely.
 | Cards    | `question.option.1` … `question.option.9`             | `1` … `9`                     | `questionPending && !inputFocus && !dialogOpen`                                        |
 
 Enter sends and Shift+Enter inserts a newline. In the `/` and `@` menus,
-Up/Down or Tab/Shift+Tab move, Enter picks and Escape closes. These keys are
-not in the table, because they depend on the menus and on IME composition, so
+Up/Down or Tab/Shift+Tab move, Enter picks and Escape closes. With no menu
+open, a bare Up in an empty composer recalls the thread's last sent message
+(its text and its `@`/`$` references, not `#` chips or images), further Ups
+walk to older ones while the caret is on the first line, and Down on the last
+line walks back and finally empties the composer. Editing a recalled message
+makes it an ordinary draft, and the arrows move the caret again
+(`prompt-history.ts`, `use-prompt-recall.ts`). These keys are not in the table, because they depend on the menus and on IME composition, so
 the composer's own key handler keeps them (`composer-keys.ts`). The command
 catalog lists them as `FIXED_KEYS`, for display only.
 

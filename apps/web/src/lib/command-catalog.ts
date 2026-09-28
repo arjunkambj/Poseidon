@@ -239,4 +239,9 @@ export const FIXED_KEYS: ReadonlyArray<FixedKey> = [
   },
   { keys: ["Enter"], title: "Pick in the / and @ menus", area: "Composer" },
   { keys: ["Escape"], title: "Close the / and @ menu", area: "Composer" },
+  {
+    keys: ["ArrowUp", "ArrowDown"],
+    title: "Recall a sent message (empty composer)",
+    area: "Composer",
+  },
 ];

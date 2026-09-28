@@ -44,6 +44,7 @@ import { useCompactNow } from "@/components/composer/use-compact-now";
 import { useComposerCommands } from "@/components/composer/use-composer-commands";
 import { useComposerTrigger } from "@/components/composer/use-composer-trigger";
 import { useMentionMenus } from "@/components/composer/use-mention-menus";
+import { usePromptRecall } from "@/components/composer/use-prompt-recall";
 import { useInterrupt } from "@/components/composer/use-interrupt";
 import { useSendDraft } from "@/components/composer/use-send-draft";
 import { useClientRuntime } from "@/lib/client-runtime";
@@ -167,6 +168,14 @@ export function Composer({
     setTextAndCaret,
   });
   const menuItemCount = mentionMenus.open ? mentionMenus.itemCount : slashItems.length;
+  const recall = usePromptRecall({
+    items: doc?.items ?? [],
+    setText,
+    setMentions,
+    setReferences,
+    textareaRef,
+    triggerOpen: trigger !== null,
+  });
 
   const clearDraft = () => {
     clearTokens();
@@ -281,6 +290,9 @@ export function Composer({
           applySlash(item);
         }
       }
+      return;
+    }
+    if (recall.onKeyDown(event)) {
       return;
     }
     if (trigger !== null) {
