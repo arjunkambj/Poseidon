@@ -22,19 +22,19 @@ import { ChevronDown, Rocket } from "@honeyicons/react";
 
 export function StartSendMenu({
   disabled,
-  onStartInBackground,
-  returnFocus,
+  onStart,
+  refocus,
 }: {
   readonly disabled: boolean;
-  readonly onStartInBackground: () => void;
+  readonly onStart: () => void;
   /** Where the focus goes when the menu closes: the composer's textarea. */
-  readonly returnFocus: React.RefObject<HTMLTextAreaElement | null>;
+  readonly refocus: React.RefObject<HTMLTextAreaElement | null>;
 }) {
   // Once the menu has finished closing: the item keeps the focus while it
   // fades out, so moving it any earlier does not hold.
   const onOpenChangeComplete = (open: boolean) => {
     if (!open) {
-      returnFocus.current?.focus();
+      refocus.current?.focus();
     }
   };
   return (
@@ -62,7 +62,7 @@ export function StartSendMenu({
         <TooltipContent>More ways to start</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" side="top" className="w-auto">
-        <DropdownMenuItem disabled={disabled} onClick={onStartInBackground}>
+        <DropdownMenuItem disabled={disabled} onClick={onStart}>
           <Rocket variant="bold" />
           Start in background
           <DropdownMenuShortcut>

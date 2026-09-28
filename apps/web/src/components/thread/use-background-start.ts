@@ -21,8 +21,11 @@
  * `useStartInBackground` is the start composer's side: the
  * `composer.startInBackground` command and the send menu's item take the
  * draft, empty the composer under a fresh draft id and run one lane — in a new
- * worktree when the workspace picker says so. It does not hand the project's
- * terminals to the thread: the user stays on New task, with them.
+ * worktree when the workspace picker says so. With "Compare models" on
+ * (`use-compare-models.ts`) the same press fans out instead: one lane per
+ * chosen model, each in its own new worktree, named for its model in the
+ * toast. It does not hand the project's terminals to the thread: the user
+ * stays on New task, with them.
  */
 
 import { useNavigate } from "@tanstack/react-router";
@@ -49,6 +52,7 @@ import {
   type BackgroundOutcome,
 } from "@/components/thread/background-start";
 import { worktreeName } from "@/components/thread/start-in-worktree";
+import type { CompareModels } from "@/components/thread/use-compare-models";
 import type { WorkspaceChoice } from "@/components/thread/workspace-mode-picker";
 import { describeExitError } from "@/lib/app-runtime";
 import {
@@ -219,6 +223,8 @@ export interface StartInBackgroundInput {
   /** Moves the composer to a fresh draft id. */
   readonly onNextDraft: () => void;
   readonly textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  /** "Compare models": while it is on, a start fans out into one lane per model. */
+  readonly compare?: Pick<CompareModels, "enabled" | "refusal" | "plan">;
 }
 
 /**
@@ -238,7 +244,8 @@ export const useStartInBackground = (input: StartInBackgroundInput): (() => void
 
   const start = () => {
     const { project, threadId, draft, settings, choice, textareaRef } = input;
-    if (latchRef.current || !input.canSend || input.blocked) {
+    const compare = input.compare?.enabled === true ? input.compare : undefined;
+    if (latchRef.current || !input.canSend || input.blocked || compare?.refusal != null) {
       return;
     }
     latchRef.current = true;
@@ -249,10 +256,18 @@ export const useStartInBackground = (input: StartInBackgroundInput): (() => void
         ? { worktree: { name: worktreeName(draft.text), baseBranch: choice.baseBranch } }
         : {}),
     };
+    // Compare lanes mint their own thread ids; the draft id is simply retired.
+    const fanOut = compare?.plan(draft.text);
     input.clearDraft();
     input.onNextDraft();
     textareaRef.current?.focus();
-    void run({ project, lanes: [lane], draft, restoreTo: () => currentIdRef.current });
+    void run({
+      project,
+      lanes: fanOut ?? [lane],
+      draft,
+      ...(fanOut === undefined ? {} : { labels: fanOut.map((entry) => entry.label) }),
+      restoreTo: () => currentIdRef.current,
+    });
   };
 
   useKeybindingCommand("composer.startInBackground", start);

@@ -2295,6 +2295,47 @@ note that the message waits in the composer, or "Could not start in
 thread. When no thread came to exist, the message goes back into New task's
 draft, unless the user has begun another one there.
 
+#### Comparing models
+
+The button with the columns icon beside the workspace picker turns on
+**Compare models** (`use-compare-models.ts`, drawn by
+`compare-models-picker.tsx`). It is React state on the start composer, not
+remembered. While it is on, a checkbox menu takes the model picker's place,
+grouped by connector instance like the picker, starting with the model the
+composer showed ticked. It holds up to 4 models (`COMPARE_MAX`); once four are
+ticked the rest are disabled. The workspace picker is disabled, since every
+model gets a new worktree of its own whatever it says; the base branch it
+holds still applies. On a project that is not a git repository the toggle is
+disabled and its tooltip says why, and with fewer than two models ticked Send
+and **Start in background** are disabled, with the reason beside the toggle.
+Leaving New task turns the mode off.
+
+Every way of sending then starts in the background: Enter, Send, the queue
+chord, `Mod+Alt+Enter` and the menu item. `fan-out-plan.ts` turns the draft
+into one lane per model, in tick order:
+
+- A new thread titled `<first line of the task> · <model>`, the task cut at 60
+  characters.
+- A new worktree whose branch is the branch prefix followed by
+  `<task slug>-<model slug>`. The model part is capped at 16 characters and the
+  task part is shortened so the whole name stays within `branchSlug`'s 40, so
+  the model survives the server's slugging. The same model under two
+  instances collides, and the server appends `-2`.
+- The shown effort and runtime mode, each kept only where that model or
+  instance accepts it, so the server's default applies instead of a refusal.
+
+`background-start.ts` runs the lanes. Worktree creates go one at a time in lane
+order, because concurrent `git worktree add` on one repository races on git's
+locks, and each `thread.create` waits for the lane before it. The threads are
+therefore created in tick order and land next to each other in the sidebar,
+which lists threads by their latest update. Setups, sends and turns overlap,
+while image uploads go one at a time. A lane fails, parks or starts on its own
+terms, as described above, and never holds up the next one. The one toast
+reads "Starting N threads in <project>…", then "Started N threads in
+<project>" naming the models, "Started k of N threads" naming each lane that
+did not start and why, or "Could not start N threads". **Open** goes to the
+first thread that started. The others are beside it in the sidebar.
+
 ### Deleting a worktree thread
 
 The sidebar row menu and Settings → Archived threads confirm a delete with the

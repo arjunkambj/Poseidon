@@ -34,13 +34,12 @@
  * thread that does not exist yet.
  *
  * Its keys are the thread composer's (`use-composer-commands`): focus, attach,
- * clear the draft, and `composer.queue`, which here simply sends — a thread
- * that does not exist yet has no turn to queue behind. The textarea's own keys
- * are `start-composer-keys.ts`.
+ * clear the draft, and `composer.queue`, which simply sends (a thread not yet
+ * made has no turn to queue behind); the textarea's are `start-composer-keys.ts`.
  *
- * "Start in background" — its chord, or the menu beside Send — starts the
- * draft as a thread without leaving (`use-background-start.ts`): the page
- * moves to a fresh draft id, which empties the composer for the next task.
+ * "Start in background" (its chord, or the menu beside Send) starts the draft
+ * without leaving and moves to a fresh draft id (`use-background-start.ts`);
+ * with "Compare models" on, every send does, once per model in a worktree.
  *
  * Around them sits the frame a thread has, for the picked project's own
  * folder (`StartThreadWorkspace`): a header with the git actions and the
@@ -81,7 +80,9 @@ import { worktreeName } from "@/components/thread/start-in-worktree";
 import { useStartInWorktree } from "@/components/thread/use-start-in-worktree";
 import { useStartSend } from "@/components/thread/use-start-send";
 import { useTerminalHandOver } from "@/components/terminal/use-terminal-hand-over";
-import { useWorkspaceChoice, WorkspaceModePicker } from "@/components/thread/workspace-mode-picker";
+import { useWorkspaceChoice } from "@/components/thread/workspace-mode-picker";
+import { comparePicker, CompareWorkspace } from "@/components/thread/compare-models-picker";
+import { useCompareModels } from "@/components/thread/use-compare-models";
 import { WorktreeSetupPanel } from "@/components/thread/worktree-setup-panel";
 import type { DockPane } from "@/components/dock/dock-toggle";
 import { StartThreadEmpty } from "@/components/thread/start-thread-empty";
@@ -109,7 +110,6 @@ function StartComposer({
   readonly projects: ReadonlyArray<ProjectSummary>;
   readonly project: ProjectSummary;
   readonly onPickProject: (projectId: ProjectId) => void;
-  /** Moves the page to a fresh draft id, once a start in the background took this one. */
   readonly onNextDraft: () => void;
 }) {
   const navigate = useNavigate();
@@ -180,6 +180,7 @@ function StartComposer({
   const sendFirstMessage = () =>
     sendDraft({ text: text.trim(), mentions, references, mode: "start" });
   const choice = useWorkspaceChoice(project.projectId);
+  const compare = useCompareModels(shownSettings, choice);
   const handOverTerminals = useTerminalHandOver();
   const worktreeStart = useStartInWorktree(project.projectId, {
     createThread: (worktree) =>
@@ -220,7 +221,7 @@ function StartComposer({
     menus,
     triggers,
     keymapAnswers: useKeymapAnswers(),
-    onSend: () => void send(),
+    onSend: () => submit(),
   });
   const clearDraft = () => {
     setText("");
@@ -240,7 +241,10 @@ function StartComposer({
     draft: { text, mentions, references, files: attachments.files },
     blocked: busy,
     textareaRef,
+    compare,
   });
+  const submit = compare.enabled ? startInBackground : () => void send();
+  const ready = canSend && !busy && compare.refusal === null;
   useComposerCommands({
     textareaRef,
     fileInputRef,
@@ -248,7 +252,7 @@ function StartComposer({
     clearDraft,
     submit: () => {
       triggers.close();
-      void send();
+      submit();
     },
   });
 
@@ -282,12 +286,12 @@ function StartComposer({
               disabled={inWorktreeFlow}
               onPick={onPickProject}
             />
-            <WorkspaceModePicker choice={choice} disabled={inWorktreeFlow} />
+            <CompareWorkspace compare={compare} choice={choice} disabled={inWorktreeFlow} />
           </>
         }
         onSubmit={(event) => {
           event.preventDefault();
-          void send();
+          submit();
         }}
         {...attachments.dropHandlers}
         aria-label="New thread"
@@ -324,21 +328,17 @@ function StartComposer({
         <ComposerToolbar
           running={false}
           steerable={false}
-          canSend={canSend && !busy}
+          canSend={ready}
           interrupting={false}
           sending={working}
           filesKey={attachments.files.length}
           fileInputRef={fileInputRef}
           onFilesPicked={attachments.add}
-          onSend={() => void send()}
+          onSend={submit}
           onInterrupt={() => {}}
           attachDisabledReason={attachRefusal ?? undefined}
           sendMenu={
-            <StartSendMenu
-              disabled={!canSend || busy}
-              onStartInBackground={startInBackground}
-              returnFocus={textareaRef}
-            />
+            <StartSendMenu disabled={!ready} onStart={startInBackground} refocus={textareaRef} />
           }
           settings={
             defaults ? (
@@ -347,6 +347,7 @@ function StartComposer({
                 catalog={catalog}
                 connectorInstanceId={instanceId}
                 runtimeModes={runtimeModeOptions(capabilities)}
+                modelPicker={comparePicker(compare, catalog)}
                 onChange={(patch) => setSettings((current) => ({ ...current, ...patch }))}
               />
             ) : undefined
