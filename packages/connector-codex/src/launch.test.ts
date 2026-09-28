@@ -20,12 +20,22 @@ describe("sessionServerArgs and sessionEnv", () => {
       `mcp_servers.poseidon.url="${UNREACHABLE_MCP.url}"`,
       "-c",
       `mcp_servers.poseidon.bearer_token_env_var="${MCP_BEARER_ENV}"`,
+      "-c",
+      `shell_environment_policy.set.${MCP_BEARER_ENV}=""`,
     ]);
     expect(args.join(" ")).not.toContain(UNREACHABLE_MCP.bearer);
     expect(sessionEnv({ PATH: "/bin" }, UNREACHABLE_MCP)).toEqual({
       PATH: "/bin",
       [MCP_BEARER_ENV]: UNREACHABLE_MCP.bearer,
     });
+  });
+
+  it("blanks the bearer variable in the commands the model runs", () => {
+    // The CLI's default policy passes variables named like secrets through
+    // to commands; only this override keeps the bearer with the MCP client.
+    expect(sessionServerArgs(UNREACHABLE_MCP)).toContain(
+      `shell_environment_policy.set.${MCP_BEARER_ENV}=""`,
+    );
   });
 
   it("launched every recorded session that way", () => {

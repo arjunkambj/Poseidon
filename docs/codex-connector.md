@@ -190,7 +190,8 @@ A session starts the app-server as
 ```
 codex app-server \
   -c mcp_servers.poseidon.url="<the thread's MCP endpoint>" \
-  -c mcp_servers.poseidon.bearer_token_env_var="POSEIDON_CODEX_MCP_TOKEN"
+  -c mcp_servers.poseidon.bearer_token_env_var="POSEIDON_CODEX_MCP_TOKEN" \
+  -c shell_environment_policy.set.POSEIDON_CODEX_MCP_TOKEN=""
 ```
 
 in the thread's workspace root, in a process group of its own (`launch.ts`,
@@ -200,11 +201,21 @@ CLI's configuration for this process only; nothing is written to
 `config.toml`. The bearer is set only in the child's environment, under
 `POSEIDON_CODEX_MCP_TOKEN`: never in argv, where `ps` would show it, and never
 in a recording, since the tee does not write the environment
-(`launch.test.ts` checks every recorded argv). The name contains `TOKEN` on
-purpose: the CLI's default shell environment policy keeps variables named
-like secrets out of the commands the model runs. Every recorded session but
-one shows the CLI starting `poseidon` (`mcpServer/startupStatus/updated`), and
-failing it, because those recordings point it at a port nothing listens on.
+(`launch.test.ts` checks every recorded argv). The commands the model runs
+must not see it: one that did could print it, or call the MCP endpoint
+directly and skip the elicitation that puts Poseidon's tools behind the
+ladder. The CLI's default shell environment policy does not filter it — on
+0.156.1, with no `shell_environment_policy` configured, variables named like
+secrets reach every command. So the third override sets the variable to the
+empty string in every command's environment; the CLI's MCP client still
+reads the real value from the process (`bearer-hidden`: the model's
+`echo "token=[$POSEIDON_CODEX_MCP_TOKEN]"` printed `token=[]`). A key under
+`shell_environment_policy.set` leaves the rest of the user's policy as
+`config.toml` has it; an `exclude` list would replace theirs.
+
+Every recorded session but one shows the CLI starting `poseidon`
+(`mcpServer/startupStatus/updated`), and failing it, because those recordings
+point it at a port nothing listens on.
 `mcp-tool-approval` points it at a live loopback endpoint instead
 (`test/mcpStandIn.ts`, which lists one tool shaped as the gateway lists
 `browser_open` and checks the bearer), and the model calls that tool.
@@ -572,6 +583,11 @@ through `-c` (see the launch), never written to the config.
   the turn was stopped. No recording has it, so the gate has nothing to
   answer; the session's ungated check does not see it either, since no
   `fileChange` item completes.
+- **The default shell environment policy passes variables named like
+  secrets** (`KEY`, `SECRET`, `TOKEN`) to the commands the model runs: with no
+  `shell_environment_policy` configured, `ignore_default_excludes` is in
+  effect. The session blanks its MCP bearer's variable itself
+  (`bearer-hidden`).
 - **An MCP tool call is approved by elicitation** (`mcp-tool-approval`), not
   by an approval request, and a tool that is not read-only and reaches
   outside the machine is asked about even under full access.
