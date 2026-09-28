@@ -141,7 +141,7 @@ export const makeCodexSession = (
     const closedRef = yield* Ref.make(false);
     const turnRef = yield* Ref.make<ActiveTurn | null>(null);
     let settings = options.settings;
-    /** The mode the CLI's thread was last given, so a change is sent once. */
+    /** The mode the CLI's thread last accepted, so a change is sent until it lands. */
     let appliedMode: RuntimeMode = settings.runtimeMode;
 
     const emit = (pending: PendingRuntimeEvent): Effect.Effect<void> =>
@@ -399,7 +399,6 @@ export const makeCodexSession = (
       const overrides = turnOverrides(aim, holds);
       const mode = settings.runtimeMode;
       const modeChanged = mode !== appliedMode;
-      appliedMode = mode;
       const collaborationMode = collaborationModeFor({
         mode: settings.interactionMode,
         carried: carriesMode,
@@ -419,6 +418,7 @@ export const makeCodexSession = (
         },
         // A collaboration mode names the model and effort of its own.
         next: collaborationMode === undefined ? overrides.next : aim,
+        mode,
       };
     };
 
@@ -448,9 +448,12 @@ export const makeCodexSession = (
         ? call(rpc, "thread/compact/start", { threadId: codexThreadId }, ThreadCompactStartResponse)
         : Effect.gen(function* () {
             const input = userInput(turn, yield* staged(turn));
-            const { params, next } = turnParams(input);
+            const { params, next, mode } = turnParams(input);
             const response = yield* call(rpc, "turn/start", params, TurnStartResponse);
+            // Only an accepted turn changed the thread: a refused one leaves
+            // the change to be named again on the next.
             holds = next;
+            appliedMode = mode;
             yield* Deferred.succeed(codexTurnId, response.turn.id);
           });
 

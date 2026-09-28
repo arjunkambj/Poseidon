@@ -460,8 +460,10 @@ effort wherever they differ from it (`turnSettings.ts`):
   a switch to a model that stops below the thread's effort never runs it at
   the old one. With neither known, none is named.
 
-What the thread holds moves only once the CLI accepted the `turn/start`. The
-approval policy and sandbox are repeated only when the mode changed.
+The approval policy and sandbox are named again when the mode changed. What
+the thread holds — the model, the effort and the mode — moves only once the
+CLI accepted the `turn/start` that named it: a refused turn leaves the change
+to be named again on the next.
 `updateSettings` stores the new settings and emits `model.changed` at once, so
 the next turn runs on them; an effort the new model does not offer is
 reported as the one the turn will run at (`model-switch`: the second turn on
