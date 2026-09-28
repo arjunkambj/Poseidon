@@ -3699,6 +3699,34 @@ built-in and bundled commands from the same zero-turn handshake its model list
 comes from, one handshake per instance for both; Command Code's lists none.
 The composer's `/` menu shows them in its Harness group (§4).
 
+### Plugins
+
+The Customize page has three tabs — Skills, MCP and Plugins — each with a
+count, and one project scope picker shared by all three
+(`customize-layout.tsx`). Skills and MCP list one section per connector
+instance. Plugins (`plugins-tab.tsx`) lists Poseidon's own plugins first, then
+one section per instance with plugins of its own.
+
+Poseidon's plugins come from `plugins.list`: the built-in ones (the Browser
+plugin) and the global ones in `POSEIDON_HOME/plugins`, rescanned on every
+call, so a folder dropped in shows up on the next visit. Each is a stock
+`Card` in a two-column grid with its source badge, description, contents line
+and a `Switch`. Flipping it calls `plugins.setEnabled`; the switch shows the
+new value and stays disabled until the reloaded list agrees, and a failure
+puts it back with a toast. The setting reaches sessions started afterwards:
+the connectors ask `ConnectorServices.sessionPlugins` once at session start,
+and the MCP gateway reads the Browser plugin's switch when it mints a
+session's bearer. An invalid plugin shows an Invalid badge and its error, and
+its switch is disabled. With no global plugins the section shows the folder's
+path with Copy path and Open folder (`plugins.openFolder`, which creates the
+folder first).
+
+An instance's own plugins (`pluginsAtom`, Claude Code's installed plugins) are
+read-only cards whose disabled switch has the tooltip "Managed by Claude
+Code". The palette's Navigation group offers Plugins (`plugins.open`, no
+default chord). The standard itself, and what each harness loads, is in
+[plugins.md](plugins.md).
+
 ### Attention
 
 `AttentionCoordinator` (`apps/web/src/components/attention/attention-coordinator.tsx`,
@@ -3899,6 +3927,7 @@ wedged pty cannot hold the shutdown up.
 | the pieces, one by one                 | [architecture.md](architecture.md)                                                                                                                                    |
 | the rules and where they are enforced  | [philosophy.md](philosophy.md)                                                                                                                                        |
 | running, testing, packaging            | [development.md](development.md)                                                                                                                                      |
+| plugins and what each harness loads    | [plugins.md](plugins.md)                                                                                                                                              |
 | the CLI on the far end                 | [command-code-connector.md](command-code-connector.md), [claude-code-connector.md](claude-code-connector.md)                                                          |
 | commands, events, read models          | `packages/contracts/src/orchestration.ts`                                                                                                                             |
 | the connector-neutral event vocabulary | `packages/contracts/src/runtime.ts`                                                                                                                                   |

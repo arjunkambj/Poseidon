@@ -1,6 +1,6 @@
 # Documentation
 
-Six documents, each written against the code rather than a plan. Start with
+Seven documents, each written against the code rather than a plan. Start with
 whichever question you have.
 
 - [architecture.md](architecture.md) — the processes, the workspaces and their
@@ -16,6 +16,10 @@ whichever question you have.
   each of its stages, the test conventions, the end-to-end suite, the
   recordings of the real CLI, building and packaging, and where state lives on
   disk.
+- [plugins.md](plugins.md) — the Poseidon plugin standard: the Claude Code
+  compatible layout, built-in and global plugins, validation, turning them on
+  and off, what each harness loads, the built-in Browser plugin, and a
+  harness's own plugins.
 - [command-code-connector.md](command-code-connector.md) — the Command Code
   CLI as observed: binary resolution, the argv and environment of a turn, the
   NDJSON frame catalogue, the transcript, the PreToolUse hook, plan mode,

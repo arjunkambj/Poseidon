@@ -308,7 +308,8 @@ hooks as it would any plugin (`pluginOptions.ts`). Its MCP servers do not come
 from the CLI's own discovery: the registry has already read `.mcp.json` and
 expanded `${CLAUDE_PLUGIN_ROOT}`, so they join `mcpServers` as
 `plugin-<plugin>-<server>` — a key that can never be `poseidon`. With no plugin
-enabled neither option changes, so the argv above is still the argv.
+enabled neither option changes, so the argv above is still the argv. The plugin
+layout and the registry are described in [plugins.md](plugins.md).
 
 **The user's harness.** `settingSources` user, project and local load the
 user's `CLAUDE.md`, skills, MCP servers, hooks and permission rules, as the

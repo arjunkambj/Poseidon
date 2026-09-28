@@ -293,7 +293,8 @@ a real turn:
   extra skills from a path (a skill directory or a directory of skills);
   repeatable". With no plugin enabled, or none carrying skills, the argv is
   what it was before plugins existed, which is why every recording still
-  rebuilds.
+  rebuilds. Command Code has no plugin loader, so a plugin's commands, agents
+  and hooks are not loaded ([plugins.md](plugins.md#what-each-harness-gets)).
 
 `--max-turns` and `--no-session` are supported by `buildArgs` but no production
 caller passes them, so a turn runs at the CLI's own default cap — `cmd --help`

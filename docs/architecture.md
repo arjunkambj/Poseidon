@@ -326,7 +326,7 @@ The renderer. TanStack Router routes under `apps/web/src/routes`, state through
 | --------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `_home/index`                     | the New task page: start a thread, pick a project; `?pane=` carries the project dock's tab        |
 | `_home/t/$threadId`               | the thread view; `?pane=` carries the dock tab                                                    |
-| `_home/customize/{skills,mcp}`    | what extends the agent, one tab per kind, one section per instance                                |
+| `_home/customize/*`               | skills, MCP servers and plugins: what extends the agent, one tab per kind                         |
 | `settings`, eight pages           | general, models, connectors, keybindings, permissions, git & worktrees, browser, archived threads |
 | `browser.$threadId`               | the browser pane on its own, against a real `browser.subscribe`                                   |
 | `dev/{timeline,composer,changes}` | fixture pages, DEV only                                                                           |
@@ -1661,7 +1661,12 @@ exactly once, when an instance is opened from the settings document.
 `ConnectorServices` is everything the server lends a connector: `mcpEndpoint`
 and `hookEndpoint` per thread (each a URL plus a per-session bearer), the hook
 handler registration pair, the permission ladder, the attachments directory, a
-logger that annotates lines with the thread they came from, and a clock.
+logger that annotates lines with the thread they came from, and a clock. The
+optional `sessionPlugins(threadId)` answers the enabled Poseidon plugins a new
+session should load (skills folders and MCP servers, plugin root expanded);
+`ConnectorHost` forwards it to the plugin registry once connectors are
+installed and answers none before. A connector that leaves it unused loads no
+plugins ([plugins.md](plugins.md#what-each-harness-gets)).
 
 ### The session handle
 
@@ -1671,8 +1676,9 @@ logger that annotates lines with the thread they came from, and a clock.
 take a `TurnInput`: text, attachments, mentions and the optional skill and
 plugin `references`. How a reference reaches the harness is the connector's
 choice, since each harness has its own syntax for invoking a skill or a
-plugin. Command Code's connector writes a skill as a sentence naming it and
-leaves a plugin out with a `session.warning`
+plugin. Command Code's connector writes a skill as a sentence naming it, and
+a plugin the same way when it is one of the session's Poseidon plugins,
+leaving any other plugin out with a `session.warning`
 ([command-code-connector.md](command-code-connector.md#the-prompt)). `send`
 fails with `TurnInProgress` when a turn is running and `capabilities.steering`
 is false; the caller's recourse is to queue, which is what
