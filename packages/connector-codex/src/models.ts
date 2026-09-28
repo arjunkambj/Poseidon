@@ -69,10 +69,15 @@ export const toModelOptions = (rows: ReadonlyArray<CodexModel>): ReadonlyArray<M
   rows
     .filter((row) => !row.hidden && row.model !== "")
     .toSorted((a, b) => Number(b.isDefault) - Number(a.isDefault))
-    .map((row) => ({
-      id: row.model,
-      label: row.displayName === "" ? row.model : row.displayName,
-      family: MODEL_FAMILY,
-      efforts: effortsOf(row),
-      vision: row.inputModalities.includes("image"),
-    }));
+    .map((row) => {
+      // The contract refuses an empty description, so a blank one is left out.
+      const description = row.description?.trim() ?? "";
+      return {
+        id: row.model,
+        label: row.displayName === "" ? row.model : row.displayName,
+        family: MODEL_FAMILY,
+        efforts: effortsOf(row),
+        vision: row.inputModalities.includes("image"),
+        ...(description === "" ? {} : { description }),
+      };
+    });

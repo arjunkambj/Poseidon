@@ -41,6 +41,26 @@ describe("toModelOptions", () => {
     expect(options[0]?.id).toBe(DEFAULT_MODEL);
   });
 
+  it("carries each row's own description as secondary text", () => {
+    const byId = new Map(toModelOptions(recordedModels()).map((option) => [option.id, option]));
+    expect(byId.get("sonnet")?.label).toBe("Sonnet");
+    expect(byId.get("sonnet")?.description).toBe(
+      "Sonnet 5 · Efficient for routine tasks · $2/$10 per Mtok",
+    );
+    expect(byId.get(DEFAULT_MODEL)?.description).toBe(
+      "Use the default model (currently Opus 5.5 (1M context)) · $4/$20 per Mtok",
+    );
+  });
+
+  it("leaves an absent or blank description out", () => {
+    const options = toModelOptions([
+      { value: "a", displayName: "A" },
+      { value: "b", displayName: "B", description: "" },
+      { value: "c", displayName: "C", description: "  " },
+    ]);
+    expect(options.every((option) => !("description" in option))).toBe(true);
+  });
+
   it("offers each model the effort rungs the CLI lists for it, lowest first", () => {
     const byId = new Map(toModelOptions(recordedModels()).map((option) => [option.id, option]));
     expect(byId.get("sonnet")?.efforts).toEqual(["low", "medium", "high", "xhigh", "max"]);

@@ -61,6 +61,8 @@ export const CodexModel = Schema.Struct({
   /** The id `thread/start` and `turn/start` take. */
   model: Schema.String,
   displayName: Schema.String,
+  /** The catalogue's one-line tagline; optional, so an app-server without it still decodes. */
+  description: Schema.optional(Schema.String),
   hidden: Schema.Boolean,
   supportedReasoningEfforts: Schema.Array(ReasoningEffortOption),
   defaultReasoningEffort: Schema.String,

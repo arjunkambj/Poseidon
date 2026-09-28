@@ -25,6 +25,8 @@ export const MODEL_FAMILY = "Claude";
 export interface ClaudeModelInfo {
   readonly value: string;
   readonly displayName: string;
+  /** The CLI's one-line tagline for the row, shown as secondary text. */
+  readonly description?: string;
   readonly resolvedModel?: string;
   readonly supportedEffortLevels?: ReadonlyArray<string>;
 }
@@ -40,12 +42,17 @@ export const toModelOptions = (
 ): ReadonlyArray<ModelOption> =>
   models
     .filter((info) => info.value !== "")
-    .map((info) => ({
-      id: info.value,
-      label: info.displayName === "" ? info.value : info.displayName,
-      family: MODEL_FAMILY,
-      efforts: effortsOf(info),
-    }));
+    .map((info) => {
+      // The contract refuses an empty description, so a blank one is left out.
+      const description = info.description?.trim() ?? "";
+      return {
+        id: info.value,
+        label: info.displayName === "" ? info.value : info.displayName,
+        family: MODEL_FAMILY,
+        efforts: effortsOf(info),
+        ...(description === "" ? {} : { description }),
+      };
+    });
 
 /**
  * What the SDK's `model` option should be for a thread's model: nothing for

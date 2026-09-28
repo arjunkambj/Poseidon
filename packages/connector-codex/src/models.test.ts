@@ -76,6 +76,29 @@ describe("toModelOptions", () => {
     ).toEqual(["low", "high"]);
   });
 
+  it("carries each row's own description as secondary text", () => {
+    const byId = new Map(toModelOptions(recordedRows()).map((option) => [option.id, option]));
+    expect(byId.get("gpt-6-astra")?.label).toBe("GPT-6-Astra");
+    expect(byId.get("gpt-6-astra")?.description).toBe(
+      "Frontier intelligence for the most demanding work.",
+    );
+  });
+
+  it("leaves an absent or blank description out", () => {
+    const options = toModelOptions([
+      row({ model: "a" }),
+      row({ model: "b", description: "" }),
+      row({ model: "c", description: "  " }),
+    ]);
+    expect(options).toHaveLength(3);
+    expect(options.every((option) => !("description" in option))).toBe(true);
+    // An app-server that sends no description still decodes.
+    const { description: _omitted, ...bare } = recordedRows()[0]!;
+    expect(
+      Schema.decodeUnknownSync(ModelListResponse)({ data: [bare], nextCursor: null }).data[0],
+    ).toEqual(bare);
+  });
+
   it("reads vision off the input modalities", () => {
     expect(toModelOptions(recordedRows()).every((option) => option.vision === true)).toBe(true);
     expect(toModelOptions([row({ inputModalities: ["text"] })])[0]?.vision).toBe(false);

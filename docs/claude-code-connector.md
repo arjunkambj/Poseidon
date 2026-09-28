@@ -196,7 +196,9 @@ the model it currently stands for, and each row has a `value`, a
 `supportedEffortLevels` (`low` to `max` in the recording; one row has none).
 `toModelOptions` (`models.ts`) keeps every row, labels it with its display
 name, groups it under "Claude", and keeps the effort rungs Poseidon's ladder
-knows. `listModels` runs the same handshake once per instance and caches the
+knows. The row's `description` (for example "Sonnet 5 · Efficient for routine
+tasks · $2/$10 per Mtok") is carried as the model's `description`, which the
+UI shows as secondary text; an absent or blank one is left out. `listModels` runs the same handshake once per instance and caches the
 result, so the model picker does not start a CLI every time it opens.
 
 `commands` is the CLI's slash commands (the SDK's `SlashCommand`: `name`,

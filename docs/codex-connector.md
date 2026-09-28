@@ -41,7 +41,7 @@ picks this instance. Adding it changed no existing install's routing.
 | `protocol.ts`              | narrow schemas for the responses read, pinned to `PROTOCOL_CLI_VERSION`          |
 | `handshake.ts`             | `initialize` with the experimental API, `account/read`, `model/list`             |
 | `probe.ts`                 | `--version`, `login status`, the zero-turn handshake, version floor              |
-| `models.ts`                | the CLI's model rows, their effort ladders and default efforts                   |
+| `models.ts`                | the CLI's model rows, descriptions, effort ladders and default efforts           |
 | `turnSettings.ts`          | the model and effort a turn runs on, and what `turn/start` names                 |
 | `capabilities.ts`          | what a Codex session can do, and why                                             |
 | `launch.ts`                | the session's argv and environment, with Poseidon's MCP server                   |
@@ -163,7 +163,11 @@ its answer.
 
 The model list (`models.ts`) leaves out rows the server marks `hidden`, puts
 the `isDefault` row first, and labels each row with its display name under the
-family "Codex". Efforts are the row's `supportedReasoningEfforts` that
+family "Codex". The row's `description` (for example "Frontier intelligence
+for the most demanding work.") is carried as the model's `description`, which
+the UI shows as secondary text; the protocol field is optional, so an
+app-server that sends none still decodes, and an absent or blank one is left
+out. Efforts are the row's `supportedReasoningEfforts` that
 Poseidon's ladder names; the protocol's effort is an open string, so a rung
 Poseidon has no name for is dropped. Vision is read from the row's input
 modalities. The model id `default` means the CLI's own default: a thread on it
