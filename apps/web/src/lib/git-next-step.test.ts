@@ -3,7 +3,7 @@ import type { GitStatus } from "@poseidon/contracts/rpc";
 import { describe, expect, it } from "vitest";
 
 import { TURN_RUNNING_REASON } from "./git-actions";
-import { nextGitStep } from "./git-next-step";
+import { nextGitStep, nextGitStepHint } from "./git-next-step";
 
 const CHANGED: GitStatus = {
   branch: "poseidon/fix-login",
@@ -148,5 +148,26 @@ describe("nextGitStep", () => {
       step: "commit",
       reason: "No changes to commit.",
     });
+  });
+});
+
+describe("nextGitStepHint", () => {
+  it("names what the enabled button does", () => {
+    expect(nextGitStepHint("commit", CHANGED, BRANCHES)).toBe(
+      "Commit the changes in this workspace",
+    );
+    expect(nextGitStepHint("push", { ...PUSHED, ahead: 1 }, BRANCHES)).toBe(
+      "Push 1 commit to origin/poseidon/fix-login",
+    );
+    expect(nextGitStepHint("push", { ...PUSHED, ahead: 3 }, BRANCHES)).toBe(
+      "Push 3 commits to origin/poseidon/fix-login",
+    );
+    expect(nextGitStepHint("push", CLEAN, BRANCHES)).toBe(
+      "Push poseidon/fix-login to origin/poseidon/fix-login",
+    );
+    expect(nextGitStepHint("create-pr", PUSHED, BRANCHES)).toBe(
+      "Create a pull request for poseidon/fix-login",
+    );
+    expect(nextGitStepHint("view-pr", PUSHED, BRANCHES)).toBe("Open the pull request");
   });
 });

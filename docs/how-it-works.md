@@ -1915,23 +1915,37 @@ wording; nothing talks to GitHub.
 The thread header's git actions control
 (`apps/web/src/components/git/git-actions-control.tsx`) is the client of these
 — and the New task page's header carries it too, before any thread exists,
-acting on the picked project's own folder with the `projectId` alone:
-a Commit button, and a menu with Commit, Commit & push, and Commit, push &
-create PR. An action is a stack of steps, planned from the root's status and
-branch list (`planGitAction` in `apps/web/src/lib/git-actions.ts`): a commit
-only when something changed; a push after a commit, and otherwise only when
-the branch has no upstream yet (the push then sets it, `-u`) or is ahead of
-it; the pull request last. Pushing and the pull request need a remote. Each
-action that cannot run says why — in the button's tooltip, or under its menu
-item: no changes and nothing to push, a turn running (the whole control is
-disabled while this thread's turn runs), not a repository, a detached HEAD, no
-remote, the branch behind its upstream, or a pull request from the default
-branch. Files also change outside a turn, in an editor or a terminal, so the
-control rereads every git read of the project when the user comes back to the
-window — focus, or the page turning visible, counted once when both fire
-(`useWindowReturn` in `apps/web/src/lib/window-return.ts`) — and the status when
-its menu opens. A Commit disabled as "no changes" would otherwise stay so with
-no click of its own to refresh it.
+acting on the picked project's own folder with the `projectId` alone. Its
+primary button (`apps/web/src/components/git/git-primary-button.tsx`) follows
+the branch's state, offering the first step with something to do
+(`nextGitStep` in `apps/web/src/lib/git-next-step.ts`): Commit while anything
+changed, with the changed-file count as a badge; Push while the branch has no
+upstream yet or is ahead of it, with `↑N` commits ahead as the badge; View PR
+once a pull request for the branch is remembered (below), which opens it; and
+Create PR for a pushed branch that is not the default one and has a remote.
+With none of these it is Commit, disabled as "no changes". Whether `gh` is
+installed and signed in is not probed for the button: a Create PR that `gh`
+cannot open fails with the server's message in its toast. Beside it a chevron
+opens a menu with Commit, Commit & push, and Commit & create PR, and View pull
+request when a link is known. An action is a stack of steps, planned from the
+root's status and branch list (`planGitAction` in
+`apps/web/src/lib/git-actions.ts`): a commit only when something changed; a
+push after a commit, and otherwise only when the branch has no upstream yet
+(the push then sets it, `-u`) or is ahead of it; the pull request last.
+Pushing and the pull request need a remote. Each action that cannot run says
+why — in the button's tooltip, or as a second line under its menu item: no
+changes and nothing to push, a turn running (every action is disabled while
+this thread's turn runs, or while a git run is going; View PR, which runs
+nothing, stays), not a repository, a detached HEAD, no remote, the branch
+behind its upstream, or a pull request from the default branch. An enabled
+button's tooltip says what it does instead: `Push 2 commits to origin/<branch>`,
+`Create a pull request for <branch>`. Files also change outside a turn, in an
+editor or a terminal, so the control rereads every git read of the project
+when the user comes back to the window — focus, or the page turning visible,
+counted once when both fire (`useWindowReturn` in
+`apps/web/src/lib/window-return.ts`) — and the status when its menu opens. A
+Commit disabled as "no changes" would otherwise stay so with no click of its
+own to refresh it.
 
 Any action that commits opens the commit dialog first. Its message starts as
 the thread's title — `Update N files` while the title is still `New thread` —

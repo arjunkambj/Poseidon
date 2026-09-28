@@ -14,7 +14,7 @@
 import type { GitBranchList } from "@poseidon/contracts/git";
 import type { GitStatus } from "@poseidon/contracts/rpc";
 
-import { availableActions, type GitAction } from "@/lib/git-actions";
+import { availableActions, pushTargetOf, type GitAction } from "@/lib/git-actions";
 
 export type GitNextStep = "commit" | "push" | "create-pr" | "view-pr";
 
@@ -77,4 +77,26 @@ export const nextGitStep = (input: {
     badge: null,
     reason: availability.commit,
   };
+};
+
+/** What the enabled button does, for its tooltip; a disabled one shows its `reason`. */
+export const nextGitStepHint = (
+  step: GitNextStep,
+  status: GitStatus,
+  branches: GitBranchList,
+): string => {
+  switch (step) {
+    case "commit":
+      return "Commit the changes in this workspace";
+    case "push": {
+      const target = pushTargetOf(status, branches) ?? "the remote";
+      return status.ahead > 0
+        ? `Push ${status.ahead} ${status.ahead === 1 ? "commit" : "commits"} to ${target}`
+        : `Push ${status.branch ?? "this branch"} to ${target}`;
+    }
+    case "create-pr":
+      return `Create a pull request for ${status.branch ?? "this branch"}`;
+    case "view-pr":
+      return "Open the pull request";
+  }
 };

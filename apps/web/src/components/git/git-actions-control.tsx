@@ -1,8 +1,13 @@
 /**
  * The git actions in the thread header — and in the New task page's header,
- * before any thread exists: a single Commit button. It opens the commit
- * dialog, which offers Commit, Commit & push, and Commit & create PR as
- * buttons.
+ * before any thread exists: a primary button that follows the branch's state
+ * and a menu with every action (`./git-primary-button`). The button offers
+ * the next step (`@/lib/git-next-step`): Commit while anything changed, Push
+ * while commits are unpushed or the branch has no upstream, Create PR for a
+ * pushed feature branch, and View PR once a pull request for the branch is
+ * remembered (`usePullRequestLink`), which opens it. A badge shows the
+ * changed-file count or the commits ahead. The menu offers Commit, Commit &
+ * push and Commit & create PR, each with its reason when it cannot run.
  *
  * With a thread (`snapshot`) it works in the thread's workspace — its
  * worktree, when it has one. Without one it works in the project's own
@@ -19,9 +24,9 @@
  * order with one toast each, and stop at the first refusal with the server's
  * message (`./use-git-actions`).
  *
- * The whole control is disabled while the thread's turn runs, and each
- * action that cannot run says why — in the button's tooltip, or in the
- * dialog's. On the New task page there is no thread, so it is disabled, with
+ * Every action is disabled while the thread's turn runs — View PR, which
+ * runs nothing, stays — and each action that cannot run says why: in the
+ * button's tooltip, the menu item, or the dialog. On the New task page there is no thread, so it is disabled, with
  * the same reason, while a local thread of the project runs a turn in its
  * folder (`projectFolderTurnRunning`). The thread list cannot see a turn
  * paused on the user; the server refuses a commit under that one itself.
@@ -35,8 +40,8 @@
  * with the reason instead of failing the header. Outside a repository it
  * renders nothing.
  *
- * It answers `git.commit` (Mod+Alt+C) as the Commit button and `git.push`
- * (Mod+Alt+P) as the dialog's Commit & push, which pushes straight away when there is
+ * It answers `git.commit` (Mod+Alt+C) as the menu's Commit and `git.push`
+ * (Mod+Alt+P) as its Commit & push, which pushes straight away when there is
  * nothing to commit; an action that cannot run does nothing from its key.
  */
 
@@ -44,8 +49,6 @@ import { RegistryContext, useAtomRefresh, useAtomValue } from "@effect/atom-reac
 import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
 
-import { Button } from "@poseidon/ui/components/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
 import type { GitQuery } from "@poseidon/client-runtime/gitAtoms";
 import type { GitBranchList } from "@poseidon/contracts/git";
 import type { ProjectId } from "@poseidon/contracts/ids";
@@ -53,6 +56,8 @@ import type { ThreadDetailSnapshot } from "@poseidon/contracts/orchestration";
 import type { GitStatus } from "@poseidon/contracts/rpc";
 
 import { useGitAtoms } from "@/components/panes/changes/git-atoms";
+import { openExternal } from "@/lib/desktop";
+import { nextGitStep, nextGitStepHint, type GitNextStepView } from "@/lib/git-next-step";
 import { useKeybindingCommand } from "@/lib/shortcuts";
 import {
   availableActions,
@@ -68,9 +73,9 @@ import {
 import { projectFolderTurnRunning, turnInFlight } from "@/lib/turn";
 import { useWindowReturn } from "@/lib/window-return";
 import { useConnectionState, useThreadList } from "@/state/hooks";
-import { Git, Spinner } from "@honeyicons/react";
 
 import { CommitDialog, type CommitChoice } from "./commit-dialog";
+import { GitPrimaryButton } from "./git-primary-button";
 import { PullRequestDialog } from "./pull-request-dialog";
 import { useGitActions, type GitRunInput } from "./use-git-actions";
 
@@ -124,7 +129,10 @@ export function GitActionsControl({
   const status = readOf<GitStatus>(useAtomValue(statusAtom), connected);
   const branches = readOf<GitBranchList>(useAtomValue(gitBranchesAtom(scope)), connected);
   const refreshStatus = useAtomRefresh(statusAtom);
-  const { run } = useGitActions(scope, status._tag === "ok" ? status.value.branch : null);
+  const { run, pullRequestUrl } = useGitActions(
+    scope,
+    status._tag === "ok" ? status.value.branch : null,
+  );
 
   const [dialog, setDialog] = React.useState<OpenDialog | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -225,30 +233,26 @@ export function GitActionsControl({
         : {}),
     });
 
-  const disabled = blocked !== null || pending;
-  const commitReason = reasonFor("commit");
   const files = ready?.status.files ?? [];
   const branch = ready?.status.branch ?? null;
+  // Before the status is read the button offers Commit, disabled with why.
+  const next: GitNextStepView =
+    ready === null
+      ? { step: "commit", action: "commit", label: "Commit", badge: null, reason: blocked }
+      : nextGitStep({ ...ready, turnRunning, pullRequestUrl });
 
   return (
     <div className="inline-flex shrink-0 items-center gap-0.5">
-      <Tooltip>
-        <TooltipTrigger render={<span className="inline-flex" />}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={disabled || commitReason !== null}
-            onClick={() => start("commit")}
-            aria-label="Commit"
-          >
-            {pending ? <Spinner variant="bold" /> : <Git variant="bold" />}
-            {/* A narrow header keeps the branch name over this label. */}
-            <span className="hidden @lg/header:inline">Commit</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{commitReason ?? "Commit the changes in this workspace"}</TooltipContent>
-      </Tooltip>
+      <GitPrimaryButton
+        next={next}
+        hint={ready === null ? "" : nextGitStepHint(next.step, ready.status, ready.branches)}
+        pending={pending}
+        pullRequestUrl={pullRequestUrl}
+        reasons={actionRecord(reasonFor)}
+        onStart={(action) => start?.(action)}
+        onOpen={openExternal}
+        onMenuOpen={refreshStatus}
+      />
 
       {dialog?.kind === "commit" ? (
         <CommitDialog
