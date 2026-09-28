@@ -167,6 +167,8 @@ describe("createGuestRegistry", () => {
     expect(registry.track(asWc(guest(3, "persist:other")))).toBeNull();
     expect(registry.threadOf(1)).toBe("a");
     expect(registry.threadOf(2)).toBeNull();
+    expect(registry.tabCount("a")).toBe(1);
+    expect(registry.tabCount("b")).toBe(0);
   });
 
   it("attaches each guest's debugger once and reports it as its thread's target", async () => {
@@ -257,6 +259,7 @@ describe("createGuestRegistry", () => {
     expect(events.at(-1)).toEqual({ type: "destroyed", threadId: "a", wcId: 1, targetId: "T1" });
     expect(registry.port.guestsOf("a")).toEqual([]);
     expect(registry.threadOf(1)).toBeNull();
+    expect(registry.tabCount("a")).toBe(0);
   });
 
   it("reloads the guest itself and never sends Page.reload", async () => {

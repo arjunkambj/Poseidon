@@ -6,7 +6,9 @@
  * Every pane webview guest is set up once, the moment it is created
  * (`web-contents-created`), never again on a remount:
  * - its `window.open` handler, which always denies the native window and
- *   turns an http(s) popup into a pane tab of the same thread;
+ *   turns an http(s) popup into a pane tab of the same thread, rate-limited,
+ *   capped and in the background unless the page has focus
+ *   (`./browser/popups.ts`);
  * - its session's deny-by-default web permissions (`./browser/permissions.ts`),
  *   already installed at attach;
  * - the human-input relay (`./browser/guestInput.ts`), tagged with the
@@ -40,6 +42,7 @@ import {
 import { makeGuestInputRelay } from "./browser/guestInput";
 import { popupUrl, type GuestRegistry } from "./browser/guests";
 import { securePaneSession } from "./browser/permissions";
+import { makePopupGate } from "./browser/popups";
 import {
   CAPTURE_CHANNEL,
   CLEAR_ALL_CHANNEL,
@@ -119,6 +122,7 @@ export function registerIpc(supervisor: ServerSupervisor, pane: PaneGuests) {
   });
 
   const relay = makeGuestInputRelay();
+  const popups = makePopupGate();
 
   // The window's resolved `browser.*` chords; only a window may set them.
   let chords: ReadonlyArray<GuestChord> = [];
@@ -132,11 +136,19 @@ export function registerIpc(supervisor: ServerSupervisor, pane: PaneGuests) {
     guest.setWindowOpenHandler(({ url }) => {
       const threadId = pane.guests.threadOf(wcId);
       const target = popupUrl(url);
-      if (threadId !== null && target !== null) {
-        pane.tabs.create(threadId, target, false, wcId).catch((error: unknown) => {
-          console.warn(`[browser] popup dropped: ${String(error)}`);
-        });
+      if (threadId === null || target === null) return { action: "deny" };
+      const decision = popups.decide({
+        threadId,
+        openTabs: pane.guests.tabCount(threadId),
+        openerFocused: !guest.isDestroyed() && guest.isFocused(),
+      });
+      if (decision.kind === "drop") {
+        console.warn(`[browser] popup dropped: ${decision.reason}`);
+        return { action: "deny" };
       }
+      pane.tabs.create(threadId, target, decision.background, wcId).catch((error: unknown) => {
+        console.warn(`[browser] popup dropped: ${String(error)}`);
+      });
       return { action: "deny" };
     });
     const threadId = pane.guests.track(guest);

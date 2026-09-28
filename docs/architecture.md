@@ -2418,6 +2418,9 @@ opener. Every webview guest gets a
 `setWindowOpenHandler` at creation that always denies the native window and
 routes an http(s) popup to a new pane tab of the same thread; the popup loses
 `window.opener`, since it is a fresh guest rather than a child window.
+Electron has no popup blocker, so `popups.ts` stands in for one: a thread
+gets at most 4 popups in any 10 s and none once it holds 20 pane tabs, and a
+popup opens in the background unless the page that opened it has focus.
 
 **The kill switch.** `POSEIDON_REMOTE_DEBUG=0` (or `false`) starts no bridge,
 attaches no debugger, and spawns the server with

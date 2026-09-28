@@ -2913,8 +2913,10 @@ In-app the pane has a tab strip above the address bar: one entry per tab of
 the thread with its favicon (http(s) only) or a spinner while it loads, a close
 button each, and New tab, which opens `about:blank` and focuses the address.
 A page's popup — a `target=_blank` link or `window.open` — becomes a tab
-placed right after the tab that opened it, and the tab the agent opens with
-`browser_tabs new` is selected, as a browser would show it (unless the CDP
+placed right after the tab that opened it, selected when the page had focus
+(someone clicked in it) and in the background otherwise; a page that opens
+popups in a loop gets four per ten seconds and none past twenty tabs. The
+tab the agent opens with `browser_tabs new` is selected, as a browser would show it (unless the CDP
 request asked for the background); `browser_tabs switch` brings its tab to
 the front. Selecting a tab here moves the pane, not the agent, which stays
 pinned to the tab it drives.

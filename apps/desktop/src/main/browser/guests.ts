@@ -79,6 +79,8 @@ export interface GuestRegistry {
   readonly attached: (wc: WebContents) => void;
   /** The thread of a tracked guest. */
   readonly threadOf: (wcId: number) => string | null;
+  /** How many live guests (pane tabs) a thread has. */
+  readonly tabCount: (threadId: string) => number;
 }
 
 interface Entry {
@@ -315,5 +317,7 @@ export const createGuestRegistry = (options: GuestRegistryOptions): GuestRegistr
       if (options.debug && entry !== undefined) void register(entry);
     },
     threadOf: (wcId) => entries.get(wcId)?.threadId ?? null,
+    tabCount: (threadId) =>
+      [...entries.values()].filter((entry) => entry.threadId === threadId).length,
   };
 };
