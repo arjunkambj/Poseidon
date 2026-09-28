@@ -2526,8 +2526,8 @@ Any action that commits opens the commit dialog first
 `commit-picker.ts`). It has a message box, the changed files with a checkbox
 each, and one button per action. The message starts as the thread's title —
 `Update N files` while the title is still `New thread` — then a blank line and
-`Changed files:` with one `- path` line each; nothing writes the message for
-the user. Opening the dialog refetches the status, and until the user types
+`Changed files:` with one `- path` line each, unless a model writes it (see
+"Generate in the dialogs" below). Opening the dialog refetches the status, and until the user types
 the message follows it and the checkboxes: it counts and lists the files still
 ticked, not the ones read before the dialog opened or left out since. From the
 first keystroke the message is the user's. Every path `git.status` reports is
@@ -2546,9 +2546,9 @@ does for an action's own reason. The action the dialog was opened for is the
 filled button and has the focus, so Enter runs it, and Mod+Enter runs it from
 anywhere in the dialog, the message box included — a key of the dialog's own,
 not a keymap default. A pull request in the same run takes its title (the
-first line) and body (the rest) from the commit message; with nothing to
-commit, a push runs straight away and a pull request asks only for its title
-and body.
+first line) and body (the rest) from the commit message — or is generated,
+when that message was — and with nothing to commit, a push runs straight away
+and a pull request asks only for its title and body.
 
 The steps run in order (`runGitSteps`) and the first refusal stops the run, so
 a failed commit never pushes and a failed push opens no pull request. Each step
@@ -2619,6 +2619,48 @@ leaves the title as it was without a word. Only live turns count: a restart
 does not go back and name old threads. `thread.regenerateTitle` writes a
 title from the last 8 000 characters of the conversation and applies it with
 `thread.rename` whatever the title is, since the user asked.
+
+**Generate in the dialogs.** The commit dialog has a Generate button (a
+sparkle, `apps/web/src/components/git/generate-button.tsx`) beside the message
+label. It calls `git.generateCommitMessage` with the ticked `paths` (none when
+every file is ticked) and puts the subject, a blank line and the body in the
+box (`use-generate-commit-message.ts`). The message then counts as edited, so
+ticks no longer redraft it, and it is marked generated until the user changes
+it. While it runs the button is a spinner, and a click cancels: the client
+runtime interrupts the call, the server stops the harness, and an answer that
+lands afterwards is dropped. A refusal is a toast with the server's reason and
+leaves the box as it was. With Settings → Git's "Draft commit messages" on
+"Generate when the dialog opens", it also runs once as the dialog opens, as
+soon as something can write; it never replaces a message the user started
+typing meanwhile, and when it fails the template stays and a toast says
+"Couldn't write a message, kept the template". The pull request dialog has the
+same button beside its title, which fills the title and description from
+`git.generatePullRequest` (`use-generate-pull-request.ts`). Closing a dialog
+cancels its run.
+
+**The combined run.** "Commit, push & create PR" with a generated message left
+unchanged generates the pull request too (`pullRequestForCommit` in
+`apps/web/src/lib/git-actions.ts`): it is asked for at the pull request step,
+after the commit and the push, so it is written from the branch as they left
+it. If that fails the run falls back to the split of the commit message and
+still opens the pull request. A message the user wrote or edited keeps the
+split.
+
+**Regenerate title** is in each sidebar row's menu, just after Rename, and in
+the palette for the open thread (`thread.regenerateTitle`, no default chord;
+the thread header has no menu of its own). One toast says "Writing a new
+title…" and turns into the new title or the server's reason; a second request
+for the same thread while one runs is ignored
+(`apps/web/src/components/thread/regenerate-title.tsx`).
+
+**When nothing can write.** Generation counts as available while the server
+is reachable and an enabled, open connector declares `textGeneration`
+(`generationBlockedReason` in `apps/web/src/lib/generation-run.ts`). Otherwise
+each Generate button is disabled with a tooltip naming Settings → Connectors,
+the menu item is disabled with "Offline" or "Unavailable", the palette does
+not offer Regenerate title, the on-open draft keeps the template, and the
+combined run keeps the split. A `notice` in an answer — the chosen Writing
+model was passed over — is a toast once per app session.
 
 ### Opening the workspace in an editor
 
@@ -3859,6 +3901,7 @@ fields entirely.
 | Threads  | `thread.previous` / `thread.next`                     | `Mod+Shift+[` / `Mod+Shift+]` |                                                                                        |
 | Threads  | `thread.nextAttention`                                | `Mod+Alt+J`                   |                                                                                        |
 | Threads  | `thread.rename`                                       | `Mod+Alt+R`                   | `threadOpen`                                                                           |
+| Threads  | `thread.regenerateTitle`                              | unbound                       |                                                                                        |
 | Threads  | `thread.archive`                                      | `Mod+Shift+A`                 | `threadOpen`                                                                           |
 | Threads  | `thread.delete`                                       | `Mod+Alt+Backspace`           | `threadOpen`                                                                           |
 | Threads  | `thread.pin`                                          | `Mod+Shift+P`                 | `threadOpen`                                                                           |

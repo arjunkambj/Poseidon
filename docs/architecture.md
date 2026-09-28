@@ -434,7 +434,8 @@ shows a glyph tinted by its state (open, draft, merged, closed, checks failing;
 its Pull request tab. On hover the time gives
 way to the overflow menu, which a right-click on the row opens too
 (`apps/web/src/components/sidebar/thread-menu-items.tsx`):
-rename, pin or unpin, mark unread, mark done or active, a Copy submenu (the workspace path, the
+rename, regenerate title (a model writes one from the conversation; disabled while offline or
+when no harness can write text), pin or unpin, mark unread, mark done or active, a Copy submenu (the workspace path, the
 branch of a worktree thread, the thread ID), open terminal here (the thread
 with its terminal drawer open), open pull request (only while the branch has
 one), new thread in this project (in the same
@@ -492,7 +493,9 @@ they work on every route. On an open thread, `Mod+Alt+R` renames it,
 `Mod+Shift+A` archives it (or unarchives it when it is archived) and
 `Mod+Alt+Backspace` opens the delete confirmation; a key alone never deletes.
 `apps/web/src/components/thread/thread-shortcuts.tsx` owns those, with the row
-menu's rename form, confirmation and dispatch. The open thread's row menu shows
+menu's rename form, confirmation and dispatch, and answers the palette's
+"Regenerate title" (`thread.regenerateTitle`, no default chord) while
+something can write text (`apps/web/src/components/thread/regenerate-title.tsx`). The open thread's row menu shows
 the same keys.
 
 The command palette (`Mod+K`, `apps/web/src/components/Layout/search-command.tsx`
@@ -1180,6 +1183,12 @@ Everything a client needs that is not React.
   `stageAttachmentAtom` are single atoms the composer shares, so a second
   start would interrupt the first. The renderer binds them to its registry in
   `lib/one-shot-commands.ts`.
+- `generationCommands.ts` — `git.generateCommitMessage`,
+  `git.generatePullRequest` and `thread.regenerateTitle` as one-shot calls,
+  each taking an `AbortSignal` that interrupts the call on the server (which
+  stops the harness). The renderer binds them to its registry, with the
+  availability check and the cancellable runner the Generate buttons share,
+  in `lib/use-generation.ts`.
 - `terminalAtoms.ts` — a thread's terminal list, every thread's running
   terminals in one listing (`runningTerminalsAtom`), the open/write/resize/close
   calls, and `terminalAttachAtom`, which hands one terminal's output to a
