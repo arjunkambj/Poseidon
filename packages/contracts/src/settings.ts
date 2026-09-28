@@ -360,6 +360,9 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   keepAwake: true,
 };
 
+/** Days of inactivity before a thread moves to Done on its own: a positive whole number. */
+export const AutoDoneAfterDays = Schema.Int.check(Schema.isGreaterThan(0));
+
 export const Settings = Schema.Struct({
   connectors: Schema.Array(ConnectorInstanceConfig).pipe(
     settingsForm({ label: "Connectors", control: "hidden" }),
@@ -449,6 +452,13 @@ export const Settings = Schema.Struct({
     Schema.withDecodingDefaultKey(Effect.succeed({})),
     settingsForm({ label: "Plugins", control: "hidden" }),
   ),
+  // Moves a thread to the sidebar's Done section this many days after its
+  // last activity. Absent or `null` means off; `null` is how a patch turns it
+  // off again, since a patch leaves an absent field alone. The General panel
+  // draws its own select for it.
+  autoDoneAfterDays: Schema.optional(Schema.NullOr(AutoDoneAfterDays)).pipe(
+    settingsForm({ label: "Move to Done after", control: "hidden" }),
+  ),
 });
 export type Settings = typeof Settings.Type;
 
@@ -469,6 +479,7 @@ export const SettingsPatch = Schema.Struct({
   notifications: Schema.optional(NotificationSettings),
   preferredEditor: Schema.optional(Schema.String),
   plugins: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
+  autoDoneAfterDays: Schema.optional(Schema.NullOr(AutoDoneAfterDays)),
 });
 export type SettingsPatch = typeof SettingsPatch.Type;
 

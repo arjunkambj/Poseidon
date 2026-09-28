@@ -503,3 +503,41 @@ describe("preferred editor", () => {
     }),
   );
 });
+
+describe("auto-done", () => {
+  it.effect("is off on a fresh install and on a stored document that predates it", () =>
+    Effect.gen(function* () {
+      expect(defaultSettings().autoDoneAfterDays).toBeUndefined();
+      const older = Schema.encodeUnknownSync(Settings)(defaultSettings()) as Record<
+        string,
+        unknown
+      >;
+      expect("autoDoneAfterDays" in older).toBe(false);
+      const decoded = yield* Schema.decodeUnknownEffect(Settings)(older);
+      expect(decoded.autoDoneAfterDays).toBeUndefined();
+    }),
+  );
+
+  it.effect("applies through a patch, and a null patch turns it off", () =>
+    Effect.gen(function* () {
+      const base = Schema.encodeUnknownSync(Settings)(defaultSettings()) as object;
+      const on = yield* Schema.decodeUnknownEffect(SettingsPatch)({ autoDoneAfterDays: 7 });
+      const applied = yield* Schema.decodeUnknownEffect(Settings)({ ...base, ...on });
+      expect(applied.autoDoneAfterDays).toBe(7);
+      const off = yield* Schema.decodeUnknownEffect(SettingsPatch)({ autoDoneAfterDays: null });
+      const cleared = yield* Schema.decodeUnknownEffect(Settings)({ ...applied, ...off });
+      expect(cleared.autoDoneAfterDays).toBeNull();
+    }),
+  );
+
+  it.effect("rejects zero, a negative or a fractional day count", () =>
+    Effect.gen(function* () {
+      for (const days of [0, -3, 1.5]) {
+        const exit = yield* Effect.exit(
+          Schema.decodeUnknownEffect(SettingsPatch)({ autoDoneAfterDays: days }),
+        );
+        expect(exit._tag, String(days)).toBe("Failure");
+      }
+    }),
+  );
+});
