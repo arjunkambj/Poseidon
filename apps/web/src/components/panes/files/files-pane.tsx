@@ -303,7 +303,7 @@ export function FilesPane({
 
   return (
     <div data-context="files" className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 px-2 py-1.5">
+      <div className="shrink-0 px-2 pb-1.5">
         <Input
           ref={searchRef}
           value={query}

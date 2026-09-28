@@ -141,7 +141,7 @@ export function AddressBar({
     onAction({ kind: "history", direction });
 
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1.5">
+    <div className="flex items-center gap-1.5 px-2 pb-1.5">
       <ToolbarButton label="Back" disabled={nav?.canGoBack === false} onClick={history("back")}>
         <ChevronLeft variant="bold" />
       </ToolbarButton>
