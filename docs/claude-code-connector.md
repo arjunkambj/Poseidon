@@ -56,6 +56,8 @@ routes new threads to Command Code until the user picks this instance.
 | `queryOptions.ts`         | the SDK options a session starts with; runtime mode → permission mode     |
 | `inputQueue.ts`           | the streaming-input prompt the session writes user messages to            |
 | `userMessage.ts`          | one composer turn as the user message the CLI reads                       |
+| `references.ts`           | skill and plugin references as prompt lines                               |
+| `pluginOptions.ts`        | Poseidon's enabled plugins as SDK `plugins` and `mcpServers` entries      |
 | `attachments.ts`          | images as content blocks, other files by path                             |
 | `session.ts`              | one long-lived CLI process per thread: send, steer, interrupt, close      |
 | `sessionRef.ts`           | the persisted session reference                                           |
@@ -246,6 +248,7 @@ options:
 | `allowDangerouslySkipPermissions` | true, which the SDK requires before `bypassPermissions` can be used |
 | `model`, `effort`                 | the thread's, left out for `default` and for `minimal` effort       |
 | `mcpServers`                      | `poseidon`, over HTTP, with the per-thread bearer                   |
+| `plugins`                         | the enabled Poseidon plugins, only when there are some (below)      |
 | `additionalDirectories`           | the thread's attachments directory                                  |
 | `hooks`                           | one PreToolUse callback, for every tool                             |
 | `canUseTool`                      | the approval gate                                                   |
@@ -268,6 +271,17 @@ scrubbed):
 
 The hooks and `forwardSubagentText` travel in the SDK's `initialize` control
 request instead, as `hooks.PreToolUse[0].hookCallbackIds: ["hook_0"]`.
+
+**Poseidon's plugins.** The session asks the host for its enabled plugins
+(`ConnectorServices.sessionPlugins`) once, at start; a registry that fails is
+a logged warning and no plugins. Each goes in as
+`{ type: "local", path: <plugin dir>, skipMcpDiscovery: true }`, which the SDK
+passes as `--plugin-dir`, so the CLI loads its skills, commands, agents and
+hooks as it would any plugin (`pluginOptions.ts`). Its MCP servers do not come
+from the CLI's own discovery: the registry has already read `.mcp.json` and
+expanded `${CLAUDE_PLUGIN_ROOT}`, so they join `mcpServers` as
+`plugin-<plugin>-<server>` — a key that can never be `poseidon`. With no plugin
+enabled neither option changes, so the argv above is still the argv.
 
 **The user's harness.** `settingSources` user, project and local load the
 user's `CLAUDE.md`, skills, MCP servers, hooks and permission rules, as the
@@ -316,7 +330,9 @@ mode if the turn needs another one, and writes the message.
 
 The user message (`userMessage.ts`) carries a uuid the session mints, which
 the CLI's receipts name it by. Its text is the composer's text, then each
-mention as `@path`, then one line per non-image attachment. A turn with no
+mention as `@path`, then one line per skill reference and one per plugin
+reference (`Use the "<name>" skill.` / `Use the "<name>" plugin.`, each name
+once; `references.ts`), then one line per non-image attachment. A turn with no
 images is sent as a plain string. A turn with images is sent as content
 blocks, images first and the text last, because the CLI reads a message as a
 slash command only when its last block is text.
