@@ -24,6 +24,7 @@ import type { ThreadSummary } from "@poseidon/contracts/orchestration";
 import type { NotificationSettings } from "@poseidon/contracts/settings";
 import { Check } from "@honeyicons/react";
 
+import { type SeenMap, isUnread } from "@/components/sidebar/thread-seen";
 import { type ThreadStatusMark, threadStatusMark } from "@/components/sidebar/thread-status";
 
 /** What a thread waits on the user for, or `null` when nothing. */
@@ -159,4 +160,32 @@ export const eventMark = (event: Pick<AttentionEvent, "kind" | "attention">): Th
         }) ?? FINISHED
       );
   }
+};
+
+type NextThread = AttentionThread & Pick<ThreadSummary, "updatedAt">;
+
+const freshest = <T extends NextThread>(list: ReadonlyArray<T>): T | undefined =>
+  list.reduce<T | undefined>(
+    (best, thread) => (best === undefined || thread.updatedAt > best.updatedAt ? thread : best),
+    undefined,
+  );
+
+/**
+ * Where "Next needing attention" goes: the most recently updated thread that
+ * waits on you, else the most recently updated unread one, never the thread
+ * already open nor an archived or deleted one. `undefined` when there is
+ * nowhere to go.
+ */
+export const nextAttentionThread = <T extends NextThread>(
+  list: ReadonlyArray<T>,
+  seen: SeenMap,
+  openThreadId: string | null,
+): T | undefined => {
+  const candidates = list.filter(
+    (thread) => thread.threadId !== openThreadId && !gone(thread.status),
+  );
+  return (
+    freshest(candidates.filter((thread) => attentionOf(thread) !== null)) ??
+    freshest(candidates.filter((thread) => isUnread(seen, thread)))
+  );
 };

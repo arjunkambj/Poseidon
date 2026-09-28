@@ -407,7 +407,9 @@ working, then an error — with the row's icon and tone and a tooltip counting
 the threads in that state (`apps/web/src/components/sidebar/project-status.ts`).
 `Mod+1`…`Mod+9` open the Nth thread in that
 order, and `Mod+Shift+[` / `Mod+Shift+]` step to the previous or next one,
-wrapping at the ends. `Mod+Shift+N` starts a thread in the open thread's
+wrapping at the ends. `Mod+Alt+J` jumps to the freshest thread that needs
+you, else the freshest unread one
+(`apps/web/src/components/attention/next-attention-shortcut.tsx`). `Mod+Shift+N` starts a thread in the open thread's
 project, else the last project used, else the first. Every create that opens
 the new thread (this key, the palette, the sidebar) asks that thread's composer
 to take the focus once it mounts (`apps/web/src/lib/composer-focus.ts`), so the

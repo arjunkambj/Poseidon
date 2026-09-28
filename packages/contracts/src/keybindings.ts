@@ -114,6 +114,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<Keybinding> = [
   })),
   { command: "thread.previous", shortcut: "Mod+Shift+[" },
   { command: "thread.next", shortcut: "Mod+Shift+]" },
+  { command: "thread.nextAttention", shortcut: "Mod+Alt+J" },
   { command: "thread.rename", shortcut: "Mod+Alt+R", when: THREAD },
   { command: "thread.archive", shortcut: "Mod+Shift+A", when: THREAD },
   { command: "thread.delete", shortcut: "Mod+Alt+Backspace", when: THREAD },

@@ -26,6 +26,7 @@ import {
   ArrowRight,
   ArrowUp,
   AppWindow,
+  Bell,
   Brain,
   Check,
   CloudUpload,
@@ -142,6 +143,9 @@ export const COMMAND_CATALOG: ReadonlyArray<CatalogCommand> = [
   ),
   command("Threads", "thread.previous", "Previous thread", ArrowUp),
   command("Threads", "thread.next", "Next thread", ArrowDown),
+  command("Threads", "thread.nextAttention", "Next needing attention", Bell, {
+    description: "The freshest thread that needs you, else the freshest unread",
+  }),
   command("Threads", "thread.rename", "Rename thread", Edit),
   command("Threads", "thread.archive", "Archive thread", Archive, {
     description: "Unarchives an archived thread",

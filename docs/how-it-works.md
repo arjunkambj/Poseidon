@@ -2803,6 +2803,7 @@ fields entirely.
 | Threads  | `thread.newInProject`                                 | `Mod+Shift+N`                 |                                                                                        |
 | Threads  | `thread.jump.1` … `thread.jump.9`                     | `Mod+1` … `Mod+9`             |                                                                                        |
 | Threads  | `thread.previous` / `thread.next`                     | `Mod+Shift+[` / `Mod+Shift+]` |                                                                                        |
+| Threads  | `thread.nextAttention`                                | `Mod+Alt+J`                   |                                                                                        |
 | Threads  | `thread.rename`                                       | `Mod+Alt+R`                   | `threadOpen`                                                                           |
 | Threads  | `thread.archive`                                      | `Mod+Shift+A`                 | `threadOpen`                                                                           |
 | Threads  | `thread.delete`                                       | `Mod+Alt+Backspace`           | `threadOpen`                                                                           |
@@ -3273,6 +3274,12 @@ you (0 clears it, as does turning it off); keep-awake holds a
 `prevent-app-suspension` blocker while any thread is `running` and writes the
 answer to `keepAwakeHoldingAtom`; and the count of threads running or waiting
 on you goes to the quit guard (section 14).
+
+**Next needing attention** (`thread.nextAttention`, `Mod+Alt+J`, also in the
+palette) opens the most recently updated thread that needs you, else the most
+recently updated unread one, never the open thread nor an archived one
+(`nextAttentionThread`). It is claimed only while such a thread exists, so the
+palette never offers it with nowhere to go.
 
 ---
 

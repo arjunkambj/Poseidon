@@ -12,6 +12,7 @@ import {
   eventEnabled,
   eventMark,
   needsYouCount,
+  nextAttentionThread,
   shouldAlert,
   snapshotOf,
   transitions,
@@ -169,5 +170,51 @@ describe("eventMark", () => {
       icon: ClipboardCheck,
       label: "Plan ready",
     });
+  });
+});
+
+describe("nextAttentionThread", () => {
+  const at = (
+    id: string,
+    updatedAt: string,
+    status: AttentionThread["status"] = "idle",
+    awaiting?: "approval" | "question" | "plan",
+  ) => ({ ...thread(id, status, awaiting), updatedAt });
+  const T1 = "2026-09-28T10:00:00.000Z";
+  const T2 = "2026-09-28T11:00:00.000Z";
+  const T3 = "2026-09-28T12:00:00.000Z";
+  const EARLY = "2026-09-28T09:00:00.000Z";
+  const target = (...args: Parameters<typeof nextAttentionThread>) =>
+    nextAttentionThread(...args)?.threadId;
+
+  it("prefers a thread that needs you over a fresher unread one", () => {
+    const list = [at("u", T3), at("n", T1, "waiting", "approval")];
+    expect(target(list, { u: EARLY }, null)).toBe("n");
+  });
+
+  it("picks the freshest of the threads that need you", () => {
+    const list = [at("a", T1, "waiting", "approval"), at("b", T2, "idle", "plan")];
+    expect(target(list, {}, null)).toBe("b");
+  });
+
+  it("skips the open thread and archived or deleted ones", () => {
+    const list = [
+      at("open", T3, "waiting", "question"),
+      at("arch", T3, "archived", "approval"),
+      at("del", T3, "deleted", "approval"),
+      at("b", T1, "waiting", "approval"),
+    ];
+    expect(target(list, {}, "open")).toBe("b");
+  });
+
+  it("falls back to the freshest unread thread", () => {
+    const list = [at("a", T1), at("b", T2), at("seen", T3)];
+    expect(target(list, { a: EARLY, b: EARLY, seen: T3 }, null)).toBe("b");
+  });
+
+  it("is undefined when nothing needs you and nothing is unread", () => {
+    const list = [at("a", T1, "running"), at("b", T2)];
+    expect(target(list, { b: T2 }, null)).toBeUndefined();
+    expect(target([], {}, null)).toBeUndefined();
   });
 });

@@ -7,6 +7,7 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import * as React from "react";
 
 import { AttentionCoordinator } from "@/components/attention/attention-coordinator";
+import { NextAttentionShortcut } from "@/components/attention/next-attention-shortcut";
 import { QuitGuardDialog } from "@/components/attention/quit-guard-dialog";
 import { BrowserHost } from "@/components/browser-host/browser-host";
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
@@ -130,6 +131,7 @@ function RootComponent() {
               <AppShortcuts />
               {/* Notifications, toasts, the Dock badge, keep-awake and the quit guard. */}
               <AttentionCoordinator />
+              <NextAttentionShortcut />
               <QuitGuardDialog />
               {/* The keyboard shortcuts sheet (Mod+/), on every route. */}
               <ShortcutsDialog />
