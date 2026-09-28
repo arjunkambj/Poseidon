@@ -35,6 +35,7 @@ import { useChangesReview, type DiffStyle } from "@/state/ui";
 
 import { ChangeMarkers } from "./change-markers";
 import { linkedFileIndex } from "./deep-link";
+import { DiscardAllButton } from "./discard-dialog";
 import { FileJumpMenu } from "./file-jump-menu";
 import { FileSection } from "./file-section";
 import { treeLayout } from "./file-tree";
@@ -209,6 +210,7 @@ export function ReviewList({
             onNextUnviewed={revealUnviewed}
           />
         }
+        discard={<DiscardAllButton files={files} />}
         tree={
           layout === "dropdown" ? (
             <FileJumpMenu {...treeProps} />

@@ -80,6 +80,9 @@ export const discardBlockedReason = (state: {
         ? "A turn is running — stop it before discarding."
         : null;
 
+/** Only the Uncommitted scope offers "Discard all". */
+export const canDiscardAll = (kind: ChangesScope): boolean => kind === "uncommitted";
+
 type DiscardFile = Pick<GitDiffFile, "path" | "oldPath" | "kind">;
 
 /** The paths one file's discard names: a rename's old path too. */

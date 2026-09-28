@@ -2,6 +2,7 @@ import { makeProjectId, makeThreadId } from "@poseidon/contracts/ids";
 import { describe, expect, it } from "vitest";
 
 import {
+  canDiscardAll,
   discardAllDescription,
   discardBlockedReason,
   discardDescription,
@@ -90,6 +91,14 @@ describe("discardAllDescription", () => {
     const text = discardAllDescription([edit]);
     expect(text).toContain("Every uncommitted change in the repository is lost");
     expect(text).not.toContain("new file");
+  });
+});
+
+describe("canDiscardAll", () => {
+  it("is the Uncommitted scope's alone", () => {
+    expect(canDiscardAll("uncommitted")).toBe(true);
+    expect(canDiscardAll("branch")).toBe(false);
+    expect(canDiscardAll("turn")).toBe(false);
   });
 });
 

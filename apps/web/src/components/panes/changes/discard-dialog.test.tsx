@@ -4,7 +4,7 @@ import type * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DiscardDialog } from "@/components/panes/changes/discard-dialog";
+import { DiscardAllButton, DiscardDialog } from "@/components/panes/changes/discard-dialog";
 import { ReviewScopeProvider, type ReviewScope } from "@/components/panes/changes/review-scope";
 
 // The confirmation is portalled and clicked, which a static render cannot do:
@@ -106,5 +106,35 @@ describe("DiscardDialog", () => {
         <DiscardDialog open onOpenChange={() => {}} target={{ kind: "file", file: rename }} />,
       ),
     ).toBe("");
+  });
+});
+
+describe("DiscardAllButton", () => {
+  const uncommitted: ReviewScope = { ...scope, kind: "uncommitted", base: {}, baseLabel: "HEAD" };
+
+  it("shows only in the Uncommitted scope", () => {
+    expect(render(<DiscardAllButton files={[rename]} />)).toBe("");
+    expect(render(<DiscardAllButton files={[rename]} />, uncommitted)).toContain(
+      'aria-label="Discard all changes"',
+    );
+  });
+
+  it("is disabled while discarding cannot start", () => {
+    expect(
+      render(<DiscardAllButton files={[rename]} />, {
+        ...uncommitted,
+        discardDisabledReason: "A turn is running.",
+      }),
+    ).toMatch(
+      /<button[^>]*disabled=""[^>]*aria-label="Discard all changes"|<button[^>]*aria-label="Discard all changes"[^>]*disabled=""/,
+    );
+  });
+
+  it("discards everything, with no paths and no base", async () => {
+    render(<DiscardAllButton files={[rename]} />, uncommitted);
+    expect(confirm.props?.title).toBe("Discard all uncommitted changes?");
+    confirm.props?.onConfirm();
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(discard).toHaveBeenCalledWith({ projectId, threadId });
   });
 });

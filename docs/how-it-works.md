@@ -1966,8 +1966,11 @@ deleted — for an untracked file, for good — a deleted file comes back, and a
 rename names both paths. Only the dialog's Discard calls `git.discard`, with
 the scope's base (`reviewScopeFields`: a turn's `from` checkpoint as `source`,
 the first turn's none, i.e. `HEAD`; the branch's base as `mergeBase`) and the
-file's path and a rename's old path. The entry is disabled with the reason on
-hover while the pane is offline or a turn or a restore runs
+file's path and a rename's old path. In Uncommitted the summary line adds a
+trash button, "Discard all", behind the same confirmation, which says every
+uncommitted change is lost and how many new files are deleted, and sends no
+paths. Both are disabled with the reason on hover while the pane is offline
+or a turn or a restore runs
 (`discardBlockedReason`; on the New task page, while a thread runs a turn in
 the project's folder). A refusal shows as a toast with the server's reason; a
 success refreshes every git read of the project, so the file leaves the list
