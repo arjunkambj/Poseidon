@@ -68,19 +68,23 @@ export const visibleCatalog = (
 
 /**
  * What a new task shows before the user picks (`defaultModelPick`): a saved
- * default wherever the full catalog lists it, since the user chose it; with
- * none saved, the first model the pickers offer, so a harness or model
- * switched off is never the implicit seed.
+ * default under the first instance the pickers offer it from, so a second
+ * instance of a harness that is on wins over a first one switched off; failing
+ * that, wherever the full catalog lists it, since the user chose it. With none
+ * saved, the first model the pickers offer, so a harness or model switched off
+ * is never the implicit seed.
  */
 export const newTaskModelPick = (
   catalog: ReadonlyArray<ConnectorModels>,
   prefs: ModelPickerSettings,
   defaultModel: string | null | undefined,
-): ModelPick | null =>
-  defaultModelPick(
-    defaultModel == null ? visibleCatalog(catalog, prefs, null) : catalog,
-    defaultModel,
-  );
+): ModelPick | null => {
+  const visible = visibleCatalog(catalog, prefs, null);
+  const offered =
+    defaultModel == null ||
+    visible.some(({ models }) => models.some((model) => model.id === defaultModel));
+  return defaultModelPick(offered ? visible : catalog, defaultModel);
+};
 
 /** The switches with one harness set. */
 export const setHarness = (

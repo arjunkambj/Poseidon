@@ -604,7 +604,8 @@ thread's current pick: a thread on a harness or model switched off keeps
 showing it, keeps it as current and keeps working. Picking a model picks its
 instance too: the start screen sends both on `thread.create`, the header on
 `thread.settings.update`. Until the user picks, a new thread shows the saved
-default model under the first instance that lists it, else the first model the
+default model under the first instance the pickers offer it from (under a
+switched-off instance only when no other lists it), else the first model the
 pickers offer (`newTaskModelPick`), so a switched-off harness is never the
 implicit seed. Once the thread has run
 anything (`threadLocksConnector`), the other instances' avatars stay listed but

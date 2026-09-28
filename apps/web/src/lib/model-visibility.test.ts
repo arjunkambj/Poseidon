@@ -237,6 +237,23 @@ describe("newTaskModelPick", () => {
     });
   });
 
+  it("puts a saved default under an instance that is on before one switched off", () => {
+    // `m1` is listed by both instances; the first one is off.
+    const prefs = setHarness(none, "a", false);
+    expect(newTaskModelPick(catalog, prefs, "m1")).toEqual({
+      connectorInstanceId: id("b"),
+      model: "m1",
+    });
+    expect(newTaskModelPick(catalog, setModel(none, "a", "m1", false), "m1")).toEqual({
+      connectorInstanceId: id("b"),
+      model: "m1",
+    });
+    expect(newTaskModelPick(catalog, none, "m1")).toEqual({
+      connectorInstanceId: id("a"),
+      model: "m1",
+    });
+  });
+
   it("has nothing to seed when every model is off", () => {
     const prefs = setHarness(setHarness(none, "a", false), "b", false);
     expect(newTaskModelPick(catalog, prefs, null)).toBeNull();
