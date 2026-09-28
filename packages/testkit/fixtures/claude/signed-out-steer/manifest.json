@@ -32,7 +32,7 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T/claude-attachments-XFAUuS/01a0d0e7-7fdb-7000-af59-45b7ec5c4669",
+        "<TMP>/claude-attachments-XFAUuS/01a0d0e7-7fdb-7000-af59-45b7ec5c4669",
         "--session-id=25f46e02-32d0-4e6c-992c-f4697935d650"
       ],
       "cwd": "<SCRATCH>/signed-out-steer",

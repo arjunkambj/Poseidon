@@ -55,8 +55,9 @@
  * one, for a test whose connector swallows the child's stderr — and exits 97. A recording made under one answer never plays out a
  * run that answered differently.
  *
- * `<HOME>` and `<SCRATCH>` in the recording are put back from this process's own
- * directories: its HOME, and the parent of its working directory.
+ * `<HOME>`, `<SCRATCH>` and `<TMP>` in the recording are put back from this
+ * process's own directories: its HOME, the parent of its working directory,
+ * and its temp directory.
  *
  * Plain node, no dependencies, never imported by the server bundle.
  */
@@ -149,9 +150,16 @@ const { invocation, index: invocationIndex } = chosen;
 
 const home = process.env.HOME ?? os.homedir();
 const scratch = path.dirname(process.cwd());
+const tmp = os.tmpdir();
 const inJson = (text) => JSON.stringify(text).slice(1, -1);
 const unscrub = (line) =>
-  line.split("<HOME>").join(inJson(home)).split("<SCRATCH>").join(inJson(scratch));
+  line
+    .split("<HOME>")
+    .join(inJson(home))
+    .split("<SCRATCH>")
+    .join(inJson(scratch))
+    .split("<TMP>")
+    .join(inJson(tmp));
 
 const frames = fs
   .readFileSync(path.join(config.scenarioDir, invocation.file), "utf8")

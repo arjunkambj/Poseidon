@@ -844,6 +844,12 @@ account and the MCP bearer:
   directory, spelled with and without macOS's `/private`. A recorder whose
   first stream run is a probe's handshake in the temp directory names its
   scratch root itself.
+- The system temp directory (`os.tmpdir()`, with and without macOS's
+  `/private`) becomes `<TMP>`: the CLI's attachment directory and a probe's
+  working directory live there. Paths are replaced longest spelling first and
+  only as whole paths, so a scratch root under the temp directory stays
+  `<SCRATCH>` and a temp directory spelled `/tmp` leaves `/var/tmp` alone. The
+  `sdk-stream` replayer puts `<TMP>` back as its own temp directory.
 - The operator's own skills, commands and agents — every entry of the
   harness's config directory's `skills/`, `commands/` and `agents/`
   (`<home>/.claude` unless `configDir` says otherwise) — are listed by name in

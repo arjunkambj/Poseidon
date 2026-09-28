@@ -215,6 +215,14 @@ const spellings = (path: string): ReadonlyArray<string> => {
 };
 
 /**
+ * A path where it stands as a whole path or a prefix of one: not inside a
+ * longer name, so a temp directory spelled `/tmp` leaves `/var/tmp` and
+ * `/tmpfile` alone.
+ */
+const wholePath = (path: string): RegExp =>
+  new RegExp(`(?<![\\w.-])${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`, "g");
+
+/**
  * The operator's own skills, commands and agents, by name, each mapped to a
  * neutral stand-in (`user-skill-1`, …).
  *
@@ -269,6 +277,8 @@ interface ScrubContext {
   readonly home: string;
   /** The scratch root the throwaway repos live under; null when there is none. */
   readonly scratch: string | null;
+  /** The system temp directory, where the harness's own throwaway files go. */
+  readonly tmp: string;
   readonly username: string;
   readonly account: ReadonlyMap<string, string>;
   /** The operator's own skills, commands and agents: name → stand-in. */
@@ -278,8 +288,9 @@ interface ScrubContext {
 /**
  * The cmd scrubbing rules, plus the account, the MCP bearer and the operator's
  * own entries: account values are replaced first, then the scratch root
- * becomes `<SCRATCH>` and the home directory `<HOME>` (longest spelling first,
- * so a scratch root under home stays a scratch root), the username becomes
+ * becomes `<SCRATCH>`, the system temp directory `<TMP>` and the home
+ * directory `<HOME>` (longest spelling first, so a scratch root under temp or
+ * home stays a scratch root), the username becomes
  * `user`, and credentials become `<REDACTED>` — under a credential's key
  * whatever their shape, anywhere when they are token-shaped. The handshake's
  * `skills`, `slash_commands` and `commands` lists become one scrubbed entry
@@ -290,8 +301,11 @@ interface ScrubContext {
 const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
   const paths = [
     ...(context.scratch === null ? [] : spellings(context.scratch).map((p) => [p, "<SCRATCH>"])),
+    ...spellings(context.tmp).map((p) => [p, "<TMP>"]),
     ...spellings(context.home).map((p) => [p, "<HOME>"]),
-  ].sort((a, b) => b[0]!.length - a[0]!.length);
+  ]
+    .sort((a, b) => b[0]!.length - a[0]!.length)
+    .map(([from, to]) => [wholePath(from!), to!] as const);
   const account = [...context.account].sort((a, b) => b[0].length - a[0].length);
   const username = context.username.length > 2 ? context.username : null;
 
@@ -299,7 +313,7 @@ const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
     let out = value;
     for (const [from, to] of account) out = out.split(from).join(to);
     out = out.replaceAll(EMAIL, "user@example.com");
-    for (const [from, to] of paths) out = out.split(from!).join(to!);
+    for (const [from, to] of paths) out = out.replaceAll(from, to);
     if (username !== null) {
       out = out.replaceAll(new RegExp(`\\b${username}\\b`, "g"), "user");
     }
@@ -393,6 +407,7 @@ export const finalizeSdkStreamRecording = (options: FinalizeOptions): string => 
   const scrub = makeScrubber({
     home,
     scratch: options.scratch ?? scratchOf(firstStream?.cwd, home),
+    tmp: NodeOS.tmpdir(),
     username: options.username ?? NodeOS.userInfo().username,
     account: accountValues(invocations.flatMap((invocation) => invocation.frames)),
     entries: operatorEntries(options.configDir ?? NodePath.join(home, ".claude")),

@@ -13,14 +13,14 @@
   "invocations": [
     {
       "argv": ["--version"],
-      "cwd": "/private/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T",
+      "cwd": "<TMP>",
       "file": "invocation-1.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["auth", "status", "--json"],
-      "cwd": "/private/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T",
+      "cwd": "<TMP>",
       "file": "invocation-2.ndjson",
       "exitCode": 1,
       "signal": null
@@ -37,21 +37,21 @@
         "default",
         "--no-session-persistence"
       ],
-      "cwd": "/private/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T",
+      "cwd": "<TMP>",
       "file": "invocation-3.ndjson",
       "exitCode": 143,
       "signal": null
     },
     {
       "argv": ["--version"],
-      "cwd": "/private/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T",
+      "cwd": "<TMP>",
       "file": "invocation-4.ndjson",
       "exitCode": 0,
       "signal": null
     },
     {
       "argv": ["auth", "status", "--json"],
-      "cwd": "/private/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T",
+      "cwd": "<TMP>",
       "file": "invocation-5.ndjson",
       "exitCode": 1,
       "signal": null
@@ -68,7 +68,7 @@
         "default",
         "--no-session-persistence"
       ],
-      "cwd": "/private/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T",
+      "cwd": "<TMP>",
       "file": "invocation-6.ndjson",
       "exitCode": 143,
       "signal": null

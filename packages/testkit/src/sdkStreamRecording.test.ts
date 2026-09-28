@@ -268,6 +268,56 @@ describe("finalizeSdkStreamRecording", () => {
     });
   });
 
+  it("scrubs the system temp directory in every spelling, and keeps a scratch root under it", async () => {
+    const rawDir = NodePath.join(ROOT, "raw-tmp");
+    const launcher = makeTeeLauncher({ realBinary: COUNTERPART, rawDir });
+    const tmp = NodeOS.tmpdir();
+    const resolved = NodeFS.realpathSync(tmp);
+
+    const run = converse(launcher, [...STREAM_ARGS, "--add-dir", `${tmp}/claude-attachments-x`], {
+      cwd: REPO,
+    });
+    await run.awaitLine(typed("ready"));
+    run.send({
+      type: "note",
+      paths: [`${tmp}/claude-attachments-x/shot.png`, `${resolved}/other`, tmp, `${tmp}ish`],
+    });
+    await run.awaitLine(typed("echo"));
+    run.child.stdin.end();
+    expect((await run.exited).code).toBe(0);
+
+    const fixtures = NodePath.join(ROOT, "fixtures-tmp");
+    finalizeSdkStreamRecording({
+      kind: "sample",
+      scenario: "tmp",
+      rawDir,
+      description: "an ordinary node program, for the finaliser's own test",
+      cliVersion: "9.9.9",
+      sdkVersion: "0.0.0",
+      model: "none",
+      prompts: [],
+      fixturesRoot: fixtures,
+    });
+
+    const [stream] = loadSdkStreamRecording("sample", "tmp", fixtures).invocations;
+    // The scratch root lives under the temp directory and is the longer
+    // spelling, so it stays a scratch root.
+    expect(stream!.cwd).toBe("<SCRATCH>/repo");
+    expect(stream!.argv.at(-1)).toBe("<TMP>/claude-attachments-x");
+    const echoed = stream!.frames.find((frame) => typed("echo")(frame.data))!.data;
+    expect(echoed).toMatchObject({
+      message: {
+        // A name that merely starts with the temp directory's is not in it.
+        paths: ["<TMP>/claude-attachments-x/shot.png", "<TMP>/other", "<TMP>", `${tmp}ish`],
+      },
+    });
+    const written = NodeFS.readdirSync(NodePath.join(fixtures, "sample", "tmp"))
+      .map((name) => NodeFS.readFileSync(NodePath.join(fixtures, "sample", "tmp", name), "utf8"))
+      .join("\n");
+    expect(written).not.toContain(`${resolved}/`);
+    expect(written).not.toContain(`${tmp}/`);
+  });
+
   it("is required to name its transport, having no legacy layout", () => {
     const fixtures = NodePath.join(ROOT, "fixtures-untyped");
     NodeFS.mkdirSync(NodePath.join(fixtures, "sample", "untyped"), { recursive: true });

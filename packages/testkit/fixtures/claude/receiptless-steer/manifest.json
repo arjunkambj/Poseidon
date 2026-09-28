@@ -32,7 +32,7 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T/claude-attachments-i2xhcV/01a0d132-59a4-7000-a1c1-d4abc2d4b1b9",
+        "<TMP>/claude-attachments-i2xhcV/01a0d132-59a4-7000-a1c1-d4abc2d4b1b9",
         "--session-id=69978ba3-fda6-414f-a4da-b079c9ca1856"
       ],
       "cwd": "<SCRATCH>/receiptless-steer",

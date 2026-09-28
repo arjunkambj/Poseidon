@@ -36,7 +36,7 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T/claude-attachments-POeiSi/01a0d0d2-f1a1-7000-9d7b-3110df980dea",
+        "<TMP>/claude-attachments-POeiSi/01a0d0d2-f1a1-7000-9d7b-3110df980dea",
         "--session-id=ee85a21c-5daa-4a6f-ab74-3ae21a3b4344"
       ],
       "cwd": "<SCRATCH>/session-controls",

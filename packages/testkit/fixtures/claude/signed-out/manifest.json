@@ -32,7 +32,7 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T/claude-attachments-G0dSn0/01a0d0a1-bcca-7000-bdec-046a4e2025bd",
+        "<TMP>/claude-attachments-G0dSn0/01a0d0a1-bcca-7000-bdec-046a4e2025bd",
         "--session-id=514fcdda-0626-4e51-917a-a349254c757e"
       ],
       "cwd": "<SCRATCH>/signed-out",

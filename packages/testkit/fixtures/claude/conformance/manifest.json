@@ -32,7 +32,7 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
+        "<TMP>/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
         "--session-id=3038e312-4e17-4d04-8800-320f1bf32ba0"
       ],
       "cwd": "<SCRATCH>/workspace",
@@ -61,7 +61,7 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
+        "<TMP>/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
         "--session-id=ba3b3e57-fafa-443d-9587-141e8f8eb321"
       ],
       "cwd": "<SCRATCH>/workspace",
@@ -90,7 +90,7 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
+        "<TMP>/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
         "--session-id=98db9a79-807a-4132-8e7c-ac8b9e65320f"
       ],
       "cwd": "<SCRATCH>/workspace",
@@ -119,7 +119,7 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
+        "<TMP>/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
         "--session-id=f70d8cf0-03d2-4b27-8db9-3bcbd045c0db"
       ],
       "cwd": "<SCRATCH>/workspace",
@@ -148,7 +148,7 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "/var/folders/fk/g7j37kcj0kd6sdfwg_czzrjh0000gn/T/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
+        "<TMP>/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
         "--session-id=973376c1-1597-4fc7-bec9-198554eba3b2"
       ],
       "cwd": "<SCRATCH>/workspace",
