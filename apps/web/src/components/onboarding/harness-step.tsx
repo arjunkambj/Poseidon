@@ -4,8 +4,9 @@
  * re-probes them all, as Settings → Connectors does. A harness's install or
  * sign-in command runs as a script in home's terminal (`HomeTerminal`), whose
  * drawer opens under the list — no project exists yet to own it. The drawer
- * is mounted once something has run, so an untouched step has no terminal
- * strip.
+ * is mounted once something has run in this step, so an untouched step has
+ * no terminal strip: home's drawer remembers being open, like a thread's,
+ * and mounting it open would start a shell nobody asked for.
  */
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
@@ -23,7 +24,6 @@ import { useAppAtoms } from "@/lib/app-runtime";
 import { catalogMonograms } from "@/lib/harness-monogram";
 import { setupScript } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
-import { useTerminalOpen } from "@/state/terminal-ui";
 import { Refresh, Spinner } from "@honeyicons/react";
 
 import { HarnessRow } from "./harness-row";
@@ -36,7 +36,6 @@ export function HarnessStep() {
   const probeAll = useAtomSet(atoms.probeConnectorsAtom, { mode: "promise" });
   const iconKeys = useConnectorIconKeys();
   const { run } = useRunScript(HOME_KEY);
-  const [drawerOpen] = useTerminalOpen(HOME_KEY);
   const [ran, setRan] = React.useState(false);
   const [checking, setChecking] = React.useState(false);
 
@@ -68,13 +67,12 @@ export function HarnessStep() {
     void run(setupScript(summary, command));
   };
 
-  const showTerminal = ran || drawerOpen;
   const loading = summaries.length === 0 && connectorsResult.waiting;
 
   return (
     // With the drawer the step is a fixed-height column, like a thread's: the
     // list takes what the drawer leaves.
-    <div className={cn("flex flex-col", showTerminal && "h-96")}>
+    <div className={cn("flex flex-col", ran && "h-96")}>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {loading ? (
           <p className="flex items-center gap-2 py-2.5 text-sm text-muted-foreground">
@@ -115,7 +113,7 @@ export function HarnessStep() {
           </Button>
         </div>
       </div>
-      {showTerminal ? <HomeTerminal /> : null}
+      {ran ? <HomeTerminal /> : null}
     </div>
   );
 }
