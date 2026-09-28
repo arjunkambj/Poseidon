@@ -80,6 +80,7 @@ import * as Stream from "effect/Stream";
 import { stageAttachments } from "./attachments";
 import type { ResolvedBinary } from "./binary";
 import { CLAUDE_CAPABILITIES } from "./capabilities";
+import { switchFlags } from "./flagSettings";
 import { makeInputQueue } from "./inputQueue";
 import { makeInteractions } from "./interactions";
 import { CLAUDE_KIND } from "./kind";
@@ -89,7 +90,6 @@ import {
   attachmentsDirFor,
   buildQueryOptions,
   permissionModeFor,
-  sdkEffortFor,
   type SessionLimits,
 } from "./queryOptions";
 import { reportedSessionId, type ClaudeSessionRef } from "./sessionRef";
@@ -676,11 +676,11 @@ export const makeClaudeSession = (
     /**
      * The thread's new settings, applied to the running CLI. The model is the
      * SDK's `setModel` (none for `default`, so the CLI's own default applies
-     * again) and the effort its `applyFlagSettings({ effortLevel })`; both
-     * take effect from the CLI's next request. Either way `model.changed`
-     * then says what the CLI runs on: the new pick once the CLI took it, the
-     * one before when it refused, so the thread never shows a model the
-     * session is not using.
+     * again); the effort and the ultracode flag are one `applyFlagSettings`
+     * call (`flagSettings.ts`); both take effect from the CLI's next request.
+     * Either way `model.changed` then says what the CLI runs on: the new pick
+     * once the CLI took it, the one before when it refused, so the thread
+     * never shows a model, effort or ultracode the session is not using.
      */
     const updateSettings = (patch: ThreadSettingsPatch): Effect.Effect<void> =>
       Effect.gen(function* () {
@@ -695,22 +695,17 @@ export const makeClaudeSession = (
         }
         const mode = permissionModeFor(settings);
         if (mode !== cliMode) yield* applyMode(mode);
-        if (settings.effort !== before.effort) {
-          switched = true;
-          const effortLevel = sdkEffortFor(settings.effort) ?? null;
-          if (
-            !(yield* control("applyFlagSettings", () => session.applyFlagSettings({ effortLevel })))
-          ) {
-            const { effort: _refused, ...rest } = settings;
-            settings = before.effort === undefined ? rest : { ...rest, effort: before.effort };
-          }
-        }
-        if (switched) {
+        const flags = yield* switchFlags(before, settings, (patch) =>
+          control("applyFlagSettings", () => session.applyFlagSettings(patch)),
+        );
+        settings = flags.settings;
+        if (switched || flags.switched) {
           yield* emit({
             type: "model.changed",
             payload: {
               model: settings.model,
               ...(settings.effort === undefined ? {} : { effort: settings.effort }),
+              ...(flags.ultracodeSwitched ? { ultracode: settings.ultracode === true } : {}),
             },
           });
         }

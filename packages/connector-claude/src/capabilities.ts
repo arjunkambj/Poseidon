@@ -76,4 +76,11 @@ export const CLAUDE_CAPABILITIES: ConnectorCapabilities = {
   // recorded (`generate-text-signed-out`); `generate-text` is the signed-in
   // recording that will show an answer, and none is made yet.
   textGeneration: true,
+  // Ultracode — xhigh effort plus standing dynamic-workflow orchestration —
+  // as the SDK's `Settings.ultracode`: the inline `settings` at launch and
+  // `applyFlagSettings({ ultracode })` mid-session (`flagSettings.ts`). Backed
+  // by the SDK 0.3.280 declarations and a reading of the CLI 2.1.280 bundle
+  // only; the CLI here is signed out, so nothing is recorded yet. Whether the
+  // account has workflows, and the model xhigh, is the CLI's to decide.
+  ultracode: true,
 };
