@@ -12,6 +12,7 @@ import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import type {
+  ConnectorEndpoint,
   ConnectorPermissions,
   ConnectorServices,
   PermissionDecision,
@@ -30,11 +31,13 @@ export const testServices = (
     readonly decide?: ConnectorPermissions["decide"];
     /** A logger of the test's own, in place of the silent one. */
     readonly logger?: ConnectorServices["logger"];
+    /** An MCP endpoint that answers, in place of the unreachable one. */
+    readonly mcp?: ConnectorEndpoint;
   } = {},
 ): Effect.Effect<ConnectorServices> =>
   Effect.clockWith((clock) =>
     Effect.sync((): ConnectorServices => ({
-      mcpEndpoint: () => Effect.succeed(UNREACHABLE_MCP),
+      mcpEndpoint: () => Effect.succeed(options.mcp ?? UNREACHABLE_MCP),
       hookEndpoint: () => Effect.succeed({ url: "http://127.0.0.1:9/hooks", bearer: "unused" }),
       permissions: {
         decide: options.decide ?? (() => Effect.succeed(options.decision ?? "prompt")),

@@ -21,8 +21,12 @@ names of the operator's own MCP servers and skills (`user-skill-<n>`). The MCP
 bearer never reaches a capture: it travels in the child's environment, which
 the tee does not write.
 
-Every session was recorded with Poseidon's MCP server pointed at a loopback
-port nothing listens on, so each shows it named, tried and failed.
+Every session but `mcp-tool-approval` was recorded with Poseidon's MCP server
+pointed at a loopback port nothing listens on, so each shows it named, tried
+and failed. `mcp-tool-approval` points it at a live loopback endpoint
+(`packages/connector-codex/test/mcpStandIn.ts`) — Poseidon's side of the
+wire, not the harness's — listing one tool shaped as the gateway lists
+`browser_open`.
 
 ## Scenarios
 
@@ -43,6 +47,7 @@ port nothing listens on, so each shows it named, tried and failed.
 | `question`              | `packages/connector-codex/test/recordInteractions.test.ts`           | A plan turn in which the model asks (`item/tool/requestUserInput`); the card is answered with its first option, and the plan names it.                                                                                                                                        |
 | `steering`              | `packages/connector-codex/test/recordInteractions.test.ts`           | Full access: `sleep 5; echo one` runs, a message is steered in (`turn/steer`) once the command's row shows, and the one turn's answer ends with the steered word.                                                                                                             |
 | `compaction`            | `packages/connector-codex/test/recordInteractions.test.ts`           | One answered turn, then `/compact` sent as `thread/compact/start`: the CLI's compaction turn, its `contextCompaction` item and the smaller context it leaves.                                                                                                                 |
+| `mcp-tool-approval`     | `packages/connector-codex/test/recordInteractions.test.ts`           | Poseidon's MCP server at a live loopback endpoint: the model calls its `browser_open`, the CLI asks with `mcpServer/elicitation/request` (`codex_approval_kind: mcp_tool_call`), the card allows it once, and the call runs.                                                  |
 | `conformance`           | `packages/connector-codex/src/conformance.test.ts`                   | The connector-sdk conformance suite, one app-server launch per case; the approval case's write (the model chose `printf … > conformance.txt`, a command approval) allowed once.                                                                                               |
 | `mcp-servers`           | `packages/connector-codex/src/extensions/mcpServersRecorded.test.ts` | No session: the MCP servers extension's `codex mcp list --json`, `add` and `remove` runs on a scratch `CODEX_HOME` seeded with one hand-written server (disabled, literal and variable headers), including the refusals that run no add or remove and a name the CLI rejects. |
 

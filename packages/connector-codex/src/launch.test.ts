@@ -35,7 +35,13 @@ describe("sessionServerArgs and sessionEnv", () => {
         CODEX_KIND,
         scenario,
       ).manifest.invocations.filter((launch) => launch.argv.includes("app-server"))) {
-        expect(invocation.argv, scenario).toEqual(sessionServerArgs(UNREACHABLE_MCP));
+        // Every recording points the server at the unreachable port but
+        // `mcp-tool-approval`, which points it at a live loopback one.
+        const url = /url="(http:\/\/127\.0\.0\.1:\d+\/mcp)"/.exec(invocation.argv.join(" "))?.[1];
+        expect(url, scenario).toBeDefined();
+        expect(invocation.argv, scenario).toEqual(
+          sessionServerArgs({ url: url!, bearer: UNREACHABLE_MCP.bearer }),
+        );
       }
     }
   });

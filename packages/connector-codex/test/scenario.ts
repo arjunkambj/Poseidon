@@ -10,7 +10,7 @@ import { execFileSync } from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import { expect } from "@effect/vitest";
-import type { TurnInput } from "@poseidon/connector-sdk/definition";
+import type { ConnectorEndpoint, TurnInput } from "@poseidon/connector-sdk/definition";
 import type { SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
 import { makeStreamCollector, type StreamCollector } from "@poseidon/connector-sdk/streamCollector";
 import {
@@ -75,6 +75,8 @@ export const recordScenario = (
     readonly settings?: ThreadSettings;
     /** Puts the scenario's files into the scratch repo before the session opens. */
     readonly prepare?: (repo: string) => void;
+    /** An MCP endpoint that answers, in place of the unreachable one. */
+    readonly mcp?: ConnectorEndpoint;
   },
   drive: (session: Session) => Effect.Effect<void, unknown, Scope.Scope>,
 ) =>
@@ -83,7 +85,7 @@ export const recordScenario = (
       const codex = realCodex();
       const cliVersion = parseVersion(execFileSync(codex, ["--version"], { encoding: "utf8" }));
       const { rawDir, launcher } = teeInFront(codex, spec.scenario);
-      const services = yield* testServices();
+      const services = yield* testServices(spec.mcp === undefined ? {} : { mcp: spec.mcp });
       const instance = yield* makeCodexConnectorDefinition().createInstance({
         instanceId: makeConnectorInstanceId(),
         config: { binaryPath: launcher },

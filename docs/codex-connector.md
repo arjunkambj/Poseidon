@@ -51,6 +51,7 @@ picks this instance. Adding it changed no existing install's routing.
 | `userInput.ts`             | one composer turn as `turn/start`'s `input`                                      |
 | `attachments.ts`           | images as `localImage` inputs, other files by path                               |
 | `approvals.ts`             | the approval requests in Poseidon's approval vocabulary                          |
+| `mcpApprovals.ts`          | MCP tool-call approvals, which arrive as elicitations                            |
 | `toolGate.ts`              | those requests through the permission ladder, and their answers                  |
 | `serverRequests.ts`        | the safe refusal for every request no card answers                               |
 | `plans.ts`                 | plan mode on `turn/start`, and the plan a turn proposes                          |
@@ -193,9 +194,12 @@ CLI's configuration for this process only; nothing is written to
 in a recording, since the tee does not write the environment
 (`launch.test.ts` checks every recorded argv). The name contains `TOKEN` on
 purpose: the CLI's default shell environment policy keeps variables named
-like secrets out of the commands the model runs. Every recorded session shows
-the CLI starting `poseidon` (`mcpServer/startupStatus/updated`), and failing
-it, because the recordings point it at a port nothing listens on.
+like secrets out of the commands the model runs. Every recorded session but
+one shows the CLI starting `poseidon` (`mcpServer/startupStatus/updated`), and
+failing it, because those recordings point it at a port nothing listens on.
+`mcp-tool-approval` points it at a live loopback endpoint instead
+(`test/mcpStandIn.ts`, which lists one tool shaped as the gateway lists
+`browser_open` and checks the bearer), and the model calls that tool.
 
 The first message is `initialize` with `clientInfo` `poseidon` and
 `capabilities: { experimentalApi: true, requestAttestation: false }`, then the
@@ -315,6 +319,21 @@ applies to the next one. It fails closed: a defect answers `decline`.
   request names only its item; the paths came with that item's
   `item/started`, which the recordings show always arrives first. A move's
   destination counts as a path too.
+- `mcpServer/elicitation/request` whose `_meta.codex_approval_kind` is
+  `mcp_tool_call` (`mcpApprovals.ts`) → tool `mcp__<server>__<tool>`, kind
+  `mcp_tool`, `mcpTool: { server, tool }`, input the call's arguments, "allow
+  always" from `Mcp(<server>.<tool>)` — the request Claude Code's MCP calls
+  make. Codex asks about an MCP tool call this way, not with an approval
+  request of its own: under `untrusted`, a tool that is not read-only and
+  reaches outside the machine — every in-app browser tool that sends input or
+  changes the page — is asked about before it runs. The elicitation names the
+  server; the tool and its arguments come from the `mcpToolCall` item the CLI
+  started just before asking, else from the message
+  (`Allow the <server> MCP server to run tool "<tool>"?`) and
+  `_meta.tool_params`. Its answer is the elicitation's own:
+  `{ action: "accept", content: {}, _meta: null }`, `decline` or `cancel`
+  (`mcp-tool-approval`: the card allowed `browser_open` once, and the call
+  ran).
 
 ### The answers
 
@@ -335,8 +354,9 @@ ended by Stop, one by close, each resolved once).
 
 `serverRequests.ts` answers what has no card with the refusal that lets
 nothing happen, and a `session.warning`: `item/permissions/requestApproval`
-(more sandbox) is granted nothing for the turn, `mcpServer/elicitation/request`
-is declined, and the older protocol's `execCommandApproval` and
+(more sandbox) is granted nothing for the turn, an
+`mcpServer/elicitation/request` that is not a tool-call approval — an MCP
+server asking the user for input — is declined, and the older protocol's `execCommandApproval` and
 `applyPatchApproval` are denied. Anything else is answered "not handled".
 
 ### Runtime modes
@@ -518,7 +538,8 @@ tell you:
 1. **`recordedFrames.test.ts`** translates every recorded launch and fails on
    any `event.unmapped`, and on a manifest older than `OLDEST_TESTED_VERSION`.
 2. **The replayed suites** — `conformance.test.ts`, `recordedSession.test.ts`,
-   `recordedInteractions.test.ts`, `extensions/mcpServersRecorded.test.ts`.
+   `recordedInteractions.test.ts`, `recordedMcpTool.test.ts`,
+   `extensions/mcpServersRecorded.test.ts`.
    The replayer exits 97 on any line the connector sends that the recorded run
    was not sent.
 3. **The live suite**, the only thing that proves the CLI installed today is

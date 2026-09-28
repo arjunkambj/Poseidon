@@ -22,6 +22,10 @@
  * only if every path is allowed, and is accepted for the session only if every
  * path was.
  *
+ * An MCP tool call is asked about as an elicitation (`mcpApprovals.ts`): the
+ * gate answers it the same way, in the elicitation's own words — `accept`,
+ * `decline`, or `cancel` for Stop.
+ *
  * The CLI can withdraw a request it is still waiting on — the turn it belongs
  * to was interrupted or ended, and `serverRequest/resolved` names a request
  * the session never answered. The gate's signal for that request is aborted,
@@ -58,6 +62,13 @@ import {
   makeFileChangePaths,
   unwrapShell,
 } from "./approvals";
+import {
+  elicitationOutcome,
+  isMcpToolApproval,
+  makeMcpToolCalls,
+  MCP_ELICITATION,
+  mcpToolApprovalRequest,
+} from "./mcpApprovals";
 import type { RpcId, RpcOutcome, RpcServerRequest } from "./rpc";
 import { asArray, asRecord, asString, type Notification } from "./translate/pending";
 
@@ -65,7 +76,18 @@ import { asArray, asRecord, asString, type Notification } from "./translate/pend
 export type CodexApprovalAnswer = "accept" | "acceptForSession" | "decline" | "cancel";
 
 /** The approval requests the gate answers. */
-export const GATED_METHODS: ReadonlySet<string> = new Set([COMMAND_APPROVAL, FILE_CHANGE_APPROVAL]);
+const GATED_METHODS: ReadonlySet<string> = new Set([COMMAND_APPROVAL, FILE_CHANGE_APPROVAL]);
+
+/** Whether the gate answers `request`: an approval, or the CLI asking to run an MCP tool. */
+export const isGatedRequest = (request: RpcServerRequest): boolean =>
+  GATED_METHODS.has(request.method) ||
+  (request.method === MCP_ELICITATION && isMcpToolApproval(request.params));
+
+/** The wire answer to `request` for one of the gate's answers. */
+const outcomeFor = (request: RpcServerRequest, answer: CodexApprovalAnswer): RpcOutcome =>
+  request.method === MCP_ELICITATION
+    ? elicitationOutcome(answer === "acceptForSession" ? "accept" : answer)
+    : { result: { decision: answer } };
 
 /** What one verdict of the gate answers the CLI. */
 export const answerFor = (verdict: ApprovalVerdict): CodexApprovalAnswer => {
@@ -169,6 +191,7 @@ export const makeCodexToolGate = (options: {
   readonly settings: () => ThreadSettings;
 }): CodexToolGate => {
   const paths = makeFileChangePaths();
+  const mcpCalls = makeMcpToolCalls();
   /** Each request still waiting on the gate, by its JSON-RPC id. */
   const open = new Map<string, AbortController>();
   /**
@@ -224,16 +247,18 @@ export const makeCodexToolGate = (options: {
       decideAll(
         rpcRequest.method === COMMAND_APPROVAL
           ? [commandApprovalRequest(params)]
-          : fileChangeApprovalRequests(params, paths.pathsOf),
+          : rpcRequest.method === MCP_ELICITATION
+            ? [mcpToolApprovalRequest(params, mcpCalls)]
+            : fileChangeApprovalRequests(params, paths.pathsOf),
         controller.signal,
       ),
     ).pipe(
       Effect.map((decided): RpcOutcome | null => {
         if (controller.signal.aborted || closing) return null;
         const final = decided === "decline" && cancelling ? "cancel" : decided;
-        return { result: { decision: final } };
+        return outcomeFor(rpcRequest, final);
       }),
-      Effect.catchCause(() => Effect.succeed<RpcOutcome>({ result: { decision: "decline" } })),
+      Effect.catchCause(() => Effect.succeed(outcomeFor(rpcRequest, "decline"))),
       Effect.ensuring(Effect.sync(() => open.delete(key))),
     );
   };
@@ -261,6 +286,7 @@ export const makeCodexToolGate = (options: {
     Effect.sync(() => {
       const params = asRecord(notification.params);
       paths.observe(notification.method, params);
+      mcpCalls.observe(notification.method, params);
       switch (notification.method) {
         case "item/completed":
           countUngated(asRecord(params.item));
@@ -294,6 +320,7 @@ export const makeCodexToolGate = (options: {
       cancelling = false;
       ranUngated = 0;
       paths.clear();
+      mcpCalls.clear();
     }),
     ungated: () => (ranUngated === 0 ? undefined : ungatedWarning(ranUngated)),
   };

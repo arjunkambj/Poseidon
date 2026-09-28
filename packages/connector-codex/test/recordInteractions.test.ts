@@ -1,6 +1,7 @@
 /**
  * Records the interaction scenarios from the real CLI into `fixtures/codex/`:
- * plan mode, a question, a steer and a compaction.
+ * plan mode, a question, a steer, a compaction and an MCP tool call approved
+ * on its card.
  *
  *     POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
  *       pnpm -F @poseidon/connector-codex vitest run test/recordInteractions.test.ts
@@ -16,6 +17,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
 import { COMPACT_COMMAND } from "../src/compaction";
+import { startMcpStandIn, STAND_IN_TOOL } from "./mcpStandIn";
 import { RECORD } from "./record";
 import { answerCards, closed, recordScenario, SETTINGS, text, turn } from "./scenario";
 
@@ -27,6 +29,7 @@ const INTERACTION_PROMPTS = {
   sleep: "Run: sleep 5; echo one",
   steer: "Also, end your reply with the word pineapple.",
   plain: "Reply with exactly: ok",
+  mcpTool: `Call the ${STAND_IN_TOOL.name} tool of the poseidon MCP server once with url https://example.com, then reply with one word.`,
 } as const;
 
 const PLAN = { ...SETTINGS, interactionMode: "plan" } as const;
@@ -129,5 +132,28 @@ describe("interaction recordings", () => {
           yield* closed(recording);
         }),
     ),
+  );
+
+  it.live.skipIf(!RECORD)("mcp-tool-approval: a Poseidon MCP tool call, allowed on its card", () =>
+    Effect.gen(function* () {
+      const standIn = yield* Effect.promise(() => startMcpStandIn());
+      yield* recordScenario(
+        {
+          scenario: "mcp-tool-approval",
+          description: `Poseidon's MCP server answering at a live loopback endpoint with one tool shaped like the gateway's ${STAND_IN_TOOL.name} (not read-only, open world): the model calls it, the CLI asks with mcpServer/elicitation/request (codex_approval_kind mcp_tool_call), the card allows it once, and the call runs.`,
+          prompts: [INTERACTION_PROMPTS.mcpTool],
+          mcp: standIn.endpoint,
+        },
+        (session) =>
+          Effect.gen(function* () {
+            const recording = yield* session.open();
+            const answered = yield* answerCards(recording, "allow-once");
+            yield* turn(recording, text(INTERACTION_PROMPTS.mcpTool));
+            yield* closed(recording);
+            expect(answered.size).toBe(1);
+          }),
+      ).pipe(Effect.ensuring(Effect.promise(() => standIn.close())));
+      expect(standIn.calls()).toEqual([{ url: "https://example.com" }]);
+    }),
   );
 });

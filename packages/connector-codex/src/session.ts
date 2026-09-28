@@ -19,9 +19,9 @@
  *    (`plans.ts`); a
  *    `/compact` turn is `thread/compact/start` instead (`compaction.ts`), and
  *    a message for the running turn is `turn/steer` (`steering.ts`);
- * 5. answers every request the server makes of it: the command and
- *    file-change approvals through Poseidon's permission ladder and its cards
- *    (`toolGate.ts`), the model's questions on the question card
+ * 5. answers every request the server makes of it: the command, file-change
+ *    and MCP tool-call approvals through Poseidon's permission ladder and its
+ *    cards (`toolGate.ts`, `mcpApprovals.ts`), the model's questions on the question card
  *    (`questions.ts`), each on a fiber of its own so a card waiting on the
  *    user holds up nothing else; every other request with a safe refusal
  *    (`serverRequests.ts`);
@@ -77,7 +77,7 @@ import type { CodexSessionRef } from "./sessionRef";
 import { makeProcessGroup } from "./spawn";
 import { steerRefusal, TurnSteerResponse } from "./steering";
 import { openThread } from "./threadOpen";
-import { GATED_METHODS, makeCodexToolGate } from "./toolGate";
+import { isGatedRequest, makeCodexToolGate } from "./toolGate";
 import {
   asRecord,
   asString,
@@ -279,7 +279,7 @@ export const makeCodexSession = (
      * must not. Anything else is refused at once.
      */
     const onRequest = (request: RpcServerRequest): Effect.Effect<void> =>
-      GATED_METHODS.has(request.method) || request.method === USER_INPUT_REQUEST
+      isGatedRequest(request) || request.method === USER_INPUT_REQUEST
         ? (request.method === USER_INPUT_REQUEST
             ? questions.ask(request)
             : toolGate.answer(request)

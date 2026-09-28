@@ -998,8 +998,12 @@ the session `acceptForSession`, deny `decline`; Stop answers an open card
 turn in which a file change, or a command outside the CLI's known-safe reads,
 ran with no request ends with a `session.warning`. On the recording machine
 0.156.1 asked about every command, `cat .env` under full access included.
-`serverRequests.ts` refuses what has no card: extra sandbox permissions,
-MCP elicitations and the older protocol's approvals, each with a warning.
+An MCP tool call is asked about as an `mcpServer/elicitation/request` marked
+`codex_approval_kind: mcp_tool_call` (`mcpApprovals.ts`); it goes through the
+same gate as an `mcp_tool` request (`mcp__<server>__<tool>`), so the in-app
+browser's tools run on Codex once allowed. `serverRequests.ts` refuses what
+has no card: extra sandbox permissions, any other MCP elicitation and the
+older protocol's approvals, each with a warning.
 
 Plan mode, questions, steering and compaction (all four capabilities true,
 each backed by a recording): a plan turn sends `collaborationMode: plan` on

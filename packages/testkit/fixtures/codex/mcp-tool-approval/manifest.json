@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "kind": "codex",
+  "transport": "stdio-jsonrpc",
+  "scenario": "mcp-tool-approval",
+  "description": "Poseidon's MCP server answering at a live loopback endpoint with one tool shaped like the gateway's browser_open (not read-only, open world): the model calls it, the CLI asks with mcpServer/elicitation/request (codex_approval_kind mcp_tool_call), the card allows it once, and the call runs.",
+  "cliVersion": "0.156.1",
+  "recordedOn": "2026-09-28",
+  "model": "gpt-6-astra",
+  "real": true,
+  "prompts": [
+    "Call the browser_open tool of the poseidon MCP server once with url https://example.com, then reply with one word."
+  ],
+  "invocations": [
+    {
+      "argv": [
+        "app-server",
+        "-c",
+        "mcp_servers.poseidon.url=\"http://127.0.0.1:57331/mcp\"",
+        "-c",
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\""
+      ],
+      "cwd": "<SCRATCH>/mcp-tool-approval",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}
