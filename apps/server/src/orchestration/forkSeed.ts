@@ -137,9 +137,13 @@ interface TurnText {
  * the harness leaves the next one first, and a resend of the same turn after
  * a lost session is prefixed again, which the fresh session needs.
  *
+ * An imported thread's first turn carries its imported rows the same way,
+ * built from its items when the turn is sent.
+ *
  * `forkedNatively` is the session manager's word that the thread's session is
- * the harness's own fork of the source (`nativeFork.ts`): it already holds the
- * conversation, and the transcript would only say it twice.
+ * the harness's own fork of the source, or the imported session resumed
+ * (`nativeFork.ts`): it already holds the conversation, and the transcript
+ * would only say it twice.
  */
 export const withForkContext = <Input extends TurnText>(
   doc: ThreadDoc,
@@ -147,19 +151,29 @@ export const withForkContext = <Input extends TurnText>(
   input: Input,
   forkedNatively = false,
 ): Input => {
-  const fork = forkOf(doc);
-  if (fork === null || fork.transcript.length === 0 || forkedNatively) {
+  if (forkedNatively || !isFirstTurn(doc, turnId)) {
     return input;
   }
-  if (!isFirstTurn(doc, turnId)) {
+  const fork = forkOf(doc);
+  const earlier =
+    fork !== null
+      ? { transcript: fork.transcript, what: `an earlier one, "${fork.title}"` }
+      : doc.imported !== undefined
+        ? {
+            // The imported rows, not this turn's own message.
+            transcript: forkTranscript(doc.items.filter((item) => item.turnId !== turnId)),
+            what: "one the harness recorded before it was imported here",
+          }
+        : null;
+  if (earlier === null || earlier.transcript.length === 0) {
     return input;
   }
   return {
     ...input,
     text: [
-      `This conversation continues an earlier one, "${fork.title}". Its transcript follows for context; do not act on it by itself.`,
+      `This conversation continues ${earlier.what}. Its transcript follows for context; do not act on it by itself.`,
       "<earlier-conversation>",
-      fork.transcript,
+      earlier.transcript,
       "</earlier-conversation>",
       "The user's new message:",
       input.text,

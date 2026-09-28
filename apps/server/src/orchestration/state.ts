@@ -23,6 +23,7 @@ import type {
   ThreadActivity,
   ThreadDetailSnapshot,
   ThreadFork,
+  ThreadImport,
   ThreadSession,
   ThreadSettings,
   ThreadStatus,
@@ -152,7 +153,9 @@ export interface ThreadDoc {
   readonly lastActivityAt?: string;
   /** The thread this one was forked from; `./forkSeed` reads it, tolerating older documents. */
   readonly fork?: ThreadFork;
-  /** A fork's turn its first session bound in (`null`: none ran); absent until then. */
+  /** The harness session this thread was imported from; `./nativeFork` reads it. */
+  readonly imported?: ThreadImport;
+  /** A fork's or import's turn its first session bound in (`null`: none ran); absent until then. */
   readonly forkSeededIn?: TurnId | null;
   // Internal bookkeeping, not on the wire.
   readonly approvals: ReadonlyArray<ApprovalRequest>;
@@ -233,6 +236,10 @@ const waitingOr = (doc: ThreadDoc, fallback: ThreadStatus): ThreadStatus =>
 
 // ── Thread fold ───────────────────────────────────────────────
 
+/** A fork's or import's first bind: the turn that carried its earlier conversation. */
+const seedsContext = (doc: ThreadDoc) =>
+  (doc.fork !== undefined || doc.imported !== undefined) && doc.forkSeededIn === undefined;
+
 const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): ThreadDoc | null => {
   if (event.streamKind !== "thread") {
     return doc;
@@ -249,6 +256,7 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
       settings: payload.settings as ThreadSettings,
       worktree: (payload.worktree as ThreadWorktree | undefined) ?? null,
       ...(payload.fork === undefined ? {} : { fork: payload.fork as ThreadFork }),
+      ...(payload.imported === undefined ? {} : { imported: payload.imported as ThreadImport }),
       snapshotSequence: event.sequence,
       items: [],
       queue: [],
@@ -293,15 +301,12 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
     case "thread.archived":
       return { ...next, status: "archived" };
     case "thread.unarchived":
-      // Archiving closes the session, so an approval or question still open
-      // is a dead process asking — the same reasoning as `session.lost`, and
-      // `currentTurn` goes for the same reason. The close may still be
-      // settling that turn: its late `turn.completed` names the old turn, and
-      // the `turn.completed` fold below ignores it once a newer one started.
-      // The session itself stays: the next turn resumes the conversation
-      // through its `sessionRef`. The queue and a pending plan stay too; the
-      // plan waits for its answer and the queue drains after the next turn
-      // completes.
+      // Archiving closes the session, so an open approval or question is a
+      // dead process asking (as on `session.lost`), and `currentTurn` goes
+      // too; a late `turn.completed` for it is ignored once a newer turn
+      // started. The session stays, for the next turn to resume by its
+      // `sessionRef`; so do the queue and a pending plan, which drain and
+      // wait as usual.
       return {
         ...next,
         approvals: [],
@@ -321,14 +326,11 @@ const applyThreadEvent = (doc: ThreadDoc | null, event: OrchestrationEvent): Thr
     case "thread.done.cleared":
       return { ...next, updatedAt: doc.updatedAt, doneAt: null };
     case "thread.session.bound":
-      // The capabilities ride along when the connector announced them — the
-      // decider reads `steering` here. A session bound before they were
-      // recorded has none: not known to steer, so a steer is queued.
+      // The capabilities ride along when the connector announced them (the
+      // decider reads `steering`); without them a steer is queued.
       return {
         ...next,
-        ...(next.fork === undefined || next.forkSeededIn !== undefined
-          ? {}
-          : { forkSeededIn: next.currentTurn?.turnId ?? null }),
+        ...(seedsContext(next) ? { forkSeededIn: next.currentTurn?.turnId ?? null } : {}),
         session: {
           connectorInstanceId: payload.connectorInstanceId as ThreadSession["connectorInstanceId"],
           connectorKind: payload.connectorKind as string,

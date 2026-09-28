@@ -19,6 +19,7 @@ import type { ConnectorInstanceId, ThreadId } from "@poseidon/contracts/ids";
 import type {
   ConnectorError,
   ConnectorInstance,
+  ResumeSessionInput,
   StartSessionInput,
 } from "@poseidon/connector-sdk/definition";
 import { ConnectorNotFound } from "@poseidon/connector-sdk/definition";
@@ -42,7 +43,7 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 
 import { EngineEnv, OrchestrationEngine } from "./Engine";
-import { forkOf, pendingNativeFork, sourceStillAt } from "./nativeFork";
+import { forkOf, pendingImportResume, pendingNativeFork, sourceStillAt } from "./nativeFork";
 import { ingestSession, type SessionLifecycle } from "./RuntimeIngestion";
 import type { ThreadDoc } from "./state";
 
@@ -146,9 +147,9 @@ export class SessionManager extends Context.Service<
     ) => Effect.Effect<TurnScopedSessionHandle, ConnectorError | ConnectorNotFound | NoConnector>;
     /**
      * True when the thread's session is the harness's own fork of its
-     * source's (`nativeFork.ts`): it holds the conversation already, so the
-     * fork's first message goes without the transcript. Known for sessions
-     * this process started.
+     * source's, or the imported session resumed (`nativeFork.ts`): it holds
+     * the conversation already, so the first message goes without the
+     * transcript. Known for sessions this process started.
      */
     readonly forkedNatively: (threadId: ThreadId) => Effect.Effect<boolean>;
     /** Closes and deregisters the thread's session, if one is running. */
@@ -169,6 +170,33 @@ export class SessionManager extends Context.Service<
       const attachMutex = yield* Semaphore.make(1);
 
       const report = (entry: SessionLifecycle) => PubSub.publish(lifecycle, entry);
+
+      /**
+       * `resumeSession` on one instance in a scope of its own, or `null` when
+       * it fails (logged as `what`): the caller then starts a fresh session.
+       */
+      const resumeOwn = (
+        instanceId: ConnectorInstanceId,
+        input: ResumeSessionInput,
+        what: string,
+      ) =>
+        Effect.gen(function* () {
+          const scope = yield* Scope.make();
+          return yield* selection.instanceById(instanceId).pipe(
+            Effect.flatMap((instance) =>
+              instance.resumeSession(input).pipe(
+                Scope.provide(scope),
+                Effect.map((raw) => ({ instance, raw, scope })),
+              ),
+            ),
+            Effect.catch((error) =>
+              Scope.close(scope, Exit.succeed(undefined)).pipe(
+                Effect.andThen(Effect.logWarning(`could not ${what}; starting fresh`, error)),
+                Effect.as(null),
+              ),
+            ),
+          );
+        });
 
       /**
        * A fork's first session, forked by the harness from its source's
@@ -192,23 +220,46 @@ export class SessionManager extends Context.Service<
           if (!sourceStillAt(source, sourceDoc ?? null)) {
             return null;
           }
-          const scope = yield* Scope.make();
-          return yield* selection.instanceById(source.connectorInstanceId).pipe(
-            Effect.flatMap((instance) =>
-              instance.resumeSession({ ...input, sessionRef: source.sessionRef, fork: true }).pipe(
-                Scope.provide(scope),
-                Effect.map((raw) => ({ instance, raw, scope })),
-              ),
-            ),
-            Effect.catch((error) =>
-              Scope.close(scope, Exit.succeed(undefined)).pipe(
-                Effect.andThen(
-                  Effect.logWarning("could not fork the source session; starting fresh", error),
-                ),
-                Effect.as(null),
-              ),
-            ),
+          const forked = yield* resumeOwn(
+            source.connectorInstanceId,
+            { ...input, sessionRef: source.sessionRef, fork: true },
+            "fork the source session",
           );
+          return forked === null ? null : { ...forked, native: true };
+        });
+
+      /**
+       * An imported thread's first session: the harness's own session, resumed
+       * by its reference (`pendingImportResume`), in a scope of its own.
+       * `null` when there is none to resume and when the resume fails — the
+       * instance is gone, or the harness refused — so the caller starts a
+       * fresh session and the imported rows go out as a transcript with the
+       * first message instead.
+       *
+       * A connector that no longer finds the conversation may start afresh on
+       * its own and succeed. Its session then names another session than the
+       * import's (`sourceIdOf`), and is kept but not counted as holding the
+       * conversation, so the transcript still goes out.
+       */
+      const resumeImported = (doc: ThreadDoc, input: StartSessionInput) =>
+        Effect.gen(function* () {
+          const session = pendingImportResume(doc);
+          const sourceId = doc.imported?.sourceId;
+          if (session === null || sourceId === undefined) {
+            return null;
+          }
+          const resumed = yield* resumeOwn(
+            session.connectorInstanceId,
+            { ...input, sessionRef: session.sessionRef },
+            "resume the imported session",
+          );
+          if (resumed === null) {
+            return null;
+          }
+          const sourceIdOf = resumed.instance.extensions?.sessions?.sourceIdOf;
+          const ref = yield* resumed.raw.sessionRef().pipe(Effect.orElseSucceed(() => undefined));
+          const native = sourceIdOf === undefined || sourceIdOf(ref) === sourceId;
+          return { ...resumed, native };
         });
 
       const attach = (
@@ -228,15 +279,18 @@ export class SessionManager extends Context.Service<
               workspaceRoot,
               settings: doc.settings,
             };
-            const forked = yield* forkNatively(doc, input);
-            const driverScope = forked?.scope ?? (yield* Scope.make());
+            // A harness session that may hold the conversation already: a
+            // native fork, or the imported session resumed (`native` says).
+            const continued =
+              (yield* forkNatively(doc, input)) ?? (yield* resumeImported(doc, input));
+            const driverScope = continued?.scope ?? (yield* Scope.make());
             const instance =
-              forked?.instance ??
+              continued?.instance ??
               (doc.session === null
                 ? yield* selection.instanceFor(doc)
                 : yield* selection.instanceById(doc.session.connectorInstanceId));
             const raw: SessionHandle =
-              forked?.raw ??
+              continued?.raw ??
               (yield* (
                 doc.session === null
                   ? instance.startSession(input)
@@ -245,8 +299,8 @@ export class SessionManager extends Context.Service<
             if (doc.session === null) {
               yield* Ref.update(nativeForks, (all) => {
                 const next = new Set(all);
-                if (forked === null) next.delete(doc.threadId);
-                else next.add(doc.threadId);
+                if (continued?.native === true) next.add(doc.threadId);
+                else next.delete(doc.threadId);
                 return next;
               });
             }

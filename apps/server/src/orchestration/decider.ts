@@ -273,6 +273,7 @@ export const decide = (
           },
           ...(command.worktree === undefined ? {} : { worktree: command.worktree }),
           ...(fork === null ? {} : { fork: fork.fork }),
+          ...(command.imported === undefined ? {} : { imported: command.imported }),
         }),
       ]);
     }

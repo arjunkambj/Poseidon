@@ -18,10 +18,17 @@
  * fork after all, or the source has run another turn, the manager starts a
  * fresh session and the transcript goes ahead of the first message as for any
  * other fork.
+ *
+ * An imported thread (`sessions.import`) continues the same way: it records
+ * the harness's own session instead of binding it, so the boot scan never
+ * resumes a thread nobody has run, and its first turn resumes that session
+ * (`pendingImportResume`). When it cannot — the instance cannot resume, the
+ * thread moved to another harness, the resume fails — the session starts
+ * fresh and the imported rows go ahead of the first message as a transcript.
  */
 
 import type { ThreadWorktree } from "@poseidon/contracts/git";
-import type { ForkSession, ThreadFork } from "@poseidon/contracts/orchestration";
+import type { ForkSession, ThreadFork, ThreadImport } from "@poseidon/contracts/orchestration";
 import { latestTurnId } from "@poseidon/contracts/orchestration";
 import type { ConnectorInstanceId, ItemId, TurnId } from "@poseidon/contracts/ids";
 
@@ -116,6 +123,26 @@ export const sourceStillAt = (recorded: ForkSession, source: ThreadDoc | null): 
 export const pendingNativeFork = (doc: ThreadDoc): ForkSession | null => {
   const session = forkOf(doc)?.session;
   if (session === undefined || doc.session !== null) {
+    return null;
+  }
+  return isFirstTurn(doc, doc.currentTurn?.turnId) ? session : null;
+};
+
+/**
+ * The harness session an imported thread's first session should resume, or
+ * `null`. Only while the thread has no session of its own, is on its first
+ * turn (a thread that has run and lost its session resumes that one, not the
+ * import's), and is still on the instance the import recorded: a thread moved
+ * to another harness must not resume a session that belongs to a different one.
+ */
+export const pendingImportResume = (
+  doc: ThreadDoc,
+): NonNullable<ThreadImport["session"]> | null => {
+  const session = doc.imported?.session;
+  if (session === undefined || doc.session !== null) {
+    return null;
+  }
+  if (doc.settings.connectorInstanceId !== session.connectorInstanceId) {
     return null;
   }
   return isFirstTurn(doc, doc.currentTurn?.turnId) ? session : null;

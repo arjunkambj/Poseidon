@@ -1733,6 +1733,36 @@ describe("forking a thread", () => {
   });
 });
 
+describe("importing a harness session", () => {
+  const create = (fields: Record<string, unknown>) =>
+    decide(
+      {
+        ...baseCommand,
+        type: "thread.create",
+        threadId: makeThreadId(),
+        projectId: makeProjectId(),
+        ...fields,
+      } as Command,
+      { project: null, thread: null },
+      ctx(),
+      env,
+    );
+
+  it("records the import on `thread.created`, and nothing on an ordinary thread", () => {
+    const imported = {
+      connectorKind: "fake",
+      sourceId: "session-1",
+      session: { connectorInstanceId: makeConnectorInstanceId(), sessionRef: { id: "session-1" } },
+    };
+    const result = create({ title: "From the harness", imported });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    expect(result.events[0]!.payload).toMatchObject({ title: "From the harness", imported });
+    const plain = create({});
+    expect(plain.accepted && plain.events[0]!.payload).not.toHaveProperty("imported");
+  });
+});
+
 describe("editing and resending a message", () => {
   const checkpoints = [
     {

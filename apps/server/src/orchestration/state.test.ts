@@ -1104,3 +1104,41 @@ describe("a forked thread", () => {
     expect(threadSnapshotOf(stored)).not.toHaveProperty("forkedFrom");
   });
 });
+
+describe("an imported thread", () => {
+  const imported = {
+    connectorKind: "fake",
+    sourceId: "session-1",
+    session: { connectorInstanceId: makeConnectorInstanceId(), sessionRef: { id: "session-1" } },
+  };
+  const importCreated = () =>
+    event("thread.created", {
+      threadId,
+      projectId,
+      title: "From the harness",
+      settings: {
+        model: "fake/model",
+        runtimeMode: "approval-required",
+        interactionMode: "default",
+      },
+      imported,
+    });
+
+  it("keeps its import off the wire and binds no session until a turn runs", () => {
+    const doc = foldThread([importCreated()])!;
+    expect(doc.imported).toEqual(imported);
+    expect(doc.session).toBeNull();
+    expect(JSON.stringify(threadSnapshotOf(doc))).not.toContain("session-1");
+    expect(foldThread([created()])).not.toHaveProperty("imported");
+  });
+
+  it("records the turn its first session bound in", () => {
+    const turnId = makeTurnId();
+    const doc = foldThread([
+      importCreated(),
+      turnRequested(turnId),
+      event("thread.session.bound", { ...imported.session, connectorKind: "fake" }),
+    ])!;
+    expect(doc.forkSeededIn).toBe(turnId);
+  });
+});

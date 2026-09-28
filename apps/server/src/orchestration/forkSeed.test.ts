@@ -5,7 +5,7 @@ import type { TurnId } from "@poseidon/contracts/ids";
 import type { ItemSnapshot } from "@poseidon/contracts/runtime";
 
 import { forkTranscript, OMITTED_MARKER, withForkContext } from "./forkSeed";
-import { pendingNativeFork, sourceStillAt } from "./nativeFork";
+import { pendingImportResume, pendingNativeFork, sourceStillAt } from "./nativeFork";
 import type { ThreadDoc } from "./state";
 
 const NOW = "2026-01-02T03:04:05.000Z";
@@ -149,6 +149,66 @@ describe("withForkContext", () => {
   it("leaves a thread that is not a fork, or a fork of nothing, alone", () => {
     expect(withForkContext(doc({}), t1, input)).toBe(input);
     expect(withForkContext(doc({ fork: { ...fork, transcript: "" } }), t1, input)).toBe(input);
+  });
+});
+
+describe("withForkContext on an imported thread", () => {
+  const doc = (fields: Partial<ThreadDoc>): ThreadDoc => ({ items: [], ...fields }) as ThreadDoc;
+  const imported = { connectorKind: "fake", sourceId: "session-1" };
+  const history = [
+    row("user_message", t1, "Add a health check."),
+    row("assistant_message", t1, "Added GET /healthz."),
+  ];
+  const input = { text: "Now test it.", attachments: [], mentions: [] };
+
+  it("puts the imported rows ahead of the first message, but not the message itself", () => {
+    const thread = doc({ imported, items: [...history, row("user_message", t2, "Now test it.")] });
+    const sent = withForkContext(thread, t2, input);
+    expect(sent.text).toContain("continues one the harness recorded before it was imported here");
+    expect(sent.text).toContain(
+      "<earlier-conversation>\n\nUser:\nAdd a health check.\n\nAssistant:\nAdded GET /healthz.\n\n</earlier-conversation>",
+    );
+    expect(sent.text.endsWith("The user's new message:\n\nNow test it.")).toBe(true);
+  });
+
+  it("sends nothing extra once the session is the imported one resumed, or on later turns", () => {
+    const thread = doc({ imported, items: [...history, row("user_message", t2, "Now test it.")] });
+    expect(withForkContext(thread, t2, input, true)).toBe(input);
+    const later = doc({
+      imported,
+      forkSeededIn: t2,
+      items: [...history, row("user_message", t2, "first"), row("user_message", t3, "then")],
+    });
+    expect(withForkContext(later, t3, input)).toBe(input);
+    // An import with no rows before this turn has nothing to carry.
+    expect(withForkContext(doc({ imported, items: [] }), t2, input)).toBe(input);
+  });
+});
+
+describe("pendingImportResume", () => {
+  const instance = "instance" as never;
+  const session = { connectorInstanceId: instance, sessionRef: { sessionId: "a" } };
+  const imported = { connectorKind: "fake", sourceId: "a", session };
+  const doc = (fields: Partial<ThreadDoc>): ThreadDoc =>
+    ({
+      items: [row("user_message", t1, "go")],
+      session: null,
+      currentTurn: { turnId: t1, input: { text: "go", attachments: [], mentions: [] } },
+      settings: { connectorInstanceId: instance },
+      ...fields,
+    }) as ThreadDoc;
+
+  it("resumes the imported session on the thread's first turn", () => {
+    expect(pendingImportResume(doc({ imported }))).toBe(session);
+  });
+
+  it("never once the thread has a session or has run, off its instance, or without one", () => {
+    expect(pendingImportResume(doc({ imported, session: { sessionRef: {} } as never }))).toBeNull();
+    expect(pendingImportResume(doc({ imported, forkSeededIn: makeTurnId() }))).toBeNull();
+    const moved = { connectorInstanceId: "another" } as unknown as ThreadDoc["settings"];
+    expect(pendingImportResume(doc({ imported, settings: moved }))).toBeNull();
+    expect(pendingImportResume(doc({ imported: { ...imported, session: undefined } }))).toBeNull();
+    expect(pendingImportResume(doc({}))).toBeNull();
   });
 });
 
