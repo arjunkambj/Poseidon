@@ -30,6 +30,13 @@
  * success all fail with `GenerationFailed`, carrying the CLI's own error or
  * the tail of its stderr. `fixtures/cmd/generate-text/` is the recording of
  * exactly this argv.
+ *
+ * The model catalog cannot tell which models take an effort: the listing marks
+ * none, so every model offers the whole ladder. A model with no effort refuses
+ * `--effort` before any request (`fixtures/cmd/generate-text-effort/`), so on
+ * that refusal the call runs once more without it, and the instance remembers
+ * the model so later calls leave the flag out from the start
+ * (`fixtures/cmd/generate-text-effort-retry/`).
  */
 
 import * as NodeFS from "node:fs/promises";
@@ -114,6 +121,17 @@ export const answerOf = (run: {
   return text.trim() === "" ? { failure: "cmd answered with no text" } : { text };
 };
 
+/** The CLI's refusal of `--effort` for a model with no effort ladder, before any request. */
+const EFFORT_REFUSAL = /no adjustable reasoning effort/i;
+
+/** Whether a finished run is the CLI refusing `--effort` for the model. */
+export const refusedEffort = (run: {
+  readonly exitCode: number;
+  readonly stdout: string;
+  readonly stderr: string;
+}): boolean =>
+  run.exitCode !== 0 && resultOf(run.stdout) === null && EFFORT_REFUSAL.test(run.stderr);
+
 /** The session id the run reported: its `result` line, else the stderr banner. */
 const sessionIdOf = (stdout: string, stderr: string): string | null =>
   resultOf(stdout)?.sessionId ?? /session:\s*([0-9a-f-]{36})/i.exec(stderr)?.[1] ?? null;
@@ -144,48 +162,69 @@ export interface CmdGenerateTextOptions {
   readonly extraEnv?: Readonly<Record<string, string>>;
 }
 
+interface FinishedRun {
+  readonly exitCode: number;
+  readonly stdout: string;
+  readonly stderr: string;
+}
+
 /** The instance's `generateText`. */
-export const makeCmdGenerateText =
-  (options: CmdGenerateTextOptions) =>
-  (input: GenerateTextInput): Effect.Effect<string, ConnectorError> =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const fail = (message: string) =>
-          new GenerationFailed({ kind: KIND, instanceId: options.instanceId, message });
-        const spawnFailed = (cause: unknown) =>
-          new SpawnFailed({
-            kind: KIND,
-            instanceId: options.instanceId,
-            message: cause instanceof Error ? cause.message : String(cause),
-          });
-        // Made before the process and removed after it: the scope's finalizers
-        // run in reverse, so the process group is gone before the directory is.
-        const cwd = yield* Effect.acquireRelease(
-          Effect.tryPromise({
-            try: () => NodeFS.mkdtemp(NodePath.join(NodeOS.tmpdir(), "poseidon-generate-")),
-            catch: spawnFailed,
+export const makeCmdGenerateText = (options: CmdGenerateTextOptions) => {
+  /** Models that refused `--effort` on this instance: it is left out for them. */
+  const noEffort = new Set<string>();
+  return (input: GenerateTextInput): Effect.Effect<string, ConnectorError> =>
+    Effect.gen(function* () {
+      const fail = (message: string) =>
+        new GenerationFailed({ kind: KIND, instanceId: options.instanceId, message });
+      const spawnFailed = (cause: unknown) =>
+        new SpawnFailed({
+          kind: KIND,
+          instanceId: options.instanceId,
+          message: cause instanceof Error ? cause.message : String(cause),
+        });
+      /** One process, from spawn to exit, in a temporary directory of its own. */
+      const runOnce = (call: GenerateTextInput): Effect.Effect<FinishedRun, ConnectorError> =>
+        Effect.scoped(
+          Effect.gen(function* () {
+            // Made before the process and removed after it: the scope's
+            // finalizers run in reverse, so the process group is gone before
+            // the directory is.
+            const cwd = yield* Effect.acquireRelease(
+              Effect.tryPromise({
+                try: () => NodeFS.mkdtemp(NodePath.join(NodeOS.tmpdir(), "poseidon-generate-")),
+                catch: spawnFailed,
+              }),
+              (dir) => Effect.promise(() => NodeFS.rm(dir, { recursive: true, force: true })),
+            );
+            const binary = options.binary();
+            const proc = yield* spawnProcess({
+              binaryPath: binary.command,
+              args: [...binary.prefixArgs, ...generateTextArgs(call)],
+              cwd,
+              env: envAllowlist(process.env, { ...options.extraEnv }),
+            }).pipe(Effect.mapError(spawnFailed));
+            const [stdout, stderr, exitCode] = yield* Effect.all(
+              [Stream.runCollect(proc.stdout), Stream.runCollect(proc.stderr), proc.exitCode],
+              { concurrency: "unbounded" },
+            ).pipe(Effect.mapError((error) => fail(error.message)));
+            const run = { exitCode, stdout: stdout.join(""), stderr: stderr.join("") };
+            const sessionId = sessionIdOf(run.stdout, run.stderr);
+            if (sessionId !== null) {
+              const home = options.extraEnv?.HOME ?? NodeOS.homedir();
+              // Tidying is best-effort: it never costs the caller the answer.
+              yield* Effect.promise(() => removeLeftovers(home, sessionId).catch(() => undefined));
+            }
+            return run;
           }),
-          (dir) => Effect.promise(() => NodeFS.rm(dir, { recursive: true, force: true })),
         );
-        const binary = options.binary();
-        const proc = yield* spawnProcess({
-          binaryPath: binary.command,
-          args: [...binary.prefixArgs, ...generateTextArgs(input)],
-          cwd,
-          env: envAllowlist(process.env, { ...options.extraEnv }),
-        }).pipe(Effect.mapError(spawnFailed));
-        const [stdout, stderr, exitCode] = yield* Effect.all(
-          [Stream.runCollect(proc.stdout), Stream.runCollect(proc.stderr), proc.exitCode],
-          { concurrency: "unbounded" },
-        ).pipe(Effect.mapError((error) => fail(error.message)));
-        const run = { exitCode, stdout: stdout.join(""), stderr: stderr.join("") };
-        const sessionId = sessionIdOf(run.stdout, run.stderr);
-        if (sessionId !== null) {
-          const home = options.extraEnv?.HOME ?? NodeOS.homedir();
-          // Tidying is best-effort: it never costs the caller the answer.
-          yield* Effect.promise(() => removeLeftovers(home, sessionId).catch(() => undefined));
-        }
-        const answer = answerOf(run);
-        return "text" in answer ? answer.text : yield* fail(answer.failure);
-      }),
-    );
+      const { effort: _effort, ...withoutEffort } = input;
+      const first: GenerateTextInput = noEffort.has(input.model) ? withoutEffort : input;
+      let run = yield* runOnce(first);
+      if (first.effort !== undefined && refusedEffort(run)) {
+        noEffort.add(input.model);
+        run = yield* runOnce(withoutEffort);
+      }
+      const answer = answerOf(run);
+      return "text" in answer ? answer.text : yield* fail(answer.failure);
+    });
+};

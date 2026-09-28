@@ -1,0 +1,245 @@
+{
+  "scenario": "generate-text-effort-retry",
+  "description": "the refusal and its retry, as generateText.ts runs them: --effort low on a model that takes none is refused before any request, and the same one-shot again without --effort answers",
+  "cli": "/opt/homebrew/bin/cmd",
+  "cliVersion": "1.66.0",
+  "recordedOn": "2026-09-28",
+  "model": "poolside/laguna-s-2.1-free",
+  "modelRequested": "poolside/laguna-s-2.1-free",
+  "real": true,
+  "turns": [
+    {
+      "index": 0,
+      "prompt": "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+      "connectorArgs": [
+        "-p",
+        "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--no-session",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--effort",
+        "low",
+        "--max-turns",
+        "1"
+      ],
+      "argv": [
+        "-p",
+        "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--no-session",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--effort",
+        "low",
+        "--max-turns",
+        "1"
+      ],
+      "envKeys": [
+        "HOME",
+        "PATH",
+        "POSEIDON_HOME",
+        "POSEIDON_RECORD_HOOK_LOG",
+        "POSEIDON_RECORD_HOOK_POLICY",
+        "POSEIDON_THREAD_ID",
+        "SHELL",
+        "SSH_AUTH_SOCK",
+        "TMPDIR",
+        "USER"
+      ],
+      "sessionId": null,
+      "exitCode": 1,
+      "signal": null,
+      "interrupted": false,
+      "durationMs": 657,
+      "stdoutChunks": [],
+      "transcriptPath": null,
+      "guessedTranscriptPath": null,
+      "transcriptDirMatchesConnectorSlug": false,
+      "projectDirListing": [],
+      "transcriptGrowth": [],
+      "transcriptBytes": null,
+      "checkpointGrowth": [],
+      "transcriptMeta": null,
+      "hookCount": 0,
+      "plans": [],
+      "touchedFiles": [],
+      "files": {
+        "stdout": "turn1.stdout.ndjson",
+        "stderr": "turn1.stderr.txt"
+      }
+    },
+    {
+      "index": 1,
+      "prompt": "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+      "connectorArgs": [
+        "-p",
+        "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--no-session",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--max-turns",
+        "1"
+      ],
+      "argv": [
+        "-p",
+        "You write git commit messages. Reply with the subject line only: imperative mood, under 72 characters, no quotes.\n\nChanged files:\n- README.md: fixed a typo in the install section",
+        "--output-format",
+        "json",
+        "--verbose",
+        "-t",
+        "--skip-onboarding",
+        "--no-auto-update",
+        "--no-session",
+        "--model",
+        "poolside/laguna-s-2.1-free",
+        "--max-turns",
+        "1"
+      ],
+      "envKeys": [
+        "HOME",
+        "PATH",
+        "POSEIDON_HOME",
+        "POSEIDON_RECORD_HOOK_LOG",
+        "POSEIDON_RECORD_HOOK_POLICY",
+        "POSEIDON_THREAD_ID",
+        "SHELL",
+        "SSH_AUTH_SOCK",
+        "TMPDIR",
+        "USER"
+      ],
+      "sessionId": "bddd112f-f229-4f75-be7f-b784ca910bea",
+      "exitCode": 0,
+      "signal": null,
+      "interrupted": false,
+      "durationMs": 3366,
+      "stdoutChunks": [
+        {
+          "at": 604,
+          "chars": 97
+        },
+        {
+          "at": 657,
+          "chars": 62
+        },
+        {
+          "at": 675,
+          "chars": 50
+        },
+        {
+          "at": 675,
+          "chars": 93
+        },
+        {
+          "at": 691,
+          "chars": 93
+        },
+        {
+          "at": 3214,
+          "chars": 61
+        },
+        {
+          "at": 3214,
+          "chars": 92
+        },
+        {
+          "at": 3214,
+          "chars": 63
+        },
+        {
+          "at": 3214,
+          "chars": 97
+        },
+        {
+          "at": 3215,
+          "chars": 61
+        },
+        {
+          "at": 3215,
+          "chars": 165
+        },
+        {
+          "at": 3215,
+          "chars": 107
+        },
+        {
+          "at": 3215,
+          "chars": 66
+        },
+        {
+          "at": 3215,
+          "chars": 115
+        },
+        {
+          "at": 3231,
+          "chars": 66
+        },
+        {
+          "at": 3231,
+          "chars": 123
+        },
+        {
+          "at": 3349,
+          "chars": 202
+        },
+        {
+          "at": 3349,
+          "chars": 120
+        },
+        {
+          "at": 3350,
+          "chars": 172
+        },
+        {
+          "at": 3355,
+          "chars": 1378
+        },
+        {
+          "at": 3355,
+          "chars": 271
+        }
+      ],
+      "transcriptPath": "<HOME>/.commandcode/projects/private-var-folders-fk-g7j37kcj0kd6sdfwg-czzrjh0000gn-t-poseidon-rec-generate-text-effort-retry-c4694aa3-generate-odo74-l/bddd112f-f229-4f75-be7f-b784ca910bea.jsonl",
+      "guessedTranscriptPath": "<HOME>/.commandcode/projects/private-var-folders-fk-g7j37kcj0kd6sdfwg_czzrjh0000gn-t-poseidon-rec-generate-text-effort-retry-c4694aa3-repo/bddd112f-f229-4f75-be7f-b784ca910bea.jsonl",
+      "transcriptDirMatchesConnectorSlug": false,
+      "projectDirListing": [
+        "bddd112f-f229-4f75-be7f-b784ca910bea.checkpoints.jsonl",
+        "bddd112f-f229-4f75-be7f-b784ca910bea.meta.json"
+      ],
+      "transcriptGrowth": [],
+      "transcriptBytes": null,
+      "checkpointGrowth": [
+        {
+          "at": 614,
+          "bytes": 303,
+          "lines": 1
+        }
+      ],
+      "transcriptMeta": "{\n  \"entrypoint\": \"print\"\n}",
+      "hookCount": 0,
+      "plans": [],
+      "touchedFiles": [],
+      "files": {
+        "stdout": "turn2.stdout.ndjson",
+        "stderr": "turn2.stderr.txt",
+        "checkpoints": "turn2.checkpoints.jsonl"
+      }
+    }
+  ]
+}

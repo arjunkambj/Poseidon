@@ -5,7 +5,9 @@
  * `fixtures/cmd/generate-text/` is the CLI answering the one-shot argv on
  * `poolside/laguna-s-2.1-free`; `generate-text-effort/` is the same call with
  * `--effort low` on that model, which takes none, refused by the CLI before
- * any request; `max-turns/` is a run stopped at its turn cap, exit 8. The
+ * any request; `generate-text-effort-retry/` is that refusal followed by the
+ * same call without `--effort`, answered; `max-turns/` is a run stopped at its
+ * turn cap, exit 8. The
  * replayer logs each argv and cwd it was handed, which is how the argv and the
  * temporary directory are checked.
  */
@@ -20,7 +22,7 @@ import { makeConnectorInstanceId } from "@poseidon/contracts/ids";
 import * as Effect from "effect/Effect";
 
 import { cmdConnectorDefinition } from "./definition";
-import { answerOf, generateTextArgs, removeLeftovers } from "./generateText";
+import { answerOf, generateTextArgs, refusedEffort, removeLeftovers } from "./generateText";
 
 const TESTKIT = NodePath.resolve(NodeURL.fileURLToPath(import.meta.url), "../../../testkit");
 const REPLAY_BINARY = NodePath.join(TESTKIT, "bin", "replay-cmd.mjs");
@@ -63,8 +65,12 @@ const services = (): Effect.Effect<ConnectorServices> =>
     }),
   );
 
-/** A temp home and argv log, and an instance whose binary replays `scenario`. */
-const replaying = (scenario: string) =>
+/**
+ * A temp home and argv log, and an instance whose binary replays `scenario`:
+ * its first turn on every spawn, or each spawn the next turn when `inTurn` is
+ * false.
+ */
+const replaying = (scenario: string, inTurn = true) =>
   Effect.gen(function* () {
     const root = yield* Effect.acquireRelease(
       Effect.sync(() => NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "cmd-generate-"))),
@@ -80,7 +86,9 @@ const replaying = (scenario: string) =>
         extraEnv: {
           HOME: home,
           POSEIDON_REPLAY_DIR: NodePath.join(RECORDINGS, scenario),
-          POSEIDON_REPLAY_TURN: "0",
+          ...(inTurn
+            ? { POSEIDON_REPLAY_TURN: "0" }
+            : { POSEIDON_REPLAY_STATE: NodePath.join(root, "replay-state") }),
           POSEIDON_REPLAY_ARGV_LOG: argvLog,
         },
       },
@@ -152,7 +160,26 @@ describe("generateText on the recorded one-shot", () => {
     }).pipe(Effect.scoped),
   );
 
-  it.live("fails with the CLI's own words when the model takes no effort", () =>
+  it.live("runs again without --effort when the model refuses one, and remembers it", () =>
+    Effect.gen(function* () {
+      const scenario = "generate-text-effort-retry";
+      const { instance, invocations } = yield* replaying(scenario, false);
+      const [refused, answered] = manifestOf(scenario).turns;
+      const text = yield* instance.generateText!({ ...inputOf(scenario), effort: "low" });
+      expect(text).toBe("Fix typo in README install section");
+      expect(invocations().map((call) => call.argv)).toEqual([
+        refused?.connectorArgs,
+        answered?.connectorArgs,
+      ]);
+
+      // The next call on the same model leaves --effort out from the start.
+      yield* Effect.exit(instance.generateText!({ ...inputOf(scenario), effort: "low" }));
+      expect(invocations().map((call) => call.argv)).toHaveLength(3);
+      expect(invocations()[2]?.argv).toEqual(answered?.connectorArgs);
+    }).pipe(Effect.scoped),
+  );
+
+  it.live("fails with the CLI's own words when the run without --effort fails too", () =>
     Effect.gen(function* () {
       const { instance, invocations } = yield* replaying("generate-text-effort");
       const error = yield* Effect.flip(
@@ -160,9 +187,10 @@ describe("generateText on the recorded one-shot", () => {
       );
       expect(error._tag).toBe("GenerationFailed");
       expect(error.message).toContain(recorded("generate-text-effort", "stderr.txt").trim());
-      expect(invocations()[0]?.argv).toEqual(
-        manifestOf("generate-text-effort").turns[0]?.connectorArgs,
-      );
+      const [withEffort, without] = invocations();
+      expect(withEffort?.argv).toEqual(manifestOf("generate-text-effort").turns[0]?.connectorArgs);
+      expect(without?.argv).not.toContain("--effort");
+      expect(invocations()).toHaveLength(2);
     }).pipe(Effect.scoped),
   );
 
@@ -208,6 +236,22 @@ describe("answerOf the recorded failures", () => {
     const answer = answerOf({ exitCode: 10, stdout, stderr: "" });
     expect("failure" in answer && answer.failure).toContain("top up at");
     expect("failure" in answer && answer.failure).toContain("You have insufficient credits");
+  });
+
+  it("tells the recorded effort refusal from other failures", () => {
+    const refusal = {
+      exitCode: 1,
+      stdout: recorded("generate-text-effort", "stdout.ndjson"),
+      stderr: recorded("generate-text-effort", "stderr.txt"),
+    };
+    expect(refusedEffort(refusal)).toBe(true);
+    expect(refusedEffort({ ...refusal, stderr: "Unknown model" })).toBe(false);
+    const answered = {
+      exitCode: 0,
+      stdout: recorded("generate-text", "stdout.ndjson"),
+      stderr: recorded("generate-text", "stderr.txt"),
+    };
+    expect(refusedEffort(answered)).toBe(false);
   });
 
   it("says so when there is no result line", () => {

@@ -398,9 +398,19 @@ export const SCENARIOS = {
 
   "generate-text-effort": {
     description:
-      "the same one-shot with --effort low on a model that takes no effort: the CLI refuses before any request and exits 1, which is why the caller leaves effort out for such a model",
+      "the same one-shot with --effort low on a model that takes no effort: the CLI refuses before any request and exits 1, which is why generateText.ts runs such a call again without --effort",
     model: "poolside/laguna-s-2.1-free",
     turns: [({ scratch }) => ({ ...generateTurn(scratch), effort: "low" })],
+  },
+
+  "generate-text-effort-retry": {
+    description:
+      "the refusal and its retry, as generateText.ts runs them: --effort low on a model that takes none is refused before any request, and the same one-shot again without --effort answers",
+    model: "poolside/laguna-s-2.1-free",
+    turns: [
+      ({ scratch }) => ({ ...generateTurn(scratch), effort: "low" }),
+      ({ scratch }) => generateTurn(scratch),
+    ],
   },
 
   subagent: {

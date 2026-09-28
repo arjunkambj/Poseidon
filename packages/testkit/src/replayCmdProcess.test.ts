@@ -75,11 +75,16 @@ const frameTypes = (stdout: string): ReadonlyArray<string> =>
 /**
  * Recordings the CLI refused before it wrote a single frame, and why. They
  * carry their evidence on stderr and in the exit code, and their manifest's
- * model is the one the recorder asked for.
+ * model is the one the recorder asked for. A key `<name>#<turn>` names one
+ * such turn in a recording whose other turns have frames.
  */
 const NO_FRAMES: Readonly<Record<string, string>> = {
   "generate-text-effort": "--effort on a model that takes none: refused on stderr, exit 1",
+  "generate-text-effort-retry#0": "the same refusal, before the retry without --effort answers",
 };
+
+const framesless = (name: string, turn: number): boolean =>
+  NO_FRAMES[name] !== undefined || NO_FRAMES[`${name}#${turn}`] !== undefined;
 
 describe("loadRecording", () => {
   it("reads every recording on disk", () => {
@@ -91,10 +96,10 @@ describe("loadRecording", () => {
       // operator has installed and recordings are taken as that moves.
       expect(recording.cliVersion, name).toMatch(/^\d+\.\d+\.\d+$/);
       expect(recording.turns.length).toBeGreaterThan(0);
-      for (const turn of recording.turns) {
+      for (const [index, turn] of recording.turns.entries()) {
         // Every recording is a real run with real argv and real frames.
         expect(turn.connectorArgs).toContain("--output-format");
-        if (NO_FRAMES[name] === undefined) {
+        if (!framesless(name, index)) {
           expect(turn.frames.length, name).toBeGreaterThan(0);
         } else {
           expect(turn.frames, name).toEqual([]);

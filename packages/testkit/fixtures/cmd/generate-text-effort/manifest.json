@@ -1,6 +1,6 @@
 {
   "scenario": "generate-text-effort",
-  "description": "the same one-shot with --effort low on a model that takes no effort: the CLI refuses before any request and exits 1, which is why the caller leaves effort out for such a model",
+  "description": "the same one-shot with --effort low on a model that takes no effort: the CLI refuses before any request and exits 1, which is why generateText.ts runs such a call again without --effort",
   "cli": "/opt/homebrew/bin/cmd",
   "cliVersion": "1.66.0",
   "recordedOn": "2026-09-28",

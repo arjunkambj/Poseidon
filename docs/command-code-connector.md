@@ -329,10 +329,15 @@ cmd -p "<system>\n\n<prompt>" --output-format json --verbose -t --skip-onboardin
 - **The system text goes in front of the prompt**, because print mode has no
   system-prompt flag. It has no schema flag either, so `jsonSchema` is not sent
   and the caller parses the text.
-- **Effort only when asked for.** The caller leaves it out for a model that
-  lists none: the CLI refuses the flag on such a model before any request —
-  "Laguna S 2.1 has no adjustable reasoning effort." on stderr, exit 1
-  (`fixtures/cmd/generate-text-effort/`). `minimal` goes as `low` (`cmdEffort`).
+- **Effort only when asked for, and dropped when refused.** The model listing
+  marks no effort ladder, so every model offers every level and the caller
+  cannot tell which take one. A model that takes none refuses the flag before
+  any request — "Laguna S 2.1 has no adjustable reasoning effort." on stderr,
+  exit 1 (`fixtures/cmd/generate-text-effort/`). On that refusal the call runs
+  once more without `--effort`, and the instance remembers the model so later
+  calls leave the flag out from the start
+  (`fixtures/cmd/generate-text-effort-retry/`). `minimal` goes as `low`
+  (`cmdEffort`).
 - **The answer is `finalText` on the `result` line.** A non-zero exit (read
   through `EXIT_MESSAGES`), a stream with no `result` line, a `result` that is
   not `success`, or one with no text fails with `GenerationFailed`, carrying the
@@ -347,8 +352,9 @@ cmd -p "<system>\n\n<prompt>" --output-format json --verbose -t --skip-onboardin
 
 `fixtures/cmd/generate-text/` is a real run of exactly this argv on
 `poolside/laguna-s-2.1-free`, and `generateText.test.ts` replays it through the
-definition: the text, the argv, the temp directory and the tidy-up. The error
-path replays `generate-text-effort/` and `max-turns/`. The server wraps every
+definition: the text, the argv, the temp directory and the tidy-up. The retry
+without `--effort` replays `generate-text-effort-retry/`, and the error path
+`generate-text-effort/` and `max-turns/`. The server wraps every
 call in its own timeout; interrupting the call closes its scope, which kills
 the process group.
 

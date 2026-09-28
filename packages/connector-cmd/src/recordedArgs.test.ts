@@ -65,7 +65,7 @@ const NO_YOLO: Readonly<Record<string, string>> = {
  * argv never carries `--yolo` — its absence is what keeps the call read-only —
  * so they are held to `generateTextArgs` instead.
  */
-const ONE_SHOT = new Set(["generate-text", "generate-text-effort"]);
+const ONE_SHOT = new Set(["generate-text", "generate-text-effort", "generate-text-effort-retry"]);
 
 /**
  * Flags the connector adds to every turn that a recording is allowed to
