@@ -89,8 +89,10 @@ export function useThreadFind({
   const [selected, setSelected] = React.useState<FindSelection | undefined>(undefined);
   const [focusKey, setFocusKey] = React.useState(0);
   const [pendingRow, setPendingRow] = React.useState<string | undefined>(undefined);
-  // A new query waits for its matches, then goes to the first one.
-  const revealFirst = React.useRef(false);
+  // A new query waits until it has been searched, then goes to its first
+  // match, or nowhere when it has none: a match a later delta brings in is
+  // the reader's to step to, not a jump out from under them.
+  const [revealFirst, setRevealFirst] = React.useState(false);
   const setDisclosures = useSetRowDisclosures();
   const threadId = snapshot.threadId;
 
@@ -100,7 +102,7 @@ export function useThreadFind({
     setDebouncedQuery("");
     setSelected(undefined);
     setPendingRow(undefined);
-    revealFirst.current = false;
+    setRevealFirst(false);
   }, []);
   // The timeline stays mounted across threads: another thread starts closed.
   React.useEffect(() => reset, [threadId, reset]);
@@ -117,7 +119,7 @@ export function useThreadFind({
     const timer = setTimeout(() => {
       setDebouncedQuery(query);
       setSelected(undefined);
-      revealFirst.current = true;
+      setRevealFirst(true);
     }, FIND_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [open, query]);
@@ -164,12 +166,17 @@ export function useThreadFind({
   const goToRef = React.useRef(goTo);
   goToRef.current = goTo;
 
+  // The matches are worked out for the query as soon as there is a projection
+  // to search: the query itself is not deferred, only the items are.
   React.useEffect(() => {
-    if (revealFirst.current && matches.length > 0) {
-      revealFirst.current = false;
+    if (!revealFirst || allOpen === undefined) {
+      return;
+    }
+    setRevealFirst(false);
+    if (matches.length > 0) {
       goToRef.current(0);
     }
-  }, [matches]);
+  }, [revealFirst, allOpen, matches]);
 
   // Scroll once the target row is in the list: an opened fold brings it in a render later.
   const rows = projection.rows;
