@@ -999,7 +999,10 @@ the exact semantics the server enforces), `imageBytes.ts` (magic-byte sniffing
 and the attachment size cap), `decisionSubject.ts` (the one-line subject a
 resolved decision is recorded with, shared so both folds write the same words),
 `browserBridge.ts` (the browser bridge's launch key and per-thread capability,
-shared because the shell verifies what the server mints). Imports no workspace package at all.
+shared because the shell verifies what the server mints), `branchSlug.ts` (the
+worktree branch and directory slug, shared so New task's compare fan-out can
+pre-slug names that keep their model suffix under the server's 40-character
+cut). Imports no workspace package at all.
 
 ### packages/ui
 
