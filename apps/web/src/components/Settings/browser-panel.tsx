@@ -10,7 +10,6 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import { Badge } from "@poseidon/ui/components/badge";
 import { Button } from "@poseidon/ui/components/button";
 import { Checkbox } from "@poseidon/ui/components/checkbox";
-import { Label } from "@poseidon/ui/components/label";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { toast } from "sonner";
 
@@ -22,26 +21,7 @@ import { useAppAtoms } from "@/lib/app-runtime";
 import { useClearBrowserHistory } from "@/state/browser-history";
 
 import { modeLabel, statusLabel } from "./browser-status";
-
-function Section({
-  title,
-  description,
-  children,
-}: {
-  readonly title: string;
-  readonly description?: React.ReactNode;
-  readonly children?: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium">{title}</h2>
-      {description === undefined ? null : (
-        <div className="text-sm text-muted-foreground">{description}</div>
-      )}
-      {children}
-    </section>
-  );
-}
+import { SettingsPageHeader, SettingsRow, SettingsSection } from "./settings-section";
 
 function AutoOpen() {
   const atoms = useAppAtoms();
@@ -50,11 +30,14 @@ function AutoOpen() {
   const settings = AsyncResult.isSuccess(result) ? result.value : null;
   const checked = settings?.browser.openPaneOnAgentUse ?? false;
   return (
-    <Section
+    <SettingsSection
       title="When the agent uses the browser"
       description="The browser pane stays closed by default. The agent works in a hidden tab and the thread header shows “Agent is using the browser” with a Show button."
     >
-      <div className="flex items-center gap-2">
+      <SettingsRow
+        title="Open the browser pane when the agent starts using it"
+        htmlFor="browser-auto-open"
+      >
         <Checkbox
           id="browser-auto-open"
           checked={checked}
@@ -63,18 +46,16 @@ function AutoOpen() {
             update({ browser: { ...settings?.browser, openPaneOnAgentUse: next === true } })
           }
         />
-        <Label htmlFor="browser-auto-open">
-          Open the browser pane when the agent starts using it
-        </Label>
-      </div>
-    </Section>
+      </SettingsRow>
+    </SettingsSection>
   );
 }
 
 function HowItAttaches() {
   return (
-    <Section
+    <SettingsSection
       title="How the agent reaches the browser"
+      card={false}
       description={
         <div className="flex flex-col gap-2">
           <p>
@@ -95,41 +76,42 @@ function HowItAttaches() {
   );
 }
 
+const RESTART_NOTE = "Restart Poseidon after installing so the server finds it.";
+
 function ToolStatus() {
   const result = useAtomValue(useBrowserAtoms().browserStatusAtom);
   const status = AsyncResult.isSuccess(result) ? result.value : null;
   const mode = status === null ? null : modeLabel(status);
   return (
-    <Section
+    <SettingsSection
       title="agent-browser"
       description="The command-line tool the agent drives the browser with. It is installed separately."
     >
-      {status === null ? (
-        <p className="text-sm text-muted-foreground">Asking the server…</p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={status.installed ? "secondary" : "outline"}>
-              {statusLabel(status)}
-            </Badge>
-            {mode === null ? null : <span className="text-sm text-muted-foreground">{mode}</span>}
-          </div>
-          {status.installed ? null : (
-            <div className="flex flex-col gap-1.5">
-              {installCommands(status.mode).map((entry) => (
-                <div key={entry.command} className="flex items-center gap-2">
-                  <CopyCommand command={entry.command} />
-                  <span className="text-xs text-muted-foreground">{entry.note}</span>
-                </div>
-              ))}
-              <p className="text-xs text-muted-foreground">
-                Restart Poseidon after installing so the server finds it.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-    </Section>
+      <SettingsRow
+        title="Status"
+        description={
+          status === null || status.installed
+            ? (mode ?? undefined)
+            : [mode === null ? null : `${mode}.`, RESTART_NOTE].filter(Boolean).join(" ")
+        }
+      >
+        {status === null ? (
+          <span className="text-sm text-muted-foreground">Asking the server…</span>
+        ) : (
+          <Badge variant={status.installed ? "secondary" : "outline"}>{statusLabel(status)}</Badge>
+        )}
+      </SettingsRow>
+      {status === null || status.installed
+        ? null
+        : installCommands(status.mode).map((entry) => (
+            <SettingsRow
+              key={entry.command}
+              title={`${entry.note.charAt(0).toUpperCase()}${entry.note.slice(1)}`}
+            >
+              <CopyCommand command={entry.command} />
+            </SettingsRow>
+          ))}
+    </SettingsSection>
   );
 }
 
@@ -149,19 +131,21 @@ function ClearData() {
   };
 
   return (
-    <Section
-      title="Browsing data"
-      description={
-        clearAll === undefined
-          ? "Forget the pages the address bar suggests."
-          : "Forget the pages the address bar suggests, and sign out of every site: each thread’s cookies, storage and cache are cleared."
-      }
-    >
-      <div>
-        <Button type="button" variant="outline" onClick={() => setOpen(true)}>
-          Clear browsing data
-        </Button>
-      </div>
+    <>
+      <SettingsSection title="Browsing data">
+        <SettingsRow
+          title={clearAll === undefined ? "Address bar history" : "History and site data"}
+          description={
+            clearAll === undefined
+              ? "Forget the pages the address bar suggests."
+              : "Forget the pages the address bar suggests, and sign out of every site: each thread’s cookies, storage and cache are cleared."
+          }
+        >
+          <Button type="button" variant="outline" onClick={() => setOpen(true)}>
+            Clear browsing data
+          </Button>
+        </SettingsRow>
+      </SettingsSection>
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
@@ -174,19 +158,17 @@ function ClearData() {
         confirmLabel="Clear"
         onConfirm={() => void clear()}
       />
-    </Section>
+    </>
   );
 }
 
 export function BrowserPanel() {
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-medium">Browser</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The browser pane the agent can drive in each thread.
-        </p>
-      </div>
+      <SettingsPageHeader
+        title="Browser"
+        description="The browser pane the agent can drive in each thread."
+      />
       <AutoOpen />
       <HowItAttaches />
       <ToolStatus />

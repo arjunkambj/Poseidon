@@ -17,13 +17,6 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import * as React from "react";
 
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@poseidon/ui/components/card";
-import {
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -43,6 +36,7 @@ import { Lock } from "@honeyicons/react";
 import { EditRuleDialog } from "./edit-rule-dialog";
 import { PermissionRuleRow } from "./permission-rule-row";
 import { groupRules, ruleKey, withoutRule, withPattern } from "./permission-rules";
+import { SettingsPageHeader, SettingsSection } from "./settings-section";
 
 const NO_RULES: ReadonlyArray<PermissionRule> = [];
 
@@ -113,14 +107,10 @@ export function PermissionsPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-medium">Permissions</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Rules saved when you answer an approval with “Allow for session” or “Always allow”. A deny
-          rule beats an allow rule, and a request that touches a sensitive file always asks,
-          whatever the rules say.
-        </p>
-      </div>
+      <SettingsPageHeader
+        title="Permissions"
+        description="Rules saved when you answer an approval with “Allow for session” or “Always allow”. A deny rule beats an allow rule, and a request that touches a sensitive file always asks, whatever the rules say."
+      />
 
       {groups.length === 0 ? (
         <Empty>
@@ -137,28 +127,26 @@ export function PermissionsPanel() {
         </Empty>
       ) : (
         groups.map((group) => (
-          <Card key={group.key} size="sm">
-            <CardHeader>
-              <CardTitle>{group.title}</CardTitle>
-              <CardDescription>{GROUP_REACH[group.scope]}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="flex flex-col divide-y divide-border">
-                {group.rules.map((rule) => (
-                  <PermissionRuleRow
-                    key={ruleKey(rule)}
-                    rule={rule}
-                    disabled={disabled}
-                    onEdit={() => {
-                      setEditing({ rule, groupTitle: group.title });
-                      setEditOpen(true);
-                    }}
-                    onDelete={() => setDeleting(rule)}
-                  />
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+          <SettingsSection
+            key={group.key}
+            title={group.title}
+            description={GROUP_REACH[group.scope]}
+          >
+            <ul className="flex flex-col divide-y divide-border">
+              {group.rules.map((rule) => (
+                <PermissionRuleRow
+                  key={ruleKey(rule)}
+                  rule={rule}
+                  disabled={disabled}
+                  onEdit={() => {
+                    setEditing({ rule, groupTitle: group.title });
+                    setEditOpen(true);
+                  }}
+                  onDelete={() => setDeleting(rule)}
+                />
+              ))}
+            </ul>
+          </SettingsSection>
         ))
       )}
 
