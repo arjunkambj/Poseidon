@@ -11,8 +11,9 @@
  * one toast that starts as "…ing" and ends as done or failed; the toast
  * binding and the RPC calls are injected, which is what the tests swap.
  *
- * The message is plain text from what the thread already has — its title and
- * the changed paths. The dialog has no message box: this is what it commits.
+ * The drafted message is plain text from what the thread already has — its
+ * title and the changed paths. The commit dialog opens with it and the user
+ * can edit it and untick files.
  */
 
 import type {
@@ -306,9 +307,10 @@ export const pullRequestTitleDraft = (title: string, branch: string | null): str
 };
 
 /**
- * What `action` still does when the user commits nothing — every file left
- * unchecked in the commit dialog, say because the only change is a scratch
- * file nobody wants committed. The push and the pull request can still run.
+ * What `action` does in a run that commits nothing — a push from its key, or
+ * the pull-request-only dialog: the push and the pull request, planned as if
+ * the tree were clean. The commit dialog never gets here: with nothing ticked
+ * its buttons are disabled.
  */
 export const planWithoutCommit = (
   action: GitAction,

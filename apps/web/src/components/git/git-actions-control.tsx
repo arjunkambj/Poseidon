@@ -17,8 +17,9 @@
  *
  * An action is planned from the workspace's status and branches
  * (`@/lib/git-actions`): any action that commits opens the commit dialog
- * first, with the one asked for filled in, and a pull request made in the
- * same run takes its title and body from the drafted commit message. With
+ * first — the message and the files to commit, with the one asked for
+ * filled in — and a pull request made in the same run takes its title and
+ * body from the commit message. With
  * nothing to commit, a push (from its key) runs straight away and a pull
  * request asks only for its title and body. The steps then run in
  * order with one toast each, and stop at the first refusal with the server's
@@ -74,7 +75,8 @@ import { projectFolderTurnRunning, turnInFlight } from "@/lib/turn";
 import { useWindowReturn } from "@/lib/window-return";
 import { useConnectionState, useThreadList } from "@/state/hooks";
 
-import { CommitDialog, type CommitChoice } from "./commit-dialog";
+import { CommitDialog } from "./commit-dialog";
+import type { CommitChoice } from "./commit-picker";
 import { GitPrimaryButton } from "./git-primary-button";
 import { PullRequestDialog } from "./pull-request-dialog";
 import { useGitActions, type GitRunInput } from "./use-git-actions";

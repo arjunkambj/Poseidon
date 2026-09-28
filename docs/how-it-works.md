@@ -1947,25 +1947,34 @@ counted once when both fire (`useWindowReturn` in
 Commit disabled as "no changes" would otherwise stay so with no click of its
 own to refresh it.
 
-Any action that commits opens the commit dialog first. Its message starts as
-the thread's title — `Update N files` while the title is still `New thread` —
-then a blank line and `Changed files:` with one `- path` line each; nothing
-writes the message for the user. Opening the dialog refetches the status, and
-until the user types the message follows it and the checkboxes: it counts and
-lists the files still checked, not the ones read before the dialog opened or
-left out since. Every path
-`git.status` reports is listed with a checkbox, untracked files included and all
-checked, so a file the user does not want can be left out. Poseidon's own hook
-file never appears there: while a session holds it, `info/exclude` keeps it out
-of the status (see "The CLI's own config files"). `paths`
-is sent only when something is unchecked. With every file unchecked there is
-nothing to commit: a plain commit is disabled, while the other two actions skip
-the commit and run what is left (the button then reads `Push`,
-`Push & create PR` or `Create PR`), so a pull request stays reachable when the
-only change is a file nobody wants committed. A pull request in the same run takes
-its title (the first line) and body (the rest) from the commit message; with
-nothing to commit, a push runs straight away and a pull request asks only for
-its title and body.
+Any action that commits opens the commit dialog first
+(`apps/web/src/components/git/commit-dialog.tsx`, its pure half in
+`commit-picker.ts`). It has a message box, the changed files with a checkbox
+each, and one button per action. The message starts as the thread's title —
+`Update N files` while the title is still `New thread` — then a blank line and
+`Changed files:` with one `- path` line each; nothing writes the message for
+the user. Opening the dialog refetches the status, and until the user types
+the message follows it and the checkboxes: it counts and lists the files still
+ticked, not the ones read before the dialog opened or left out since. From the
+first keystroke the message is the user's. Every path `git.status` reports is
+listed (`commit-file-list.tsx`), untracked files included and all ticked, each
+row with its status letter and its path cut in the middle so the file name
+stays, the whole path (`old → new` for a rename) in its tooltip; a select-all
+box above says `N of M files` and shows a mixed state when some are unticked.
+Poseidon's own hook file never appears there: while a session holds it,
+`info/exclude` keeps it out of the status (see "The CLI's own config files").
+The same pick drives all three buttons, labelled with the count — `Commit 3
+files`, `Commit 3 files & push`, `Commit 3 files & create PR`. `paths` is sent
+only when something is unticked, so with every file ticked the server stages
+everything, which a commit in the middle of a merge needs. With nothing ticked
+or an empty message every button is disabled, its tooltip saying why, as it
+does for an action's own reason. The action the dialog was opened for is the
+filled button and has the focus, so Enter runs it, and Mod+Enter runs it from
+anywhere in the dialog, the message box included — a key of the dialog's own,
+not a keymap default. A pull request in the same run takes its title (the
+first line) and body (the rest) from the commit message; with nothing to
+commit, a push runs straight away and a pull request asks only for its title
+and body.
 
 The steps run in order (`runGitSteps`) and the first refusal stops the run, so
 a failed commit never pushes and a failed push opens no pull request. Each step
