@@ -3078,8 +3078,12 @@ running is brought to the front instead, and one whose tab has exited gets a
 fresh tab and the old one is closed (`planRun`). `useRunScript`
 (`run/use-run-script.ts`) opens the terminal first, adds its tab to the
 drawer's state and only then opens the drawer, since an open drawer with no
-tabs starts a shell of its own. A refusal — the ninth terminal, say — is a
-toast.
+tabs starts a shell of its own. The drawer mounts with the listing from
+before the open, which cannot show the new terminal, so a tab this client
+opened stays until a listing shows it (`openedAhead`). While a script's
+`terminal.open` is still on its way, running it again starts nothing
+(`launchOnce`), so a double click or a held Enter cannot start it twice. A
+refusal — the ninth terminal, say — is a toast.
 
 Stop, on the control, in the menu or on the script's drawer tab, writes
 Ctrl-C to the terminal (`terminal/use-stop-script.ts`), which the pty turns

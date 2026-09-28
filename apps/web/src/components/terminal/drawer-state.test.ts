@@ -87,6 +87,33 @@ describe("reduceDrawer synced", () => {
     expect(state.tabs.map((entry) => entry.script)).toEqual([script, null]);
   });
 
+  it("keeps a tab this client opened until a listing shows it", () => {
+    // A listing taken before the open: the drawer mounting right after Run
+    // folds it in, and must not drop the script's tab or leave none at all.
+    const opened = reduceDrawer(emptyDrawerState, { type: "opened", terminal: summary(1) });
+    const stale = reduceDrawer(opened, { type: "synced", terminals: [] });
+    expect(stale.tabs).toEqual([tab(1)]);
+    expect(stale.activeId).toBe(id(1));
+
+    const fresh = reduceDrawer(stale, { type: "synced", terminals: [summary(1)] });
+    expect(fresh).toEqual(withTabs([1], 1));
+    // Once listed, a listing without it drops it like any other.
+    expect(reduceDrawer(fresh, { type: "synced", terminals: [] })).toEqual(emptyDrawerState);
+  });
+
+  it("keeps an unlisted new tab after the listed ones, in front", () => {
+    const opened = reduceDrawer(withTabs([1], 1), { type: "opened", terminal: summary(3) });
+    const state = reduceDrawer(opened, { type: "synced", terminals: [summary(1), summary(2)] });
+    expect(state.tabs.map((entry) => entry.terminalId)).toEqual([id(1), id(2), id(3)]);
+    expect(state.activeId).toBe(id(3));
+  });
+
+  it("forgets an opened tab that was closed before any listing showed it", () => {
+    const opened = reduceDrawer(emptyDrawerState, { type: "opened", terminal: summary(1) });
+    const closed = reduceDrawer(opened, { type: "closed", terminalId: id(1) });
+    expect(closed).toEqual(emptyDrawerState);
+  });
+
   it("does not undo an exit seen after the listing was taken", () => {
     const exited = reduceDrawer(withTabs([1], 1), {
       type: "exited",

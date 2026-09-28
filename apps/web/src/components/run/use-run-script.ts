@@ -22,7 +22,10 @@
  *
  * The order of `run` matters: the terminal is opened over RPC, its tab added
  * to the drawer's state, and only then is the drawer opened. A drawer opened
- * first would find its owner with no tabs and start a shell of its own.
+ * first would find its owner with no tabs and start a shell of its own. The
+ * drawer mounts with the listing from before the open, which cannot show the
+ * new terminal; its tab survives that listing as one opened ahead of it
+ * (`openedAhead` in `@/components/terminal/drawer-state`).
  */
 
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";

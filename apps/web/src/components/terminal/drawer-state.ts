@@ -7,7 +7,11 @@
  * reducer only adds what the list cannot say — the active tab, and what this
  * client just did before the next listing arrives. `synced` folds a listing
  * back in, so a terminal another window closed, or one a server restart
- * forgot, drops out here too.
+ * forgot, drops out here too. A terminal this client just opened is the one
+ * exception (`openedAhead`): a listing taken before the open cannot know it —
+ * the listing atom keeps its last value while it refetches, and a drawer that
+ * mounts right after the Run button opened a script folds that value in — so
+ * its tab stays until a listing shows it.
  *
  * Kept in memory, keyed by the owner's `terminalOwnerKey`, in a `keepAlive`
  * map for the same reason as the composer draft (`composerDraftAtom` in
@@ -37,6 +41,11 @@ export interface TerminalTab {
 export interface DrawerState {
   readonly tabs: ReadonlyArray<TerminalTab>;
   readonly activeId: TerminalId | null;
+  /**
+   * Terminals this client opened that no listing has shown yet, so `synced`
+   * keeps their tabs; absent when there are none.
+   */
+  readonly openedAhead?: ReadonlyArray<TerminalId>;
 }
 
 export type DrawerAction =
@@ -56,6 +65,14 @@ const tabOf = (terminal: TerminalSummary): TerminalTab => ({
   script: terminal.script ?? null,
 });
 
+/** `tabs` and `activeId`, with `ahead` as `openedAhead` unless it is empty. */
+const withAhead = (
+  tabs: ReadonlyArray<TerminalTab>,
+  activeId: TerminalId | null,
+  ahead: ReadonlyArray<TerminalId>,
+): DrawerState =>
+  ahead.length === 0 ? { tabs, activeId } : { tabs, activeId, openedAhead: ahead };
+
 /**
  * The tab to show once `removed` is gone: the one after it, or the one before
  * when it was last.
@@ -73,39 +90,46 @@ export const reduceDrawer = (state: DrawerState, action: DrawerAction): DrawerSt
   switch (action.type) {
     case "synced": {
       // Server order; an exit this client already saw is not undone by a
-      // listing taken a moment before it.
-      const tabs = action.terminals.map((terminal) => {
+      // listing taken a moment before it, and a terminal it opened that the
+      // listing does not show yet keeps its tab, after the listed ones.
+      const listed = action.terminals.map((terminal) => {
         const known = state.tabs.find((tab) => tab.terminalId === terminal.terminalId);
         return known?.status === "exited" && terminal.status === "running"
           ? known
           : tabOf(terminal);
       });
+      const ahead = (state.openedAhead ?? []).filter(
+        (terminalId) => !action.terminals.some((terminal) => terminal.terminalId === terminalId),
+      );
+      const tabs = [...listed, ...state.tabs.filter((tab) => ahead.includes(tab.terminalId))];
       const activeId = tabs.some((tab) => tab.terminalId === state.activeId)
         ? state.activeId
         : (tabs.at(-1)?.terminalId ?? null);
-      return { tabs, activeId };
+      return withAhead(tabs, activeId, ahead);
     }
     case "opened": {
       const tab = tabOf(action.terminal);
       const exists = state.tabs.some((entry) => entry.terminalId === tab.terminalId);
-      return {
-        tabs: exists
-          ? state.tabs.map((entry) => (entry.terminalId === tab.terminalId ? tab : entry))
-          : [...state.tabs, tab],
-        activeId: tab.terminalId,
-      };
+      const ahead = state.openedAhead ?? [];
+      return exists
+        ? withAhead(
+            state.tabs.map((entry) => (entry.terminalId === tab.terminalId ? tab : entry)),
+            tab.terminalId,
+            ahead,
+          )
+        : withAhead([...state.tabs, tab], tab.terminalId, [...ahead, tab.terminalId]);
     }
     case "closed": {
       if (!state.tabs.some((tab) => tab.terminalId === action.terminalId)) {
         return state;
       }
-      return {
-        tabs: state.tabs.filter((tab) => tab.terminalId !== action.terminalId),
-        activeId:
-          state.activeId === action.terminalId
-            ? neighbourOf(state.tabs, action.terminalId)
-            : state.activeId,
-      };
+      return withAhead(
+        state.tabs.filter((tab) => tab.terminalId !== action.terminalId),
+        state.activeId === action.terminalId
+          ? neighbourOf(state.tabs, action.terminalId)
+          : state.activeId,
+        (state.openedAhead ?? []).filter((terminalId) => terminalId !== action.terminalId),
+      );
     }
     case "exited":
       return {
@@ -143,8 +167,9 @@ export const handOverDrawerState = (
     ...held.tabs,
     ...moving.tabs.filter((tab) => !held.tabs.some((own) => own.terminalId === tab.terminalId)),
   ];
+  const ahead = [...(held.openedAhead ?? []), ...(moving.openedAhead ?? [])];
   const { [from]: _moved, ...rest } = states;
-  return { ...rest, [to]: { tabs, activeId: held.activeId ?? moving.activeId } };
+  return { ...rest, [to]: withAhead(tabs, held.activeId ?? moving.activeId, ahead) };
 };
 
 /** `Terminal N` with the smallest N no tab is titled with. */
