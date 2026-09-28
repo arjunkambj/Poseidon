@@ -115,11 +115,11 @@ export const slashMenuItems = (input: {
 
   if (level === "model") {
     return models
-      .filter((model) => match(query, model.id, model.label, model.family))
+      .filter((model) => match(query, model.id, model.label, model.family, model.description ?? ""))
       .map((model) => ({
         id: `model:${model.id}`,
         label: model.label,
-        description: model.family,
+        description: model.description ?? model.family,
         icon: Brain,
         action: { type: "settings", patch: { model: model.id } },
       }));

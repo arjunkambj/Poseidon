@@ -80,6 +80,28 @@ describe("modelPickerGroups", () => {
     expect(groups[0]?.items.every((item) => item.disabled)).toBe(true);
     expect(groups[1]?.items.every((item) => !item.disabled)).toBe(true);
   });
+
+  it("keeps the name as the label, the family apart and the tagline only when given", () => {
+    const tagged: ModelOption = {
+      id: "google/gemini-3.5-flash",
+      label: "Gemini 3.5 Flash",
+      family: "Google",
+      efforts: [],
+      description: "Pro-level coding proficiency, parallel agentic execution",
+    };
+    const groups = modelPickerGroups([group("a", [tagged, model("m1")])], {
+      instanceId: null,
+      locked: false,
+    });
+    const [first, second] = groups[0]?.items ?? [];
+    expect([first?.label, first?.family, first?.description]).toEqual([
+      "Gemini 3.5 Flash",
+      "Google",
+      "Pro-level coding proficiency, parallel agentic execution",
+    ]);
+    expect([second?.label, second?.family]).toEqual(["M1", "family"]);
+    expect(second !== undefined && "description" in second).toBe(false);
+  });
 });
 
 describe("findModel", () => {

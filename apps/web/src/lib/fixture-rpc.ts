@@ -56,6 +56,7 @@ const FIXTURE_MODELS: ReadonlyArray<ModelOption> = [
     id: "fixture/flagship",
     label: "Flagship",
     family: "fixture",
+    description: "The fixture's most capable model, for long agentic work",
     efforts: ["low", "medium", "high", "xhigh", "max"],
     contextWindow: 200000,
   },

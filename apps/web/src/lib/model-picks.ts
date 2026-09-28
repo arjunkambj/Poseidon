@@ -49,6 +49,9 @@ export const decodeModelPick = (value: string): ModelPick | null => {
 export interface ModelPickerItem {
   readonly value: string;
   readonly label: string;
+  /** The model's family, for search. */
+  readonly family: string;
+  /** The connector's one-line tagline for the model, when it gives one; never the name. */
   readonly description?: string;
   /** The model's effort ladder as its connector lists it; absent for a verbatim current value. */
   readonly efforts?: ReadonlyArray<Effort>;
@@ -77,7 +80,8 @@ export const modelPickerGroups = (
           model: model.id,
         }),
         label: model.label,
-        description: model.family,
+        family: model.family,
+        ...(model.description === undefined ? {} : { description: model.description }),
         efforts: model.efforts,
         disabled: locked,
       })),

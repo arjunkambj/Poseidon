@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { SkillSummary } from "@poseidon/contracts/connectors";
+import type { ModelOption, SkillSummary } from "@poseidon/contracts/connectors";
 import type { HarnessCommand } from "@poseidon/contracts/harnessCommands";
 
 import { slashMenuItems } from "@/components/composer/slash-menu";
@@ -98,5 +98,40 @@ describe("slashMenuItems harness commands", () => {
     expect(harness("session's")).toEqual(["/cost"]);
     expect(harness("focus")).toEqual(["/review"]);
     expect(harness("nothing-like-it")).toEqual([]);
+  });
+});
+
+describe("slashMenuItems /model", () => {
+  const models: ReadonlyArray<ModelOption> = [
+    {
+      id: "google/gemini-3.5-flash",
+      label: "Gemini 3.5 Flash",
+      family: "Google",
+      efforts: [],
+      description: "Pro-level coding proficiency, parallel agentic execution",
+    },
+    { id: "xai/grok-4.5", label: "Grok 4.5", family: "xAI", efforts: [] },
+  ];
+  const modelItems = (query: string) =>
+    slashMenuItems({
+      level: "model",
+      query,
+      skills: [],
+      harnessCommands: [],
+      models,
+      efforts: undefined,
+      capabilities: null,
+      canCompact: false,
+    });
+
+  it("names each model, with its tagline or else its family beside it", () => {
+    expect(modelItems("/model ").map((item) => [item.label, item.description])).toEqual([
+      ["Gemini 3.5 Flash", "Pro-level coding proficiency, parallel agentic execution"],
+      ["Grok 4.5", "xAI"],
+    ]);
+  });
+
+  it("finds a model by a word of its tagline", () => {
+    expect(modelItems("/model agentic").map((item) => item.label)).toEqual(["Gemini 3.5 Flash"]);
   });
 });

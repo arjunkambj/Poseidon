@@ -1,7 +1,8 @@
 /**
  * One harness on Settings → Models: its avatar, name and connector kind, a
  * switch that says whether the model pickers offer it, and a dense row per
- * model with the model's own switch and its effort ladder.
+ * model: its name, a muted line with its tagline (when the connector gives
+ * one), id and family, its effort ladder and its own switch.
  *
  * The switches filter the pickers only (`@/lib/model-visibility`): a thread
  * already on a harness or model that is switched off keeps it and keeps
@@ -23,6 +24,7 @@ import {
 } from "@poseidon/ui/components/card";
 import { Switch } from "@poseidon/ui/components/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
+import { cn } from "@poseidon/ui/lib/utils";
 import type * as React from "react";
 
 import { HarnessAvatar } from "@/components/harness-avatar";
@@ -43,6 +45,13 @@ export const effortsText = (efforts: ModelOption["efforts"] | null | undefined):
   const ladder = orderEfforts(efforts);
   return ladder.length === 0 ? "No effort levels" : ladder.join(" · ");
 };
+
+/**
+ * A model row's muted line: the connector's tagline when it gives one, then
+ * the id and family. The name is the row's label and never comes from here.
+ */
+export const modelDetail = (model: ModelOption): string =>
+  [model.description, model.id, model.family].filter(Boolean).join(" · ");
 
 /** A switch, wrapped in the refusal's tooltip when it is the last one on. */
 function GuardedSwitch({
@@ -77,6 +86,7 @@ function ModelRow({
   readonly onToggle: (on: boolean) => void;
 }) {
   const muted = !harnessIsOn;
+  const detail = modelDetail(model);
   return (
     <div
       data-slot="harness-model-row"
@@ -84,9 +94,14 @@ function ModelRow({
       aria-disabled={muted || undefined}
     >
       <div className="flex min-w-0 flex-1 items-baseline gap-2">
-        <span className={muted ? "truncate text-muted-foreground" : "truncate"}>{model.label}</span>
-        <span className="truncate text-xs text-muted-foreground">
-          {model.id} · {model.family}
+        <span
+          className={cn("max-w-2/3 shrink-0 truncate", muted && "text-muted-foreground")}
+          title={model.label}
+        >
+          {model.label}
+        </span>
+        <span className="min-w-0 truncate text-xs text-muted-foreground" title={detail}>
+          {detail}
         </span>
       </div>
       <span className="shrink-0 text-xs text-muted-foreground">{effortsText(model.efforts)}</span>

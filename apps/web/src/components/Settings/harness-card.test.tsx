@@ -10,7 +10,7 @@ import { TooltipProvider } from "@poseidon/ui/components/tooltip";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { effortsText, HarnessCard } from "@/components/Settings/harness-card";
+import { effortsText, HarnessCard, modelDetail } from "@/components/Settings/harness-card";
 import { setHarness, setModel } from "@/lib/model-visibility";
 
 const id = (value: string) => value as ConnectorInstanceId;
@@ -87,6 +87,24 @@ describe("HarnessCard", () => {
       // Hidden by its connector, so off until switched on.
       { label: "Show SECRET in model pickers", checked: false, disabled: false },
     ]);
+  });
+
+  it("puts a model's tagline first on its muted line, and keeps the name as the label", () => {
+    const tagged = group("c", [
+      {
+        id: "google/gemini-3.5-flash",
+        label: "Gemini 3.5 Flash",
+        family: "Google",
+        efforts: [],
+        description: "Pro-level coding proficiency, parallel agentic execution",
+      },
+    ]);
+    const html = render(tagged, none, [tagged]);
+    const detail =
+      "Pro-level coding proficiency, parallel agentic execution · google/gemini-3.5-flash · Google";
+    expect(html).toContain(`title="${detail}">${detail}</span>`);
+    expect(html).toContain('title="Gemini 3.5 Flash">Gemini 3.5 Flash</span>');
+    expect(modelDetail(model("m1"))).toBe("m1 · family");
   });
 
   it("follows the stored switches", () => {

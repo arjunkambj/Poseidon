@@ -31,6 +31,8 @@ export interface HarnessRailItem {
   readonly pick: ModelPick;
   readonly label: string;
   /** The model's family. */
+  readonly family: string;
+  /** The connector's one-line tagline for the model, when it gives one. */
   readonly description?: string;
   /** The effort ladder in a few characters ("low–high"); absent without rungs. */
   readonly efforts?: string;
@@ -114,6 +116,7 @@ export const harnessRail = (
             value: item.value,
             pick,
             label: item.label,
+            family: item.family,
             ...(item.description === undefined ? {} : { description: item.description }),
             ...(efforts === undefined ? {} : { efforts }),
             disabled: item.disabled,
@@ -143,12 +146,14 @@ const startsWord = (text: string, query: string): boolean => {
 
 /**
  * How well a model matches, best first: its label or id starts with the query
- * (0), a word in either does (1), its family or harness name does at a word
- * (2), or the query is anywhere in any of them (3). `null` is no match.
+ * (0), a word in either does (1), its family, tagline or harness name does at
+ * a word (2), or the query is anywhere in any of them (3). `null` is no match.
  */
 const matchRank = (entry: HarnessRailEntry, item: HarnessRailItem, query: string) => {
   const own = [item.label, item.pick.model].map((text) => text.toLocaleLowerCase());
-  const context = [item.description ?? "", entry.label].map((text) => text.toLocaleLowerCase());
+  const context = [item.family, item.description ?? "", entry.label].map((text) =>
+    text.toLocaleLowerCase(),
+  );
   if (own.some((text) => text.startsWith(query))) {
     return 0;
   }
@@ -163,7 +168,7 @@ const matchRank = (entry: HarnessRailEntry, item: HarnessRailItem, query: string
 
 /**
  * Every model on the rail that matches the trimmed query, case-insensitively,
- * on its label, id, family or harness name: prefix matches first, then rail
+ * on its label, id, family, tagline or harness name: prefix matches first, then rail
  * order. An empty query matches nothing — the rail is showing instead.
  */
 export const searchModels = (

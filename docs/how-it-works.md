@@ -503,8 +503,9 @@ and that thread does not exist yet.
 
 The `/` popover offers `/model`, `/effort`, `/mode`, `/plan`, `/default`,
 `/compact`, `/clear-draft` and the skills the thread's connector instance loads
-for the project. A skill picked here is plain text, with no chip and no
-reference. `/compact` is listed only when the thread's bound session declared
+for the project. `/model` lists the thread's models by name, each with its
+tagline (or its family) beside it, and its query matches a word of either. A
+skill picked here is plain text, with no chip and no reference. `/compact` is listed only when the thread's bound session declared
 `capabilities.compaction` — the same test as "Compact now", so never on
 Command Code or on a thread no session has bound yet. Picking it removes the
 `/compact` query from the textarea, keeps the rest of the draft and its
@@ -592,10 +593,13 @@ search input over a column of round harness avatars, one per enabled connector
 instance (`modelCatalogAtom`) in the connectors page's order, each a monogram
 (`harnessMonograms`) with the instance's name as its tooltip; the current
 pick's harness is ringed. Hovering an avatar, or arrowing onto it, opens its
-flyout beside the column: that instance's models, each with its effort ladder
-in a few characters ("low–high") and a check on the current one. Typing swaps
-the column for one list of matches across every harness, each led by its
-harness's monogram. Focus stays in the search input, which names the
+flyout beside the column: that instance's models, each a single 28px row with
+its name, its effort ladder in a few characters ("low–high") and a check on the
+current one, and its tagline (`ModelOption.description`, or the family when the
+connector gives none) as the row's native hover tooltip. The trigger shows the
+name alone. Typing swaps the column for one list of matches across every
+harness, each led by its harness's monogram: a match on the name or id ranks
+first, then a word of the family, tagline or harness name. Focus stays in the search input, which names the
 highlighted option with `aria-activedescendant`: Up and Down move along the
 column or the flyout, Right or Enter goes into a flyout, Enter picks, Left goes
 back to the column, and Escape clears the query, then leaves the flyout, then
@@ -3871,8 +3875,11 @@ the first two words, stepping down to other letters of the first word when two
 names collide, settled over the whole catalog by `catalogMonograms` so a
 harness keeps its letters in Settings and every picker whatever is switched
 off), its name and connector kind, and a "Show in model pickers"
-switch; under it is a 28px row per model with its label, id, family, effort
-ladder (lowest first, "No effort levels" when it has none) and its own switch.
+switch; under it is a 28px row per model with its label, then one muted,
+truncated line of its tagline (when the connector gives one), id and family
+(`modelDetail`, in full as a hover title), its effort ladder (lowest first, "No
+effort levels" when it has none) and its own switch. The label keeps up to two
+thirds of the row, so a long tagline is cut before the name.
 Rows under a harness that is off are shown with their switches disabled, and
 the switch that would leave the pickers with no model is disabled with a
 tooltip. "Enable all" stores every harness and model on, a model its connector

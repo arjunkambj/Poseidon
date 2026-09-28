@@ -95,7 +95,8 @@ export function HarnessRailColumn({
 
 /**
  * One model: its label, its effort ladder in muted text, and a check when it
- * is the current pick. In search results the harness's monogram leads it. In
+ * is the current pick. Its tagline (or, without one, its family) is the native
+ * hover tooltip: a second line would break the 28px row. In search results the harness's monogram leads it. In
  * compare mode (`checked` given) a checkbox leads it instead of the check: the
  * row is what a click lands on, so the checkbox only shows the state.
  */
@@ -127,7 +128,7 @@ export function PickerRow({
       aria-checked={checked}
       aria-label={harness === undefined ? undefined : `${item.label}, ${harness.label}`}
       data-current={item.current || undefined}
-      title={item.description}
+      title={item.description ?? item.family}
       className={cn(
         "flex h-7 shrink-0 cursor-default items-center gap-2 rounded-md px-2 py-0.5 text-sm",
         active && "bg-accent text-accent-foreground",

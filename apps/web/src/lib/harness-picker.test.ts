@@ -25,7 +25,14 @@ const model = (
   label: string,
   family: string,
   efforts: ModelOption["efforts"] = [],
-): ModelOption => ({ id: modelId, label, family, efforts });
+  description?: string,
+): ModelOption => ({
+  id: modelId,
+  label,
+  family,
+  efforts,
+  ...(description === undefined ? {} : { description }),
+});
 
 const group = (
   instanceId: string,
@@ -55,7 +62,9 @@ const catalog = [
     model("cove-mini", "Cove Mini", "cove", ["minimal", "high"]),
     model("swiftness", "Mini Swift", "cove"),
   ]),
-  group("c", "Corvid", [model("raven", "Raven", "birds")]),
+  group("c", "Corvid", [
+    model("raven", "Raven", "birds", [], "Parallel agentic execution at a glance"),
+  ]),
 ];
 
 const pick = (instanceId: string, modelId: string): ModelPick => ({
@@ -123,12 +132,15 @@ describe("harnessRail", () => {
       ],
     );
     expect(
-      rail[0]?.items.map((item) => [item.label, item.description, item.efforts, item.current]),
+      rail[0]?.items.map((item) => [item.label, item.family, item.efforts, item.current]),
     ).toEqual([
       ["Swift One", "swift", "low–high", false],
       ["Deep Two", "deep", "high", true],
       ["Plain", "basic", undefined, false],
     ]);
+    // Only a model whose connector gives a tagline carries one.
+    expect(rail[0]?.items.some((item) => "description" in item)).toBe(false);
+    expect(rail[2]?.items[0]?.description).toBe("Parallel agentic execution at a glance");
     expect(rail[1]?.items[0]?.pick).toEqual(pick("b", "cove-mini"));
   });
 
@@ -184,6 +196,15 @@ describe("searchModels", () => {
       "2:Raven",
     ]);
     expect(labels("orvi")).toEqual(["2:Raven"]);
+  });
+
+  it("matches a word of the tagline, after the label and id", () => {
+    expect(labels("agentic")).toEqual(["2:Raven"]);
+    expect(labels("glance")).toEqual(["2:Raven"]);
+    // Inside a tagline word, as anywhere else.
+    expect(labels("genti")).toEqual(["2:Raven"]);
+    // "Raven" starts its own label, which ranks before a tagline word.
+    expect(labels("ra")).toEqual(["2:Raven"]);
   });
 });
 
