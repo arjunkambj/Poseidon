@@ -37,6 +37,28 @@ export const threadCommandBase = (threadId: ThreadId) => ({
 });
 
 /**
+ * A queue that runs each task only once the one before it has settled, and
+ * resolves each caller with its own task's result. A failed task does not
+ * stop the ones behind it.
+ */
+export const makeTurnQueue = () => {
+  let last: Promise<unknown> = Promise.resolve();
+  return <A>(task: () => Promise<A>): Promise<A> => {
+    const next = last.then(task, task);
+    last = next.catch(() => undefined);
+    return next;
+  };
+};
+
+/**
+ * Every dispatch goes through one shared, non-concurrent atom: a second
+ * command sent while the first is in flight interrupts it and hands both
+ * callers the second's receipt. The bulk actions (archive and its undo,
+ * delete) send one command per thread, so the thread commands take turns.
+ */
+const inTurn = makeTurnQueue();
+
+/**
  * `send(command, fallback, done?)`: dispatch, toast the refusal (or
  * `fallback` when the decider gave no reason), and toast `done` on success
  * when there is something worth confirming. Resolves with whether the command
@@ -45,7 +67,7 @@ export const threadCommandBase = (threadId: ThreadId) => ({
 export const useThreadCommand = () => {
   const dispatch = useDispatchCommand();
   return async (command: Command, fallback: string, done?: string): Promise<boolean> => {
-    const exit = await dispatch(command);
+    const exit = await inTurn(() => dispatch(command));
     if (!isAccepted(exit)) {
       toast.error(rejectionMessage(exit, fallback));
       return false;

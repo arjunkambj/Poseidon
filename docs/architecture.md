@@ -360,7 +360,11 @@ unpin, mark unread and rename can be undone
 toast offers Undo, and `Mod+Z` outside text fields, the terminal and the
 browser pane undoes the latest of them. Archiving unpins a thread; undoing
 the archive unarchives it, pins it again and, when it was the open thread,
-opens it again. `Mod+Shift+P` pins or unpins the open thread. A
+opens it again. The sidebar's thread commands go out one at a time
+(`apps/web/src/components/sidebar/thread-actions.ts`): they share the one
+dispatch atom, so sending a bulk archive or its undo all at once would
+interrupt all but the last command and hand every caller its receipt.
+`Mod+Shift+P` pins or unpins the open thread. A
 double-click on any row's title, or Rename in its menu, swaps it for a title field, prefilled and
 selected (`apps/web/src/components/sidebar/thread-title-input.tsx`, with
 `thread-rename.ts` naming the one row being renamed): Enter sends

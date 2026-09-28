@@ -10,7 +10,9 @@
  *
  * Each pushes one entry on the undo stack (`./sidebar-undo`), so `Mod+Z`
  * takes back whichever came last. Dispatch and refusal toasts go through
- * `./thread-actions`, as every other thread command does.
+ * `./thread-actions`, as every other thread command does; it sends the
+ * commands one at a time, so each thread's result is its own even when a
+ * bulk archive or its undo sends several at once.
  */
 
 import { useMatchRoute, useNavigate } from "@tanstack/react-router";
@@ -58,7 +60,7 @@ export const useSidebarActions = () => {
       id: makeUndoId(),
       label: "Archive",
       run: async () => {
-        await Promise.all(
+        const restored = await Promise.all(
           archived.map((thread) =>
             send(
               { ...threadCommandBase(thread.threadId), type: "thread.unarchive" },
@@ -66,10 +68,14 @@ export const useSidebarActions = () => {
             ),
           ),
         );
+        // Only a thread that is back gets its pin and its place on screen.
+        const back = new Set(ids.filter((_, index) => restored[index]));
         for (const id of plan.repin) {
-          pin(id, true);
+          if (back.has(id)) {
+            pin(id, true);
+          }
         }
-        if (plan.reopen !== null) {
+        if (plan.reopen !== null && back.has(plan.reopen)) {
           void navigate({ to: "/t/$threadId", params: { threadId: plan.reopen } });
         }
       },
