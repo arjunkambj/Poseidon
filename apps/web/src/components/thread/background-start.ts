@@ -235,7 +235,7 @@ export const runBackgroundLanes = (
 
 export interface BackgroundSummary {
   readonly title: string;
-  /** The lanes that did not start, and why. */
+  /** The lanes that did not start, and why; when all of several started, their names. */
   readonly description?: string;
   readonly tone: "success" | "warning" | "error";
   /** Where the toast's Open goes: the first thread that started, else the first that exists. */
@@ -278,9 +278,14 @@ export const backgroundSummary = (
           ? `Could not start ${total} threads in ${projectName}`
           : `Started ${started.length} of ${total} threads in ${projectName}`;
 
+  // Every lane of a fan-out started: the toast names the models instead.
+  const names = labels.filter((label) => label !== undefined);
+  const description =
+    notes.length > 0 ? notes.join("; ") : total > 1 && names.length > 0 ? names.join(", ") : null;
+
   return {
     title,
-    ...(notes.length === 0 ? {} : { description: notes.join("; ") }),
+    ...(description === null ? {} : { description }),
     tone: started.length === total ? "success" : existing === 0 ? "error" : "warning",
     openThreadId: started[0]?.threadId ?? parked[0]?.threadId ?? null,
   };

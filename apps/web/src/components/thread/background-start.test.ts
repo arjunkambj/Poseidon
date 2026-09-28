@@ -354,7 +354,17 @@ describe("backgroundSummary", () => {
   it("counts every started thread of a fan-out", () => {
     expect(
       backgroundSummary("app", [started(T1), started(T2), started(T3)], ["A", "B", "C"]),
-    ).toEqual({ title: "Started 3 threads in app", tone: "success", openThreadId: T1 });
+    ).toEqual({
+      title: "Started 3 threads in app",
+      description: "A, B, C",
+      tone: "success",
+      openThreadId: T1,
+    });
+    expect(backgroundSummary("app", [started(T1), started(T2)])).toEqual({
+      title: "Started 2 threads in app",
+      tone: "success",
+      openThreadId: T1,
+    });
   });
 
   it("counts the started ones and names each lane that did not start", () => {
