@@ -6,10 +6,11 @@
  *
  * "Copy diff" copies the file's patch as git printed it, through `copyText`
  * like every other copy; a file with no patch (binary, mode-only) has nothing
- * to copy. "Discard changes…" opens the discard confirmation, and is disabled
- * with its reason on hover while discarding cannot start. The dialog is the
- * row's own (`useFileReviewActions`), rendered beside the menu, since a
- * menu's content unmounts as it closes. A file with
+ * to copy. "Show blame" opens the file's blame popover, for a file that still
+ * exists in the workspace. "Discard changes…" opens the discard confirmation,
+ * and is disabled with its reason on hover while discarding cannot start. The
+ * popover and the dialog are the row's own (`useFileReviewActions`), rendered
+ * beside the menu, since a menu's content unmounts as it closes. A file with
  * none of these has no section, separator and all.
  */
 
@@ -21,7 +22,7 @@ import * as React from "react";
 
 import { copyText } from "@/lib/copy-path";
 
-import { GitDiff, Trash } from "@honeyicons/react";
+import { GitCommit, GitDiff, Trash } from "@honeyicons/react";
 
 interface MenuParts {
   readonly Item: React.ComponentType<{
@@ -38,6 +39,8 @@ const CONTEXT: MenuParts = { Item: ContextMenuItem, Separator: ContextMenuSepara
 
 /** The row's review actions; absent outside a review scope. */
 export interface ReviewMenuActions {
+  /** Opens the blame popover; absent for a file the workspace no longer has. */
+  readonly onShowBlame?: (() => void) | undefined;
   readonly onDiscard: () => void;
   /** Non-null disables "Discard changes…" and says why on hover. */
   readonly discardDisabledReason: string | null;
@@ -50,6 +53,7 @@ interface ReviewMenuProps {
 
 type ReviewMenuEntry =
   | { readonly kind: "copy-diff"; readonly diff: string }
+  | { readonly kind: "blame"; readonly onSelect: () => void }
   | {
       readonly kind: "discard";
       readonly onSelect: () => void;
@@ -62,6 +66,9 @@ export const reviewMenuEntries = (
   actions: ReviewMenuActions | undefined,
 ): ReadonlyArray<ReviewMenuEntry> => [
   ...(file.diff === "" ? [] : [{ kind: "copy-diff", diff: file.diff } as const]),
+  ...(actions?.onShowBlame === undefined
+    ? []
+    : [{ kind: "blame", onSelect: actions.onShowBlame } as const]),
   ...(actions === undefined
     ? []
     : [
@@ -85,6 +92,13 @@ function ReviewMenuItems({ parts, file, actions }: ReviewMenuProps & { parts: Me
           <parts.Item key={entry.kind} onClick={() => void copyText(entry.diff, "diff")}>
             <GitDiff variant="bold" />
             Copy diff
+          </parts.Item>
+        );
+      case "blame":
+        return (
+          <parts.Item key={entry.kind} onClick={entry.onSelect}>
+            <GitCommit variant="bold" />
+            Show blame
           </parts.Item>
         );
       case "discard": {

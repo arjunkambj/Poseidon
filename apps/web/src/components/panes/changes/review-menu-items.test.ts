@@ -10,15 +10,19 @@ describe("reviewMenuEntries", () => {
     expect(reviewMenuEntries(file, undefined).map((entry) => entry.kind)).toEqual(["copy-diff"]);
   });
 
-  it("adds Discard in a review scope", () => {
-    const entries = reviewMenuEntries(file, { onDiscard: noop, discardDisabledReason: null });
-    expect(entries.map((entry) => entry.kind)).toEqual(["copy-diff", "discard"]);
+  it("adds Show blame and Discard in a review scope", () => {
+    const entries = reviewMenuEntries(file, {
+      onShowBlame: noop,
+      onDiscard: noop,
+      discardDisabledReason: null,
+    });
+    expect(entries.map((entry) => entry.kind)).toEqual(["copy-diff", "blame", "discard"]);
   });
 
-  it("keeps Discard's reason, and offers it for a file with no patch", () => {
+  it("leaves blame out for a deleted file, and keeps Discard's reason", () => {
     const entries = reviewMenuEntries(
       { ...file, diff: "" },
-      { onDiscard: noop, discardDisabledReason: "Offline." },
+      { onShowBlame: undefined, onDiscard: noop, discardDisabledReason: "Offline." },
     );
     expect(entries).toEqual([{ kind: "discard", onSelect: noop, disabledReason: "Offline." }]);
   });

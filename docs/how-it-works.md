@@ -1878,8 +1878,8 @@ menu (see "Opening the workspace in an editor" below): open the file in the
 Files tab or an editor, reveal it, copy its path, or append a reference to it
 to the thread's composer draft. After them come the pane's own entries
 (`review-menu-items.tsx`): "Copy diff" copies the file's patch as git printed
-it, and is left out for a file with no patch; "Discard changes…" follows
-(below). While the pane is
+it, and is left out for a file with no patch; "Show blame" and "Discard
+changes…" follow (below). While the pane is
 shown it publishes `changesOpen`, and `Alt+ArrowDown` / `Alt+ArrowUp`
 (`changes.nextFile` / `previousFile`) open the next or previous file and
 scroll its header to the top. `Alt+U` (`changes.nextUnviewed`), and the eye
@@ -1969,15 +1969,28 @@ the first turn's none, i.e. `HEAD`; the branch's base as `mergeBase`) and the
 file's path and a rename's old path. In Uncommitted the summary line adds a
 trash button, "Discard all", behind the same confirmation, which says every
 uncommitted change is lost and how many new files are deleted, and sends no
-paths. Both are disabled with the reason on hover while the pane is offline
-or a turn or a restore runs
-(`discardBlockedReason`; on the New task page, while a thread runs a turn in
-the project's folder). A refusal shows as a toast with the server's reason; a
-success refreshes every git read of the project, so the file leaves the list
-by itself. Where to act — project, thread, base, the reason — comes from a
-`ReviewScopeProvider` each pane puts around its list (`review-scope.tsx`).
+paths. Both are disabled with the reason on hover while the pane is offline or
+a turn or a restore runs (`discardBlockedReason`; on the New task page, while
+a thread runs a turn in the project's folder). A refusal shows as a toast
+with the server's reason; a success refreshes every git read of the project,
+so the file leaves the list by itself. Where to act — project, thread, base,
+the reason — comes from a `ReviewScopeProvider` each pane puts around its
+list (`review-scope.tsx`).
 
-The server answers three review calls for the pane. `git.diff` takes `ignoreWhitespace`, which adds `-w` to both the patch and
+Blame is read on demand only (`blame-popover.tsx`). "Show blame" on a file
+that still exists opens a popover on its row listing the commits behind its
+working copy, one row per commit however many runs it has, lines not yet
+committed first and then newest first (`blameCommits` in `blame.ts`): short
+sha, summary, author, how long ago, and how many lines; a file git does not
+track says it is not committed yet. In Uncommitted and Branch, whose new side
+is the working file, clicking a line number on the new side opens that one
+line's commit — sha, summary, author, when — in a popover on the number
+(`InlineDiff`'s `onLineNumberClick`, handed to `@pierre/diffs`). A turn's
+checkpoints are root commits with no history, so a turn offers the file's
+blame only.
+
+The server answers three review calls for the pane. `git.diff` takes
+`ignoreWhitespace`, which adds `-w` to both the patch and
 the counts: a whitespace-only change drops out, and a plain edit git still
 prints as a bare header comes back listed with an empty `diff` rather than a
 patch of raw headers; the client's range key includes the flag, so toggling it

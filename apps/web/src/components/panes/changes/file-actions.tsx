@@ -3,8 +3,8 @@
  * (`@/components/open-in/file-menu-items`) — open it in the Files tab or an
  * editor, reveal it in the file manager, copy its path, or add a reference to
  * it to the thread's draft — then the review's own entries
- * (`./review-menu-items`): copy the file's diff, and discard its change
- * behind a confirmation. The same entries open on a right-click of
+ * (`./review-menu-items`): copy the file's diff, show its blame, and discard
+ * its change behind a confirmation. The same entries open on a right-click of
  * the row.
  */
 
@@ -39,7 +39,7 @@ export function FileActions({
   inWorkspace: boolean;
   /** The file as the diff lists it, for the review's own entries. */
   file: Pick<GitDiffFile, "path" | "diff">;
-  /** Discard, when the row is in a review scope. */
+  /** Blame and discard, when the row is in a review scope. */
   actions?: ReviewMenuActions | undefined;
 }) {
   return (

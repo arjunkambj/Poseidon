@@ -8,8 +8,10 @@
  * a viewed file's name dims, so what is left to read stands out. The "…"
  * menu after it holds the file's own actions (`./file-actions`), and a
  * right-click anywhere on the row opens the same entries, the review's own
- * (`./review-menu-items`) included: Copy diff and Discard, whose dialog
- * (`useFileReviewActions`) sits beside the menus.
+ * (`./review-menu-items`) included: Copy diff, Show blame and Discard, whose
+ * popover and dialog (`useFileReviewActions`) sit beside the menus. In the
+ * scopes that show the working file, a line number of the new side opens
+ * that line's blame.
  */
 
 import type { GitDiffFile } from "@poseidon/contracts/rpc";
@@ -20,6 +22,7 @@ import {
   ContextMenuTrigger,
 } from "@poseidon/ui/components/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@poseidon/ui/components/tooltip";
+import * as React from "react";
 
 import { workspacePath } from "@/components/open-in/file-menu";
 import { FileContextItems } from "@/components/open-in/file-menu-items";
@@ -94,13 +97,17 @@ export function FileSection({
   // git names the file from the repository's top level; the menu works from the root.
   const inside = workspacePath(file.path, prefix);
   const menu = { path: inside ?? file.path, exists, inWorkspace: inside !== null };
-  const review = useFileReviewActions(file);
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const review = useFileReviewActions(file, rowRef);
   return (
     <section>
       <ContextMenu>
         <ContextMenuTrigger
           render={
-            <div className="sticky top-0 z-10 flex h-7 items-center gap-1.5 border-b border-border bg-sidebar pr-1 hover:bg-hover" />
+            <div
+              ref={rowRef}
+              className="sticky top-0 z-10 flex h-7 items-center gap-1.5 border-b border-border bg-sidebar pr-1 hover:bg-hover"
+            />
           }
         >
           <button
@@ -151,7 +158,12 @@ export function FileSection({
       {review.overlays}
       {open && expandable ? (
         <div className="border-b border-border">
-          <InlineDiff patch={file.diff} diffStyle={diffStyle} className="rounded-none" />
+          <InlineDiff
+            patch={file.diff}
+            diffStyle={diffStyle}
+            className="rounded-none"
+            onLineNumberClick={review.onLineNumberClick}
+          />
         </div>
       ) : null}
     </section>

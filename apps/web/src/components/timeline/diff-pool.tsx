@@ -31,21 +31,51 @@ export function DiffWorkerPoolProvider({ children }: { children: React.ReactNode
   );
 }
 
-/** `diffStyle` defaults to unified; only the Changes pane offers split. */
+/** A click on a line number: the number, its side, and the number's element to anchor to. */
+export interface DiffLineNumberClick {
+  readonly lineNumber: number;
+  readonly side: "additions" | "deletions";
+  readonly numberElement: HTMLElement;
+}
+
+/**
+ * `diffStyle` defaults to unified; only the Changes pane offers split, and
+ * only it passes `onLineNumberClick` (its per-line blame). The callback is
+ * read through a ref, so a new one each render does not rebuild the options.
+ */
 export function InlineDiff({
   patch,
   className,
   diffStyle,
+  onLineNumberClick,
 }: {
   patch: string;
   className?: string;
   diffStyle?: DiffStyle;
+  onLineNumberClick?: ((click: DiffLineNumberClick) => void) | undefined;
 }) {
   const { resolvedTheme } = useTheme();
-  const options = React.useMemo(
-    () => inlineDiffOptions(resolvedTheme === "dark" ? "dark" : "light", diffStyle),
-    [resolvedTheme, diffStyle],
-  );
+  const clickRef = React.useRef(onLineNumberClick);
+  clickRef.current = onLineNumberClick;
+  const clickable = onLineNumberClick !== undefined;
+  const options = React.useMemo(() => {
+    const base = inlineDiffOptions(resolvedTheme === "dark" ? "dark" : "light", diffStyle);
+    return clickable
+      ? {
+          ...base,
+          onLineNumberClick: (props: {
+            lineNumber: number;
+            annotationSide: "additions" | "deletions";
+            numberElement: HTMLElement;
+          }) =>
+            clickRef.current?.({
+              lineNumber: props.lineNumber,
+              side: props.annotationSide,
+              numberElement: props.numberElement,
+            }),
+        }
+      : base;
+  }, [resolvedTheme, diffStyle, clickable]);
   // `PatchDiff` renders an empty element for a patch it cannot parse, which
   // reads exactly like "no changes". Show the text the server actually sent
   // instead — a malformed or truncated patch is information, not silence.
