@@ -10,7 +10,7 @@
  * here.
  *
  *     POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
- *       pnpm -F @poseidon/connector-codex vitest run src/extensions/mcpServersRecorded.test.ts
+ *       pnpm -F @poseidon/connector-codex exec vitest run src/extensions/mcpServersRecorded.test.ts
  *
  * records it again. No thread starts and no account is read, so it costs
  * nothing.

@@ -8,7 +8,7 @@
  * any line the connector sends that the recorded run was not sent.
  *
  *     POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
- *       pnpm -F @poseidon/connector-codex vitest run src/conformance.test.ts
+ *       pnpm -F @poseidon/connector-codex exec vitest run src/conformance.test.ts
  *
  * records it again: the operator's CLI behind the tee, on its default model,
  * in a throwaway git repo under `/tmp/poseidon-codex/scratch`.

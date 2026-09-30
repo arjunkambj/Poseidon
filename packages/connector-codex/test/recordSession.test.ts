@@ -2,7 +2,7 @@
  * Records session scenarios from the real CLI into `fixtures/codex/`.
  *
  *     POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
- *       pnpm -F @poseidon/connector-codex vitest run test/recordSession.test.ts
+ *       pnpm -F @poseidon/connector-codex exec vitest run test/recordSession.test.ts
  *
  * Each scenario drives the connector's real definition with its binary path
  * pointed at the testkit's stdio tee, in a throwaway git repo under

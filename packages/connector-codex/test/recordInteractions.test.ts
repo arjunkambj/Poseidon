@@ -4,7 +4,7 @@
  * its card, and a Poseidon plugin's skill used by reference.
  *
  *     POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
- *       pnpm -F @poseidon/connector-codex vitest run test/recordInteractions.test.ts
+ *       pnpm -F @poseidon/connector-codex exec vitest run test/recordInteractions.test.ts
  *
  * Same rules as `recordSession.test.ts`: the connector's real definition on
  * the tee, the CLI's default model, trivial prompts. Skipped unless asked

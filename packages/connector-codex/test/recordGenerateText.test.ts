@@ -2,7 +2,7 @@
  * Records `fixtures/codex/generate-text/` from the real CLI.
  *
  *     POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
- *       pnpm -F @poseidon/connector-codex vitest run test/recordGenerateText.test.ts
+ *       pnpm -F @poseidon/connector-codex exec vitest run test/recordGenerateText.test.ts
  *
  * It runs the instance's own `generateText` with its binary path pointed at
  * the testkit's stdio tee: one app-server in a temporary directory, one

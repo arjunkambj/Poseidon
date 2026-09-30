@@ -2,7 +2,7 @@
  * Records `fixtures/codex/probe/` from the real CLI.
  *
  *     POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
- *       pnpm -F @poseidon/connector-codex vitest run test/recordProbe.test.ts
+ *       pnpm -F @poseidon/connector-codex exec vitest run test/recordProbe.test.ts
  *
  * It runs the connector's own probe with its binary path pointed at the
  * testkit's stdio tee, so every launch — `--version`, `login status`, and the

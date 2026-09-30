@@ -534,7 +534,7 @@ the connector's own log lines are printed too.
 The live conformance suite is separate and cheaper:
 
 ```sh
-POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/liveConformance.test.ts
+POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/liveConformance.test.ts
 ```
 
 It is `runConnectorConformance` against the discovered `claude` with the
@@ -556,7 +556,7 @@ of file:
 
 ```sh
 POSEIDON_LIVE_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
-  pnpm -F @poseidon/connector-codex vitest run src/liveConformance.test.ts
+  pnpm -F @poseidon/connector-codex exec vitest run src/liveConformance.test.ts
 ```
 
 It first checks the probe (installed, at or above `OLDEST_TESTED_VERSION`,
@@ -885,10 +885,10 @@ by the end-to-end suite's record driver (see "The Claude Code end-to-end suite"
 above); the connector-level ones are:
 
 ```sh
-POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run test/recordProbe.test.ts
+POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test/recordProbe.test.ts
 POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_RECORD_CLAUDE=1 \
-  pnpm -F @poseidon/connector-claude vitest run test/recordSession.test.ts
-POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/conformance.test.ts
+  pnpm -F @poseidon/connector-claude exec vitest run test/recordSession.test.ts
+POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/conformance.test.ts
 ```
 
 Each points the connector's `binaryPath` at the testkit's stdio tee, drives the
@@ -905,18 +905,21 @@ The Codex recorders are vitest files too, skipped unless
 
 ```sh
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
-  pnpm -F @poseidon/connector-codex vitest run test/recordProbe.test.ts
+  pnpm -F @poseidon/connector-codex exec vitest run test/recordProbe.test.ts
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
-  pnpm -F @poseidon/connector-codex vitest run test/recordSession.test.ts -t plain-reply
+  pnpm -F @poseidon/connector-codex exec vitest run test/recordSession.test.ts -t plain-reply
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
-  pnpm -F @poseidon/connector-codex vitest run test/recordInteractions.test.ts -t question
+  pnpm -F @poseidon/connector-codex exec vitest run test/recordInteractions.test.ts -t question
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
-  pnpm -F @poseidon/connector-codex vitest run test/recordGenerateText.test.ts
+  pnpm -F @poseidon/connector-codex exec vitest run test/recordGenerateText.test.ts
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
-  pnpm -F @poseidon/connector-codex vitest run src/conformance.test.ts
+  pnpm -F @poseidon/connector-codex exec vitest run src/conformance.test.ts
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
-  pnpm -F @poseidon/connector-codex vitest run src/extensions/mcpServersRecorded.test.ts
+  pnpm -F @poseidon/connector-codex exec vitest run src/extensions/mcpServersRecorded.test.ts
 ```
+
+(`pnpm -F <package> vitest …` without `exec` fails: pnpm looks for a script of
+that name, and the packages have none.)
 
 The probe opens an app-server connection, reads the account and the model
 list, and starts no thread, so it spends nothing. The session recorder

@@ -5,7 +5,7 @@
  * operator's account, so it is opt-in and never runs in the gate:
  *
  *     POSEIDON_LIVE_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
- *       pnpm -F @poseidon/connector-codex vitest run src/liveConformance.test.ts
+ *       pnpm -F @poseidon/connector-codex exec vitest run src/liveConformance.test.ts
  *
  * What it proves that a replay cannot: that the CLI installed today is signed
  * in and still speaks every app-server method this connector sends or handles
