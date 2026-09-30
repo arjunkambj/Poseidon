@@ -398,6 +398,75 @@ describe("finalizeSdkStreamRecording", () => {
     });
   });
 
+  it("scrubs a streamed block as the text its deltas join into, where a name is split across two", async () => {
+    const rawDir = NodePath.join(ROOT, "raw-split");
+    const launcher = makeTeeLauncher({ realBinary: COUNTERPART, rawDir });
+    const home = NodeOS.homedir();
+    const event = (index: number, event: object): object => ({
+      type: "stream_event",
+      parent_tool_use_id: null,
+      event: { index, ...event },
+    });
+    const delta = (index: number, delta: object): object =>
+      event(index, { type: "content_block_delta", delta });
+
+    const run = converse(launcher, STREAM_ARGS, { cwd: REPO });
+    await run.awaitLine(typed("ready"));
+    const sent = [
+      {
+        type: "note",
+        mcp_servers: [{ name: "example.com Tracker", status: "needs-auth", source: "claudeai" }],
+      },
+      event(0, { type: "content_block_start", content_block: { type: "text", text: "" } }),
+      delta(0, { type: "text_delta", text: "The Trac" }),
+      delta(0, { type: "text_delta", text: "ker connector" }),
+      delta(0, { type: "text_delta", text: " needs auth." }),
+      event(1, { type: "content_block_start", content_block: { type: "tool_use", input: {} } }),
+      delta(1, { type: "input_json_delta", partial_json: `{"file_path":"${home.slice(0, 5)}` }),
+      delta(1, { type: "input_json_delta", partial_json: `${home.slice(5)}/a.ts"}` }),
+      // A new block at the same index is its own text, not the last one's.
+      event(0, { type: "content_block_start", content_block: { type: "text", text: "" } }),
+      delta(0, { type: "text_delta", text: "Trac" }),
+    ];
+    for (const message of sent) {
+      run.send(message);
+      await run.awaitLine(typed("echo"));
+    }
+    run.child.stdin.end();
+    expect((await run.exited).code).toBe(0);
+
+    const fixtures = NodePath.join(ROOT, "fixtures-split");
+    finalizeSdkStreamRecording({
+      kind: "sample",
+      scenario: "split",
+      rawDir,
+      description: "an ordinary node program, for the finaliser's own test",
+      cliVersion: "9.9.9",
+      sdkVersion: "0.0.0",
+      model: "none",
+      prompts: [],
+      fixturesRoot: fixtures,
+      configDir: NodePath.join(ROOT, "no-config"),
+    });
+
+    const [stream] = loadSdkStreamRecording("sample", "split", fixtures).invocations;
+    const deltas = stream!.frames
+      .filter((frame) => frame.dir === "to-harness" && typed("stream_event")(frame.data))
+      .flatMap((frame) => {
+        const { delta } = (frame.data as { event: { delta?: Record<string, string> } }).event;
+        return delta === undefined ? [] : [delta.text ?? delta.partial_json];
+      });
+    // The chunks a name was split across become one; the others keep their text.
+    expect(deltas).toEqual([
+      "The user-skill-1 connector",
+      "",
+      " needs auth.",
+      '{"file_path":"<HOME>/a.ts"}',
+      "",
+      "Trac",
+    ]);
+  });
+
   it("scrubs the system temp directory in every spelling, and keeps a scratch root under it", async () => {
     const rawDir = NodePath.join(ROOT, "raw-tmp");
     const launcher = makeTeeLauncher({ realBinary: COUNTERPART, rawDir });

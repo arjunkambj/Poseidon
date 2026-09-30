@@ -40,6 +40,7 @@ import {
   type RecordingManifest,
   type RecordingTransport,
 } from "./recording";
+import { scrubDeltaRuns } from "./streamedDeltas";
 
 const HERE = NodePath.dirname(NodeURL.fileURLToPath(import.meta.url));
 
@@ -427,7 +428,7 @@ interface ScrubContext {
  * replaced in text and keys too, wherever it stands alone, and the machine's
  * name becomes `<HOST>`.
  */
-const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
+const makeScrubber = (context: ScrubContext): Scrubber => {
   const paths = [
     ...(context.scratch === null ? [] : spellings(context.scratch).map((p) => [p, "<SCRATCH>"])),
     ...spellings(context.tmp).map((p) => [p, "<TMP>"]),
@@ -539,8 +540,15 @@ const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
     }
     return value;
   };
-  return scrub;
+  return { scrub, text };
 };
+
+interface Scrubber {
+  /** A frame, or any value in one, scrubbed on its own. */
+  readonly scrub: (value: unknown) => unknown;
+  /** One string's text scrubbed, as `scrub` does to every string it meets. */
+  readonly text: (value: string) => string;
+}
 
 // ── finalising ─────────────────────────────────────────────────
 
@@ -621,7 +629,7 @@ export const finalizeStdioRecording = (options: FinalizeOptions): string => {
   const operatorNames = (options.operatorNames ?? []).filter((name) => name.length > 0);
   const frames = invocations.flatMap((invocation) => invocation.frames);
   const captured = capturedOperatorNames(frames);
-  const scrub = makeScrubber({
+  const { scrub, text } = makeScrubber({
     home,
     scratch: options.scratch ?? scratchOf(firstStream?.cwd, home),
     tmp: options.tmpdir ?? NodeOS.tmpdir(),
@@ -644,7 +652,9 @@ export const finalizeStdioRecording = (options: FinalizeOptions): string => {
     const file = `invocation-${index + 1}.ndjson`;
     NodeFS.writeFileSync(
       NodePath.join(dir, file),
-      invocation.frames.map((frame) => `${JSON.stringify(scrub(frame))}\n`).join(""),
+      scrubDeltaRuns(invocation.frames, text)
+        .map((frame) => `${JSON.stringify(scrub(frame))}\n`)
+        .join(""),
       "utf8",
     );
     return {
