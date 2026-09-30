@@ -89,5 +89,7 @@
     "autoTitle": true
   },
   "confirmThreadDelete": false,
-  "onboardingCompleted": true
+  "onboardingCompleted": true,
+  "offeredConnectorKinds": ["claude", "codex", "cmd"],
+  "connectorMigrations": ["harness-rank", "harness-rank-default-model"]
 }

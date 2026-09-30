@@ -125,6 +125,7 @@ describe("settingsForm annotations", () => {
         "browser",
         "chatWidth",
         "confirmThreadDelete",
+        "connectorMigrations",
         "connectors",
         "defaults",
         "diffView",
@@ -135,6 +136,7 @@ describe("settingsForm annotations", () => {
         "mainFontSize",
         "modelPicker",
         "notifications",
+        "offeredConnectorKinds",
         "onboardingCompleted",
         "permissions",
         "plugins",
@@ -614,6 +616,8 @@ describe("generated text settings", () => {
         generation: _generation,
         confirmThreadDelete: _confirm,
         onboardingCompleted: _onboarding,
+        offeredConnectorKinds: _offered,
+        connectorMigrations: _migrations,
         git: _git,
         ...older
       } = Schema.encodeUnknownSync(Settings)(defaultSettings()) as Record<string, unknown>;
@@ -638,6 +642,10 @@ describe("generated text settings", () => {
       expect(decoded.confirmThreadDelete).toBe(true);
       // An install from before first-run setup existed never gets it.
       expect(decoded.onboardingCompleted).toBe(true);
+      // Nor had it been offered any connector kind or upgrade: the connector
+      // manager gives it both once.
+      expect(decoded.offeredConnectorKinds).toEqual([]);
+      expect(decoded.connectorMigrations).toEqual([]);
       expect(decoded.defaults.workspace).toBeUndefined();
     }),
   );

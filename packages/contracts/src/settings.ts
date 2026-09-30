@@ -572,6 +572,23 @@ export const Settings = Schema.Struct({
     Schema.withDecodingDefaultKey(Effect.succeed(true)),
     settingsForm({ label: "Setup completed", control: "hidden" }),
   ),
+  // Every connector kind this install has been given an instance of. The
+  // connector manager adds one instance of each kind this build ships that is
+  // not listed here, once, and lists it; an instance the user removes later
+  // stays removed. Plain strings, so a kind a later build drops still
+  // decodes. Defaulted on decode: a row written before it existed lists
+  // nothing, so an existing install is offered every kind it lacks.
+  offeredConnectorKinds: Schema.Array(Schema.String).pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed([])),
+    settingsForm({ label: "Offered connector kinds", control: "hidden" }),
+  ),
+  // The one-time connector upgrades this document has had, by name (the
+  // connector manager's `connectorUpgrade.ts` names them). Plain strings for
+  // the same reason, and defaulted on decode to none.
+  connectorMigrations: Schema.Array(Schema.String).pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed([])),
+    settingsForm({ label: "Connector upgrades", control: "hidden" }),
+  ),
 });
 export type Settings = typeof Settings.Type;
 
@@ -597,6 +614,8 @@ export const SettingsPatch = Schema.Struct({
   generation: Schema.optional(GenerationSettings),
   confirmThreadDelete: Schema.optional(Schema.Boolean),
   onboardingCompleted: Schema.optional(Schema.Boolean),
+  offeredConnectorKinds: Schema.optional(Schema.Array(Schema.String)),
+  connectorMigrations: Schema.optional(Schema.Array(Schema.String)),
 });
 export type SettingsPatch = typeof SettingsPatch.Type;
 
@@ -626,4 +645,6 @@ export const defaultSettings = (): Settings => ({
   generation: DEFAULT_GENERATION_SETTINGS,
   confirmThreadDelete: true,
   onboardingCompleted: false,
+  offeredConnectorKinds: [],
+  connectorMigrations: [],
 });
