@@ -30,9 +30,15 @@ export interface ClaudeSlashCommand {
  */
 const INTERNAL = new Set(["workflow-launch-exec", "heapdump"]);
 
+/**
+ * A command the CLI has retired, which it still lists: `(removed)` in front of
+ * the old description, or `Renamed to /<new>` in its place (2.1.286).
+ */
+const RETIRED = /^(\(removed\)|renamed to \/)/i;
+
 /** A row a user does not pick: internal, or a command the CLI has retired. */
 const isInternal = (name: string, description: string | undefined): boolean =>
-  name.startsWith("_") || INTERNAL.has(name) || /^\(removed\)/i.test(description?.trim() ?? "");
+  name.startsWith("_") || INTERNAL.has(name) || RETIRED.test(description?.trim() ?? "");
 
 const present = (text: string | undefined): string | undefined => {
   const trimmed = text?.trim();

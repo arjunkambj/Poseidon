@@ -85,6 +85,13 @@ describe("toHarnessCommands", () => {
           builtin: true,
         },
         {
+          // 2.1.286, signed in: an old name kept as a pointer to the new one.
+          name: "extra-usage",
+          description: "Renamed to /usage-credits",
+          argumentHint: "",
+          builtin: true,
+        },
+        {
           name: "rename",
           description: "Rename the current conversation",
           argumentHint: "[name]",
