@@ -246,12 +246,12 @@ export const ConnectorModels = Context.Reference<
  * @public The model a `thread.create` without one starts on.
  *
  * The app-wide default outranks everything. Otherwise it is the `defaultModel`
- * of the connector this thread will actually run on — the first entry in
- * the routing order that is open, which is exactly what `ConnectorSelection`
- * picks, given the same `unrunnable`. When none of
- * the enabled entries is open, selection falls back to whatever the registry
- * holds and no document entry can speak for it, so nothing is seeded and the
- * thread starts on that connector's own default instead of a foreign model.
+ * of the connector this thread will actually run on — the first entry in the
+ * routing order that is open, which is exactly what `ConnectorSelection` picks,
+ * given the same `unrunnable`. When none of the enabled entries is open,
+ * selection falls back to whatever the registry holds and no document entry
+ * can speak for it, so nothing is seeded and the thread starts on that
+ * connector's own default instead of a foreign model.
  *
  * Last comes the connector itself. A fresh install has filled in none of the
  * three: `defaultSettings()` writes `model: null`, the connector seed writes

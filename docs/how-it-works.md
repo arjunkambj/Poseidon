@@ -1,7 +1,7 @@
 # How it works
 
 Poseidon is an Electron desktop app that drives Claude Code, Codex and the
-Command Code CLI — agentic coding harnesses that normally run in a terminal —
+Command Code CLI, agentic coding harnesses that normally run in a terminal,
 from a graphical interface. Claude Code is the default, Codex the fallback when
 it is not installed or not signed in, and Command Code comes last. This
 document traces what actually happens at runtime, in order, with the real names
