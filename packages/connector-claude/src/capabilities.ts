@@ -20,7 +20,9 @@ export const CLAUDE_CAPABILITIES: ConnectorCapabilities = {
   modelSwitch: "in-session",
   // The SDK's `applyFlagSettings({ effortLevel })`, taken with no restart:
   // `model-switch` switched to low between two answered turns, the session id
-  // the same on both sides.
+  // the same on both sides. The recording shows the call taken, not the
+  // effort; the ultracode live check read each new effort back through the
+  // CLI's `get_settings`.
   effortSwitch: "in-session",
   // `steer` writes one more user message into the running turn, and the turn
   // stays open until the CLI has taken it up (`steering.ts`). `steering` has

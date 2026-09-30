@@ -1101,25 +1101,25 @@ and session id, and was answered.
 
 `CLAUDE_CAPABILITIES` in `capabilities.ts`, and why each value is what it is:
 
-| Capability       | Value        | Why                                                                                                                                                                                              |
-| ---------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `modelSwitch`    | `in-session` | `setModel` on the running process; `session-controls`, and `model-switch` signed in                                                                                                              |
-| `effortSwitch`   | `in-session` | `applyFlagSettings({ effortLevel })`; `model-switch` has the next turn answered at the new effort in the same process                                                                            |
-| `steering`       | `true`       | one more message to the running CLI, the turn held by its receipts; `steering` (folded into the loop) and `signed-out-steer` (run next); `false` once the CLI's init lists no `msg_lifecycle_v1` |
-| `planMode`       | `true`       | permission mode `plan`, the plan handed over through ExitPlanMode; `plan-accept`                                                                                                                 |
-| `subagents`      | `true`       | Agent calls, the task_* messages, and nested rows; `subagent`                                                                                                                                    |
-| `images`         | `true`       | image content blocks; `image` has the model naming the picture's colour                                                                                                                          |
-| `resume`         | `true`       | `resume: <sessionId>` against the CLI's own transcript; `resume`                                                                                                                                 |
-| `fork`           | `false`      | the connector never calls `forkSession`, and no recording forks a session                                                                                                                        |
-| `interrupt`      | `session`    | `Query.interrupt()` inside the one long-lived process; `interrupt` has the next message answered by the same process                                                                             |
-| `stopTask`       | `true`       | `Query.stopTask(task_id)` with the CLI's id for the row; `subagent-stop`                                                                                                                         |
-| `rollback`       | `false`      | `resumeSessionAt` exists, but the connector never calls it and no recording rewinds; Poseidon's checkpoints are git                                                                              |
-| `compaction`     | `true`       | `/compact` runs as the CLI's command; `session-controls` (signed out; a signed-in `/compact` waits for the operator's approval)                                                                  |
-| `questions`      | `true`       | AskUserQuestion as the question card; `question`                                                                                                                                                 |
-| `runtimeModes`   | all three    | the PreToolUse hook puts every call in every mode past the ladder; `sensitive-full-access` has an `ask` reaching the card under `bypassPermissions`                                              |
-| `attachments`    | `files`      | images as blocks, anything else by path under a readable directory                                                                                                                               |
-| `textGeneration` | `true`       | `generateText`: one tool-less `query()` with no session; `generate-text` answered, `generate-text-signed-out` refused                                                                            |
-| `ultracode`      | `true`       | `Settings.ultracode` at launch and through `applyFlagSettings`; the live check in [Ultracode](#ultracode), no recording                                                                          |
+| Capability       | Value        | Why                                                                                                                                                                                                   |
+| ---------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modelSwitch`    | `in-session` | `setModel` on the running process; `session-controls`, and `model-switch` signed in                                                                                                                   |
+| `effortSwitch`   | `in-session` | `applyFlagSettings({ effortLevel })`; `model-switch` has the call taken and the next turn answered by the same process, and the ultracode live check read each new effort back through `get_settings` |
+| `steering`       | `true`       | one more message to the running CLI, the turn held by its receipts; `steering` (folded into the loop) and `signed-out-steer` (run next); `false` once the CLI's init lists no `msg_lifecycle_v1`      |
+| `planMode`       | `true`       | permission mode `plan`, the plan handed over through ExitPlanMode; `plan-accept`                                                                                                                      |
+| `subagents`      | `true`       | Agent calls, the task_* messages, and nested rows; `subagent`                                                                                                                                         |
+| `images`         | `true`       | image content blocks; `image` has the model naming the picture's colour                                                                                                                               |
+| `resume`         | `true`       | `resume: <sessionId>` against the CLI's own transcript; `resume`                                                                                                                                      |
+| `fork`           | `false`      | the connector never calls `forkSession`, and no recording forks a session                                                                                                                             |
+| `interrupt`      | `session`    | `Query.interrupt()` inside the one long-lived process; `interrupt` has the next message answered by the same process                                                                                  |
+| `stopTask`       | `true`       | `Query.stopTask(task_id)` with the CLI's id for the row; `subagent-stop`                                                                                                                              |
+| `rollback`       | `false`      | `resumeSessionAt` exists, but the connector never calls it and no recording rewinds; Poseidon's checkpoints are git                                                                                   |
+| `compaction`     | `true`       | `/compact` runs as the CLI's command; `session-controls` (signed out; a signed-in `/compact` waits for the operator's approval)                                                                       |
+| `questions`      | `true`       | AskUserQuestion as the question card; `question`                                                                                                                                                      |
+| `runtimeModes`   | all three    | the PreToolUse hook puts every call in every mode past the ladder; `sensitive-full-access` has an `ask` reaching the card under `bypassPermissions`                                                   |
+| `attachments`    | `files`      | images as blocks, anything else by path under a readable directory                                                                                                                                    |
+| `textGeneration` | `true`       | `generateText`: one tool-less `query()` with no session; `generate-text` answered, `generate-text-signed-out` refused                                                                                 |
+| `ultracode`      | `true`       | `Settings.ultracode` at launch and through `applyFlagSettings`; the live check in [Ultracode](#ultracode), no recording                                                                               |
 
 Every value but `ultracode`, `compaction` and the two left `false` rests on a
 recording made signed in. `ultracode` rests on the SDK's declarations, the
@@ -1189,8 +1189,10 @@ gate, conformance with its approval case; the live suites ran once on the
 CLI's default model; the capability values rest on the recordings named in
 [Capabilities](#capabilities); and the round's fixes and additions each have
 their recording — the no-permission tools as far as `subagent` and
-`plan-accept` call them, thinking blocks, the harness command list, the order
-of a foreground subagent's lifecycle and its result, and a stopped one. The
+`plan-accept` call them, thinking blocks, the order of a foreground subagent's
+lifecycle and its result, and a stopped one. The harness command list is the
+exception: it was read from the signed-in probe's capture before the recorder
+scrubbed it, and no recording keeps it, so `commands.test.ts` holds it. The
 resume fallback's wording was read off a run of the CLI by hand. What still
 rests on the SDK's declarations, the CLI's bundle or unit tests, and why:
 
