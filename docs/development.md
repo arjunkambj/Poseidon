@@ -542,7 +542,7 @@ approval case, plus three cases of its own: the probe says the CLI is
 installed, at or above `OLDEST_TESTED_VERSION` and signed in; a plain turn maps
 without any `event.unmapped` or error; and a file write answered deny leaves
 the file uncreated. It runs on the CLI's default model under the conformance
-recording's caps (one turn, ten cents a session), in a throwaway git repo
+recording's caps (one turn, fifty cents a session), in a throwaway git repo
 under `/tmp/poseidon-h1`, and uses the same prompts as that recording, so the
 two describe the same runs. `POSEIDON_LIVE_CLAUDE_CONFIG_DIR` points it at a
 separate account too, and `POSEIDON_LIVE_CLAUDE_DEBUG=1` prints the connector's
@@ -599,8 +599,10 @@ the thread: the cards, their answers, and the rows.
 | `steering.test.ts`      | `steering`              | a message steered in while a command runs, answered in-turn  |
 
 A scenario whose recording has not been made yet is skipped under replay, and
-its title says so. `packages/testkit/fixtures/claude/README.md` lists which
-those are.
+its title says so; every scenario above has its recording, made signed in on
+2.1.286 (`packages/testkit/fixtures/claude/README.md`). `signed-out.test.ts` is
+about a CLI that is not signed in, so its live and record drivers skip it,
+saying why, when the operator's CLI is signed in.
 
 Every driver runs the thread on the CLI's default model (thread model
 `default`, which leaves the SDK's `model` option out) and every session under
@@ -887,7 +889,7 @@ above); the connector-level ones are:
 ```sh
 POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test/recordProbe.test.ts
 POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_RECORD_CLAUDE=1 \
-  pnpm -F @poseidon/connector-claude exec vitest run test/recordSession.test.ts
+  pnpm -F @poseidon/connector-claude exec vitest run test/recordSession.test.ts -t "generate-text: one"
 POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/conformance.test.ts
 ```
 
@@ -897,7 +899,23 @@ real definition — the probe, or a session in a throwaway git repo under
 `fixtures/claude/<scenario>/`. Sessions run on the CLI's default model, capped
 at one turn and five cents. `probe` and `signed-out` spend nothing: the first
 sends no message, and the second was recorded while the CLI was signed out, so
-the CLI refused the turn without calling the API.
+the CLI refused the turn without calling the API. The probe recorder writes
+`probe` when the CLI is signed out and `probe-signed-in` when it is signed in,
+and the session recorder's signed-out scenarios skip themselves on a signed-in
+CLI, since made again they would spend and show answers where they pin
+refusals; `-t` picks the one scenario wanted.
+
+Before a Claude recording is committed, check what the scrubber left: grep
+every new or changed fixture for the operator's email and account names, the
+home path, the names of their own skills, agents, commands and plugins (in
+`~/.claude` and `~/.agents`), phrases from their global `CLAUDE.md`, and the
+names the repository never writes. A signed-in account also brings its
+claude.ai connectors and synced plugins into the init, and the model may name
+a connector that needs authorising in its answer; the scrubber replaces
+those, and the org and account ids in the synced directory's name. Anything
+it missed is fixed in the scrubber
+(`packages/testkit/src/sdkStreamRecording.ts`) and the scenario recorded
+again — the capture is never edited.
 
 The Codex recorders are vitest files too, skipped unless
 `POSEIDON_RECORD_CODEX=1`. They run the operator's own `codex` under their own
