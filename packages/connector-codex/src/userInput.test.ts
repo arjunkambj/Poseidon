@@ -1,7 +1,7 @@
 /**
- * A composer turn as `turn/start`'s input: the text with its mentions and
- * named files, then each image as a `localImage` — and which attachments are
- * images is what their bytes say.
+ * A composer turn as `turn/start`'s input: the text with its mentions,
+ * references and named files, then each image as a `localImage` — and which
+ * attachments are images is what their bytes say.
  */
 
 import * as NodeFS from "node:fs";
@@ -28,6 +28,30 @@ describe("userInput", () => {
     ).toEqual([
       { type: "text", text: "look\n@src/a.ts\nAttachment: /tmp/notes.txt", text_elements: [] },
       { type: "localImage", path: "/tmp/x.png" },
+    ]);
+  });
+
+  it("names each skill, then each plugin, once, before the named files", () => {
+    expect(
+      userInput(
+        {
+          text: "go $tidy",
+          attachments: [],
+          mentions: [],
+          references: [
+            { kind: "plugin", name: "browser" },
+            { kind: "skill", name: "tidy" },
+            { kind: "skill", name: "tidy" },
+          ],
+        },
+        { images: [], promptLines: ["Attachment: /tmp/notes.txt"] },
+      ),
+    ).toEqual([
+      {
+        type: "text",
+        text: 'go $tidy\nUse the "tidy" skill.\nUse the "browser" plugin.\nAttachment: /tmp/notes.txt',
+        text_elements: [],
+      },
     ]);
   });
 });
