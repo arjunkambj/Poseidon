@@ -592,6 +592,12 @@ export class SettingsStore extends Context.Service<
      * them resurrected on the next boot.
      */
     readonly freshInstall: boolean;
+    /**
+     * True when the `settings` row at boot could not be decoded, so `get`
+     * serves defaults in its place and the first `update` archives it. Nothing
+     * should write at boot then: the row is left for a save the user makes.
+     */
+    readonly unreadable: boolean;
   }
 >()("server/rpc/SettingsStore") {
   /**
@@ -670,6 +676,7 @@ export class SettingsStore extends Context.Service<
       return SettingsStore.of({
         get: Ref.get(ref).pipe(Effect.flatMap(withRules)),
         freshInstall: loaded.freshInstall,
+        unreadable: loaded.unreadable !== null,
         update: (patch) =>
           writeMutex.withPermits(1)(
             Effect.gen(function* () {

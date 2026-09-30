@@ -438,6 +438,33 @@ describe("ConnectorManager and the harness rank", () => {
     }),
   );
 
+  it.effect("a settings row that cannot be decoded is not rewritten at boot", () =>
+    Effect.gen(function* () {
+      const filename = databaseFile();
+      const corrupt = JSON.stringify({ theme: "dark", writtenByANewerBuild: true });
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          const context = yield* Layer.build(sqliteLayer({ filename }));
+          yield* runMigrations.pipe(Effect.provide(Layer.succeedContext(context)));
+          const sql = Context.get(context, SqlClientTag.SqlClient);
+          yield* sql`
+            INSERT INTO settings (key, value_json, updated_at)
+            VALUES ('settings', ${corrupt}, ${new Date().toISOString()})
+          `;
+        }),
+      );
+      yield* withBoot(filename, new Set(), ({ manager, sql }) =>
+        Effect.gen(function* () {
+          yield* manager.list(true);
+          const rows = yield* sql<{ readonly value_json: string }>`
+            SELECT value_json FROM settings WHERE key = 'settings'
+          `;
+          expect(rows.map((row) => row.value_json)).toEqual([corrupt]);
+        }),
+      );
+    }),
+  );
+
   it.effect("a default model a harness ahead of Command Code runs is kept", () =>
     Effect.gen(function* () {
       const filename = databaseFile();

@@ -344,6 +344,13 @@ export class ConnectorManager extends Context.Service<
             return false;
           }
           yield* Ref.set(upgraded, true);
+          // The store serves defaults in place of a row it could not decode and
+          // keeps that row until a save of the user's archives it. A boot that
+          // wrote here would replace it with nobody asking, and a newer build
+          // gone back to would find defaults rather than the user's document.
+          if (store.unreadable) {
+            return false;
+          }
           const patch = upgradeConnectors(
             settings,
             registry.definitions,
@@ -373,7 +380,8 @@ export class ConnectorManager extends Context.Service<
       const settleDefaultModel: Effect.Effect<void> = settleMutex
         .withPermits(1)(
           Effect.gen(function* () {
-            if (yield* Ref.get(defaultModelSettled)) {
+            // Not over a row the store could not decode, as `maybeUpgrade`.
+            if (store.unreadable || (yield* Ref.get(defaultModelSettled))) {
               return;
             }
             const settings = yield* store.get;
