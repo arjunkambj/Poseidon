@@ -72,7 +72,7 @@ import { sessionEnv, sessionServerArgs } from "./launch";
 import type { CodexModelFacts } from "./models";
 import { APPROVAL_POLICY, sandboxPolicyFor } from "./modes";
 import { collaborationModeFor } from "./plans";
-import { pluginSkillRoots, pluginThreadConfig } from "./plugins";
+import { pluginMcpClashWarning, pluginSkillRoots, pluginThreadConfig } from "./plugins";
 import { TurnStartResponse } from "./protocol";
 import { makeCodexQuestions, USER_INPUT_REQUEST } from "./questions";
 import { makeRpcClient, type RpcServerRequest } from "./rpc";
@@ -369,7 +369,12 @@ export const makeCodexSession = (
         capabilities: CODEX_CAPABILITIES,
       },
     });
-    for (const message of [options.warning, opened.warning, skillsWarning]) {
+    for (const message of [
+      options.warning,
+      opened.warning,
+      skillsWarning,
+      pluginMcpClashWarning(plugins),
+    ]) {
       if (message !== undefined) yield* emit({ type: "session.warning", payload: { message } });
     }
 

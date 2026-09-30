@@ -78,3 +78,29 @@ export const pluginThreadConfig = (
   }
   return Object.keys(servers).length === 0 ? undefined : servers;
 };
+
+/**
+ * Why a plugin's MCP server is missing from the thread, when another
+ * plugin's server took its key first: `a-b`'s `c` and `a`'s `b-c` are both
+ * `plugin-a-b-c`, as are two names that differ only in the characters the
+ * key replaces. Undefined when no server lost its key.
+ */
+export const pluginMcpClashWarning = (
+  plugins: ReadonlyArray<SessionPlugin>,
+): string | undefined => {
+  const owners = new Map<string, string>();
+  const dropped: Array<string> = [];
+  for (const plugin of plugins) {
+    for (const server of plugin.mcpServers) {
+      if (codexMcpServerFor(server) === null) continue;
+      const key = pluginMcpKey(plugin.name, server.name);
+      const owner = `${plugin.name}/${server.name}`;
+      const taken = owners.get(key);
+      if (taken === undefined) owners.set(key, owner);
+      else if (taken !== owner) dropped.push(`${owner} (${key} is ${taken}'s)`);
+    }
+  }
+  return dropped.length === 0
+    ? undefined
+    : `Codex did not start these plugin MCP servers, whose names clash with another's: ${dropped.join(", ")}.`;
+};

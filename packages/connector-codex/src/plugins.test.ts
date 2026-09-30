@@ -6,7 +6,12 @@
 import type { SessionPlugin } from "@poseidon/connector-sdk/plugins";
 import { describe, expect, it } from "vitest";
 
-import { pluginMcpKey, pluginSkillRoots, pluginThreadConfig } from "./plugins";
+import {
+  pluginMcpClashWarning,
+  pluginMcpKey,
+  pluginSkillRoots,
+  pluginThreadConfig,
+} from "./plugins";
 
 const plugin = (
   overrides: Partial<SessionPlugin> & Pick<SessionPlugin, "name">,
@@ -81,6 +86,33 @@ describe("pluginThreadConfig", () => {
         plugin({ name: "p", mcpServers: [{ name: "s", transport: "stdio", command: "two" }] }),
       ]),
     ).toEqual({ "mcp_servers.plugin-p-s": { command: "one" } });
+  });
+});
+
+describe("pluginMcpClashWarning", () => {
+  it("names a server whose key another plugin's server took first", () => {
+    const run = { transport: "stdio", command: "serve" } as const;
+    expect(
+      pluginMcpClashWarning([
+        plugin({ name: "a-b", mcpServers: [{ name: "c", ...run }] }),
+        plugin({ name: "a", mcpServers: [{ name: "b-c", ...run }] }),
+        plugin({ name: "my.tools", mcpServers: [{ name: "s", ...run }] }),
+        plugin({ name: "my_tools", mcpServers: [{ name: "s", ...run }] }),
+      ]),
+    ).toBe(
+      "Codex did not start these plugin MCP servers, whose names clash with another's: a/b-c (plugin-a-b-c is a-b/c's), my_tools/s (plugin-my_tools-s is my.tools/s's).",
+    );
+  });
+
+  it("is absent when every key is its own, or the same server is listed twice", () => {
+    const run = { transport: "stdio", command: "serve" } as const;
+    expect(
+      pluginMcpClashWarning([
+        plugin({ name: "p", mcpServers: [{ name: "s", ...run }] }),
+        plugin({ name: "p", mcpServers: [{ name: "s", ...run }] }),
+        plugin({ name: "q", mcpServers: [{ name: "s", ...run }] }),
+      ]),
+    ).toBeUndefined();
   });
 });
 
