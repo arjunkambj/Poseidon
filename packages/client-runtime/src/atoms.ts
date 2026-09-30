@@ -245,11 +245,17 @@ export const makeRuntime = (connectionLayer: ConnectionLayer) => {
     ),
   );
 
+  /**
+   * Pushed, not fetched once: a boot answers its first list before its probes
+   * land, and a list read only then would show every harness as still probing
+   * — able to run — until the next reconnect, so New task would keep starting
+   * threads on one the server has since found signed out.
+   */
   const connectorsAtom = runtime.atom(
-    perConnection(
+    perConnectionStream(
       Effect.gen(function* () {
         const client = yield* (yield* Connection).client;
-        return yield* client["connectors.list"]({});
+        return client["connectors.subscribe"]({});
       }),
     ),
     { initialValue: [] as ReadonlyArray<ConnectorSummary> },

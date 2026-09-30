@@ -190,7 +190,7 @@ export interface FixtureRpcContext {
   readonly subscribe: () => Stream.Stream<ThreadStreamItem>;
   /** `orchestration.dispatch`: run the command through the fixture's decider. */
   readonly dispatch: (command: Command) => CommandReceipt;
-  /** `connectors.list`, read fresh so a capability toggle shows. */
+  /** `connectors.list` and `connectors.subscribe`, read fresh so a capability toggle shows. */
   readonly connectors: () => ReadonlyArray<ConnectorSummary>;
   /** `checkpoints.list`: every checkpoint the document records still exists. */
   readonly checkpoints: () => ReadonlyArray<CheckpointSummary>;
@@ -279,6 +279,11 @@ export const makeFixtureRpc = (context: FixtureRpcContext): PoseidonRpcClient =>
             });
         case "connectors.list":
           return () => Effect.sync(() => context.connectors());
+        // Read on every subscribe, so the composer fixture's refresh after a
+        // toggle resubscribes to the new value; held open like the server's.
+        case "connectors.subscribe":
+          return () =>
+            Stream.concat(Stream.fromEffect(Effect.sync(() => context.connectors())), Stream.never);
         case "connectors.models":
           return ({ instanceId }: { instanceId: string }) =>
             Effect.succeed(

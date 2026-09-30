@@ -122,7 +122,7 @@ interface StubData {
   readonly dispatch?: (command: Command) => CommandReceipt;
   /** What `server.hello` claims to speak; defaults to this build's version. */
   readonly protocolVersion?: number;
-  /** Answers `connectors.list`. */
+  /** Answers `connectors.subscribe`, then holds the feed open. */
   readonly connectors?: ReadonlyArray<ConnectorSummary>;
   /** Answers `connectors.models` per instance — how a test makes one fail. */
   readonly models?: (
@@ -194,9 +194,9 @@ const fakeClient = (
         const dispatch = data.dispatch;
         return ({ command }: { command: Command }) => Effect.sync(() => dispatch(command));
       }
-      if (key === "connectors.list" && data.connectors !== undefined) {
+      if (key === "connectors.subscribe" && data.connectors !== undefined) {
         const connectors = data.connectors;
-        return () => Effect.succeed(connectors);
+        return () => Stream.concat(Stream.make(connectors), Stream.never);
       }
       if (key === "connectors.models" && data.models !== undefined) {
         const models = data.models;

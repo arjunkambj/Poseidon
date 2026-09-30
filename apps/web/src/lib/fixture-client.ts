@@ -14,7 +14,7 @@
  * `fixture.setSteering` flips the connector's `steering` capability and
  * rebinds the fixture session with it, as the server copies capabilities onto
  * `thread.session.bound`, so the composer's steer state can be seen; the page
- * refreshes `connectors.list`. `fixture.load` swaps in a whole document — the
+ * resubscribes `connectors.subscribe`. `fixture.load` swaps in a whole document — the
  * timeline fixture's scenarios — as a server resnapshot would.
  *
  * Checkpoints behave as the server's do, without git: a completed turn
@@ -149,7 +149,7 @@ export interface FixtureClient {
   /** Whether the fixture connector reports that it can steer a running turn. */
   readonly steering: () => boolean;
   /**
-   * Flip the steering capability: `connectors.list` answers the new value and
+   * Flip the steering capability: the connector list answers the new value and
    * the session rebinds with it, since the composer steers by the session's.
    */
   readonly setSteering: (on: boolean) => void;

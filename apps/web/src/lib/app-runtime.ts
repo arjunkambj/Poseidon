@@ -71,14 +71,11 @@ const makeSettingsAtoms = (base: BaseAppAtoms) => {
 
   /**
    * The settings page's probe button: `refresh: true` re-runs every probe
-   * server-side, then the list atom reloads so the page shows the outcome.
+   * server-side. The list atom needs no reload — the server pushes each
+   * probe to `connectors.subscribe` as it lands.
    */
-  const probeConnectorsAtom = runtime.fn((_: void, get) =>
-    Effect.gen(function* () {
-      const list = yield* Effect.flatMap(client, (c) => c["connectors.list"]({ refresh: true }));
-      get.registry.refresh(base.connectorsAtom);
-      return list;
-    }),
+  const probeConnectorsAtom = runtime.fn(() =>
+    Effect.flatMap(client, (c) => c["connectors.list"]({ refresh: true })),
   );
 
   /**

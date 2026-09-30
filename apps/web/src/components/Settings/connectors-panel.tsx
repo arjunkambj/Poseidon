@@ -170,10 +170,10 @@ export function ConnectorsPanel() {
       toast.error("Could not save connectors");
       return;
     }
-    // The server reconciles the edit on its own schedule, so the summaries this
-    // page holds describe the connectors as they were. Re-probe the way the
-    // button does rather than leave a new or toggled instance reading
-    // "Probing…" until the user presses it themselves.
+    // The server reconciles the edit on its own schedule and pushes each probe
+    // as it lands. Re-probing the way the button does puts the page's
+    // "Probing…" state on the button while that happens, and re-reads every
+    // harness the edit may have touched, such as a second instance of one.
     await runProbe();
   };
 
