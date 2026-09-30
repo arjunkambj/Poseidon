@@ -10,6 +10,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import { expect } from "@effect/vitest";
 import type { TurnInput } from "@poseidon/connector-sdk/definition";
+import type { SessionPlugin } from "@poseidon/connector-sdk/plugins";
 import type { SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
 import { makeStreamCollector, type StreamCollector } from "@poseidon/connector-sdk/streamCollector";
 import { makeConnectorInstanceId, makeProjectId, makeThreadId } from "@poseidon/contracts/ids";
@@ -58,7 +59,11 @@ export interface Opened {
  * workspace. `assertDone` proves every replayed process gone and the
  * recording played out.
  */
-export const replaying = (scenario: string, settings: ThreadSettings = SETTINGS) =>
+export const replaying = (
+  scenario: string,
+  settings: ThreadSettings = SETTINGS,
+  plugins?: ReadonlyArray<SessionPlugin>,
+) =>
   Effect.gen(function* () {
     const replayed: Replay = replay(scenario);
     const workspace = NodePath.join(
@@ -69,7 +74,7 @@ export const replaying = (scenario: string, settings: ThreadSettings = SETTINGS)
     const instance = yield* makeCodexConnectorDefinition().createInstance({
       instanceId: makeConnectorInstanceId(),
       config: { binaryPath: replayed.binaryPath },
-      services: yield* testServices(),
+      services: yield* testServices(plugins === undefined ? {} : { plugins }),
     });
     const input = {
       threadId: makeThreadId(),

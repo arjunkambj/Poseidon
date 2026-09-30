@@ -1,8 +1,9 @@
 /**
  * What the connector's tests lend an instance in place of the server: a
  * permission ladder that answers one fixed verdict (or the test's own), an
- * MCP endpoint nothing listens on, a throwaway attachments directory, and a
- * silent logger (or the test's own, for a live run's debug output).
+ * MCP endpoint nothing listens on, a throwaway attachments directory, a
+ * silent logger (or the test's own, for a live run's debug output), and no
+ * Poseidon plugins unless the test names some.
  *
  * The MCP URL points at the discard port on loopback, so the CLI's connection
  * attempt is refused at once and the session's own traffic is all that runs.
@@ -17,6 +18,7 @@ import type {
   ConnectorServices,
   PermissionDecision,
 } from "@poseidon/connector-sdk/definition";
+import type { SessionPlugin } from "@poseidon/connector-sdk/plugins";
 import * as Effect from "effect/Effect";
 
 export const UNREACHABLE_MCP = {
@@ -33,6 +35,8 @@ export const testServices = (
     readonly logger?: ConnectorServices["logger"];
     /** An MCP endpoint that answers, in place of the unreachable one. */
     readonly mcp?: ConnectorEndpoint;
+    /** Poseidon plugins every session loads; none when absent. */
+    readonly plugins?: ReadonlyArray<SessionPlugin>;
   } = {},
 ): Effect.Effect<ConnectorServices> =>
   Effect.clockWith((clock) =>
@@ -45,5 +49,8 @@ export const testServices = (
       attachmentsDir: NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "codex-attachments-")),
       logger: options.logger ?? { log: () => Effect.void },
       clock,
+      ...(options.plugins === undefined
+        ? {}
+        : { sessionPlugins: () => Effect.succeed(options.plugins ?? []) }),
     })),
   );

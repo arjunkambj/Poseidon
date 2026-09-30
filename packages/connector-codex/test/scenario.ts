@@ -11,6 +11,7 @@ import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import { expect } from "@effect/vitest";
 import type { ConnectorEndpoint, TurnInput } from "@poseidon/connector-sdk/definition";
+import type { SessionPlugin } from "@poseidon/connector-sdk/plugins";
 import type { SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
 import { makeStreamCollector, type StreamCollector } from "@poseidon/connector-sdk/streamCollector";
 import {
@@ -80,6 +81,8 @@ export const recordScenario = (
     readonly prepare?: (repo: string) => void;
     /** An MCP endpoint that answers, in place of the unreachable one. */
     readonly mcp?: ConnectorEndpoint;
+    /** Poseidon plugins the session loads; `prepare` puts their files in place. */
+    readonly plugins?: ReadonlyArray<SessionPlugin>;
   },
   drive: (session: Session) => Effect.Effect<void, unknown, Scope.Scope>,
 ) =>
@@ -88,7 +91,10 @@ export const recordScenario = (
       const codex = realCodex();
       const cliVersion = parseVersion(execFileSync(codex, ["--version"], { encoding: "utf8" }));
       const { rawDir, launcher } = teeInFront(codex, spec.scenario);
-      const services = yield* testServices(spec.mcp === undefined ? {} : { mcp: spec.mcp });
+      const services = yield* testServices({
+        ...(spec.mcp === undefined ? {} : { mcp: spec.mcp }),
+        ...(spec.plugins === undefined ? {} : { plugins: spec.plugins }),
+      });
       const instance = yield* makeCodexConnectorDefinition().createInstance({
         instanceId: makeConnectorInstanceId(),
         config: { binaryPath: launcher },

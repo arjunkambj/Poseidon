@@ -1,7 +1,7 @@
 /**
  * Records the interaction scenarios from the real CLI into `fixtures/codex/`:
- * plan mode, a question, a steer, a compaction and an MCP tool call approved
- * on its card.
+ * plan mode, a question, a steer, a compaction, an MCP tool call approved on
+ * its card, and a Poseidon plugin's skill used by reference.
  *
  *     POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
  *       pnpm -F @poseidon/connector-codex vitest run test/recordInteractions.test.ts
@@ -18,6 +18,7 @@ import * as Effect from "effect/Effect";
 
 import { COMPACT_COMMAND } from "../src/compaction";
 import { startMcpStandIn, STAND_IN_TOOL } from "./mcpStandIn";
+import { SCRATCH_PLUGIN, SCRATCH_SKILL, writeScratchPlugin } from "./plugin";
 import { RECORD } from "./record";
 import { answerCards, closed, recordScenario, SETTINGS, text, turn } from "./scenario";
 
@@ -30,6 +31,7 @@ const INTERACTION_PROMPTS = {
   steer: "Also, end your reply with the word pineapple.",
   plain: "Reply with exactly: ok",
   mcpTool: `Call the ${STAND_IN_TOOL.name} tool of the poseidon MCP server once with url https://example.com, then reply with one word.`,
+  skill: "Reply with the scratch word only.",
 } as const;
 
 const PLAN = { ...SETTINGS, interactionMode: "plan" } as const;
@@ -155,5 +157,34 @@ describe("interaction recordings", () => {
       ).pipe(Effect.ensuring(Effect.promise(() => standIn.close())));
       expect(standIn.calls()).toEqual([{ url: "https://example.com" }]);
     }),
+  );
+
+  it.live.skipIf(!RECORD)("plugin-skill: a Poseidon plugin's skill, used by reference", () =>
+    recordScenario(
+      {
+        scenario: "plugin-skill",
+        description: `One Poseidon plugin enabled for the session: its skills directory handed over with skills/extraRoots/set, its HTTP MCP server (pointed at a port nothing listens on) in thread/start's config. The turn references the plugin's ${SCRATCH_SKILL.name} skill, whose SKILL.md names the word; every card is allowed once.`,
+        prompts: [INTERACTION_PROMPTS.skill],
+        plugins: [SCRATCH_PLUGIN],
+        prepare: writeScratchPlugin,
+      },
+      (session) =>
+        Effect.gen(function* () {
+          const recording = yield* session.open();
+          yield* answerCards(recording, "allow-once");
+          const done = yield* turn(recording, {
+            ...text(INTERACTION_PROMPTS.skill),
+            references: [{ kind: "skill", name: SCRATCH_SKILL.name }],
+          });
+          yield* closed(recording);
+          expect(done.type === "turn.completed" && done.payload.stopReason).toBe("end_turn");
+          const said = (yield* recording.collector.collected).flatMap((event) =>
+            event.type === "item.completed" && event.payload.item.kind === "assistant_message"
+              ? [event.payload.item.text ?? ""]
+              : [],
+          );
+          expect(said.join(" ").toLowerCase()).toContain(SCRATCH_SKILL.word);
+        }),
+    ),
   );
 });

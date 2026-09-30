@@ -6,9 +6,10 @@
  *
  * 1. spawns the app-server (`launch.ts`) with the child's default-deny
  *    environment, Poseidon's MCP server injected, and its own process group;
- * 2. shakes hands (`initialize`, `initialized`) and opens the thread
- *    (`threadOpen.ts`), so a CLI that cannot start — or cannot open the
- *    thread — fails `startSession` with `SpawnFailed` instead of a thread
+ * 2. shakes hands (`initialize`, `initialized`), hands over the enabled
+ *    Poseidon plugins' skills and MCP servers (`plugins.ts`) and opens the
+ *    thread (`threadOpen.ts`), so a CLI that cannot start — or cannot open
+ *    the thread — fails `startSession` with `SpawnFailed` instead of a thread
  *    that never answers;
  * 3. announces itself with `session.started`, its ref naming the CLI's thread
  *    (`sessionRef.ts`), then translates every notification on one consumer
@@ -47,6 +48,7 @@ import {
   SpawnFailed,
   TurnInProgress,
 } from "@poseidon/connector-sdk/definition";
+import { loadSessionPlugins } from "@poseidon/connector-sdk/plugins";
 import { makeBoundedEventQueue, type SessionHandle } from "@poseidon/connector-sdk/sessionHandle";
 import type { RuntimeMode } from "@poseidon/contracts/enums";
 import type { ConnectorInstanceId, ThreadId, TurnId } from "@poseidon/contracts/ids";
@@ -70,6 +72,7 @@ import { sessionEnv, sessionServerArgs } from "./launch";
 import type { CodexModelFacts } from "./models";
 import { APPROVAL_POLICY, sandboxPolicyFor } from "./modes";
 import { collaborationModeFor } from "./plans";
+import { pluginSkillRoots, pluginThreadConfig } from "./plugins";
 import { TurnStartResponse } from "./protocol";
 import { makeCodexQuestions, USER_INPUT_REQUEST } from "./questions";
 import { makeRpcClient, type RpcServerRequest } from "./rpc";
@@ -162,6 +165,9 @@ export const makeCodexSession = (
       new SpawnFailed({ kind: CODEX_KIND, instanceId: options.instanceId, message });
 
     const mcp = yield* services.mcpEndpoint(threadId);
+    // The enabled Poseidon plugins, once: their skills are the app-server's
+    // extra roots, their MCP servers the thread's config (`plugins.ts`).
+    const plugins = yield* loadSessionPlugins(services, threadId);
     const group = makeProcessGroup({
       onStderr: (chunk) => {
         void run(services.logger.log("debug", "codex stderr", { chunk }));
@@ -188,14 +194,29 @@ export const makeCodexSession = (
       Queue.offerUnsafe(inbox, { kind: "request", request });
     });
 
+    /** Why the plugins' skills were not loaded, when the CLI refused them. */
+    let skillsWarning: string | undefined;
     const opened = yield* Effect.gen(function* () {
       yield* initialize(rpc);
+      const extraRoots = pluginSkillRoots(plugins);
+      if (extraRoots.length > 0) {
+        // A CLI that will not take them still runs the thread, without them.
+        yield* rpc.request("skills/extraRoots/set", { extraRoots }).pipe(
+          Effect.catch((error) =>
+            Effect.sync(() => {
+              skillsWarning = `Codex did not load the Poseidon plugins' skills: ${error.message}`;
+            }),
+          ),
+        );
+      }
+      const config = pluginThreadConfig(plugins);
       return yield* openThread({
         rpc,
         cwd: options.workspaceRoot,
         settings,
         ...(options.sessionRef === undefined ? {} : { resume: options.sessionRef.threadId }),
         ...(options.fork === true ? { fork: true } : {}),
+        ...(config === undefined ? {} : { config }),
       });
     }).pipe(
       Effect.mapError((error) => failed(error.message)),
@@ -348,7 +369,7 @@ export const makeCodexSession = (
         capabilities: CODEX_CAPABILITIES,
       },
     });
-    for (const message of [options.warning, opened.warning]) {
+    for (const message of [options.warning, opened.warning, skillsWarning]) {
       if (message !== undefined) yield* emit({ type: "session.warning", payload: { message } });
     }
 

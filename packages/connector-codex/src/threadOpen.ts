@@ -4,8 +4,9 @@
  * new thread that carries one of those on.
  *
  * All three name the working directory, the approval policy and the sandbox
- * the thread's modes call for (`modes.ts`), and the model unless the thread
- * runs on the CLI's default. A resume or a fork is asked for without the
+ * the thread's modes call for (`modes.ts`), the model unless the thread runs
+ * on the CLI's default, and the config the session's plugins add
+ * (`plugins.ts`) when they add any. A resume or a fork is asked for without the
  * thread's turns (`excludeTurns`): Poseidon has its own timeline, and the full
  * history is a payload the CLI itself calls deprecated.
  *
@@ -44,13 +45,17 @@ export interface OpenedThread {
   readonly warning?: string;
 }
 
-const baseParams = (cwd: string, settings: ThreadSettings) => {
+/** What the thread's `config` adds to the user's for this thread alone (`plugins.ts`). */
+export type ThreadConfig = Readonly<Record<string, unknown>>;
+
+const baseParams = (cwd: string, settings: ThreadSettings, config: ThreadConfig | undefined) => {
   const model = codexModelFor(settings.model);
   return {
     cwd,
     approvalPolicy: APPROVAL_POLICY,
     sandbox: sandboxModeFor(settings.runtimeMode),
     ...(model === undefined ? {} : { model }),
+    ...(config === undefined ? {} : { config }),
   };
 };
 
@@ -68,8 +73,9 @@ const start = (
   rpc: RpcClient,
   cwd: string,
   settings: ThreadSettings,
+  config: ThreadConfig | undefined,
 ): Effect.Effect<OpenedThread, RpcFailed> =>
-  call(rpc, "thread/start", baseParams(cwd, settings), ThreadOpenResponse).pipe(
+  call(rpc, "thread/start", baseParams(cwd, settings, config), ThreadOpenResponse).pipe(
     Effect.map(openedFrom),
   );
 
@@ -81,28 +87,25 @@ export const openThread = (input: {
   readonly resume?: string;
   /** Fork `resume` into a new thread of the CLI's instead of carrying it on. */
   readonly fork?: boolean;
+  /** Config the thread adds to the user's own, whichever way it opens. */
+  readonly config?: ThreadConfig;
 }): Effect.Effect<OpenedThread, RpcFailed> => {
-  const { rpc, cwd, settings } = input;
-  if (input.resume === undefined) return start(rpc, cwd, settings);
+  const { rpc, cwd, settings, config } = input;
+  if (input.resume === undefined) return start(rpc, cwd, settings, config);
+  const carried = {
+    threadId: input.resume,
+    excludeTurns: true,
+    ...baseParams(cwd, settings, config),
+  };
   if (input.fork === true) {
-    return call(
-      rpc,
-      "thread/fork",
-      { threadId: input.resume, excludeTurns: true, ...baseParams(cwd, settings) },
-      ThreadOpenResponse,
-    ).pipe(Effect.map(openedFrom));
+    return call(rpc, "thread/fork", carried, ThreadOpenResponse).pipe(Effect.map(openedFrom));
   }
-  return call(
-    rpc,
-    "thread/resume",
-    { threadId: input.resume, excludeTurns: true, ...baseParams(cwd, settings) },
-    ThreadOpenResponse,
-  ).pipe(
+  return call(rpc, "thread/resume", carried, ThreadOpenResponse).pipe(
     Effect.map(openedFrom),
     Effect.catchIf(
       (error) => NO_ROLLOUT.test(error.message),
       () =>
-        start(rpc, cwd, settings).pipe(
+        start(rpc, cwd, settings, config).pipe(
           Effect.map((opened) => ({ ...opened, warning: MISSING_THREAD_WARNING })),
         ),
     ),

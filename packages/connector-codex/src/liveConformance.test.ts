@@ -70,6 +70,7 @@ const ROOT = "/tmp/poseidon-codex";
  */
 const SENT_REQUESTS = [
   "initialize",
+  "skills/extraRoots/set",
   "account/read",
   "model/list",
   "thread/start",
