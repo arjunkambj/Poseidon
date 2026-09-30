@@ -483,9 +483,11 @@ kept. Its row is still completed, with no text. Under the CLI's default
 thinking display (the connector passes no `--thinking-display`) every one does
 on 2.1.286: the `thinking_delta`s carry empty strings and the snapshot's block
 only a signature, in every signed-in recording, so a reasoning row marks where
-the model thought and holds no text. A row still open when the
-turn's `result` arrives is completed there with the text its deltas grew, so
-none stays in progress after the turn.
+the model thought and holds no text. The timeline draws such a row as a plain
+"Reasoning" line with nothing to open; it still drives the live step's
+"Thinking…" and how long the model thought. A row still open when the turn's
+`result` arrives is completed there with the text its deltas grew, so none
+stays in progress after the turn.
 
 **A `result`** (`translate/result.ts`) is the end of one of the CLI's turns.
 Its `usage` is the main loop's tokens for that turn alone. `total_cost_usd`

@@ -97,8 +97,14 @@ function ToolPayload({ input, output }: { input: unknown; output: unknown }) {
   );
 }
 
+/**
+ * A reasoning row, which opens onto what the model thought. A harness can
+ * report that it thought without saying what, so a row with no text is a
+ * plain line with nothing to open.
+ */
 export function ReasoningRow({ item }: { item: ItemSnapshot }) {
   const inProgress = item.status === "in_progress";
+  const text = item.text ?? "";
   return (
     <DisclosureRow
       rowId={item.itemId}
@@ -106,9 +112,11 @@ export function ReasoningRow({ item }: { item: ItemSnapshot }) {
       label={inProgress ? "Thinking…" : "Reasoning"}
       status={item.status}
     >
-      <p className="whitespace-pre-wrap">
-        <FindText text={item.text ?? ""} />
-      </p>
+      {text.trim() === "" ? null : (
+        <p className="whitespace-pre-wrap">
+          <FindText text={text} />
+        </p>
+      )}
     </DisclosureRow>
   );
 }
