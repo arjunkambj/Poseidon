@@ -55,9 +55,8 @@ const POSEIDON_MCP_SERVER = "poseidon";
  * `canUseTool` with that decision already made, and checks no mode on the way
  * (CLI 2.1.280, read from the permission code bundled in the binary). So a
  * sensitive path under full access — the ladder's "prompt" — still opens a
- * card. `fixtures/claude/sensitive-full-access/` is the recording that will
- * pin it once a signed-in CLI makes it; until then the code reading is all
- * that backs it.
+ * card, as the signed-in `fixtures/claude/sensitive-full-access/` (CLI
+ * 2.1.286) records.
  */
 export const permissionModeFor = (settings: ThreadSettings): PermissionMode => {
   if (settings.interactionMode === "plan") return "plan";
