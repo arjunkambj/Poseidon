@@ -177,13 +177,26 @@ const SECRET_KEY =
 const TOKEN_SHAPED = /\b(sk|pk|ghp|gho|Bearer)[-_ ][A-Za-z0-9._~+/=-]{12,}/g;
 
 /**
+ * A `"key": "value"` pair inside text: a line of a pretty-printed JSON
+ * document, which the tee captures as one string per line (`auth status
+ * --json`).
+ */
+const TEXT_PAIR = /"([A-Za-z_]+)"\s*:\s*"([^"\\]*)"/g;
+/** A uuid joined to another by `_`, as the CLI names a directory per org and account. */
+const JOINED_UUID =
+  /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi;
+
+/**
  * Every string in the capture that names the account — the email, the
  * organisation's name and id, the account uuid — from the init and account
  * payloads and `auth status`, mapped to what replaces it everywhere. Session
- * ids are uuids too and stay: only a uuid under an identity key is scrubbed.
+ * ids are uuids too and stay: only a uuid under an identity key is scrubbed,
+ * and one joined by `_` to such a uuid, which is how the CLI names the
+ * directory of an org's synced skills and plugins (`<org id>_<account id>`).
  */
 const accountValues = (values: ReadonlyArray<unknown>): Map<string, string> => {
   const found = new Map<string, string>();
+  const texts: Array<string> = [];
   const note = (value: string): void => {
     if (value.length < 3) return;
     found.set(
@@ -197,7 +210,11 @@ const accountValues = (values: ReadonlyArray<unknown>): Map<string, string> => {
   };
   const walk = (value: unknown, scoped: boolean): void => {
     if (typeof value === "string") {
+      texts.push(value);
       for (const email of value.match(EMAIL) ?? []) note(email);
+      for (const [, key, entry] of value.matchAll(TEXT_PAIR)) {
+        if (IDENTITY_KEY.test(key!)) note(entry!);
+      }
       return;
     }
     if (Array.isArray(value)) {
@@ -217,8 +234,61 @@ const accountValues = (values: ReadonlyArray<unknown>): Map<string, string> => {
     }
   };
   for (const value of values) walk(value, false);
+  for (const text of texts) {
+    for (const [, first, second] of text.matchAll(JOINED_UUID)) {
+      if (found.has(first!)) note(second!);
+      if (found.has(second!)) note(first!);
+    }
+  }
   return found;
 };
+
+/**
+ * The MCP servers and plugins the capture shows the operator's own
+ * installation brought: a server whose `source` is anything but `dynamic`
+ * (what the SDK passed — Poseidon's own), and a plugin whose `source` is
+ * neither `@inline` (a `--plugin-dir`, Poseidon's) nor `@builtin` (the
+ * harness's). Their names say what the operator connected — an account's
+ * connectors, a marketplace's plugins — so they go the way of the operator's
+ * own entries.
+ */
+const capturedOperatorNames = (
+  values: ReadonlyArray<unknown>,
+): { readonly servers: ReadonlyArray<string>; readonly plugins: ReadonlyArray<string> } => {
+  const servers = new Set<string>();
+  const plugins = new Set<string>();
+  const sourced = (names: Set<string>, list: unknown, own: (source: string) => boolean): void => {
+    if (!Array.isArray(list)) return;
+    for (const entry of list) {
+      const { name, source } = (entry ?? {}) as { name?: unknown; source?: unknown };
+      if (typeof name === "string" && typeof source === "string" && !own(source)) names.add(name);
+    }
+  };
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const entry of value) walk(entry);
+      return;
+    }
+    if (value === null || typeof value !== "object") return;
+    for (const [key, entry] of Object.entries(value)) {
+      if (key === "mcp_servers") sourced(servers, entry, (source) => source === "dynamic");
+      if (key === "plugins") {
+        sourced(
+          plugins,
+          entry,
+          (source) => source.endsWith("@inline") || source.endsWith("@builtin"),
+        );
+      }
+      walk(entry);
+    }
+  };
+  for (const value of values) walk(value);
+  return { servers: [...servers], plugins: [...plugins] };
+};
+
+/** The prefix an MCP server's tools carry: `mcp__<name, other than [A-Za-z0-9_-] as _>__`. */
+const mcpToolPrefix = (server: string): string =>
+  `mcp__${server.replaceAll(/[^A-Za-z0-9_-]/g, "_")}__`;
 
 /** A path as it may be spelled: as given, resolved, and without macOS's `/private`. */
 const spellings = (path: string): ReadonlyArray<string> => {
@@ -333,6 +403,8 @@ interface ScrubContext {
   readonly entries: ReadonlyMap<string, string>;
   /** Of those, the ones the caller named, replaced wherever they stand alone. */
   readonly operatorNames: ReadonlyArray<string>;
+  /** Of those, the MCP servers the capture showed the operator's installation bring. */
+  readonly operatorServers: ReadonlyArray<string>;
   /** The machine's name. */
   readonly hostname: string;
 }
@@ -348,8 +420,10 @@ interface ScrubContext {
  * `slash_commands` or `commands` list keeps only the scenario's own entries,
  * those under the scratch root, and one scrubbed entry for the rest. Elsewhere an operator entry is replaced where it is listed: a list
  * item that is its name, and an object whose `name` it is, whose `description`
- * goes with it. A name the caller gave is replaced in text and keys too,
- * wherever it stands alone, and the machine's name becomes `<HOST>`.
+ * and `name@…` `source` go with it. An operator MCP server's tools become one
+ * `mcp__<stand-in>__scrubbed-entry` per list. A name the caller gave is
+ * replaced in text and keys too, wherever it stands alone, and the machine's
+ * name becomes `<HOST>`.
  */
 const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
   const paths = [
@@ -368,6 +442,14 @@ const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
   const named = [...context.operatorNames]
     .sort((a, b) => b.length - a.length)
     .map((name) => [standalone(name), context.entries.get(name)!] as const);
+  const serverTools = context.operatorServers.map(
+    (server) => [mcpToolPrefix(server), context.entries.get(server)!] as const,
+  );
+  /** An operator server's tool, as one stand-in per server. */
+  const serverTool = (entry: string): string | undefined => {
+    const server = serverTools.find(([prefix]) => entry.startsWith(prefix));
+    return server === undefined ? undefined : `${mcpToolPrefix(server[1])}${SCRUBBED_ENTRY}`;
+  };
 
   const text = (value: string): string => {
     let out = value;
@@ -401,20 +483,28 @@ const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
   const scrub = (value: unknown): unknown => {
     if (typeof value === "string") return text(value);
     if (Array.isArray(value)) {
-      return value.map((entry) =>
-        typeof entry === "string" && context.entries.has(entry)
-          ? context.entries.get(entry)
-          : scrub(entry),
-      );
+      const tools = new Set<string>();
+      return value.flatMap((entry) => {
+        if (typeof entry !== "string") return [scrub(entry)];
+        if (context.entries.has(entry)) return [context.entries.get(entry)];
+        const tool = serverTool(entry);
+        if (tool === undefined) return [scrub(entry)];
+        if (tools.has(tool)) return [];
+        tools.add(tool);
+        return [tool];
+      });
     }
     if (value !== null && typeof value === "object") {
-      const named = (value as { readonly name?: unknown }).name;
+      const { name: named, source } = value as { readonly name?: unknown; source?: unknown };
       if (typeof named === "string" && context.entries.has(named)) {
         const stand = context.entries.get(named)!;
         return scrub({
           ...value,
           name: stand,
           ...("description" in value ? { description: `${stand} (user)` } : {}),
+          ...(typeof source === "string" && source.startsWith(`${named}@`)
+            ? { source: `${stand}${source.slice(named.length)}` }
+            : {}),
         });
       }
       return Object.fromEntries(
@@ -491,6 +581,12 @@ const scratchOf = (cwd: string | undefined, home: string): string | null => {
   return parent === NodePath.parse(parent).root || within(parent, home) ? null : parent;
 };
 
+/** The calendar date where the recording was made, not UTC's. */
+const localDate = (now: Date): string =>
+  [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+    .map((part) => String(part).padStart(2, "0"))
+    .join("-");
+
 const isStreamJson = (argv: ReadonlyArray<string>): boolean => argv.includes("stream-json");
 
 /**
@@ -504,17 +600,20 @@ export const finalizeStdioRecording = (options: FinalizeOptions): string => {
   const isStreamRun = options.isStreamRun ?? isStreamJson;
   const firstStream = invocations.find((invocation) => isStreamRun(invocation.argv));
   const operatorNames = (options.operatorNames ?? []).filter((name) => name.length > 0);
+  const frames = invocations.flatMap((invocation) => invocation.frames);
+  const captured = capturedOperatorNames(frames);
   const scrub = makeScrubber({
     home,
     scratch: options.scratch ?? scratchOf(firstStream?.cwd, home),
     tmp: options.tmpdir ?? NodeOS.tmpdir(),
     username: options.username ?? NodeOS.userInfo().username,
-    account: accountValues(invocations.flatMap((invocation) => invocation.frames)),
+    account: accountValues(frames),
     entries: withOperatorNames(
       operatorEntries(options.configDir ?? NodePath.join(home, ".claude")),
-      operatorNames,
+      [...operatorNames, ...captured.servers, ...captured.plugins],
     ),
     operatorNames,
+    operatorServers: captured.servers,
     hostname: options.hostname ?? NodeOS.hostname(),
   });
 
@@ -546,7 +645,7 @@ export const finalizeStdioRecording = (options: FinalizeOptions): string => {
     description: options.description,
     cliVersion: options.cliVersion,
     ...(options.sdkVersion === undefined ? {} : { sdkVersion: options.sdkVersion }),
-    recordedOn: options.recordedOn ?? new Date().toISOString().slice(0, 10),
+    recordedOn: options.recordedOn ?? localDate(new Date()),
     model: options.model,
     real: true,
     prompts: scrub(options.prompts) as ReadonlyArray<string>,

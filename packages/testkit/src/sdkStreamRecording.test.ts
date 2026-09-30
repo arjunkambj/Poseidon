@@ -321,6 +321,78 @@ describe("finalizeSdkStreamRecording", () => {
     });
   });
 
+  it("scrubs an org id printed as text, the account id joined to it, and the operator's own servers and plugins", async () => {
+    const rawDir = NodePath.join(ROOT, "raw-connected");
+    const launcher = makeTeeLauncher({ realBinary: COUNTERPART, rawDir });
+    const orgId = "6c1b0f7e-2d3a-4b5c-8d9e-0f1a2b3c4d5e";
+    const accountId = "9e8d7c6b-5a49-4382-9170-6f5e4d3c2b1a";
+    const synced = `${NodeOS.homedir()}/.claude/plugins/synced/${orgId}_${accountId}/p1`;
+
+    const run = converse(launcher, STREAM_ARGS, { cwd: REPO });
+    await run.awaitLine(typed("ready"));
+    // `auth status --json` pretty-prints, so the tee captures it a line at a time.
+    run.send({ type: "note", lines: ["{", `  "orgId": "${orgId}",`, "}"] });
+    await run.awaitLine(typed("echo"));
+    run.send({
+      type: "note",
+      mcp_servers: [
+        { name: "poseidon", status: "connected", source: "dynamic" },
+        { name: "example.com Tracker", status: "connected", source: "claudeai" },
+      ],
+      tools: [
+        "Bash",
+        "mcp__example_com_Tracker__list_issues",
+        "mcp__example_com_Tracker__save_issue",
+        "mcp__poseidon__browser_open",
+      ],
+      plugins: [
+        { name: "browser", path: "<builtin plugins>/browser", source: "browser@inline" },
+        { name: "tracker", path: synced, source: "tracker@synced" },
+        { name: "cc-plugin-diff", path: "builtin", source: "cc-plugin-diff@builtin" },
+      ],
+    });
+    await run.awaitLine((line) => typed("echo")(line) && JSON.stringify(line).includes("tools"));
+    run.child.stdin.end();
+    expect((await run.exited).code).toBe(0);
+
+    const fixtures = NodePath.join(ROOT, "fixtures-connected");
+    const dir = finalizeSdkStreamRecording({
+      kind: "sample",
+      scenario: "connected",
+      rawDir,
+      description: "an ordinary node program, for the finaliser's own test",
+      cliVersion: "9.9.9",
+      sdkVersion: "0.0.0",
+      model: "none",
+      prompts: [],
+      fixturesRoot: fixtures,
+      configDir: NodePath.join(ROOT, "no-config"),
+    });
+
+    const written = NodeFS.readdirSync(dir)
+      .map((name) => NodeFS.readFileSync(NodePath.join(dir, name), "utf8"))
+      .join("\n");
+    for (const leak of [orgId, accountId, "Tracker", "tracker"]) {
+      expect(written).not.toContain(leak);
+    }
+    const [stream] = loadSdkStreamRecording("sample", "connected", fixtures).invocations;
+    const echoed = stream!.frames.filter((frame) => typed("echo")(frame.data)).at(-1)!.data;
+    expect(echoed).toMatchObject({
+      message: {
+        mcp_servers: [
+          { name: "poseidon", source: "dynamic" },
+          { name: "user-skill-1", source: "claudeai" },
+        ],
+        tools: ["Bash", `mcp__user-skill-1__${SCRUBBED_ENTRY}`, "mcp__poseidon__browser_open"],
+        plugins: [
+          { name: "browser", source: "browser@inline" },
+          { name: "user-skill-2", source: "user-skill-2@synced" },
+          { name: "cc-plugin-diff", source: "cc-plugin-diff@builtin" },
+        ],
+      },
+    });
+  });
+
   it("scrubs the system temp directory in every spelling, and keeps a scratch root under it", async () => {
     const rawDir = NodePath.join(ROOT, "raw-tmp");
     const launcher = makeTeeLauncher({ realBinary: COUNTERPART, rawDir });
