@@ -116,11 +116,14 @@ describe("the CLI's own slash commands, replaying claude/local-command", () => {
         expect(answers[2]!.text).toContain("Total cost:");
 
         // /clear moved the CLI to a new session id, and the ref went with it.
+        // Until then the CLI ran under the id the session minted, which the
+        // replay puts where the recorded one stood.
         const [first, ...rest] = initSessionIds;
         const last = rest.at(-1);
         expect(last).toBeDefined();
         expect(last).not.toBe(first);
-        expect(before.sessionId).toBe(first);
+        const minted = ofType(events, "session.started")[0]?.payload.sessionRef;
+        expect(before.sessionId).toBe((minted as { readonly sessionId?: string }).sessionId);
         expect(after).toMatchObject({ sessionId: last, cwd: workspace });
         const announced = ofType(events, "session.started").at(-1)?.payload.sessionRef;
         expect(announced).toMatchObject({ sessionId: last });
