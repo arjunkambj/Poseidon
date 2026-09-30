@@ -569,6 +569,33 @@ describe("ConnectorManager and the harness rank", () => {
     }),
   );
 
+  it.effect("a save over an undecodable row is seeded on the next boot", () =>
+    Effect.gen(function* () {
+      const filename = databaseFile();
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          const context = yield* Layer.build(sqliteLayer({ filename }));
+          yield* runMigrations.pipe(Effect.provide(Layer.succeedContext(context)));
+          const sql = Context.get(context, SqlClientTag.SqlClient);
+          yield* sql`
+            INSERT INTO settings (key, value_json, updated_at)
+            VALUES ('settings', ${JSON.stringify({ theme: 7 })}, ${new Date().toISOString()})
+          `;
+        }),
+      );
+      // The user's save archives the row and stores defaults under its patch:
+      // no connectors, and no kinds offered.
+      yield* withBoot(filename, new Set(), ({ store }) =>
+        Effect.asVoid(store.update({ theme: "dark" })),
+      );
+      const next = yield* withBoot(filename, new Set(), ({ manager, store }) =>
+        Effect.andThen(manager.list(true), store.get),
+      );
+      expect(next.theme).toBe("dark");
+      expect(next.connectors.map((conn) => conn.kind)).toEqual(["claude", "codex", "cmd"]);
+    }),
+  );
+
   it.effect("a default model a harness ahead of Command Code runs is kept", () =>
     Effect.gen(function* () {
       const filename = databaseFile();

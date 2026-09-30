@@ -394,7 +394,9 @@ export class ConnectorManager extends Context.Service<
           const patch = upgradeConnectors(
             settings,
             registry.definitions,
-            store.freshInstall,
+            // A save over an undecodable row stored a document with nothing
+            // offered, which is a first run's, not a user's who removed all.
+            store.freshInstall || store.replacedUnreadable,
             makeConnectorInstanceId,
           );
           if (patch === null) {

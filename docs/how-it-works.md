@@ -4485,7 +4485,10 @@ probe that timed out, a harness not found) and Command Code is silent too: the
 model may be that harness's, and the check waits for a boot that can tell.
 Both one-time steps are recorded in `connectorMigrations`.
 A settings row the store could not decode is left alone: the upgrade waits for
-a boot after a save of the user's has archived and replaced it.
+a boot after a save of the user's has archived and replaced it. That save stored
+the defaults under its own patch, with no connectors and no kinds offered, so
+that boot offers every kind as a first run would rather than reading the
+document as one whose user removed them all.
 
 ### The CLI's own config files
 

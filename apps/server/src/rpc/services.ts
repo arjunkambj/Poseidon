@@ -602,6 +602,14 @@ export class SettingsStore extends Context.Service<
      * should write at boot then: the row is left for a save the user makes.
      */
     readonly unreadable: boolean;
+    /**
+     * True when the `settings` row at boot is one a save wrote over an
+     * undecodable row, which it archived. That save stored defaults plus its
+     * own patch — no connectors, and no kinds offered — so the connector
+     * manager reads it as a first run rather than as a user who removed
+     * every connector.
+     */
+    readonly replacedUnreadable: boolean;
   }
 >()("server/rpc/SettingsStore") {
   /**
@@ -681,6 +689,7 @@ export class SettingsStore extends Context.Service<
         get: Ref.get(ref).pipe(Effect.flatMap(withRules)),
         freshInstall: loaded.freshInstall,
         unreadable: loaded.unreadable !== null,
+        replacedUnreadable: loaded.replacedUnreadable,
         update: (patch) =>
           writeMutex.withPermits(1)(
             Effect.gen(function* () {
@@ -787,17 +796,31 @@ const load = (sql: SqlClient.SqlClient) =>
       SELECT value_json FROM settings WHERE key = ${SETTINGS_ROW_KEY}
     `;
     if (rows.length === 0) {
-      return { settings: defaultSettings(), freshInstall: true, unreadable: null };
+      return {
+        settings: defaultSettings(),
+        freshInstall: true,
+        unreadable: null,
+        replacedUnreadable: false,
+      };
     }
     const raw = rows[0]!.value_json;
     const decoded = yield* Effect.exit(Schema.decodeEffect(Schema.fromJsonString(Settings))(raw));
     if (decoded._tag === "Failure") {
       yield* Effect.logError("settings row could not be decoded; serving defaults", decoded.cause);
-      return { settings: defaultSettings(), freshInstall: false, unreadable: raw };
+      return {
+        settings: defaultSettings(),
+        freshInstall: false,
+        unreadable: raw,
+        replacedUnreadable: false,
+      };
     }
+    const archived = yield* sql<{ readonly key: string }>`
+      SELECT key FROM settings WHERE key = ${SETTINGS_UNREADABLE_ROW_KEY}
+    `;
     return {
       settings: withKeybindingOverrides(decoded.value),
       freshInstall: false,
       unreadable: null,
+      replacedUnreadable: archived.length > 0,
     };
   });
