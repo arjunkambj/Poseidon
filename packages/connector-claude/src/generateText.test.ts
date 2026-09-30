@@ -1,17 +1,15 @@
 /**
- * `generateText` against the one real recording of it, and its options.
+ * `generateText` against the two real recordings of it, and its options.
  *
- * The CLI on the recording machine is signed out, so
  * `fixtures/claude/generate-text-signed-out/` is the call refused: the real
  * SDK and the real CLI agreeing on the one-shot options, and the CLI's own
- * sign-in error as the result. A signed-in `generate-text` recording, with an
- * answer in it, is still to be made.
+ * sign-in error as the result. `generate-text` is the same call answered by
+ * a signed-in CLI: one turn, no tools, the title as the result's text.
  */
 
 import { describe, expect, it } from "@effect/vitest";
 import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk";
 import { makeConnectorInstanceId } from "@poseidon/contracts/ids";
-import { recordingNames } from "@poseidon/testkit/recording";
 import { loadSdkStreamRecording } from "@poseidon/testkit/sdkStreamRecording";
 import * as Effect from "effect/Effect";
 
@@ -90,28 +88,22 @@ describe("generateText on a signed-out CLI", () => {
   });
 });
 
-/** Replayed once `fixtures/claude/generate-text/` is recorded with a signed-in CLI. */
-const answered = recordingNames(CLAUDE_KIND).includes("generate-text");
-(answered ? describe : describe.skip)(
-  answered
-    ? "generateText on a signed-in CLI"
-    : "generateText on a signed-in CLI — has no recording yet: record fixtures/claude/generate-text/ with a signed-in CLI",
-  () => {
-    it.live("answers the result's text", () =>
-      Effect.gen(function* () {
-        const played = replay("generate-text");
-        const instance = yield* makeClaudeConnectorDefinition().createInstance({
-          instanceId: makeConnectorInstanceId(),
-          config: { binaryPath: played.binaryPath },
-          services: yield* testServices(),
-        });
-        const text = yield* instance.generateText!(REQUEST);
-        expect(text.trim()).not.toBe("");
-        played.assertPlayedOut();
-      }),
-    );
-  },
-);
+/** `fixtures/claude/generate-text/`, the same call answered by a signed-in CLI. */
+describe("generateText on a signed-in CLI", () => {
+  it.live("answers the result's text", () =>
+    Effect.gen(function* () {
+      const played = replay("generate-text");
+      const instance = yield* makeClaudeConnectorDefinition().createInstance({
+        instanceId: makeConnectorInstanceId(),
+        config: { binaryPath: played.binaryPath },
+        services: yield* testServices(),
+      });
+      const text = yield* instance.generateText!(REQUEST);
+      expect(text).toBe("Fix Flaky Login Test");
+      played.assertPlayedOut();
+    }),
+  );
+});
 
 describe("generateTextOptions", () => {
   const options = (request: Parameters<typeof generateTextOptions>[0]["request"]) =>
