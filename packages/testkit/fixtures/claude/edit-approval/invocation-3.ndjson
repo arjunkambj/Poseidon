@@ -1,12 +1,12 @@
-{"dir":"from-harness","channel":"stdout","at":140,"data":"{"}
-{"dir":"from-harness","channel":"stdout","at":141,"data":"  \"loggedIn\": true,"}
-{"dir":"from-harness","channel":"stdout","at":141,"data":"  \"authMethod\": \"claude.ai\","}
-{"dir":"from-harness","channel":"stdout","at":141,"data":"  \"apiProvider\": \"firstParty\","}
-{"dir":"from-harness","channel":"stdout","at":141,"data":"  \"analyticsDisabled\": false,"}
-{"dir":"from-harness","channel":"stdout","at":141,"data":"  \"projectsDirectory\": \"<HOME>/.claude/projects\","}
-{"dir":"from-harness","channel":"stdout","at":142,"data":"  \"configDirectory\": \"<HOME>/.claude\","}
-{"dir":"from-harness","channel":"stdout","at":142,"data":"  \"email\": \"user@example.com\","}
-{"dir":"from-harness","channel":"stdout","at":142,"data":"  \"orgId\": \"00000000-0000-0000-0000-000000000000\","}
-{"dir":"from-harness","channel":"stdout","at":142,"data":"  \"orgName\": \"<ACCOUNT>\","}
-{"dir":"from-harness","channel":"stdout","at":142,"data":"  \"subscriptionType\": \"max\""}
-{"dir":"from-harness","channel":"stdout","at":149,"data":"}"}
+{"dir":"from-harness","channel":"stdout","at":276,"data":"{"}
+{"dir":"from-harness","channel":"stdout","at":276,"data":"  \"loggedIn\": true,"}
+{"dir":"from-harness","channel":"stdout","at":276,"data":"  \"authMethod\": \"claude.ai\","}
+{"dir":"from-harness","channel":"stdout","at":276,"data":"  \"apiProvider\": \"firstParty\","}
+{"dir":"from-harness","channel":"stdout","at":276,"data":"  \"analyticsDisabled\": false,"}
+{"dir":"from-harness","channel":"stdout","at":276,"data":"  \"projectsDirectory\": \"<HOME>/.claude/projects\","}
+{"dir":"from-harness","channel":"stdout","at":276,"data":"  \"configDirectory\": \"<HOME>/.claude\","}
+{"dir":"from-harness","channel":"stdout","at":276,"data":"  \"email\": \"user@example.com\","}
+{"dir":"from-harness","channel":"stdout","at":276,"data":"  \"orgId\": \"00000000-0000-0000-0000-000000000000\","}
+{"dir":"from-harness","channel":"stdout","at":277,"data":"  \"orgName\": \"<ACCOUNT>\","}
+{"dir":"from-harness","channel":"stdout","at":277,"data":"  \"subscriptionType\": \"max\""}
+{"dir":"from-harness","channel":"stdout","at":285,"data":"}"}
