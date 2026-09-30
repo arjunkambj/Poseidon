@@ -76,6 +76,27 @@ export const ConnectorProbe = Schema.Struct({
 });
 export type ConnectorProbe = typeof ConnectorProbe.Type;
 
+/**
+ * Whether a probe leaves its harness able to run a turn, as far as the default
+ * rule is concerned: a thread that chose no instance goes to the first enabled
+ * one that can, on the server (`connectorRouting.ts`) and in the renderer
+ * (`connector-routing.ts`) alike, so the two must read a probe the same way.
+ *
+ * Only a probe that says so rules a harness out: not installed, or signed out.
+ * `probing` and anything the probe could not tell count as able, so the
+ * default does not move while probes are still running. Takes the server's
+ * probe as well as the wire's, which share these fields.
+ */
+export const probeCanRun = (probe: {
+  readonly status: ConnectorProbe["status"];
+  readonly installed?: boolean;
+  readonly auth?: ConnectorProbe["auth"];
+}): boolean =>
+  probe.status !== "not-installed" &&
+  probe.status !== "not-authenticated" &&
+  probe.installed !== false &&
+  probe.auth !== "absent";
+
 /** A configured connector as the settings page and the model picker see it. */
 export const ConnectorSummary = Schema.Struct({
   connectorInstanceId: ConnectorInstanceId,
