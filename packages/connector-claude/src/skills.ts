@@ -20,14 +20,18 @@
  * folder stays the source.
  */
 
-import { mkdir, readFile, readdir, stat, symlink } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import * as NodePath from "node:path";
 import {
   ConnectorExtensionFailed,
   type ExtensionScope,
   type SkillsExtension,
 } from "@poseidon/connector-sdk/extensions";
-import { parseSkillFrontmatter } from "@poseidon/connector-sdk/skills";
+import {
+  linkSkill,
+  occupiedSkillEntries,
+  parseSkillFrontmatter,
+} from "@poseidon/connector-sdk/skills";
 import type { AgentSkill, SkillSummary } from "@poseidon/contracts/connectors";
 import * as Effect from "effect/Effect";
 import type * as Semaphore from "effect/Semaphore";
@@ -122,15 +126,15 @@ export const makeClaudeSkills = (options: ClaudeSkillsOptions): SkillsExtension 
   /**
    * Agents-folder skills the CLI does not load yet. One is loaded when the
    * user root holds its entry (the usual symlink) or a skill of the same
-   * name, which would shadow it anyway.
+   * name, which would shadow it anyway. An entry there that is not a skill
+   * still takes the name, and a link whose target is gone does not.
    */
   const available = Effect.gen(function* () {
-    const loaded = yield* readRoot(userSkillsRoot);
-    const loadedEntries = new Set(loaded.map((found) => found.entry));
-    const loadedNames = new Set(loaded.map((found) => found.skill.name));
+    const taken = yield* Effect.promise(() => occupiedSkillEntries(userSkillsRoot));
+    const loadedNames = new Set((yield* readRoot(userSkillsRoot)).map((found) => found.skill.name));
     const out: Array<AgentSkill> = [];
     for (const { entry, skill } of yield* readRoot(agentsSkillsRoot)) {
-      if (loadedEntries.has(entry) || loadedNames.has(skill.name)) continue;
+      if (taken.has(entry) || loadedNames.has(skill.name)) continue;
       out.push({
         entry,
         name: skill.name,
@@ -153,13 +157,9 @@ export const makeClaudeSkills = (options: ClaudeSkillsOptions): SkillsExtension 
             message: `no unlinked skill "${entry}" in ${agentsSkillsRoot}; it may already be linked`,
           });
         }
-        const target = NodePath.join(agentsSkillsRoot, entry);
         const linkPath = NodePath.join(userSkillsRoot, entry);
         yield* Effect.tryPromise({
-          try: async () => {
-            await mkdir(userSkillsRoot, { recursive: true });
-            await symlink(NodePath.relative(userSkillsRoot, target), linkPath);
-          },
+          try: () => linkSkill(userSkillsRoot, agentsSkillsRoot, entry),
           catch: (error) =>
             new ConnectorExtensionFailed({
               code: "internal",

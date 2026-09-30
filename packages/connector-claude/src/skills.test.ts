@@ -129,4 +129,29 @@ describe("the Claude Code skills extension", () => {
       expect((yield* Effect.flip(skills.link!("../lint"))).code).toBe("not-found");
     }),
   );
+
+  it.effect("links into a config directory that is a symlink, and mends a broken link", () =>
+    Effect.gen(function* () {
+      const base = NodePath.join(ROOT, "dotfiles");
+      const linkHome = NodePath.join(base, "home");
+      const linkAgents = NodePath.join(linkHome, ".agents", "skills");
+      const claudeDir = NodePath.join(base, "dotfiles", "claude");
+      skill(linkAgents, "lint", "name: lint");
+      skill(linkAgents, "broken", "name: broken");
+      skill(linkAgents, "notes", "name: notes");
+      NodeFS.mkdirSync(NodePath.join(claudeDir, "skills"), { recursive: true });
+      NodeFS.symlinkSync(claudeDir, NodePath.join(linkHome, ".claude"));
+      const userRoot = NodePath.join(linkHome, ".claude", "skills");
+      // Not a skill, but it takes the name: linking over it could only fail.
+      NodeFS.writeFileSync(NodePath.join(userRoot, "notes"), "");
+      NodeFS.symlinkSync(NodePath.join(base, "gone"), NodePath.join(userRoot, "broken"));
+      const skills = skillsFor({ HOME: linkHome }, linkAgents);
+
+      expect((yield* skills.available!).map((found) => found.entry)).toEqual(["broken", "lint"]);
+      expect((yield* skills.link!("lint")).map((found) => found.entry)).toEqual(["broken"]);
+      expect(yield* skills.link!("broken")).toEqual([]);
+      const names = (yield* skills.list({ workspaceRoot: null })).map((found) => found.name);
+      expect(names).toEqual(["broken", "lint"]);
+    }),
+  );
 });

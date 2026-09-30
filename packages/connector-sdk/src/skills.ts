@@ -1,7 +1,11 @@
 /**
  * What the connectors' `skills` extensions share: reading a SKILL.md's
- * frontmatter.
+ * frontmatter, and linking a skill from the shared agents folder
+ * (`~/.agents/skills`) into a harness's user root.
  */
+
+import { lstat, mkdir, readdir, realpath, stat, symlink, unlink } from "node:fs/promises";
+import * as NodePath from "node:path";
 
 export interface SkillFrontmatter {
   name?: string;
@@ -43,4 +47,54 @@ export const parseSkillFrontmatter = (content: string): SkillFrontmatter => {
     else out.description = value;
   }
   return out;
+};
+
+const resolves = (path: string): Promise<boolean> =>
+  stat(path).then(
+    () => true,
+    () => false,
+  );
+
+/**
+ * The entries of a user skills root that hold something, skill or not: a
+ * file or a directory without SKILL.md takes the name as surely as a skill
+ * does, and linking over it could only fail. A symlink whose target is gone
+ * holds nothing, so a skill whose link broke is offered again, and linking it
+ * replaces the link (`linkSkill`).
+ */
+export const occupiedSkillEntries = async (root: string): Promise<ReadonlySet<string>> => {
+  const entries = await readdir(root).catch((): Array<string> => []);
+  const out = new Set<string>();
+  for (const entry of entries) {
+    if (await resolves(NodePath.join(root, entry))) out.add(entry);
+  }
+  return out;
+};
+
+/**
+ * Links `<agentsSkillsRoot>/<entry>` into `userSkillsRoot` as a relative
+ * symlink, the shape the skills installer writes, and returns the link.
+ *
+ * The kernel resolves a relative target against the real directory the link
+ * sits in, so the path is taken between real directories. Taken between the
+ * paths as spelled, a `~/.claude` that is itself a symlink into a dotfiles
+ * repo gets a link that points into the dotfiles tree, and dangles. The agents
+ * entry itself is not resolved: the link goes through it, so the agents folder
+ * stays the source. A link of the same name whose target is gone is replaced.
+ */
+export const linkSkill = async (
+  userSkillsRoot: string,
+  agentsSkillsRoot: string,
+  entry: string,
+): Promise<string> => {
+  await mkdir(userSkillsRoot, { recursive: true });
+  const linkPath = NodePath.join(userSkillsRoot, entry);
+  const existing = await lstat(linkPath).catch(() => null);
+  if (existing?.isSymbolicLink() === true && !(await resolves(linkPath))) {
+    await unlink(linkPath);
+  }
+  const from = await realpath(userSkillsRoot);
+  const to = NodePath.join(await realpath(agentsSkillsRoot), entry);
+  await symlink(NodePath.relative(from, to), linkPath);
+  return linkPath;
 };
