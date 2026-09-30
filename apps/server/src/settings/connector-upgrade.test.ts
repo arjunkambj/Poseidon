@@ -213,6 +213,15 @@ describe("defaultModelVerdict", () => {
       "keep",
     );
   });
+
+  it("waits when a harness ahead listed nothing and Command Code said nothing either", () => {
+    // Codex timed out, or is not found, and Command Code is not installed or
+    // is switched off: the model may be Codex's, so it is not cleared.
+    expect(defaultModelVerdict(CODEX_MODEL, [can(CLAUDE_MODEL), can()], [])).toBe("undecided");
+    expect(defaultModelVerdict(CODEX_MODEL, [can(CLAUDE_MODEL), cannot()], [])).toBe("undecided");
+    // Once Codex answers without it, it is Command Code's after all.
+    expect(defaultModelVerdict(CMD_MODEL, [can(CLAUDE_MODEL), can(CODEX_MODEL)], [])).toBe("clear");
+  });
 });
 
 // ── The manager, across boots ────────────────────────────────

@@ -4477,9 +4477,13 @@ so an instance the user removes stays removed. The first time, the connectors
 are also sorted into the rank. A saved default model starts new threads on the
 harness that lists it, so one that only Command Code runs would keep them
 there: once an enabled Claude Code or Codex instance that can run has answered
-its model list, a default none of them lists is cleared, unless Command Code
-answered and does not list it either. Both one-time steps are recorded in
-`connectorMigrations`.
+its model list, a default none of them lists is cleared when it is Command
+Code's — Command Code lists it, or Command Code gave no answer and every
+instance ahead of it listed models without it. One Command Code answered
+without is kept. So is one while an instance ahead of it listed nothing (a
+probe that timed out, a harness not found) and Command Code is silent too: the
+model may be that harness's, and the check waits for a boot that can tell.
+Both one-time steps are recorded in `connectorMigrations`.
 A settings row the store could not decode is left alone: the upgrade waits for
 a boot after a save of the user's has archived and replaced it.
 

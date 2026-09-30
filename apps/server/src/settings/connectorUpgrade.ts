@@ -132,11 +132,21 @@ export interface DefaultModelAnswer {
  *   anyway. Also when the last harness answered and does not list it — the
  *   model is not the one this check exists to take new threads off, and an
  *   ahead harness that was slow to answer may well run it.
- * - `clear` otherwise, once one ahead that can run has answered: new threads
- *   then start where routing sends them.
- * - `undecided` while none that can run has — not installed, signed out or
- *   still probing — so a later boot asks again rather than clearing a default
- *   whose replacement cannot run yet.
+ * - `clear` once the model is known to be the last harness's — it lists it,
+ *   or it said nothing and every instance ahead answered without it — and
+ *   one ahead that can run has answered: new threads then start where
+ *   routing sends them.
+ * - `undecided` otherwise, so a later boot asks again. That covers an ahead
+ *   harness that can run but listed nothing (a probe that timed out, a
+ *   handshake that failed): with the last one silent as well, the model may
+ *   be that harness's, and clearing it would lose the user's choice for good.
+ *   It also covers none ahead that can run having answered — not installed,
+ *   signed out or still probing — so a default whose replacement cannot run
+ *   yet is not cleared.
+ *
+ * An instance that is disabled or removed gives no answer at all, so a model
+ * only it listed reads as the last harness's once every other one has
+ * answered without it.
  */
 export const defaultModelVerdict = (
   model: string,
@@ -150,5 +160,8 @@ export const defaultModelVerdict = (
   if (lastAnswered && !last.some((answer) => answer.models.includes(model))) {
     return "keep";
   }
-  return ahead.some((answer) => answer.canRun && answer.models.length > 0) ? "clear" : "undecided";
+  const lastsModel = lastAnswered || ahead.every((answer) => answer.models.length > 0);
+  return lastsModel && ahead.some((answer) => answer.canRun && answer.models.length > 0)
+    ? "clear"
+    : "undecided";
 };

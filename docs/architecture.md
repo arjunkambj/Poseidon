@@ -954,8 +954,10 @@ runs on the first enabled one whose probe says it can run (`probeCanRun`), or
 on the first enabled one when none can. An existing install is brought up to
 the rank once (`settings/connectorUpgrade.ts`): it gets one instance of each
 kind it was never offered, its connectors are sorted into the rank, and a
-saved default model that only Command Code runs is cleared once Claude Code or
-Codex has answered its model list.
+saved default model that is Command Code's is cleared once Claude Code or Codex
+can run and has answered its model list. A model no answer places — Command
+Code silent, and a harness ahead of it listing nothing — waits for a later
+boot.
 
 ### packages/contracts
 
