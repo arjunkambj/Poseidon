@@ -36,6 +36,10 @@
       "types": "./src/sessionHandle.ts",
       "import": "./src/sessionHandle.ts"
     },
+    "./skills": {
+      "types": "./src/skills.ts",
+      "import": "./src/skills.ts"
+    },
     "./streamCollector": {
       "types": "./src/streamCollector.ts",
       "import": "./src/streamCollector.ts"

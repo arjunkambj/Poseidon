@@ -27,53 +27,12 @@ import {
   type ExtensionScope,
   type SkillsExtension,
 } from "@poseidon/connector-sdk/extensions";
+import { parseSkillFrontmatter } from "@poseidon/connector-sdk/skills";
 import type { AgentSkill, SkillSummary } from "@poseidon/contracts/connectors";
 import * as Effect from "effect/Effect";
 import type * as Semaphore from "effect/Semaphore";
 
 import { claudeConfigDir } from "./plugins";
-
-interface Frontmatter {
-  name?: string;
-  description?: string;
-}
-
-const unquote = (value: string): string =>
-  value.length >= 2 &&
-  ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))
-    ? value.slice(1, -1)
-    : value;
-
-/**
- * The `---` block at the top of a SKILL.md: `name` and `description`, each a
- * plain or quoted scalar, or a block scalar (`>` folds its indented lines into
- * one, `|` keeps them) — long descriptions are commonly written folded.
- */
-const parseFrontmatter = (content: string): Frontmatter => {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content);
-  if (match === null) return {};
-  const lines = match[1]!.split(/\r?\n/);
-  const out: Frontmatter = {};
-  for (let index = 0; index < lines.length; index += 1) {
-    const field = /^(name|description)\s*:\s*(.*)$/i.exec(lines[index]!);
-    if (field === null) continue;
-    let value = field[2]!.trim();
-    const block = /^([>|])[-+]?$/.exec(value);
-    if (block !== null) {
-      const body: Array<string> = [];
-      while (index + 1 < lines.length && /^(\s|$)/.test(lines[index + 1]!)) {
-        index += 1;
-        body.push(lines[index]!.trim());
-      }
-      value = body.join(block[1] === ">" ? " " : "\n").trim();
-    } else {
-      value = unquote(value);
-    }
-    if (field[1]!.toLowerCase() === "name") out.name = value;
-    else out.description = value;
-  }
-  return out;
-};
 
 const isDirectory = (path: string): Effect.Effect<boolean> =>
   Effect.tryPromise(() => stat(path)).pipe(
@@ -103,7 +62,7 @@ const readRoot = (root: string): Effect.Effect<ReadonlyArray<SkillEntry>> =>
         Effect.orElseSucceed(() => null),
       );
       if (content === null) continue;
-      const frontmatter = parseFrontmatter(content);
+      const frontmatter = parseSkillFrontmatter(content);
       out.push({
         entry,
         skill: {

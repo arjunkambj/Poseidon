@@ -12,7 +12,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import { afterAll } from "vitest";
 
-import { makeCodexSkills, parseFrontmatter } from "./skills";
+import { makeCodexSkills } from "./skills";
 
 const ROOT = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "codex-skills-"));
 afterAll(() => {
@@ -96,19 +96,5 @@ describe("the Codex skills extension", () => {
   it("offers no agents-folder linking: Codex already loads that folder", () => {
     expect(skills.available).toBeUndefined();
     expect(skills.link).toBeUndefined();
-  });
-});
-
-describe("parseFrontmatter", () => {
-  it("reads plain, quoted and block values", () => {
-    expect(parseFrontmatter("---\nname: a\ndescription: 'b'\n---\n")).toEqual({
-      name: "a",
-      description: "b",
-    });
-    expect(parseFrontmatter("---\ndescription: |\n  one\n  two\nname: c\n---\n")).toEqual({
-      name: "c",
-      description: "one\ntwo",
-    });
-    expect(parseFrontmatter("no frontmatter")).toEqual({});
   });
 });
