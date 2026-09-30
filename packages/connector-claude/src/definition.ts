@@ -7,6 +7,7 @@
  */
 
 import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
 import type {
   ConnectorDefinition,
   ConnectorError,
@@ -32,6 +33,7 @@ import { makeClaudePlugins } from "./plugins";
 import type { SessionLimits } from "./queryOptions";
 import { makeClaudeSession } from "./session";
 import { makeClaudeSessionFiles } from "./sessionFiles";
+import { makeClaudeSkills } from "./skills";
 import { parseSessionRef, type ClaudeSessionRef } from "./sessionRef";
 
 /**
@@ -66,122 +68,135 @@ export interface ClaudeConnectorOptions {
    * them. Production passes none.
    */
   readonly limits?: SessionLimits;
+  /** The shared agents skills folder; `~/.agents/skills` when omitted. */
+  readonly agentsSkillsRoot?: string;
 }
 
 export const makeClaudeConnectorDefinition = (
   options: ClaudeConnectorOptions = {},
-): ConnectorDefinition<ClaudeConnectorConfig> => ({
-  kind: CLAUDE_KIND,
-  metadata: {
-    displayName: "Claude Code",
-    iconKey: "claude-code",
-    accent: "#d97757",
-    // `claude --help` names no documentation link, so none is given.
-  },
-  configSchema: ClaudeConnectorConfig,
-  defaultConfig: () => ({}),
-  probe: (config) => probeBinary(config),
-  createInstance: ({ instanceId, config, services }) =>
-    Effect.gen(function* () {
-      const failed = (message: string) =>
-        new SpawnFailed({ kind: CLAUDE_KIND, instanceId, message });
+): ConnectorDefinition<ClaudeConnectorConfig> => {
+  /** The definition's, so instances that share a config never link into it at once. */
+  const writeMutex = Semaphore.makeUnsafe(1);
+  return {
+    kind: CLAUDE_KIND,
+    metadata: {
+      displayName: "Claude Code",
+      iconKey: "claude-code",
+      accent: "#d97757",
+      // `claude --help` names no documentation link, so none is given.
+    },
+    configSchema: ClaudeConnectorConfig,
+    defaultConfig: () => ({}),
+    probe: (config) => probeBinary(config),
+    createInstance: ({ instanceId, config, services }) =>
+      Effect.gen(function* () {
+        const failed = (message: string) =>
+          new SpawnFailed({ kind: CLAUDE_KIND, instanceId, message });
 
-      /**
-       * Resolved per session start, not per instance: an install that appears
-       * after the instance opened is found, and the environment is read fresh.
-       */
-      const launch = Effect.sync(() => {
-        const binary: ResolvedBinary | null = resolveBinary(config, process.env);
-        const env = childEnv(process.env, config);
-        return { binary, env };
-      });
-
-      const start = (input: StartSessionInput, sessionRef?: ClaudeSessionRef, warning?: string) =>
-        Effect.gen(function* () {
-          const { binary, env } = yield* launch;
-          if (binary === null) {
-            return yield* failed("claude not found on PATH or in the usual install directories");
-          }
-          return yield* makeClaudeSession({
-            instanceId,
-            threadId: input.threadId,
-            workspaceRoot: input.workspaceRoot,
-            binary,
-            env,
-            loginCommand: terminalCommand(binary, LOGIN_ARGS, env.CLAUDE_CONFIG_DIR),
-            services,
-            settings: input.settings,
-            ...(sessionRef === undefined ? {} : { sessionRef }),
-            ...(warning === undefined ? {} : { warning }),
-            ...(options.limits === undefined ? {} : { limits: options.limits }),
-          });
+        /**
+         * Resolved per session start, not per instance: an install that appears
+         * after the instance opened is found, and the environment is read fresh.
+         */
+        const launch = Effect.sync(() => {
+          const binary: ResolvedBinary | null = resolveBinary(config, process.env);
+          const env = childEnv(process.env, config);
+          return { binary, env };
         });
 
-      /**
-       * One handshake per instance, shared by the model list and the slash
-       * commands: it is a process start. Asks that arrive together wait for
-       * the one in flight. A failed one is not kept, so the next ask tries
-       * again.
-       */
-      const initialization = yield* Ref.make<Initialization | null>(null);
-      const oneAtATime = yield* Semaphore.make(1);
-      const initialize = oneAtATime.withPermits(1)(
-        Effect.gen(function* () {
-          const cached = yield* Ref.get(initialization);
-          if (cached !== null) return cached;
-          const { binary, env } = yield* launch;
-          if (binary === null) {
-            return yield* failed("claude not found on PATH or in the usual install directories");
-          }
-          const listed = yield* readInitialization({
-            binary,
-            env,
-            cwd: NodeOS.tmpdir(),
-          }).pipe(Effect.mapError((error) => failed(error.message)));
-          yield* Ref.set(initialization, listed);
-          return listed;
-        }),
-      );
-      const listModels = () => Effect.map(initialize, (listed) => listed.models);
-      // The handshake loads no settings (`commands.ts`), so the scope changes nothing.
-      const commands: CommandsExtension = {
-        list: () =>
-          initialize.pipe(
-            Effect.map((listed) => listed.commands),
-            Effect.mapError(
-              (error) => new ConnectorExtensionFailed({ code: "internal", message: error.message }),
-            ),
-          ),
-      };
+        const start = (input: StartSessionInput, sessionRef?: ClaudeSessionRef, warning?: string) =>
+          Effect.gen(function* () {
+            const { binary, env } = yield* launch;
+            if (binary === null) {
+              return yield* failed("claude not found on PATH or in the usual install directories");
+            }
+            return yield* makeClaudeSession({
+              instanceId,
+              threadId: input.threadId,
+              workspaceRoot: input.workspaceRoot,
+              binary,
+              env,
+              loginCommand: terminalCommand(binary, LOGIN_ARGS, env.CLAUDE_CONFIG_DIR),
+              services,
+              settings: input.settings,
+              ...(sessionRef === undefined ? {} : { sessionRef }),
+              ...(warning === undefined ? {} : { warning }),
+              ...(options.limits === undefined ? {} : { limits: options.limits }),
+            });
+          });
 
-      return {
-        instanceId,
-        kind: CLAUDE_KIND,
-        capabilities: CLAUDE_CAPABILITIES,
-        startSession: (input) => start(input),
-        resumeSession: (input) => {
-          const ref = parseSessionRef(input.sessionRef);
-          if (ref === undefined) {
-            return start(
-              input,
-              undefined,
-              "The previous Claude Code session could not be read back, so this thread starts a new one.",
+        /**
+         * One handshake per instance, shared by the model list and the slash
+         * commands: it is a process start. Asks that arrive together wait for
+         * the one in flight. A failed one is not kept, so the next ask tries
+         * again.
+         */
+        const initialization = yield* Ref.make<Initialization | null>(null);
+        const oneAtATime = yield* Semaphore.make(1);
+        const initialize = oneAtATime.withPermits(1)(
+          Effect.gen(function* () {
+            const cached = yield* Ref.get(initialization);
+            if (cached !== null) return cached;
+            const { binary, env } = yield* launch;
+            if (binary === null) {
+              return yield* failed("claude not found on PATH or in the usual install directories");
+            }
+            const listed = yield* readInitialization({
+              binary,
+              env,
+              cwd: NodeOS.tmpdir(),
+            }).pipe(Effect.mapError((error) => failed(error.message)));
+            yield* Ref.set(initialization, listed);
+            return listed;
+          }),
+        );
+        const listModels = () => Effect.map(initialize, (listed) => listed.models);
+        // The handshake loads no settings (`commands.ts`), so the scope changes nothing.
+        const commands: CommandsExtension = {
+          list: () =>
+            initialize.pipe(
+              Effect.map((listed) => listed.commands),
+              Effect.mapError(
+                (error) =>
+                  new ConnectorExtensionFailed({ code: "internal", message: error.message }),
+              ),
+            ),
+        };
+
+        return {
+          instanceId,
+          kind: CLAUDE_KIND,
+          capabilities: CLAUDE_CAPABILITIES,
+          startSession: (input) => start(input),
+          resumeSession: (input) => {
+            const ref = parseSessionRef(input.sessionRef);
+            if (ref === undefined) {
+              return start(
+                input,
+                undefined,
+                "The previous Claude Code session could not be read back, so this thread starts a new one.",
+              );
+            }
+            return resumeOrStartFresh(start(input, ref), (warning) =>
+              start(input, undefined, warning),
             );
-          }
-          return resumeOrStartFresh(start(input, ref), (warning) =>
-            start(input, undefined, warning),
-          );
-        },
-        listModels,
-        generateText: makeClaudeGenerateText({ instanceId, launch }),
-        extensions: {
-          commands,
-          plugins: makeClaudePlugins({ env: childEnv(process.env, config) }),
-          sessions: makeClaudeSessionFiles({ env: childEnv(process.env, config) }),
-        },
-      };
-    }),
-});
+          },
+          listModels,
+          generateText: makeClaudeGenerateText({ instanceId, launch }),
+          extensions: {
+            commands,
+            skills: makeClaudeSkills({
+              env: childEnv(process.env, config),
+              agentsSkillsRoot:
+                options.agentsSkillsRoot ?? NodePath.join(NodeOS.homedir(), ".agents", "skills"),
+              writeMutex,
+            }),
+            plugins: makeClaudePlugins({ env: childEnv(process.env, config) }),
+            sessions: makeClaudeSessionFiles({ env: childEnv(process.env, config) }),
+          },
+        };
+      }),
+  };
+};
 
 /** The definition with every default — what production registers. */
 export const claudeConnectorDefinition = makeClaudeConnectorDefinition();

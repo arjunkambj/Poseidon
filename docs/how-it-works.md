@@ -4537,16 +4537,23 @@ reports no servers for it and writes fail with a `conflict` naming the file,
 because a rewrite would be built from an empty base and would delete every
 server the user hand-authored.
 
-**Skills** are discovered, not written: the skills extension
-(`packages/connector-cmd/src/skills.ts`), asked through `connectors.skills.list`,
-walks `~/.commandcode/skills` and `<workspaceRoot>/.commandcode/skills`, reads
-the `name` and `description` out of each `SKILL.md` frontmatter, and lets a
-project skill win a name collision, matching the harness's own precedence. The
-composer's `/` popover asks the thread's own instance for that list. The one
-write is a link: `connectors.skills.available` lists the skills in
-`~/.agents/skills` the instance does not load yet, and `connectors.skills.link`
-symlinks one into `~/.commandcode/skills`. Those homes follow the instance's
-`extraEnv.HOME` when it sets one, since that is the home the CLI resolves.
+**Skills** are discovered, not written: each harness's skills extension, asked
+through `connectors.skills.list`, walks the roots that harness loads, reads the
+`name` and `description` out of each `SKILL.md` frontmatter, and lets a project
+skill win a name collision, matching the harness's own precedence. Claude
+Code's (`packages/connector-claude/src/skills.ts`) walks
+`<workspaceRoot>/.claude/skills` and `<config>/skills`, the instance's
+`CLAUDE_CONFIG_DIR` or `~/.claude`; Codex's walks its `.codex` and `.agents`
+roots; Command Code's (`packages/connector-cmd/src/skills.ts`) walks
+`<workspaceRoot>/.commandcode/skills` and `~/.commandcode/skills`. The
+composer's `/` and `$` popovers ask the thread's own instance for that list,
+and the Skills tab lists one section per instance in the connectors page's
+order, so Claude Code's comes first. The one write is a link, on a harness
+that does not load the shared agents folder itself — Claude Code and Command
+Code: `connectors.skills.available` lists the skills in `~/.agents/skills` the
+instance does not load yet, and `connectors.skills.link` symlinks one into its
+user root. Command Code's home follows the instance's `extraEnv.HOME` when it
+sets one, since that is the home the CLI resolves.
 
 **Plugins** have an extension of their own, read-only, for a harness that has
 them: `connectors.plugins.list` answers each installed plugin's name,

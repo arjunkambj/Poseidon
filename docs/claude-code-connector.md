@@ -62,6 +62,7 @@ instance runs on Claude Code whenever its probe says it can run.
 | `references.ts`           | skill and plugin references as prompt lines                               |
 | `pluginOptions.ts`        | Poseidon's enabled plugins as SDK `plugins` and `mcpServers` entries      |
 | `plugins.ts`              | the `plugins` extension: Claude Code's own installed plugins, read-only   |
+| `skills.ts`               | the `skills` extension: the user's and project's skills, and linking      |
 | `sessionFiles.ts`         | the `sessions` extension: the CLI's own transcripts, read for an import   |
 | `attachments.ts`          | images as content blocks, other files by path                             |
 | `session.ts`              | one long-lived CLI process per thread: send, steer, interrupt, close      |
@@ -166,6 +167,23 @@ signed out, and it never writes: installing, enabling and removing stay with
 The tests read `packages/testkit/fixtures/claude/plugins/`, the files the real
 CLI wrote when it installed two plugins into a scratch config (its README says
 how).
+
+## Claude Code's own skills
+
+The instance carries the `skills` extension (`skills.ts`), so the composer's
+`$` menu and the Customize page's Skills tab list the skills a session loads,
+and the tab gives Claude Code its first section. It reads the two roots the
+user and project settings sources keep them in, `<workspaceRoot>/.claude/skills`
+and `<config>/skills` (`<config>` as for plugins), one skill per
+`<entry>/SKILL.md`, named and described by its frontmatter; a project skill
+wins its name, and dot entries are skipped. Skills a plugin carries are listed
+with the plugin.
+
+The CLI does not load the shared agents folder, `~/.agents/skills`, so the
+extension also offers the skills there that the user root does not hold yet,
+by entry or by name, and links one in as a relative symlink — the shape the
+skills installer writes. Nothing else is written. MCP servers are not managed
+here: the CLI keeps the user's in `~/.claude.json`, a file it rewrites itself.
 
 ## Session files
 
