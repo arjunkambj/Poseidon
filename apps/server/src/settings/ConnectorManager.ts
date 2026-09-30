@@ -19,11 +19,19 @@
  * (`probeCanRun`): the manager publishes the instances that cannot run to
  * `UnrunnableConnectors`, which routing and the engine's seed read.
  *
- * `connectors.list` answers from the last reconcile's probes; `refresh: true`
+ * `connectors.list` answers from the probes recorded so far; `refresh: true`
  * reconciles the current document and then re-runs every probe, which is what
  * the settings page's probe button — and every save, which refreshes right
  * after it writes — triggers. Reconciling there rather than waiting for the
  * subscription's own pass is what keeps the two from racing for the mutex.
+ *
+ * `connectors.subscribe` pushes the same summaries (`changes`): once a pass
+ * has registered its instances, and again as each probe lands. A probe is a
+ * few process starts and the first list of a boot is answered before any has
+ * finished, so a renderer that listed once would read every harness as
+ * "probing" — able to run — for the whole session. Each landing probe
+ * publishes the unrunnable set first and the summaries second, so the server's
+ * default rule never lags what the renderer can see.
  *
  * A reconcile registers before it probes, and `ready` completes once the first
  * pass has registered everything the settings document asks for. The
@@ -49,11 +57,11 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as PubSub from "effect/PubSub";
 import * as Ref from "effect/Ref";
 import * as Scope from "effect/Scope";
 import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
-import * as SubscriptionRef from "effect/SubscriptionRef";
 
 import { ConnectorCatalog, SettingsStore } from "../rpc/services";
 import { ConnectorHost } from "./ConnectorHost";
@@ -124,7 +132,12 @@ export class ConnectorManager extends Context.Service<
      * registered instance to route to.
      */
     readonly ready: Effect.Effect<void>;
-    /** Emits the summary list after every reconcile — tests and a future subscribe RPC. */
+    /**
+     * The summary list, replayed to a new subscriber and emitted again once a
+     * reconcile has registered and after every probe it records —
+     * `connectors.subscribe`. Sliding, like the settings feed: every element
+     * is the whole list, so a stalled subscriber loses nothing by skipping.
+     */
     readonly changes: Stream.Stream<ReadonlyArray<ConnectorSummary>>;
   }
 >()("server/settings/ConnectorManager") {
@@ -150,7 +163,11 @@ export class ConnectorManager extends Context.Service<
         new Map(),
       );
       /** Latest summary list — replays to new subscribers, so none miss a reconcile. */
-      const summariesRef = yield* SubscriptionRef.make<ReadonlyArray<ConnectorSummary>>([]);
+      const summaries = yield* PubSub.sliding<ReadonlyArray<ConnectorSummary>>({
+        capacity: 1,
+        replay: 1,
+      });
+      yield* PubSub.publish(summaries, []);
       /** Serialises reconcile passes and explicit re-probes. */
       const mutex = yield* Semaphore.make(1);
       const upgraded = yield* Ref.make(false);
@@ -226,8 +243,9 @@ export class ConnectorManager extends Context.Service<
 
       /**
        * What routing passes over: every instance whose latest probe says it
-       * cannot run. Published with the summaries, never ahead of them, so the
-       * server's default rule and the renderer's mirror of it switch together.
+       * cannot run. Published as each probe is recorded, ahead of the
+       * summaries that carry it, so no client is shown a probe the server's
+       * default rule has not taken in yet.
        */
       const publishUnrunnable: Effect.Effect<void> =
         unrunnable === null
@@ -242,17 +260,6 @@ export class ConnectorManager extends Context.Service<
                 ),
               ),
             );
-
-      /** Records a fresh probe, which retires whatever the fallback memoized. */
-      const recordProbe = (id: string, probe: ConnectorProbe): Effect.Effect<void> =>
-        Effect.andThen(
-          Ref.update(probes, (all) => new Map(all).set(id, probe)),
-          forget(fallbackModels, id),
-        );
-
-      /** The summaries and the unrunnable set they imply, published together. */
-      const publish = (summaries: ReadonlyArray<ConnectorSummary>): Effect.Effect<void> =>
-        Effect.andThen(publishUnrunnable, SubscriptionRef.set(summariesRef, summaries));
 
       const closeEntry = (id: string, entry: Entry): Effect.Effect<void> =>
         Effect.gen(function* () {
@@ -281,6 +288,31 @@ export class ConnectorManager extends Context.Service<
                 ? toWireProbe(probeMap.get(conn.connectorInstanceId)!)
                 : probingProbe(probedAt),
           }));
+        });
+
+      /** The unrunnable set, then the summaries of `settings` that imply it. */
+      const publish = (settings: Settings): Effect.Effect<ReadonlyArray<ConnectorSummary>> =>
+        Effect.gen(function* () {
+          yield* publishUnrunnable;
+          const current = yield* summariesFor(settings);
+          yield* PubSub.publish(summaries, current);
+          return current;
+        });
+
+      /**
+       * Records a fresh probe, which retires whatever the fallback memoized,
+       * and publishes it at once: routing and every subscriber move with each
+       * probe rather than after the slowest one of the pass.
+       */
+      const recordProbe = (
+        settings: Settings,
+        id: string,
+        probe: ConnectorProbe,
+      ): Effect.Effect<void> =>
+        Effect.gen(function* () {
+          yield* Ref.update(probes, (all) => new Map(all).set(id, probe));
+          yield* forget(fallbackModels, id);
+          yield* publish(settings);
         });
 
       /**
@@ -326,13 +358,13 @@ export class ConnectorManager extends Context.Service<
               });
             }
           }
-          // The registry now matches the document; clients may be admitted.
+          // The registry now matches the document; clients may be admitted,
+          // and the first list they are pushed names every entry it holds.
+          yield* publish(settings);
           yield* Deferred.succeed(registered, undefined);
           for (const conn of probeChanged ? changed : []) {
-            const probe = yield* probeOf(conn);
-            yield* recordProbe(conn.connectorInstanceId, probe);
+            yield* recordProbe(settings, conn.connectorInstanceId, yield* probeOf(conn));
           }
-          yield* publish(yield* summariesFor(settings));
         }).pipe(
           Effect.catchCause((cause) => Effect.logWarning("reconcile failed", cause)),
           // A pass that died or was interrupted must not strand the entrypoint;
@@ -458,12 +490,9 @@ export class ConnectorManager extends Context.Service<
                 const settings = yield* store.get;
                 yield* reconcile(settings, false);
                 for (const conn of settings.connectors) {
-                  const probe = yield* probeOf(conn);
-                  yield* recordProbe(conn.connectorInstanceId, probe);
+                  yield* recordProbe(settings, conn.connectorInstanceId, yield* probeOf(conn));
                 }
-                const summaries = yield* summariesFor(settings);
-                yield* publish(summaries);
-                return summaries;
+                return yield* publish(settings);
               }),
             )
           : Effect.flatMap(store.get, summariesFor);
@@ -513,7 +542,7 @@ export class ConnectorManager extends Context.Service<
           refresh === true ? Effect.tap(list(true), () => settleDefaultModel) : list(),
         models,
         ready: Deferred.await(registered),
-        changes: SubscriptionRef.changes(summariesRef),
+        changes: Stream.fromPubSub(summaries),
       });
     }),
   );
@@ -530,6 +559,7 @@ export class ConnectorManager extends Context.Service<
       const registry = yield* ConnectorRegistryService;
       return ConnectorCatalog.of({
         list: (refresh) => manager.list(refresh),
+        changes: manager.changes,
         models: (instanceId) => manager.models(instanceId),
         describe: Effect.succeed(registry.describe),
       });

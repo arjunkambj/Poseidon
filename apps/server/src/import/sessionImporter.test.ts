@@ -32,6 +32,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Stream from "effect/Stream";
 import * as Schema from "effect/Schema";
 
 import { persistenceLayer } from "../../test/layers";
@@ -163,6 +164,7 @@ const fixture = (options: { readonly ledgerPath?: string } = {}) =>
       ConnectorCatalog,
       ConnectorCatalog.of({
         list: () => Effect.succeed([summary(resuming, "Resuming harness")]),
+        changes: Stream.never,
         models: () => Effect.succeed([]),
         describe: Effect.succeed([]),
       }),

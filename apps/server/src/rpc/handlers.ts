@@ -104,6 +104,7 @@ export const handlersLayer = PoseidonRpcGroup.toLayer(
         sessionImporter.importSession(connectorInstanceId, sourceId),
 
       "connectors.list": ({ refresh }) => connectors.list(refresh ?? false),
+      "connectors.subscribe": () => connectors.changes,
       "connectors.models": ({ instanceId }) => connectors.models(instanceId),
       "connectors.describe": () => connectors.describe,
 

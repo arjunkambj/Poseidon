@@ -176,6 +176,7 @@ const testStack = (
               ConnectorCatalog,
               ConnectorCatalog.of({
                 list: () => Effect.succeed([]),
+                changes: Stream.never,
                 models: () => instance.listModels().pipe(Effect.catch(() => Effect.succeed([]))),
                 describe: Effect.succeed([]),
               }),

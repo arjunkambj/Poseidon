@@ -88,6 +88,8 @@ export class ConnectorCatalog extends Context.Service<
   {
     /** `refresh` re-runs each connector's probe before answering. */
     readonly list: (refresh?: boolean) => Effect.Effect<ReadonlyArray<ConnectorSummary>>;
+    /** The list as it changes: registrations and every probe that lands. */
+    readonly changes: Stream.Stream<ReadonlyArray<ConnectorSummary>>;
     readonly models: (instanceId: ConnectorInstanceId) => Effect.Effect<ReadonlyArray<ModelOption>>;
     /** Every connector this build ships, configured or not, with its metadata and form. */
     readonly describe: Effect.Effect<ReadonlyArray<ConnectorDescriptor>>;
@@ -97,6 +99,8 @@ export class ConnectorCatalog extends Context.Service<
     ConnectorCatalog,
     ConnectorCatalog.of({
       list: () => Effect.succeed([]),
+      // Held open: a feed that ended would have the client subscribe again.
+      changes: Stream.concat(Stream.make([]), Stream.never),
       models: () => Effect.succeed([]),
       describe: Effect.succeed([]),
     }),

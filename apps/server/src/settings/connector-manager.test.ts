@@ -155,6 +155,10 @@ const awaitSummaries = (
   pred: (summaries: ReadonlyArray<ConnectorSummary>) => boolean,
 ) => manager.changes.pipe(Stream.filter(pred), Stream.runHead, Effect.map(Option.getOrThrow));
 
+/** Whether every entry's probe has landed: the list is pushed before any has. */
+const probed = (summaries: ReadonlyArray<ConnectorSummary>) =>
+  summaries.every((summary) => summary.probe.status !== "probing");
+
 /** The open-instance reading the entrypoint hands the engine. */
 const openIds = (registry: ConnectorRegistry) =>
   Effect.map(registry.instances, (instances) => instances.map((instance) => instance.instanceId));
@@ -289,7 +293,7 @@ describe("ConnectorManager", () => {
         yield* store.update({ connectors: [{ ...conn, enabled: false }] });
         const disabled = yield* awaitSummaries(
           manager,
-          (all) => all.length === 1 && all[0]!.enabled === false,
+          (all) => all.length === 1 && all[0]!.enabled === false && probed(all),
         );
         // Disabled stays probed — the connectors page still wants binary state.
         expect(disabled[0]!.probe.status).toBe("ready");
@@ -364,7 +368,7 @@ describe("ConnectorManager", () => {
   it.effect("list(true) re-probes; models come from the probe", () =>
     withFixture(({ manager, probes }) =>
       Effect.gen(function* () {
-        const seeded = yield* awaitSummaries(manager, (all) => all.length === 1);
+        const seeded = yield* awaitSummaries(manager, (all) => all.length === 1 && probed(all));
         const afterReconcile = yield* Ref.get(probes);
         const list = yield* manager.list(true);
         expect(yield* Ref.get(probes)).toBe(afterReconcile + 1);

@@ -255,6 +255,7 @@ export const RPC_METHODS = {
   ...THREAD_SEARCH_RPC_METHODS,
   ...SESSION_IMPORT_RPC_METHODS,
   connectorsList: "connectors.list",
+  connectorsSubscribe: "connectors.subscribe",
   connectorsModels: "connectors.models",
   connectorsDescribe: "connectors.describe",
   ...FILE_RPC_METHODS,
@@ -363,6 +364,19 @@ const ConnectorsListRpc = Rpc.make(RPC_METHODS.connectorsList, {
   payload: Schema.Struct({ refresh: Schema.optional(Schema.Boolean) }),
   success: Schema.Array(ConnectorSummary),
   error: PoseidonRpcError,
+});
+
+/**
+ * The same summaries as `connectors.list`, pushed: the current list first,
+ * then a fresh one whenever the server registers an instance or a probe
+ * lands. A boot answers its first list before its probes finish, so this is
+ * how a client learns which harnesses can run without asking again.
+ */
+const ConnectorsSubscribeRpc = Rpc.make(RPC_METHODS.connectorsSubscribe, {
+  payload: empty,
+  success: Schema.Array(ConnectorSummary),
+  error: PoseidonRpcError,
+  stream: true,
 });
 
 const ConnectorsModelsRpc = Rpc.make(RPC_METHODS.connectorsModels, {
@@ -707,6 +721,7 @@ export const PoseidonRpcGroup = RpcGroup.make(
   ThreadsListSubscribeRpc,
   ThreadsSearchMessagesRpc,
   ConnectorsListRpc,
+  ConnectorsSubscribeRpc,
   ConnectorsModelsRpc,
   ConnectorsDescribeRpc,
   FilesSearchRpc,

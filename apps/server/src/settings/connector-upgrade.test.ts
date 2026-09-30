@@ -640,4 +640,53 @@ describe("ConnectorManager and the harness rank", () => {
       );
     }),
   );
+
+  it.effect("each probe is pushed as it lands, with routing already moved", () =>
+    Effect.gen(function* () {
+      const filename = databaseFile();
+      const claudeAnswers = yield* Deferred.make<void>();
+      const codexAnswers = yield* Deferred.make<void>();
+      // Claude Code turns out missing, and Codex's probe is still running
+      // behind it: the pass is not over when Claude Code's result is known.
+      const held: Tweak = (kind, definition) =>
+        kind === "claude"
+          ? { ...definition, probe: () => Effect.as(Deferred.await(claudeAnswers), notInstalled) }
+          : kind === "codex"
+            ? {
+                ...definition,
+                probe: (config) =>
+                  Effect.andThen(Deferred.await(codexAnswers), definition.probe(config)),
+              }
+            : definition;
+      yield* withBoot(
+        filename,
+        new Set(),
+        ({ manager, unrunnable }) =>
+          Effect.gen(function* () {
+            // Admitted before any probe: the first list names every entry.
+            const first = yield* manager.changes.pipe(
+              Stream.runHead,
+              Effect.map(Option.getOrThrow),
+            );
+            expect(first.map((summary) => summary.probe.status)).toEqual([
+              "probing",
+              "probing",
+              "probing",
+            ]);
+
+            yield* Deferred.succeed(claudeAnswers, undefined);
+            const landed = yield* manager.changes.pipe(
+              Stream.filter((all) => all[0]?.probe.status === "not-installed"),
+              Stream.runHead,
+              Effect.map(Option.getOrThrow),
+            );
+            expect(landed[1]!.probe.status).toBe("probing");
+            // The server's rule took it in no later than the renderer can see it.
+            expect(yield* Ref.get(unrunnable)).toEqual(new Set([landed[0]!.connectorInstanceId]));
+            yield* Deferred.succeed(codexAnswers, undefined);
+          }),
+        held,
+      );
+    }),
+  );
 });

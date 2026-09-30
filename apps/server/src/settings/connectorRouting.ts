@@ -150,9 +150,10 @@ export const readConnectorRouting = (
 
 /**
  * @public The instances whose latest probe says their harness cannot run
- * (`probeCanRun`). The connector manager writes it with every summary list it
- * publishes, so the renderer's mirror of the rule switches at the same moment;
- * routing and the engine's seed read it fresh each time. A `Context.Reference` like
+ * (`probeCanRun`). The connector manager writes it as each probe lands, just
+ * ahead of the summaries it pushes to `connectors.subscribe`, so the
+ * renderer's mirror of the rule never runs ahead of it; routing and the
+ * engine's seed read it fresh each time. A `Context.Reference` like
  * `OpenConnectors`, and it holds the `Ref` itself so the writer and every
  * reader share one: `null` is "nobody is probing", and then no entry is
  * passed over, which is what every test without a manager asserts.

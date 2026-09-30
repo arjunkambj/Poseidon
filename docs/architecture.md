@@ -2561,6 +2561,7 @@ the client in the terminal `incompatible` state.
 | `sessions.importable`         | call   | Sessions the harnesses recorded on their own, newest first, with their project and any earlier import                                   |
 | `sessions.import`             | call   | Brings one in as a thread with its transcript; its first turn resumes the harness session when the instance can; idempotent             |
 | `connectors.list`             | call   | Configured connectors with their cached probes; `refresh` re-probes                                                                     |
+| `connectors.subscribe`        | stream | The same list, pushed once instances register and again as each probe lands                                                             |
 | `connectors.models`           | call   | The model picker's options for one instance                                                                                             |
 | `connectors.describe`         | call   | Every connector the build ships: metadata and config form, configured or not                                                            |
 | `files.search`                | call   | The composer's `#` file search; `threadId` searches the thread's root                                                                   |

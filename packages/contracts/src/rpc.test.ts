@@ -24,6 +24,7 @@ const STREAMING_METHODS = [
   RPC_METHODS.threadsListSubscribe,
   RPC_METHODS.browserSubscribe,
   RPC_METHODS.settingsSubscribe,
+  RPC_METHODS.connectorsSubscribe,
   RPC_METHODS.gitWorktreeSetup,
   RPC_METHODS.terminalSubscribe,
 ];
@@ -36,7 +37,7 @@ describe("PoseidonRpcGroup", () => {
     }),
   );
 
-  it.effect("streams the five subscriptions and the setup script, and nothing else", () =>
+  it.effect("streams the six subscriptions and the setup script, and nothing else", () =>
     Effect.gen(function* () {
       const streaming = yield* Effect.succeed(
         [...PoseidonRpcGroup.requests.values()]

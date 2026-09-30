@@ -254,9 +254,11 @@ rather than growing a backlog. The client drops its cached document and
 resubscribes from scratch — `Stream.retry` covers a failed attempt,
 `Stream.repeat` covers the clean end the server sends after a resnapshot.
 
-Read models with no subscription (`projects.list`, `connectors.list`,
-`keybindings.get`) are refetched once per connected epoch through
-`perConnection`, because the socket carries no invalidation.
+Read models with no subscription (`projects.list`, `keybindings.get`) are
+refetched once per connected epoch through `perConnection`, because the socket
+carries no invalidation. The connector list is not one of them: a boot answers
+its first list before its probes land, so `connectorsAtom` follows
+`connectors.subscribe`, which pushes the list again as each probe lands.
 
 ---
 
@@ -4440,22 +4442,24 @@ registry's open instances as actual state. A new or edited entry is probed —
 always, because the connectors page wants binary state even for a disabled
 instance — and opened when enabled; a toggled one is closed or reopened; a
 removed one's scope is closed, which deregisters it. `connectors.list` answers
-from the last reconcile's probes, and `refresh: true` reconciles and re-probes,
-which is what the page's probe button and every save do. A probe gets 15 s
-before it is reported as an error.
+from the probes recorded so far, and `refresh: true` reconciles and re-probes,
+which is what the page's probe button and every save do. `connectors.subscribe`
+pushes the same list once a reconcile has registered its instances and again as
+each probe lands, so the renderer never keeps reading "probing" after the
+server knows better. A probe gets 15 s before it is reported as an error.
 
 Routing follows the settings document's order, not the order instances happened
 to be opened in — the same reading a new thread's default model is seeded from,
 so the two can never name different instances. An enabled instance whose latest
 probe says its harness cannot run (`probeCanRun`: not installed, or signed out)
 goes behind every one that can; the manager publishes those instances to
-`UnrunnableConnectors` together with the summaries, which selection, the seed
-and the writer's routed fallback all read, and the renderer applies the same
-rule to the probes `connectors.list` carries. A probe still running counts as able, and when
-nothing can run the first enabled instance still takes the turn, so the health
-banner above the composer says what to fix. That order is the fallback: a
-thread that chose its instance runs on it, and is seeded from its default or
-first model, while it is open.
+`UnrunnableConnectors` as each probe lands, just ahead of the summaries it
+pushes, which selection, the seed and the writer's routed fallback all read,
+and the renderer applies the same rule to the probes those summaries carry. A
+probe still running counts as able, and when nothing can run the first enabled
+instance still takes the turn, so the health banner above the composer says
+what to fix. That order is the fallback: a thread that chose its instance runs
+on it, and is seeded from its default or first model, while it is open.
 
 The registry's order is the harness rank, and an existing install is brought
 up to it once per boot (`apps/server/src/settings/connectorUpgrade.ts`). A

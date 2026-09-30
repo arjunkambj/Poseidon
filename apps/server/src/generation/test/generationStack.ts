@@ -16,6 +16,7 @@ import { makeFakeConnector, type FakeConnectorOptions } from "@poseidon/testkit/
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Stream from "effect/Stream";
 import * as Queue from "effect/Queue";
 
 import { OrchestrationEngine } from "../../orchestration/Engine";
@@ -57,6 +58,7 @@ export const generationStack = (options: Pick<FakeConnectorOptions, "generateTex
       ConnectorCatalog,
       ConnectorCatalog.of({
         list: () => Effect.succeed([]),
+        changes: Stream.never,
         models: () => instance.listModels().pipe(Effect.catch(() => Effect.succeed([]))),
         describe: Effect.succeed([]),
       }),
