@@ -16,10 +16,11 @@
  *   reports the CLI's shell commands. A foreground one (`task_type`
  *   `local_bash`, not `is_backgrounded`) is a command the CLI waited on long
  *   enough to track: its row settles with its own result, so its `task_*`
- *   messages add nothing (`steering`). A background one's row settled when the
- *   command was launched and cannot say how it ended; a `task_*` message
- *   whose call opened a row of another kind is kept unmapped, whole, until a
- *   mapping onto that row exists;
+ *   messages add nothing (`steering`), until a `task_updated` says the CLI
+ *   moved it to the background. A background one's row settled when the
+ *   command was launched and cannot say how it ended; a `task_*` message whose
+ *   call opened a row of another kind is kept unmapped, whole, until a mapping
+ *   onto that row exists;
  * - the subagent's own messages — its stream, its snapshots and the results of
  *   its calls — carrying the call's id as `parent_tool_use_id`. The translator
  *   reads them as it reads the main loop's, and every row they open is nested
@@ -168,6 +169,15 @@ export const makeSubagents = (): Subagents => {
       if (message.task_type === "local_bash" && message.is_backgrounded === false) {
         foreground.add(taskId);
       }
+    }
+    // A foreground command the CLI later moves to the background: its row
+    // settles as launched there, so how it ends is a background command's.
+    if (
+      message.subtype === "task_updated" &&
+      taskId !== undefined &&
+      asRecord(message.patch).is_backgrounded === true
+    ) {
+      foreground.delete(taskId);
     }
     return named ?? (taskId === undefined ? undefined : calls.get(taskId));
   };

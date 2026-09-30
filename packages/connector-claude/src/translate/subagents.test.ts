@@ -140,6 +140,21 @@ describe("the lifecycle of a call that is not a task", () => {
     }
   });
 
+  it("leaves a foreground command's messages unread once the CLI moves it to the background", () => {
+    const subagents = makeSubagents();
+    const moved = {
+      type: "system",
+      subtype: "task_updated",
+      task_id: "b1",
+      patch: { is_backgrounded: true },
+    };
+    expect(subagents.callOf(started)).toBe("call-bash");
+    expect(subagents.lifecycle("call-bash", started)).toEqual([]);
+    expect(subagents.callOf(moved)).toBe("call-bash");
+    expect(subagents.lifecycle("call-bash", moved)).toBeNull();
+    expect(subagents.lifecycle("call-bash", notified)).toBeNull();
+  });
+
   it("leaves a background command's messages unread", () => {
     const subagents = makeSubagents();
     const background = { ...started, is_backgrounded: true };
