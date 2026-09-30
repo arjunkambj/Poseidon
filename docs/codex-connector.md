@@ -144,13 +144,16 @@ nothing was recorded again and `OLDEST_TESTED_VERSION` and
   notifications `event.unmapped`).
 - Under `untrusted`, 0.159.2 still asks about a plain read: `cat notes.txt`
   under full access stopped on a command approval, and so did the model's
-  `cat` of a skill's `SKILL.md` (`plugin-skill`).
+  `cat` of a skill's `SKILL.md` when a reference was only a sentence (the
+  first `plugin-skill`, before references became `skill` inputs).
 - The model catalogue moved on the server's side, not the protocol's:
   `model/list` now marks `gpt-6.1-sol` (default effort `low`) as its default
   row, ahead of `gpt-6-astra`. The effort ladders are otherwise as below, and
   `ultra` is listed on `gpt-6.1-sol` as well. A thread on `default` still runs
   on what the operator's `config.toml` names (`gpt-6-astra` on the recording
-  machine), which is the model every new recording ran on.
+  machine), which is the model the new recordings ran on; `plugin-skill`,
+  recorded again later that day after `config.toml` had moved to
+  `gpt-6.1-sol`, ran on that.
 - A real thread driven through the whole server (a scratch run of the e2e
   harness with a live Codex instance) answered a plain turn, and an approval
   turn stopped on its card, was allowed once and wrote its file.
@@ -159,6 +162,31 @@ nothing was recorded again and `OLDEST_TESTED_VERSION` and
 What the check did turn up was older than the release, and is fixed: the
 sessions extension did not recognise the `AGENTS.md` preamble most rollouts
 carry (see [Session files](#extensions)).
+
+The review of that work, also on 0.159.2 and the same day, found three more,
+all fixed and `plugin-skill` recorded again:
+
+- A plugin's MCP servers sent as a nested `mcp_servers` table in the thread's
+  `config` replaced the table the argv's `-c mcp_servers.poseidon.*` built,
+  so the thread lost `poseidon` (the first `plugin-skill` has no status line
+  for it). They now go as one dotted key each (see
+  [Poseidon's plugins](#poseidons-plugins)).
+- 0.159.2's `UserInput` has `skill` and `mention` inputs, the way the CLI's
+  own composer attaches a skill or a plugin. A skill reference is now a
+  `skill` input, so the model no longer reads `SKILL.md` on a card (see
+  [References](#references)).
+- `thread/start`, `thread/resume`, `thread/fork` and `turn/start` take
+  `approvalsReviewer`, which the connector left to the operator's
+  `config.toml`; `auto_review` there would have had a Codex subagent answer
+  the asks Poseidon's ladder should see. The thread now names `user` (see
+  [Runtime modes](#runtime-modes)).
+
+`thread/fork`, `skills/extraRoots/set`, `skills/list`'s paths and the `skill`
+input were read against 0.159.2's bindings and are recorded only on 0.159.2;
+whether 0.156.1 to 0.159.1 have them was not checked. An older CLI that lacks
+one falls back rather than failing the thread: a refused fork is carried over
+as text, refused extra roots are a `session.warning`, and a skill
+`skills/list` does not give is named in a sentence.
 
 ## Config
 
@@ -233,9 +261,10 @@ The probe recording (`fixtures/codex/probe/`, 0.156.1) lists `ultra` —
 task delegation"}` — on `gpt-6-astra` (the default), `gpt-6-sol`,
 `gpt-5.6-sol` and `gpt-5.6-terra`, and not on `gpt-6-luna`, `gpt-5.6-luna`
 or `gpt-5.5`, so only those four offer it (`models.test.ts`). On 2026-10-01
-0.159.2's `model/list` listed the same rows, ladders and defaults, plus
-`gpt-6.1-sol` as its default row (`low` to `max`, and `ultra`); the ladder is
-read per row, so nothing in the connector names a model.
+0.159.2's `model/list` listed the same rows and ladders, plus `gpt-6.1-sol`
+(`low` to `max`, and `ultra`), which is now its default row in place of
+`gpt-6-astra`; the ladder is read per row, so nothing in the connector names
+a model.
 
 ## The child environment
 
@@ -281,7 +310,8 @@ reads the real value from the process (`bearer-hidden`: the model's
 
 Every recorded session but one shows the CLI starting `poseidon`
 (`mcpServer/startupStatus/updated`), and failing it, because those recordings
-point it at a port nothing listens on.
+point it at a port nothing listens on; `plugin-skill` shows it beside the
+plugin's own server.
 `mcp-tool-approval` points it at a live loopback endpoint instead
 (`test/mcpStandIn.ts`, which lists one tool shaped as the gateway lists
 `browser_open` and checks the bearer), and the model calls that tool.
@@ -305,27 +335,39 @@ counterpart for (`plugins.ts`):
   folders and a single skill folder alike. A CLI that refuses the request
   still runs the thread, without them, and the thread is told;
 - their MCP servers go in the `config` of `thread/start`, `thread/resume` or
-  `thread/fork`, as `mcp_servers.plugin-<plugin>-<server>` (`command`, `args`,
-  `env` for stdio; `url` and `http_headers` for HTTP). The CLI merges that
-  into the user's table for this thread only, so nothing is written to
-  `config.toml`, and none of it is on the argv, where `ps` would show a
-  header's or a variable's value. The prefix keeps a plugin from ever taking
-  over `poseidon`.
+  `thread/fork`, one dotted key per server,
+  `mcp_servers.plugin-<plugin>-<server>` (`command`, `args`, `env` for stdio;
+  `url` and `http_headers` for HTTP), for this thread only: nothing is written to `config.toml`, and none
+  of it is on the argv, where `ps` would show a header's or a variable's
+  value. Dotted, because the CLI lays the thread's `config` over the argv's
+  `-c` overrides key by key. A nested `{"mcp_servers": {...}}` replaced the
+  whole table those overrides built, and the thread lost `poseidon`; the
+  user's `config.toml` servers, a layer below, survived (checked on 0.159.2,
+  and the first `plugin-skill` recording shows it). A dotted key sets its own
+  server and nothing else. The prefix keeps a plugin from ever taking over
+  `poseidon`, and each part keeps to `[A-Za-z0-9_-]`, so a key holds no dot of
+  its own. Two plugins whose servers come out under one key — `a-b`'s `c` and
+  `a`'s `b-c` — start the first, and the session says which it left out.
+  Only `${CLAUDE_PLUGIN_ROOT}` is expanded in a server's values (by the
+  registry); any other `${VAR}` in a header or an `env` value reaches Codex as
+  written, since Codex expands neither. Mapping such a value onto Codex's
+  `env_http_headers` or `bearer_token_env_var` is not done.
 
 A plugin's commands, agents and hooks have no Codex counterpart and are not
 loaded. With no plugin enabled the session sends exactly what it sent before,
 which is why the older recordings still replay. `plugin-skill` records one
-plugin: the extra root, the server tried (and failed, pointed at a port
-nothing listens on) and the model reading and following the skill a turn
-referenced.
+plugin: the extra root, the server tried beside `poseidon` (both failed,
+pointed at a port nothing listens on) and the model following the skill a
+turn referenced, attached as a `skill` input.
 
 ## One session, one process
 
 A thread's session is one app-server process for its whole life
 (`session.ts`), opened by `threadOpen.ts`:
 
-- a new thread is `thread/start` with the cwd, the approval policy and the
-  sandbox its modes call for, and the model unless it is `default`;
+- a new thread is `thread/start` with the cwd, the approval policy, its
+  reviewer and the sandbox its modes call for, and the model unless it is
+  `default`;
 - a resumed one is `thread/resume` with the stored thread id and
   `excludeTurns: true` (Poseidon keeps its own timeline). The CLI finds the
   thread in its own rollout, so a new process picks the conversation up
@@ -341,7 +383,10 @@ A thread's session is one app-server process for its whole life
   source alone (`fork`: the forked thread names the word the source was told).
   A fork never falls back: one the CLI refuses, or of a reference this
   connector cannot read, fails the start, and the server carries the
-  conversation over as text instead.
+  conversation over as text instead. `fork` forks a source whose app-server
+  had already exited; forking while the source's own process is still open,
+  the app's usual case (its bound session idle), is not recorded, and a
+  refusal there would only show as the text carry-over.
 
 The reference (`sessionRef.ts`) is `{ threadId, cwd }`, the thread id being a
 UUID. `send` is `turn/start` and returns `TurnInProgress` while a turn runs.
@@ -533,8 +578,12 @@ server asking the user for input — is declined, and the older protocol's `exec
 
 ### Runtime modes
 
-`modes.ts`. The approval policy is `untrusted` in every mode; only the
-sandbox varies:
+`modes.ts`. The approval policy is `untrusted` in every mode, and its
+reviewer (`approvalsReviewer`, on `thread/start`, `thread/resume` and
+`thread/fork`) is always `user`, so every ask comes to Poseidon: left out it
+is whatever `approvals_reviewer` the operator's `config.toml` names, and
+`auto_review` there has a Codex subagent approve or deny asks itself. Only
+the sandbox varies:
 
 | Runtime mode        | Approval policy | Sandbox              |
 | ------------------- | --------------- | -------------------- |
@@ -622,14 +671,25 @@ not a failed turn (`attachments.ts`, `userInput.ts`).
 
 ## References
 
-A skill or plugin picked from the composer (`TurnInput.references`) becomes
-one sentence after the mentions, the one the other connectors write: `Use the
-"<name>" skill.` or `Use the "<name>" plugin.`, skills first and each name
-once (`userInput.ts`). The composer's text carries only its draft token, which
-the CLI gives no meaning to. The CLI loads the user's skills and plugins and
-the session's Poseidon plugins' skills (above), so either name is one the
-model can act on; in `plugin-skill` it read the named skill's `SKILL.md` and
-answered with the word it holds.
+A skill picked from the composer (`TurnInput.references`) goes the way the
+CLI's own composer attaches one: a `skill` input, after the text, naming the
+skill and its `SKILL.md` (`userInput.ts`). The path comes from the
+app-server's `skills/list` for the workspace, asked once for a turn or a
+steer that references a skill; it lists the user's skills and the session's
+Poseidon plugins' skills (above) alike. The CLI then adds the skill's
+instructions to the turn itself: in `plugin-skill` the model answered with
+the word the skill holds without running a command, so no card opened for
+reading the file (before, with only a sentence, it ran `cat` on the
+`SKILL.md`, which `untrusted` asks about).
+
+A plugin reference, and a skill `skills/list` does not name (or a CLI that
+will not list them), becomes one sentence after the mentions, the one the
+other connectors write: `Use the "<name>" skill.` or `Use the "<name>"
+plugin.`, skills first and each name once. The composer's text carries only
+its draft token, which the CLI gives no meaning to. The protocol's `mention`
+input is how the CLI's composer attaches a plugin, but what path it takes for
+one is not recorded, and no turn has been recorded that references one of
+Codex's own installed plugins; that is left open.
 
 ## Resume, model and effort
 
@@ -829,7 +889,12 @@ what each holds).
 - **`thread/start`'s `config` adds MCP servers for the thread** (0.159.2:
   both a stdio and an HTTP server named only there were started and
   reported), which is how Poseidon's plugins reach it without touching
-  `config.toml`.
+  `config.toml` — as dotted `mcp_servers.<name>` keys. A nested
+  `mcp_servers` table there replaces the one the argv's `-c` overrides built
+  (so `poseidon` goes), though not `config.toml`'s.
+- **A `skill` input brings the skill's instructions into the turn,** so the
+  model follows a skill without reading its `SKILL.md` (0.159.2,
+  `plugin-skill`).
 - **`skills/extraRoots/set` is per app-server process,** and takes a skills
   directory or a single skill folder; `skills/list` lists what it added in
   the `user` scope.
@@ -881,8 +946,10 @@ tell you:
 Beyond the tests, read the new release's bindings
 (`codex app-server generate-ts --experimental --out <scratch dir>`) for a
 changed field in `protocol.ts`'s schemas, a new item type for the tool
-vocabulary, a new server request, and whether `collaborationMode` and
-`requestUserInput` are still experimental; validate the recorded frames
+vocabulary, a new server request, a new param that would let the
+operator's `config.toml` take something the connector decides out of its
+hands (as `approvalsReviewer` would have), and whether `collaborationMode`
+and `requestUserInput` are still experimental; validate the recorded frames
 against its JSON schema (`codex app-server generate-json-schema
 --experimental --out <scratch dir>`); check again whether `untrusted` still
 asks about reads, and what `model/list` offers; and read a fresh rollout with

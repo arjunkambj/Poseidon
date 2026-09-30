@@ -1167,15 +1167,18 @@ the ref (`sessionRef.ts`: the CLI's thread id and the cwd), falling back to a
 new thread when the CLI has no rollout for it, or `thread/fork` for a native
 fork, which never falls back. `plugins.ts` hands the session's Poseidon
 plugins over: their skill folders with `skills/extraRoots/set` before the
-thread opens, their MCP servers in the thread's `config` as
-`plugin-<plugin>-<server>`. Each turn is a `turn/start`
-naming the thread's model and effort; `modes.ts` keeps the approval policy
-`untrusted` in every mode and varies only the sandbox. `userInput.ts` and
+thread opens, their MCP servers in the thread's `config` as one dotted
+`mcp_servers.plugin-<plugin>-<server>` key each, which leaves `poseidon` in
+place. Each turn is a `turn/start` naming the thread's model and effort;
+`modes.ts` keeps the approval policy `untrusted` in every mode, with its
+reviewer always `user`, and varies only the sandbox. `userInput.ts` and
 `attachments.ts` send images as `localImage` inputs and name other files by
-path, and write each skill or plugin reference as a sentence naming it. `translate/` turns notifications into runtime events: `tools.ts` (item
-rows), `usage.ts` (turn usage from the thread's running total, and the
-context) and `translator.ts` (turns, errors, warnings, MCP status, and the
-`IGNORED` list). The command and file-change approvals go through the shared
+path; a skill reference is a `skill` input naming the `SKILL.md` that
+`skills/list` gives, and a plugin reference a sentence naming it.
+`translate/` turns notifications into runtime events: `tools.ts` (item rows),
+`usage.ts` (turn usage from the thread's running total, and the context) and
+`translator.ts` (turns, errors, warnings, MCP status, and the `IGNORED`
+list). The command and file-change approvals go through the shared
 approval gate (`toolGate.ts`, `approvals.ts`): each request becomes a `Shell`
 command (the script inside the CLI's login-shell wrapper) or one `Edit` per
 path the file change's item named, the ladder decides, and a prompt opens a
@@ -1213,10 +1216,10 @@ Its extensions: `extensions/skills.ts` reads the skill roots the CLI loads
 (the project's `.codex/skills` and `.agents/skills`, `CODEX_HOME/skills`, and
 `~/.agents/skills`), `extensions/plugins.ts` lists the CLI's installed
 plugins through `codex plugin list --json`, and `extensions/mcpServers.ts`
-lists, adds and removes MCP servers through `codex mcp`, keeping the names Poseidon added in
-`CODEX_HOME/poseidon-mcp.json` since the CLI carries no ownership marker, and
-`sessionFiles.ts` lists and reads the CLI's own rollouts under
-`CODEX_HOME/sessions` for an import.
+lists, adds and removes MCP servers through `codex mcp`, keeping the names
+Poseidon added in `CODEX_HOME/poseidon-mcp.json` since the CLI carries no
+ownership marker, and `sessionFiles.ts` lists and reads the CLI's own
+rollouts under `CODEX_HOME/sessions` for an import.
 
 May import `connector-sdk`, `contracts` and `shared`; its tests also import
 `testkit`. It is the only place in the tree that knows `codex` exists, apart
@@ -2505,12 +2508,13 @@ recordings under `packages/testkit/fixtures/codex/`.
 **One process per session.** Each thread is one `codex app-server` process,
 opened with `initialize` (experimental API on) and `thread/start`,
 `thread/resume` or, for a native fork, `thread/fork`; each turn is a
-`turn/start` on it. Stop is `turn/interrupt`,
-steering `turn/steer`, `/compact` `thread/compact/start`. A resume the CLI has
-no rollout for starts a new thread and says so with `session.warning`.
+`turn/start` on it. Stop is `turn/interrupt`, steering `turn/steer`,
+`/compact` `thread/compact/start`. A resume the CLI has no rollout for starts
+a new thread and says so with `session.warning`.
 
-**Approvals.** The approval policy is `untrusted` in every runtime mode and
-only the sandbox varies, so the CLI asks and Poseidon's ladder decides; its
+**Approvals.** The approval policy is `untrusted` in every runtime mode, its
+reviewer is always `user`, and only the sandbox varies, so the CLI asks and
+Poseidon's ladder decides; its
 command and file-change requests go through `makeApprovalGate` like every
 other connector's calls.
 

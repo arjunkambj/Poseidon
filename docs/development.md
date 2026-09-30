@@ -938,7 +938,9 @@ of `test/scenario.ts`; `question` answers the card with its first option,
 `steering` steers once the command row shows, `compaction` compacts a
 one-turn thread, and `plugin-skill` hands the session one Poseidon plugin
 (`test/plugin.ts`, written beside the scratch repo) and references its
-skill.
+skill. The finaliser keeps a listed skill whose path lies under the scratch
+root, such as that plugin's in `skills/list`'s answer, and folds the
+operator's own into one scrubbed entry of the same shape.
 `test/recordGenerateText.test.ts` runs the instance's `generateText` once
 (`generate-text`: a short title prompt with a JSON schema, effort `low`, in a
 temporary directory). `src/conformance.test.ts`
