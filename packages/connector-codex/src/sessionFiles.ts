@@ -67,7 +67,12 @@ const ROLLOUT_FILE =
 const TAGGED_CONTEXT = /^<([a-z_][\w-]*)(\s[^>]*)?>[\s\S]*<\/\1>$/i;
 /** A block that is only a tag, opening or closing — an attached image's frame. */
 const BARE_TAG = /^<\/?[a-z_][\w-]*(\s[^\n]*)?>$/i;
-const AGENTS_PREAMBLE = /^# AGENTS\.md instructions for /;
+/**
+ * The `AGENTS.md` preamble: `# AGENTS.md instructions for <dir>` for a
+ * project's file, and the bare heading for the one in `CODEX_HOME`, which is
+ * the form most rollouts carry (both on 0.156.1 and on 0.159.2).
+ */
+const AGENTS_PREAMBLE = /^# AGENTS\.md instructions(?: for |\s*\n)/;
 
 const isInjected = (text: string): boolean =>
   TAGGED_CONTEXT.test(text) || BARE_TAG.test(text) || AGENTS_PREAMBLE.test(text);
