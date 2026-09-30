@@ -10,7 +10,8 @@ import { loadStdioJsonRpcRecording } from "@poseidon/testkit/stdioJsonRpcRecordi
 import { describe, expect, it } from "vitest";
 
 import { CODEX_KIND } from "../kind";
-import { addArgs, cliError, toMcpServerConfig } from "./mcpServers";
+import { cliError } from "./cli";
+import { addArgs, toMcpServerConfig } from "./mcpServers";
 
 /** The last `codex mcp list --json` of the recording with the most servers, parsed. */
 const recordedRows = (): ReadonlyArray<unknown> => {

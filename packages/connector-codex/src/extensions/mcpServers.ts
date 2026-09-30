@@ -29,24 +29,18 @@
  * (`fixtures/codex/mcp-servers/`).
  */
 
-import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
-import { ConnectorExtensionFailed } from "@poseidon/connector-sdk/extensions";
 import type { ExtensionScope, McpServersExtension } from "@poseidon/connector-sdk/extensions";
 import type { McpServerConfig } from "@poseidon/contracts/connectors";
 import * as Effect from "effect/Effect";
 import { isObject, isString } from "effect/Predicate";
 import type * as Semaphore from "effect/Semaphore";
 
-import type { ResolvedBinary } from "../binary";
+import { cliError, failed, runCodex, type CodexCli } from "./cli";
 
 /** The ledger of names Poseidon added, beside the CLI's own config. */
 export const LEDGER_FILE = "poseidon-mcp.json";
-
-const failed = (code: ConnectorExtensionFailed["code"], message: string) =>
-  new ConnectorExtensionFailed({ code, message });
 
 // ── `codex mcp list --json` → McpServerConfig ──────────────────
 
@@ -143,29 +137,7 @@ export const addArgs = (server: McpServerConfig): ReadonlyArray<string> | string
   return ["mcp", "add", server.name, "--url", server.url, ...bearer];
 };
 
-// ── running the CLI ────────────────────────────────────────────
-
-interface Ran {
-  readonly code: number;
-  readonly stdout: string;
-  readonly stderr: string;
-}
-
-/**
- * What the CLI said went wrong: from its `Error:` line on, without the
- * warnings it prints first; the whole of stderr when there is no such line.
- */
-export const cliError = (stderr: string): string => {
-  const at = stderr.indexOf("Error:");
-  const said = (at < 0 ? stderr : stderr.slice(at)).trim();
-  return said === "" ? "codex exited without saying why" : said;
-};
-
-export interface CodexMcpServersOptions {
-  /** The binary to run, resolved per call: an install that appears later is found. */
-  readonly binary: () => ResolvedBinary | null;
-  /** The child's environment: default deny, with the instance's `CODEX_HOME`. */
-  readonly env: () => Record<string, string>;
+export interface CodexMcpServersOptions extends CodexCli {
   /** The `CODEX_HOME` the CLI will use; the ledger lives there. */
   readonly codexHome: string;
   /** Serialises writers, so two adds never interleave on one config. */
@@ -175,39 +147,7 @@ export interface CodexMcpServersOptions {
 export const makeCodexMcpServers = (options: CodexMcpServersOptions): McpServersExtension => {
   const ledgerPath = NodePath.join(options.codexHome, LEDGER_FILE);
 
-  const run = (args: ReadonlyArray<string>): Effect.Effect<Ran, ConnectorExtensionFailed> =>
-    Effect.gen(function* () {
-      const binary = options.binary();
-      if (binary === null) {
-        return yield* failed(
-          "internal",
-          "codex not found on PATH or in the usual install directories",
-        );
-      }
-      const env = options.env();
-      return yield* Effect.callback<Ran, ConnectorExtensionFailed>((resume) => {
-        const child = execFile(
-          binary.command,
-          [...args],
-          // A neutral directory, so no project's `.codex/config.toml` is read.
-          { cwd: NodeOS.tmpdir(), timeout: 30_000, encoding: "utf8", env },
-          (error, stdout, stderr) => {
-            if (error !== null && typeof (error as { code?: unknown }).code !== "number") {
-              resume(Effect.fail(failed("internal", `${binary.display}: ${error.message}`)));
-              return;
-            }
-            resume(
-              Effect.succeed({
-                code: error === null ? 0 : (error as { code: number }).code,
-                stdout,
-                stderr,
-              }),
-            );
-          },
-        );
-        return Effect.sync(() => child.kill());
-      });
-    });
+  const run = runCodex(options);
 
   const readLedger = Effect.tryPromise(() => readFile(ledgerPath, "utf8")).pipe(
     Effect.map((text) => {
