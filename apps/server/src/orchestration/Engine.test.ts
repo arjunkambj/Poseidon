@@ -11,6 +11,7 @@ import {
 } from "@poseidon/contracts/ids";
 import type { ThreadId } from "@poseidon/contracts/ids";
 import type { Command } from "@poseidon/contracts/orchestration";
+import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
@@ -19,6 +20,7 @@ import * as Layer from "effect/Layer";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { OrchestrationEngine } from "./Engine";
+import { ConnectorModels } from "../settings/connectorRouting";
 import { engineLayer, persistenceLayer } from "../../test/layers";
 
 const NOW = "2026-01-02T03:04:05.000Z";
@@ -442,6 +444,67 @@ describe("OrchestrationEngine", () => {
           expect(settings?.model).toBe("acme/chosen");
           expect(settings?.connectorInstanceId).toBe(chosen);
         }).pipe(Effect.provide(OrchestrationEngine.layer.pipe(Layer.provideMerge(persistence))));
+      }),
+    ),
+  );
+
+  it.effect("asks the instances for their models before it takes the write lock", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const persistence = Layer.succeedContext(yield* Layer.build(persistenceLayer()));
+        const lister = makeConnectorInstanceId();
+        const asked = yield* Deferred.make<void>();
+        const answer = yield* Deferred.make<ReadonlyArray<string>>();
+        // A connector whose list takes as long as a harness start does.
+        const models = Layer.succeed(ConnectorModels, () =>
+          Effect.andThen(Deferred.succeed(asked, undefined), Deferred.await(answer)),
+        );
+
+        yield* Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient;
+          yield* sql`
+            INSERT INTO settings (key, value_json, updated_at)
+            VALUES (
+              'settings',
+              ${JSON.stringify({
+                defaults: { model: "acme/shared" },
+                connectors: [{ connectorInstanceId: lister, enabled: true, config: {} }],
+              })},
+              ${NOW}
+            )
+          `;
+          const engine = yield* OrchestrationEngine;
+          yield* engine.dispatch(createProject);
+          const create = yield* Effect.forkChild(
+            engine.dispatch({
+              commandId: makeCommandId(),
+              createdAt: NOW,
+              type: "thread.create",
+              threadId,
+              projectId,
+              settings: {},
+            }),
+          );
+          yield* Deferred.await(asked);
+          // Every other write goes through while the create waits on the list.
+          const other = yield* engine.dispatch({
+            ...createProject,
+            commandId: makeCommandId(),
+            projectId: makeProjectId(),
+            workspaceRoot: "/other",
+          });
+          expect(other.status).toBe("accepted");
+
+          yield* Deferred.succeed(answer, ["acme/shared"]);
+          expect((yield* Fiber.join(create)).status).toBe("accepted");
+          const settings = (yield* engine.threadDoc(threadId))?.settings;
+          expect(settings?.model).toBe("acme/shared");
+          expect(settings?.connectorInstanceId).toBe(lister);
+        }).pipe(
+          Effect.provide(
+            OrchestrationEngine.layer.pipe(Layer.provide(models), Layer.provideMerge(persistence)),
+          ),
+        );
       }),
     ),
   );

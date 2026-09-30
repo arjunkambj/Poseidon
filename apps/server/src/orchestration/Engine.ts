@@ -62,6 +62,7 @@ import {
   seedModel,
   seedThreadDefaults,
   UnrunnableConnectors,
+  type SeededModel,
 } from "../settings/connectorRouting";
 import { ReadModelStore } from "../persistence/ReadModels";
 import {
@@ -266,12 +267,13 @@ export class OrchestrationEngine extends Context.Service<
        * The model a `thread.create` without one starts on. A thread that chose
        * its connector instance starts on that instance's own default or first
        * model; otherwise the app-wide default comes first, under an instance
-       * that lists it, and then the routed connector's own, so that a
-       * `defaultModel` on the connectors page means "new threads on this
-       * connector" rather than nothing at all. `seedModel` walks the order
-       * `ConnectorSelection` routes by, and names the instance it seeded
-       * from: the thread is pinned there, so a probe that lands before its
-       * first turn cannot route that turn to a harness without its model.
+       * that lists it (unpinned when none does), and without one the routed
+       * connector's own, so that a `defaultModel` on the connectors page means
+       * "new threads on this connector" rather than nothing at all. `seedModel`
+       * walks the order `ConnectorSelection` routes by, and names the instance
+       * it seeded from: the thread is pinned there, so a probe that lands
+       * before its first turn cannot route that turn to a harness without its
+       * model.
        */
       const defaultModel = (chosen: ConnectorInstanceId | undefined) =>
         seedModel(
@@ -282,20 +284,29 @@ export class OrchestrationEngine extends Context.Service<
           unrunnable === null ? null : Ref.get(unrunnable),
         );
 
+      /**
+       * The seed a `thread.create` needs, read before the write lock is taken.
+       * Asking an instance for its models can start a harness, and the lock
+       * and its transaction hold every other command, every running turn's
+       * event writes and every SQL statement in the process until they end.
+       * A command that names its model never needs a seed.
+       */
+      const seedFor = (command: Command): Effect.Effect<SeededModel | null, SqlError> =>
+        command.type === "thread.create" &&
+        command.settings?.model === undefined &&
+        command.fork === undefined
+          ? defaultModel(command.settings?.connectorInstanceId)
+          : Effect.succeed(null);
+
       /** Cross-aggregate facts the decider may check, gathered inside the txn. */
-      const buildContext = (command: Command): Effect.Effect<DeciderContext, SqlError> =>
+      const buildContext = (
+        command: Command,
+        seeded: SeededModel | null,
+      ): Effect.Effect<DeciderContext, SqlError> =>
         Effect.gen(function* () {
           const projectId = command.type === "thread.create" ? command.projectId : null;
           const exists = projectId === null ? false : yield* readModels.projectExists(projectId);
           const roots = command.type === "project.create" ? yield* readModels.workspaceRoots : [];
-          // A command that names its model never needs a seed, and asking a
-          // chosen instance for its models is not free.
-          const seeded =
-            command.type === "thread.create" &&
-            command.settings?.model === undefined &&
-            command.fork === undefined
-              ? yield* defaultModel(command.settings?.connectorInstanceId)
-              : null;
           const defaults =
             command.type === "thread.create"
               ? yield* seedThreadDefaults(sql)
@@ -394,7 +405,10 @@ export class OrchestrationEngine extends Context.Service<
         return { appended, last };
       });
 
-      const dispatch = (command: Command): Effect.Effect<CommandReceipt, EngineError> =>
+      const dispatchSeeded = (
+        command: Command,
+        seeded: SeededModel | null,
+      ): Effect.Effect<CommandReceipt, EngineError> =>
         writeMutex.withPermits(1)(
           Effect.gen(function* () {
             const existing = yield* store.receipt(command.commandId);
@@ -410,7 +424,7 @@ export class OrchestrationEngine extends Context.Service<
                   streamKind === "project"
                     ? { project: foldProject(streamEvents), thread: null }
                     : { project: null, thread: foldThread(streamEvents) };
-                const ctx = yield* buildContext(command);
+                const ctx = yield* buildContext(command, seeded);
                 const result = decide(command, state, ctx, env);
                 if (!result.accepted) {
                   const lastSequence = yield* store.lastSequence;
@@ -460,6 +474,9 @@ export class OrchestrationEngine extends Context.Service<
             return receipt;
           }),
         );
+
+      const dispatch = (command: Command): Effect.Effect<CommandReceipt, EngineError> =>
+        Effect.flatMap(seedFor(command), (seeded) => dispatchSeeded(command, seeded));
 
       const appendThreadEvents = (
         threadId: ThreadId,

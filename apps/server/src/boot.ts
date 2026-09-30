@@ -70,7 +70,7 @@ import { writeHandshake } from "./rpc/bootstrap";
 import { layer as scriptDetectionLayer } from "./scripts/ScriptDetection";
 import { layer as terminalServiceLayer } from "./terminal/TerminalService";
 import { serverLayer, ServerToken } from "./rpc/server";
-import { ServerIdentity, SettingsStore } from "./rpc/services";
+import { ConnectorCatalog, ServerIdentity, SettingsStore } from "./rpc/services";
 import { layer as connectorExtensionsLayer } from "./settings/ConnectorExtensions";
 import { ConnectorHost } from "./settings/ConnectorHost";
 import { ConnectorManager, ConnectorRegistryService } from "./settings/ConnectorManager";
@@ -188,23 +188,47 @@ export const boot = (options: BootOptions) =>
     const openConnectors = Effect.map(registry.instances, (instances) =>
       instances.map((instance) => instance.instanceId),
     );
-    // The last word on "what model does a new thread start on" when the
-    // settings document holds none: the instance's own list. A fresh install
-    // has no default anywhere, and without this every `thread.create` was
-    // rejected. It is only reached on that path, so the extra call the
-    // connector makes to answer costs nothing once a default exists.
-    const connectorModels = (instanceId: ConnectorInstanceId) =>
-      registry.instance(instanceId).pipe(
-        Effect.flatMap((instance) => instance.listModels()),
-        Effect.map((models) => models.map((model) => model.id)),
-        Effect.catchCause(() => Effect.succeed([] as ReadonlyArray<string>)),
-      );
+    // The settings store and the connector manager share one graph: the manager
+    // watches the same store instance the RPC handlers mutate, and the catalog
+    // answers from the manager's probes. The one build memoizes it for the
+    // engine's seed and the services alike.
+    const sharedSettings = ConnectorManager.catalogLayer.pipe(
+      Layer.provideMerge(
+        ConnectorManager.layer.pipe(
+          Layer.provideMerge(
+            Layer.mergeAll(
+              SettingsStore.layer,
+              ConnectorHost.layer,
+              Layer.succeed(ConnectorRegistryService, registry),
+              unrunnableLayer,
+            ),
+          ),
+        ),
+      ),
+      Layer.provide(sqlite),
+    );
+
+    // What each instance runs, which the engine seeds a new thread from: the
+    // app-wide default goes to an instance that lists it, and a fresh install
+    // with no default anywhere starts on the routed instance's first model.
+    // The catalog's reading, the one the model pickers get: the latest probe's
+    // list, else one `listModels()` bounded like a probe and remembered until
+    // the next one. Asked straight, some connectors re-probe on every call, and
+    // a create would start a harness each time.
+    const connectorModels = Layer.effect(
+      ConnectorModels,
+      Effect.gen(function* () {
+        const catalog = yield* ConnectorCatalog;
+        return (instanceId: ConnectorInstanceId) =>
+          Effect.map(catalog.models(instanceId), (models) => models.map((model) => model.id));
+      }),
+    ).pipe(Layer.provide(sharedSettings));
     const engine = OrchestrationEngine.layer.pipe(
       Layer.provide(persistence),
       Layer.provide(
         Layer.mergeAll(
           Layer.succeed(OpenConnectors, openConnectors),
-          Layer.succeed(ConnectorModels, connectorModels),
+          connectorModels,
           unrunnableLayer,
         ),
       ),
@@ -224,25 +248,6 @@ export const boot = (options: BootOptions) =>
       Layer.provide(
         Layer.mergeAll(engine, manager, gitCheckpointHookLayer, persistence, attachments),
       ),
-    );
-
-    // The settings store and the connector manager share one graph: the manager
-    // watches the same store instance the RPC handlers mutate, and the catalog
-    // answers from the manager's probes. Built once inside `services`.
-    const sharedSettings = ConnectorManager.catalogLayer.pipe(
-      Layer.provideMerge(
-        ConnectorManager.layer.pipe(
-          Layer.provideMerge(
-            Layer.mergeAll(
-              SettingsStore.layer,
-              ConnectorHost.layer,
-              Layer.succeed(ConnectorRegistryService, registry),
-              unrunnableLayer,
-            ),
-          ),
-        ),
-      ),
-      Layer.provide(sqlite),
     );
 
     // Browser sessions + the MCP gateway. `browser` is shared by the RPC
