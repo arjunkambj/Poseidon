@@ -20,11 +20,6 @@ whichever question you have.
   compatible layout, built-in and global plugins, validation, turning them on
   and off, what each harness loads, the built-in Browser plugin, and a
   harness's own plugins.
-- [command-code-connector.md](command-code-connector.md) — the Command Code
-  CLI as observed: binary resolution, the argv and environment of a turn, the
-  NDJSON frame catalogue, the transcript, the PreToolUse hook, plan mode,
-  questions, subagents, resume, attachments, and what to check after a new
-  release.
 - [claude-code-connector.md](claude-code-connector.md) — the Claude Code CLI
   as observed through the Agent SDK: binary resolution, the probe, the child
   environment and launch options, the message catalogue, the tool vocabulary
@@ -37,6 +32,11 @@ whichever question you have.
   vocabulary, the approval gate and runtime modes, plan mode, questions,
   steering, compaction, attachments, resume, capabilities, the skills and MCP
   server extensions, and what to check after a new release.
+- [command-code-connector.md](command-code-connector.md) — the Command Code
+  CLI as observed: binary resolution, the argv and environment of a turn, the
+  NDJSON frame catalogue, the transcript, the PreToolUse hook, plan mode,
+  questions, subagents, resume, attachments, and what to check after a new
+  release.
 
 They cross-link rather than repeat: a flow belongs in how-it-works, a component
 in architecture, a rule in philosophy, a command in development, and a fact

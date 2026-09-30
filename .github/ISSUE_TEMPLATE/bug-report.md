@@ -13,7 +13,8 @@ labels: ["bug"]
 
 - macOS version:
 - Poseidon version or commit:
-- Command Code version (`cmd --version`):
+- Harness and its version (`claude --version`, `codex --version` or
+  `cmd --version`):
 
 ## Logs or screenshots
 
