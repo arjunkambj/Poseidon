@@ -15,7 +15,7 @@ export const Download = () => (
         Get the latest release
       </a>
       <p className="mt-4 text-sm text-muted-foreground">
-        Requires your own Command Code install and login.
+        Requires your own Claude Code, Codex or Command Code install and login.
       </p>
     </div>
   </section>

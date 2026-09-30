@@ -21,7 +21,7 @@ const features = [
   },
   {
     title: "Your models, your effort",
-    body: "Pick the model and effort level per thread from Command Code's catalog. Approval-required, auto-accept or full-access runtime modes.",
+    body: "Pick the harness, model and effort level per thread from Claude Code, Codex or Command Code. Approval-required, auto-accept or full-access runtime modes.",
   },
 ] as const;
 

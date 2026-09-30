@@ -2,9 +2,9 @@ import { site } from "../site";
 
 const steps = [
   {
-    title: "Install Command Code",
-    body: "Poseidon drives your own Command Code install — it never ships or bundles the harness.",
-    code: "npm i -g command-code && cmd",
+    title: "Install Claude Code",
+    body: "Poseidon drives your own Claude Code, Codex or Command Code install — it never ships or bundles a harness. Without Claude Code, new threads run on Codex.",
+    code: "npm i -g @anthropic-ai/claude-code && claude",
   },
   {
     title: "Download Poseidon",
