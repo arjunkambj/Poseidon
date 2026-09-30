@@ -916,6 +916,8 @@ POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
   pnpm -F @poseidon/connector-codex exec vitest run src/conformance.test.ts
 POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
   pnpm -F @poseidon/connector-codex exec vitest run src/extensions/mcpServersRecorded.test.ts
+POSEIDON_RECORD_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
+  pnpm -F @poseidon/connector-codex exec vitest run src/extensions/pluginsRecorded.test.ts
 ```
 
 (`pnpm -F <package> vitest …` without `exec` fails: pnpm looks for a script of
@@ -928,11 +930,15 @@ each scenario in a throwaway git repo under `/tmp/poseidon-codex/scratch`, on
 the CLI's default model. The app-server has no turn or budget cap, so its
 prompts are trivial and ask for one-word answers. The approval scenarios
 (`edit-approval`, `deny`, `sensitive-full-access`, `approval-stop`) answer
-every card they open the way their description says. The interaction
-recorder (`test/recordInteractions.test.ts`: `plan-accept`, `question`,
-`steering`, `compaction`) shares the scenario helpers of `test/scenario.ts`;
-`question` answers the card with its first option, `steering` steers once the
-command row shows, and `compaction` compacts a one-turn thread.
+every card they open the way their description says. `fork` forks the
+thread the first process started into the second. The interaction recorder
+(`test/recordInteractions.test.ts`: `plan-accept`, `question`, `steering`,
+`compaction`, `mcp-tool-approval`, `plugin-skill`) shares the scenario helpers
+of `test/scenario.ts`; `question` answers the card with its first option,
+`steering` steers once the command row shows, `compaction` compacts a
+one-turn thread, and `plugin-skill` hands the session one Poseidon plugin
+(`test/plugin.ts`, written beside the scratch repo) and references its
+skill.
 `test/recordGenerateText.test.ts` runs the instance's `generateText` once
 (`generate-text`: a short title prompt with a JSON schema, effort `low`, in a
 temporary directory). `src/conformance.test.ts`
@@ -944,7 +950,10 @@ names of the operator's MCP servers (`codex mcp list --json`) and skills
 extension itself — every `codex mcp list --json`, `add` and `remove` it runs —
 on a scratch `CODEX_HOME` (`/tmp/poseidon-codex/mcp-home`) seeded with one
 hand-written server, so the operator's own config is never touched and no
-model is called.
+model is called. `src/extensions/pluginsRecorded.test.ts` does the same for
+the plugins extension's `codex plugin list --json`, on
+`/tmp/poseidon-codex/plugin-home` with a local marketplace in the system temp
+directory, installed with the real CLI before the tee is put in front.
 
 `record-cmd.mjs` gives each run a throwaway git repo under a scratch root
 (`RECORD_SCRATCH`, default the system temp directory), spawns the CLI through

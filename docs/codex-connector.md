@@ -47,10 +47,11 @@ picks this instance. Adding it changed no existing install's routing.
 | `launch.ts`                | the session's argv and environment, with Poseidon's MCP server                   |
 | `session.ts`               | one app-server process per thread: send, steer, interrupt, close                 |
 | `generateText.ts`          | one piece of text outside any session: an ephemeral read-only thread             |
-| `threadOpen.ts`            | `thread/start`, or `thread/resume` with the fallback to a new thread             |
+| `threadOpen.ts`            | `thread/start`, `thread/resume` with the fallback to a new thread, `thread/fork` |
 | `sessionRef.ts`            | the persisted session reference                                                  |
 | `modes.ts`                 | runtime modes → approval policy and sandbox                                      |
-| `userInput.ts`             | one composer turn as `turn/start`'s `input`                                      |
+| `userInput.ts`             | one composer turn as `turn/start`'s `input`, references included                 |
+| `plugins.ts`               | the session's Poseidon plugins: skill roots and the thread's MCP config          |
 | `attachments.ts`           | images as `localImage` inputs, other files by path                               |
 | `approvals.ts`             | the approval requests in Poseidon's approval vocabulary                          |
 | `mcpApprovals.ts`          | MCP tool-call approvals, which arrive as elicitations                            |
@@ -64,7 +65,9 @@ picks this instance. Adding it changed no existing install's routing.
 | `translate/tools.ts`       | the item rows                                                                    |
 | `translate/usage.ts`       | a turn's usage from the thread's running total, and the context                  |
 | `extensions/skills.ts`     | the `skills` extension                                                           |
+| `extensions/plugins.ts`    | the `plugins` extension, through `codex plugin list --json`                      |
 | `extensions/mcpServers.ts` | the `mcpServers` extension, through `codex mcp`                                  |
+| `extensions/cli.ts`        | how those two run the CLI                                                        |
 | `sessionFiles.ts`          | the `sessions` extension: the CLI's own rollouts, read for an import             |
 
 The package may import `connector-sdk`, `contracts` and `shared`; its tests
@@ -99,21 +102,63 @@ process-group handling covers both.
 ## Version policy
 
 The connector runs whatever is installed. `OLDEST_TESTED_VERSION` in
-`probe.ts` is the release the recordings were made at, **0.156.1**. Below it
-the probe adds a warning; at or above it, it says nothing; a version string
-that does not parse is not refused. `recordedFrames.test.ts` fails if any
-recording's manifest names an older CLI.
+`probe.ts` is the oldest release a recording was made at, **0.156.1**: most
+recordings are from 0.156.1, and `fork`, `plugin-skill` and `plugins` from
+0.159.2. Below it the probe adds a warning; at or above it, it says nothing; a
+version string that does not parse is not refused. `recordedFrames.test.ts`
+fails if any recording's manifest names an older CLI.
 
 The app-server protocol is the CLI's, not a published contract, and the parts
 Poseidon uses for plan mode and questions are marked experimental. So the
 connector reads only the fields it needs, through the narrow schemas in
 `protocol.ts` (`PROTOCOL_CLI_VERSION` names the release they were read
-against), and the handshake opts into the experimental API on every
-connection. Every recording was made with that handshake: changing it, or
-moving to a new release that changes a frame, means recording again (see
-[After a new CLI release](#after-a-new-cli-release)). The CLI's bindings
-(`codex app-server generate-ts --experimental`) are read to write those
-schemas, never committed.
+against, the probe recording's), and the handshake opts into the experimental
+API on every connection. Every recording was made with that handshake:
+changing it, or moving to a new release that changes a frame, means recording
+again (see [After a new CLI release](#after-a-new-cli-release)). The CLI's
+bindings (`codex app-server generate-ts --experimental`) are read to write
+those schemas, never committed.
+
+### Releases checked
+
+**0.159.2**, checked on 2026-10-01 against the recordings made on 0.156.1,
+signed in with ChatGPT. Nothing the connector sends or reads changed, so
+nothing was recorded again and `OLDEST_TESTED_VERSION` and
+`PROTOCOL_CLI_VERSION` stay at 0.156.1; the three scenarios added that day
+(`fork`, `plugin-skill`, `plugins`) were recorded on 0.159.2.
+
+- `recordedFrames.test.ts` and every replayed suite pass unchanged, and the
+  live suite passed all eleven cases on the CLI's default model.
+- Every one of the 1,351 JSON-RPC frames in the 0.156.1 recordings — each
+  request and notification either side sent, each response to a request the
+  connector sends and each answer it gave the server — validates against
+  0.159.2's own JSON schema (`app-server generate-json-schema
+--experimental`), and every field `protocol.ts` decodes is still in its
+  bindings, required wherever `protocol.ts` requires it.
+- `collaborationMode` on `turn/start` and every `ToolRequestUserInput*` type
+  are still marked `EXPERIMENTAL`; `multiAgentMode` is still "Ignored. Use
+  `effort: "ultra"`". The item types, and the server requests and
+  notifications the connector handles, are all still there; what is new to it
+  in the schema it answers as before (`item/tool/call`, `currentTime/read` and
+  the rest are "not handled"; unknown item types are `tool_call` rows, unknown
+  notifications `event.unmapped`).
+- Under `untrusted`, 0.159.2 still asks about a plain read: `cat notes.txt`
+  under full access stopped on a command approval, and so did the model's
+  `cat` of a skill's `SKILL.md` (`plugin-skill`).
+- The model catalogue moved on the server's side, not the protocol's:
+  `model/list` now marks `gpt-6.1-sol` (default effort `low`) as its default
+  row, ahead of `gpt-6-astra`. The effort ladders are otherwise as below, and
+  `ultra` is listed on `gpt-6.1-sol` as well. A thread on `default` still runs
+  on what the operator's `config.toml` names (`gpt-6-astra` on the recording
+  machine), which is the model every new recording ran on.
+- A real thread driven through the whole server (a scratch run of the e2e
+  harness with a live Codex instance) answered a plain turn, and an approval
+  turn stopped on its card, was allowed once and wrote its file.
+  `generateText` answered live with the recorded title.
+
+What the check did turn up was older than the release, and is fixed: the
+sessions extension did not recognise the `AGENTS.md` preamble most rollouts
+carry (see [Session files](#extensions)).
 
 ## Config
 
@@ -187,7 +232,10 @@ The probe recording (`fixtures/codex/probe/`, 0.156.1) lists `ultra` —
 `{"reasoningEffort":"ultra","description":"Maximum reasoning with automatic
 task delegation"}` — on `gpt-6-astra` (the default), `gpt-6-sol`,
 `gpt-5.6-sol` and `gpt-5.6-terra`, and not on `gpt-6-luna`, `gpt-5.6-luna`
-or `gpt-5.5`, so only those four offer it (`models.test.ts`).
+or `gpt-5.5`, so only those four offer it (`models.test.ts`). On 2026-10-01
+0.159.2's `model/list` listed the same rows, ladders and defaults, plus
+`gpt-6.1-sol` as its default row (`low` to `max`, and `ultra`); the ladder is
+read per row, so nothing in the connector names a model.
 
 ## The child environment
 
@@ -245,6 +293,32 @@ member, and the client sends none either. The operator's own MCP servers from
 `config.toml` start inside every session too; the recordings name them
 `user-skill-<n>`.
 
+### Poseidon's plugins
+
+The enabled Poseidon plugins (`ConnectorServices.sessionPlugins`, read once
+when the session starts) are handed over in the two parts Codex has a
+counterpart for (`plugins.ts`):
+
+- their skill directories go to the app-server with `skills/extraRoots/set`,
+  after `initialized` and before the thread opens, so the thread loads them
+  beside the user's own. The CLI takes a directory of `<name>/SKILL.md`
+  folders and a single skill folder alike. A CLI that refuses the request
+  still runs the thread, without them, and the thread is told;
+- their MCP servers go in the `config` of `thread/start`, `thread/resume` or
+  `thread/fork`, as `mcp_servers.plugin-<plugin>-<server>` (`command`, `args`,
+  `env` for stdio; `url` and `http_headers` for HTTP). The CLI merges that
+  into the user's table for this thread only, so nothing is written to
+  `config.toml`, and none of it is on the argv, where `ps` would show a
+  header's or a variable's value. The prefix keeps a plugin from ever taking
+  over `poseidon`.
+
+A plugin's commands, agents and hooks have no Codex counterpart and are not
+loaded. With no plugin enabled the session sends exactly what it sent before,
+which is why the older recordings still replay. `plugin-skill` records one
+plugin: the extra root, the server tried (and failed, pointed at a port
+nothing listens on) and the model reading and following the skill a turn
+referenced.
+
 ## One session, one process
 
 A thread's session is one app-server process for its whole life
@@ -259,7 +333,15 @@ A thread's session is one app-server process for its whole life
   the CLI has no rollout for — made under another `CODEX_HOME`, or cleaned up
   — is started afresh on the same process with a `session.warning`
   (`resume-missing`); a stored reference this connector cannot read does the
-  same.
+  same;
+- a fork — the server forking a thread from the tail of a Codex thread
+  (`ResumeSessionInput.fork`) — is `thread/fork` with the source's thread id
+  and `excludeTurns: true`. The CLI copies the source's rollout into a thread
+  of its own, with a new id (`forkedFromId` names the source), and leaves the
+  source alone (`fork`: the forked thread names the word the source was told).
+  A fork never falls back: one the CLI refuses, or of a reference this
+  connector cannot read, fails the start, and the server carries the
+  conversation over as text instead.
 
 The reference (`sessionRef.ts`) is `{ threadId, cwd }`, the thread id being a
 UUID. `send` is `turn/start` and returns `TurnInProgress` while a turn runs.
@@ -538,6 +620,17 @@ colour). Any other file is named by path in the prompt, copied under
 `@path`. A copy or read that fails leaves the original path and a warning,
 not a failed turn (`attachments.ts`, `userInput.ts`).
 
+## References
+
+A skill or plugin picked from the composer (`TurnInput.references`) becomes
+one sentence after the mentions, the one the other connectors write: `Use the
+"<name>" skill.` or `Use the "<name>" plugin.`, skills first and each name
+once (`userInput.ts`). The composer's text carries only its draft token, which
+the CLI gives no meaning to. The CLI loads the user's skills and plugins and
+the session's Poseidon plugins' skills (above), so either name is one the
+model can act on; in `plugin-skill` it read the named skill's `SKILL.md` and
+answered with the word it holds.
+
 ## Resume, model and effort
 
 Resume is covered above. `turn/start`'s `model` and `effort` apply "for this
@@ -593,7 +686,7 @@ translator maps to plain `task` rows (`subagents` stays `false`, below).
 | `subagents`      | `false`    | collaboration agents become a plain `task` row, not Poseidon's tasks                         |
 | `images`         | `true`     | `localImage` inputs; `image`                                                                 |
 | `resume`         | `true`     | `thread/resume` from a new process; `resume`, `resume-missing`                               |
-| `fork`           | `false`    | `thread/fork` exists; nothing in Poseidon needs it                                           |
+| `fork`           | `true`     | `thread/fork` into a new thread, the source left alone; `fork`                               |
 | `interrupt`      | `turn`     | `turn/interrupt`, and the same process answers the next turn; `interrupt`                    |
 | `rollback`       | `false`    | `thread/revert` exists; Poseidon's checkpoints are git                                       |
 | `compaction`     | `true`     | `thread/compact/start`; `compaction`                                                         |
@@ -607,8 +700,8 @@ approval case included.
 
 ## Extensions
 
-The Customize page and the composer's `/` menu read these through the
-connector-sdk's generic extensions. `CodexConnectorOptions.codexHome`
+The Customize page and the composer's `/` and `@` menus read these through
+the connector-sdk's generic extensions. `CodexConnectorOptions.codexHome`
 (`BootOptions.codex` on the server) redirects all of them for tests; otherwise
 they use the instance's `codexHome`, else `~/.codex`.
 
@@ -621,6 +714,22 @@ the first root with a name wins, project before user. `CODEX_HOME/skills/.system
 holds the skills the CLI ships with and is not listed. There is no
 `available`/`link`: Codex already loads every skill in `~/.agents/skills`, so
 there would never be one to offer.
+
+**Plugins** (`extensions/plugins.ts`) are Codex's own installed plugins, read
+and never written: `codex plugin list --json`, with the default-deny
+environment and the instance's `CODEX_HOME`, from the temp directory
+(`extensions/cli.ts`, as for MCP servers below). Each `installed` row is one
+plugin, named, with its marketplace as `source`, `scope` `user` (Codex has no
+project plugins) and its `enabled`; it is described by its source's
+`.codex-plugin/plugin.json`, `interface.shortDescription` else `description`,
+when the source is a local directory that has one. Marketplace plugins not
+installed are not listed. `plugins` records it on a scratch `CODEX_HOME` with
+a local marketplace of two installed plugins, one disabled.
+
+There is no `commands` extension: the app-server runs no slash command of its
+own from a turn's text (the CLI's commands are its terminal UI's), so there is
+nothing it could list truthfully. `/compact` is Poseidon's, offered from
+`capabilities.compaction`.
 
 **MCP servers** (`extensions/mcpServers.ts`) go through the CLI's own
 `codex mcp` commands, so the CLI keeps owning its TOML and Poseidon has no
@@ -661,7 +770,9 @@ opened read-only and nothing is written.
 - `read` reads the whole rollout a line at a time and keeps `response_item`
   messages with role `user` or `assistant`, joining their `input_text` /
   `output_text` blocks. It leaves out `developer` messages and injected user
-  context: the `AGENTS.md` preamble, a block wholly inside one tag
+  context: the `AGENTS.md` preamble (`# AGENTS.md instructions for <dir>` for
+  a project's file, the bare heading for `CODEX_HOME`'s, which most rollouts
+  carry), a block wholly inside one tag
   (`<environment_context>`, `<user_instructions>`, …) and an image's bare
   frame; a prompt after the desktop app's file list is read from under
   `## My request:`. A rollout with no such messages is read from its older
@@ -715,6 +826,19 @@ what each holds).
 - **An MCP tool call is approved by elicitation** (`mcp-tool-approval`), not
   by an approval request, and a tool that is not read-only and reaches
   outside the machine is asked about even under full access.
+- **`thread/start`'s `config` adds MCP servers for the thread** (0.159.2:
+  both a stdio and an HTTP server named only there were started and
+  reported), which is how Poseidon's plugins reach it without touching
+  `config.toml`.
+- **`skills/extraRoots/set` is per app-server process,** and takes a skills
+  directory or a single skill folder; `skills/list` lists what it added in
+  the `user` scope.
+- **`codex plugin add` copies a plugin into
+  `CODEX_HOME/plugins/cache/<marketplace>/<name>/<version>`,** but `codex
+plugin list --json` names the marketplace's own directory as its source.
+- **A rollout's `AGENTS.md` preamble has two spellings:** `# AGENTS.md
+instructions for <dir>` for a project's file, and the bare heading for the
+  one in `CODEX_HOME`.
 
 ## After a new CLI release
 
@@ -725,7 +849,8 @@ tell you:
    any `event.unmapped`, and on a manifest older than `OLDEST_TESTED_VERSION`.
 2. **The replayed suites** — `conformance.test.ts`, `recordedSession.test.ts`,
    `recordedInteractions.test.ts`, `recordedMcpTool.test.ts`,
-   `extensions/mcpServersRecorded.test.ts`.
+   `recordedPlugins.test.ts`, `extensions/mcpServersRecorded.test.ts`,
+   `extensions/pluginsRecorded.test.ts`.
    The replayer exits 97 on any line the connector sends that the recorded run
    was not sent.
 3. **The live suite**, the only thing that proves the CLI installed today is
@@ -733,7 +858,7 @@ tell you:
 
    ```sh
    POSEIDON_LIVE_CODEX=1 POSEIDON_HOME=/tmp/poseidon-codex \
-     pnpm -F @poseidon/connector-codex vitest run src/liveConformance.test.ts
+     pnpm -F @poseidon/connector-codex exec vitest run src/liveConformance.test.ts
    ```
 
    It generates the CLI's JSON schema (`app-server generate-json-schema
@@ -748,12 +873,18 @@ tell you:
 
 4. **Re-recording**, when something did change: the commands are in
    [development.md](development.md#making-one), and a recording is never
-   edited by hand. Recording on a newer release is when
-   `OLDEST_TESTED_VERSION` and `PROTOCOL_CLI_VERSION` move.
+   edited by hand. Recording the whole set again on a newer release —
+   the probe included, which `probe.test.ts` pins both constants to — is
+   when `OLDEST_TESTED_VERSION` and `PROTOCOL_CLI_VERSION` move. A scenario
+   added on a newer release moves neither.
 
 Beyond the tests, read the new release's bindings
 (`codex app-server generate-ts --experimental --out <scratch dir>`) for a
 changed field in `protocol.ts`'s schemas, a new item type for the tool
 vocabulary, a new server request, and whether `collaborationMode` and
-`requestUserInput` are still experimental; and check again whether
-`untrusted` still asks about reads.
+`requestUserInput` are still experimental; validate the recorded frames
+against its JSON schema (`codex app-server generate-json-schema
+--experimental --out <scratch dir>`); check again whether `untrusted` still
+asks about reads, and what `model/list` offers; and read a fresh rollout with
+the sessions extension. Then add the release to
+[Releases checked](#releases-checked).

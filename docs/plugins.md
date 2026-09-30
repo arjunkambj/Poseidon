@@ -138,6 +138,7 @@ compiles and runs; it just loads none.
 | ------------ | -------------------------- | ------------------------------------------------ | ----------------------- |
 | Claude Code  | loaded by the CLI          | added by Poseidon to the SDK's `mcpServers`      | loaded by the CLI       |
 | Command Code | `--skill <dir>` per folder | registered with `cmd mcp add-json --scope local` | counted, not loaded     |
+| Codex        | `skills/extraRoots/set`    | added by Poseidon to the thread's `config`       | not loaded              |
 
 **Claude Code** gets each plugin as an SDK `plugins` entry
 (`{ type: "local", path, skipMcpDiscovery: true }`), which reaches the CLI as
@@ -154,19 +155,19 @@ when the last session using it ends. Command Code has no plugin loader, so
 commands, agents and hooks are only counted on the Plugins page
 ([command-code-connector.md](command-code-connector.md)).
 
-With no plugin enabled, both connectors send exactly what they sent before
+**Codex** reads skills in the same Agent Skills format, but has a plugin
+format of its own (`.codex-plugin/plugin.json`), so a Poseidon plugin is not
+handed over whole. The session sends every plugin's `skillsDirs` to the
+app-server with `skills/extraRoots/set` before the thread opens, and puts each
+MCP server in the `config` of `thread/start` (or `thread/resume`,
+`thread/fork`) as `mcp_servers.plugin-<plugin>-<server>`, which the CLI merges
+into the user's table for that thread only: nothing is written to
+`config.toml`, and nothing to the argv. Commands, agents and hooks are not
+loaded ([codex-connector.md](codex-connector.md#poseidons-plugins)).
+
+With no plugin enabled, every connector sends exactly what it sent before
 plugins existed, which is why the recorded tests of the real CLIs still
 replay unchanged.
-
-**Codex** reads skills in the same Agent Skills format (from `.agents/skills`
-in the repository and the user's home) and MCP servers from its
-`config.toml` (`[mcp_servers.<name>]`, stdio or streamable HTTP). It also has
-its own plugin format, with the manifest in `.codex-plugin/plugin.json`,
-bundling skills and a `.mcp.json`. A Codex connector adopts Poseidon plugins
-the same way the others do: read `sessionPlugins` at session start, point the
-CLI at each plugin's `skillsDirs`, and register each `SessionMcpServer` in the
-form the CLI takes, for example a `-c mcp_servers.<name>…` override per
-session, which leaves the user's `config.toml` untouched.
 
 **A new connector** does the same: call `loadSessionPlugins(services,
 threadId)` once when the session starts, give the harness the skills folders
@@ -179,7 +180,7 @@ which parts it loads.
 
 The composer's `@` menu lists the enabled Poseidon plugins first, on every
 harness, then the thread instance's own plugins. Picking one sends a
-`TurnReference { kind: "plugin", name }` with the turn. Both connectors write
+`TurnReference { kind: "plugin", name }` with the turn. Every connector writes
 it into the prompt as `Use the "<name>" plugin.`; Command Code does that only
 for one of the session's Poseidon plugins and reports any other plugin
 reference as a session warning.
