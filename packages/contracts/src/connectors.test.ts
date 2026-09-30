@@ -75,8 +75,8 @@ describe("probeCanRun", () => {
   it("rules out a harness that is not installed or is signed out", () => {
     expect(probeCanRun({ status: "not-installed" })).toBe(false);
     expect(probeCanRun({ status: "not-authenticated" })).toBe(false);
-    // A probe that could not run at all found nothing installed.
-    expect(probeCanRun({ status: "error", installed: false })).toBe(false);
+    // A probe that answered, and found no binary.
+    expect(probeCanRun({ status: "ready", installed: false })).toBe(false);
     // Ready, but the harness reported no credentials.
     expect(probeCanRun({ status: "ready", installed: true, auth: "absent" })).toBe(false);
   });
@@ -85,6 +85,9 @@ describe("probeCanRun", () => {
     expect(probeCanRun({ status: "probing" })).toBe(true);
     expect(probeCanRun({ status: "ready", installed: true, auth: "unknown" })).toBe(true);
     expect(probeCanRun({ status: "error", installed: true, auth: "present" })).toBe(true);
+    // The manager's stand-in for a probe that timed out or crashed: it found
+    // nothing, which is not the same as finding the harness missing.
+    expect(probeCanRun({ status: "error", installed: false, auth: "unknown" })).toBe(true);
     // The wire's probe, which also carries `authenticated`, reads the same.
     const wire: ConnectorProbe = {
       status: "ready",

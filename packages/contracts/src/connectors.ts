@@ -84,8 +84,11 @@ export type ConnectorProbe = typeof ConnectorProbe.Type;
  *
  * Only a probe that says so rules a harness out: not installed, or signed out.
  * `probing` and anything the probe could not tell count as able, so the
- * default does not move while probes are still running. Takes the server's
- * probe as well as the wire's, which share these fields.
+ * default does not move while probes are still running. That includes an
+ * `error` probe's `installed: false`: the connector manager writes it for a
+ * probe that timed out or crashed, which found nothing either way, and a slow
+ * machine must not route every new thread off an installed harness. Takes the
+ * server's probe as well as the wire's, which share these fields.
  */
 export const probeCanRun = (probe: {
   readonly status: ConnectorProbe["status"];
@@ -94,7 +97,7 @@ export const probeCanRun = (probe: {
 }): boolean =>
   probe.status !== "not-installed" &&
   probe.status !== "not-authenticated" &&
-  probe.installed !== false &&
+  (probe.installed !== false || probe.status === "error") &&
   probe.auth !== "absent";
 
 /** A configured connector as the settings page and the model picker see it. */

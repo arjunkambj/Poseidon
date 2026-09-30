@@ -73,7 +73,9 @@ export class ConnectorRegistryService extends Context.Service<
 
 /**
  * A probe that could not run: no definition, a ProbeFailed, or the timeout.
- * Nothing was found, so `installed` is false — the message says why.
+ * Nothing was found, so `installed` is false — the message says why. It is
+ * not a finding that the harness is missing, and `probeCanRun` does not read
+ * it as one: a slow cold start must not move routing off an installed harness.
  */
 const failedProbe = (message: string, probedAt: string): ConnectorProbe => ({
   status: "error",

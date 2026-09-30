@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import * as nodePath from "node:path";
 
 import type { AnyConnectorDefinition, ConnectorProbe } from "@poseidon/connector-sdk/definition";
-import { eraseConnectorDefinition } from "@poseidon/connector-sdk/definition";
+import { eraseConnectorDefinition, ProbeFailed } from "@poseidon/connector-sdk/definition";
 import { makeRegistry, type ConnectorRegistry } from "@poseidon/connector-sdk/registry";
 import {
   makeConnectorInstanceId,
@@ -223,12 +223,19 @@ const isolatedHome = Effect.acquireRelease(
     }),
 );
 
+/** Lets a test swap in a definition that misbehaves, for one kind. */
+type Tweak = (kind: Kind, definition: AnyConnectorDefinition) => AnyConnectorDefinition;
+
 /**
  * One boot over the database file: the three fakes in rank order, each probe
  * answering "not installed" while its kind is in `missing`, which a test may
  * change between re-probes.
  */
-const bootManager = (filename: string, missing: Ref.Ref<ReadonlySet<Kind>>) =>
+const bootManager = (
+  filename: string,
+  missing: Ref.Ref<ReadonlySet<Kind>>,
+  tweak: Tweak = (_kind, definition) => definition,
+) =>
   Effect.gen(function* () {
     yield* isolatedHome;
     const sqlite = Layer.succeedContext(yield* Layer.build(sqliteLayer({ filename })));
@@ -237,13 +244,15 @@ const bootManager = (filename: string, missing: Ref.Ref<ReadonlySet<Kind>>) =>
     for (const { kind, displayName, model } of HARNESSES) {
       const fake = yield* makeFakeConnector({ kind, displayName, model });
       const erased = eraseConnectorDefinition(fake.definition);
-      definitions.push({
-        ...erased,
-        probe: (config: unknown) =>
-          Effect.flatMap(Ref.get(missing), (gone) =>
-            gone.has(kind) ? Effect.succeed(notInstalled) : erased.probe(config),
-          ),
-      });
+      definitions.push(
+        tweak(kind, {
+          ...erased,
+          probe: (config: unknown) =>
+            Effect.flatMap(Ref.get(missing), (gone) =>
+              gone.has(kind) ? Effect.succeed(notInstalled) : erased.probe(config),
+            ),
+        }),
+      );
     }
     const registry = yield* makeRegistry(definitions);
     const unrunnable = yield* Ref.make<ReadonlySet<ConnectorInstanceId>>(new Set());
@@ -275,11 +284,12 @@ const withBoot = <A, E>(
   filename: string,
   missing: ReadonlySet<Kind>,
   run: (booted: Booted, missing: Ref.Ref<ReadonlySet<Kind>>) => Effect.Effect<A, E>,
+  tweak?: Tweak,
 ) =>
   Effect.scoped(
     Effect.gen(function* () {
       const gone = yield* Ref.make(missing);
-      return yield* run(yield* bootManager(filename, gone), gone);
+      return yield* run(yield* bootManager(filename, gone, tweak), gone);
     }),
   );
 
@@ -483,6 +493,33 @@ describe("ConnectorManager and the harness rank", () => {
           yield* manager.list(true);
           expect((yield* route(booted)).instanceId).toBe(claude!.connectorInstanceId);
         }),
+      );
+    }),
+  );
+
+  it.effect("a probe that crashed or timed out moves nothing", () =>
+    Effect.gen(function* () {
+      const filename = databaseFile();
+      // The manager's stand-in for such a probe says `installed: false`; it
+      // found nothing, and an installed Claude Code must stay the default.
+      const crashingClaude: Tweak = (kind, definition) =>
+        kind !== "claude"
+          ? definition
+          : {
+              ...definition,
+              probe: () => Effect.fail(new ProbeFailed({ kind, message: "killed" })),
+            };
+      yield* withBoot(
+        filename,
+        new Set(),
+        (booted) =>
+          Effect.gen(function* () {
+            const summaries = yield* booted.manager.list(true);
+            expect(summaries[0]).toMatchObject({ kind: "claude", probe: { status: "error" } });
+            expect(yield* Ref.get(booted.unrunnable)).toEqual(new Set());
+            expect((yield* route(booted)).instanceId).toBe(summaries[0]!.connectorInstanceId);
+          }),
+        crashingClaude,
       );
     }),
   );

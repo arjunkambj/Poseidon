@@ -66,12 +66,17 @@ describe("threadConnectorInstanceId", () => {
     });
     const missing = probed("missing", { status: "not-installed", probedAt });
     const signedOut = probed("signed-out", { status: "ready", probedAt, auth: "absent" });
-    const broken = probed("broken", { status: "error", probedAt, installed: false });
+    const broken = probed("broken", { status: "ready", probedAt, installed: false });
+    // A probe that timed out or crashed found nothing, so it moves nothing.
+    const timedOut = probed("timed-out", { status: "error", probedAt, installed: false });
 
     expect(
       threadConnectorInstanceId(null, null, [missing, signedOut, instance("next", true)]),
     ).toBe("next");
     expect(threadConnectorInstanceId(null, null, [broken, instance("next", true)])).toBe("next");
+    expect(threadConnectorInstanceId(null, null, [timedOut, instance("next", true)])).toBe(
+      "timed-out",
+    );
     // Nothing can run: the first enabled one, whose banner says what to fix.
     expect(threadConnectorInstanceId(null, null, [missing, signedOut])).toBe("missing");
     // A thread that chose one keeps it; a probe still running moves nothing.
