@@ -298,20 +298,27 @@ const standalone = (word: string): RegExp =>
  */
 const OPERATOR_LIST_KEY = /^(skills|slash_commands|commands)$/;
 
-/** What an operator-sourced list becomes: one neutral entry of the same shape. */
+/** What an operator-sourced entry becomes: one neutral entry of the same shape. */
 export const SCRUBBED_ENTRY = "scrubbed-entry";
 
-const scrubbedList = (list: ReadonlyArray<unknown>): ReadonlyArray<unknown> => {
-  const first = list[0];
-  if (first === undefined) return [];
-  if (first === null || typeof first !== "object") return [SCRUBBED_ENTRY];
-  return [
-    {
-      name: SCRUBBED_ENTRY,
-      description: `${SCRUBBED_ENTRY} (recording)`,
-      ...("argumentHint" in first ? { argumentHint: "" } : {}),
-    },
-  ];
+/**
+ * The neutral stand-in for a list's operator entries, shaped like `first`:
+ * its name and description neutral, an `argumentHint` empty, any other text
+ * `scrubbed-entry`, flags and numbers kept, and anything nested left out —
+ * so a reader that decodes the list's members still finds each one.
+ */
+const scrubbedEntry = (first: unknown): unknown => {
+  if (first === null || typeof first !== "object") return SCRUBBED_ENTRY;
+  return Object.fromEntries(
+    Object.entries({ name: SCRUBBED_ENTRY, description: "", ...first }).flatMap(([key, value]) => {
+      if (key === "description") return [[key, `${SCRUBBED_ENTRY} (recording)`]];
+      if (key === "argumentHint") return [[key, ""]];
+      if (typeof value === "string") return [[key, SCRUBBED_ENTRY]];
+      return value === null || typeof value === "boolean" || typeof value === "number"
+        ? [[key, value]]
+        : [];
+    }),
+  );
 };
 
 interface ScrubContext {
@@ -337,9 +344,9 @@ interface ScrubContext {
  * directory `<HOME>` (longest spelling first, so a scratch root under temp or
  * home stays a scratch root), the username becomes
  * `user`, and credentials become `<REDACTED>` — under a credential's key
- * whatever their shape, anywhere when they are token-shaped. The handshake's
- * `skills`, `slash_commands` and `commands` lists become one scrubbed entry
- * each. Elsewhere an operator entry is replaced where it is listed: a list
+ * whatever their shape, anywhere when they are token-shaped. A `skills`,
+ * `slash_commands` or `commands` list keeps only the scenario's own entries,
+ * those under the scratch root, and one scrubbed entry for the rest. Elsewhere an operator entry is replaced where it is listed: a list
  * item that is its name, and an object whose `name` it is, whose `description`
  * goes with it. A name the caller gave is replaced in text and keys too,
  * wherever it stands alone, and the machine's name becomes `<HOST>`.
@@ -374,6 +381,23 @@ const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
     }
     return out.replaceAll(TOKEN_SHAPED, "<REDACTED>");
   };
+  /** The scenario's own: an entry whose `path` lies under the scratch root. */
+  const scenarios = (entry: unknown): boolean => {
+    const path = (entry as { readonly path?: unknown } | null)?.path;
+    return typeof path === "string" && text(path).startsWith("<SCRATCH>");
+  };
+  /**
+   * An operator-sourced list: the scenario's own entries, such as a skill it
+   * wrote beside its repo, kept and scrubbed, then one neutral entry for all
+   * the rest (`scrubbedEntry`).
+   */
+  const operatorList = (list: ReadonlyArray<unknown>): ReadonlyArray<unknown> => {
+    const operators = list.filter((entry) => !scenarios(entry));
+    return [
+      ...list.filter(scenarios).map(scrub),
+      ...(operators.length === 0 ? [] : [scrubbedEntry(operators[0])]),
+    ];
+  };
   const scrub = (value: unknown): unknown => {
     if (typeof value === "string") return text(value);
     if (Array.isArray(value)) {
@@ -399,7 +423,7 @@ const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
           typeof entry === "string" && SECRET_KEY.test(key)
             ? "<REDACTED>"
             : Array.isArray(entry) && OPERATOR_LIST_KEY.test(key)
-              ? scrubbedList(entry)
+              ? operatorList(entry)
               : scrub(entry),
         ]),
       );

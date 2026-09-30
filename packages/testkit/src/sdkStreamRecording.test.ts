@@ -268,6 +268,59 @@ describe("finalizeSdkStreamRecording", () => {
     });
   });
 
+  it("keeps a listed skill the scenario wrote under its scratch root, and the list's shape", async () => {
+    const rawDir = NodePath.join(ROOT, "raw-listed");
+    const launcher = makeTeeLauncher({ realBinary: COUNTERPART, rawDir });
+    const scenarioSkill = NodePath.join(ROOT, "scratch", "plugin", "skills", "word", "SKILL.md");
+    const run = converse(launcher, STREAM_ARGS, { cwd: REPO });
+    await run.awaitLine(typed("ready"));
+    run.send({
+      type: "note",
+      skills: [
+        { name: "private-notes", path: "/elsewhere/private-notes/SKILL.md", enabled: true },
+        { name: "word", path: scenarioSkill, enabled: true, interface: { icon: "x" } },
+      ],
+    });
+    await run.awaitLine(typed("echo"));
+    run.child.stdin.end();
+    expect((await run.exited).code).toBe(0);
+
+    const fixtures = NodePath.join(ROOT, "fixtures-listed");
+    finalizeSdkStreamRecording({
+      kind: "sample",
+      scenario: "listed",
+      rawDir,
+      description: "an ordinary node program, for the finaliser's own test",
+      cliVersion: "9.9.9",
+      sdkVersion: "0.0.0",
+      model: "none",
+      prompts: [],
+      fixturesRoot: fixtures,
+    });
+
+    const [stream] = loadSdkStreamRecording("sample", "listed", fixtures).invocations;
+    const echoed = stream!.frames.find((frame) => typed("echo")(frame.data))!.data;
+    expect(JSON.stringify(echoed)).not.toContain("private");
+    expect(echoed).toMatchObject({
+      message: {
+        skills: [
+          {
+            name: "word",
+            path: "<SCRATCH>/plugin/skills/word/SKILL.md",
+            enabled: true,
+            interface: { icon: "x" },
+          },
+          {
+            name: SCRUBBED_ENTRY,
+            description: `${SCRUBBED_ENTRY} (recording)`,
+            path: SCRUBBED_ENTRY,
+            enabled: true,
+          },
+        ],
+      },
+    });
+  });
+
   it("scrubs the system temp directory in every spelling, and keeps a scratch root under it", async () => {
     const rawDir = NodePath.join(ROOT, "raw-tmp");
     const launcher = makeTeeLauncher({ realBinary: COUNTERPART, rawDir });
