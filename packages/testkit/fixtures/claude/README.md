@@ -17,21 +17,29 @@ The transport is `sdk-stream` (docs/development.md, "The recording format"):
 the testkit's stdio tee sat where the connector's binary path points, so each
 `invocation-<n>.ndjson` is what the real SDK and the real CLI said to each
 other, line by line, and the manifest lists every launch with its argv and exit.
-The scrubber replaced the account (email, organisation name and id, and the
-account id joined to the org id in the CLI's synced-plugin directory), the
-home directory, the scratch root, the system temp directory (`<TMP>`, where
-the CLI's attachment directory and a probe's working directory live), the MCP
-bearer and the operator's own agents; it replaced the handshake's `skills`,
-`slash_commands` and `commands` lists, which come from the operator's own
-installation, with one `scrubbed-entry` each; and it replaced the claude.ai
-connectors and synced plugins a signed-in account brings with `user-skill-<n>`
-stand-ins, their tools with one `mcp__user-skill-<n>__scrubbed-entry` each,
-and their labels where the model repeats them. Every new or changed recording
-was also grepped for the operator's email and account names, the home path,
-the names of their own skills, agents, commands and plugins, their global
-`CLAUDE.md`, and the names the repository never uses, before it was committed.
-A streamed tool input can split a path across two deltas, where neither half
-is the whole path the scrubber knows; the username is still replaced in each.
+The scrubber replaced the account (email, organisation name and id, the account
+id joined to the org id in the CLI's synced-plugin directory, and the id of the
+synced plugin's own directory under it), the home directory, the scratch root,
+the system temp directory (`<TMP>`, where the CLI's attachment directory and a
+probe's working directory live), the MCP bearer and the operator's own agents;
+it replaced the handshake's `skills`, `slash_commands` and `commands` lists,
+which come from the operator's own installation, with one `scrubbed-entry` each;
+and it replaced the claude.ai connectors and synced plugins a signed-in account
+brings with `user-skill-<n>` stand-ins, their tools with one
+`mcp__user-skill-<n>__scrubbed-entry` each, and their labels where the model
+repeats them. A streamed block is scrubbed as the text its deltas join into as
+well, since a model can split a label or a path across two deltas. Every new or
+changed recording was also grepped for the operator's email and account names,
+the home path, the names of their own skills, agents, commands and plugins,
+their global `CLAUDE.md`, and the names the repository never uses, before it was
+committed, and its streamed blocks were joined and grepped the same way.
+
+Scrubbing the joined blocks and the synced plugin's directory id came after the
+first signed-in round, and only `edit-approval`, whose streamed text split a
+connector's label, was recorded again under them. The other signed-in recordings
+keep the synced plugin's directory id, and `plan-accept` keeps a plan file's
+path split across two deltas, the username replaced in each half but not the
+home directory.
 
 ## Scenarios
 
