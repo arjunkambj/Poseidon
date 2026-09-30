@@ -15,6 +15,10 @@
  * kind it was never given (`connectorUpgrade.ts`), and a kind it was given is
  * never given again, so the seed never resurrects deleted instances.
  *
+ * Each probe also decides whether the default rule may route to its instance
+ * (`probeCanRun`): the manager publishes the instances that cannot run to
+ * `UnrunnableConnectors`, which routing and the engine's seed read.
+ *
  * `connectors.list` answers from the last reconcile's probes; `refresh: true`
  * reconciles the current document and then re-runs every probe, which is what
  * the settings page's probe button — and every save, which refreshes right
@@ -53,6 +57,7 @@ import * as SubscriptionRef from "effect/SubscriptionRef";
 
 import { ConnectorCatalog, SettingsStore } from "../rpc/services";
 import { ConnectorHost } from "./ConnectorHost";
+import { UnrunnableConnectors } from "./connectorRouting";
 import {
   DEFAULT_MODEL_MIGRATION,
   defaultModelVerdict,
@@ -126,6 +131,7 @@ export class ConnectorManager extends Context.Service<
       const store = yield* SettingsStore;
       const host = yield* ConnectorHost;
       const registry = yield* ConnectorRegistryService;
+      const unrunnable = yield* UnrunnableConnectors;
 
       const entries = yield* Ref.make<ReadonlyMap<string, Entry>>(new Map());
       const probes = yield* Ref.make<ReadonlyMap<string, ConnectorProbe>>(new Map());
@@ -215,11 +221,26 @@ export class ConnectorManager extends Context.Service<
           return next;
         });
 
+      /** What routing passes over: every instance whose latest probe says it cannot run. */
+      const publishUnrunnable: Effect.Effect<void> =
+        unrunnable === null
+          ? Effect.void
+          : Effect.flatMap(Ref.get(probes), (all) =>
+              Ref.set(
+                unrunnable,
+                new Set(
+                  [...all]
+                    .filter(([, probe]) => !probeCanRun(probe))
+                    .map(([id]) => id as ConnectorInstanceId),
+                ),
+              ),
+            );
+
       /** Records a fresh probe, which retires whatever the fallback memoized. */
       const recordProbe = (id: string, probe: ConnectorProbe): Effect.Effect<void> =>
         Effect.andThen(
           Ref.update(probes, (all) => new Map(all).set(id, probe)),
-          forget(fallbackModels, id),
+          Effect.andThen(forget(fallbackModels, id), publishUnrunnable),
         );
 
       const closeEntry = (id: string, entry: Entry): Effect.Effect<void> =>
@@ -230,6 +251,7 @@ export class ConnectorManager extends Context.Service<
           yield* forget(probes, id);
           yield* forget(declared, id);
           yield* forget(fallbackModels, id);
+          yield* publishUnrunnable;
         });
 
       const summariesFor = (settings: Settings): Effect.Effect<ReadonlyArray<ConnectorSummary>> =>

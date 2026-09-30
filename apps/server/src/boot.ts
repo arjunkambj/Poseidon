@@ -33,6 +33,7 @@ import { uuidV7 } from "@poseidon/shared/ids";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Ref from "effect/Ref";
 import * as HttpServer from "effect/unstable/http/HttpServer";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
@@ -73,7 +74,12 @@ import { ServerIdentity, SettingsStore } from "./rpc/services";
 import { layer as connectorExtensionsLayer } from "./settings/ConnectorExtensions";
 import { ConnectorHost } from "./settings/ConnectorHost";
 import { ConnectorManager, ConnectorRegistryService } from "./settings/ConnectorManager";
-import { ConnectorModels, OpenConnectors, routingPreference } from "./settings/connectorRouting";
+import {
+  ConnectorModels,
+  OpenConnectors,
+  routingPreference,
+  UnrunnableConnectors,
+} from "./settings/connectorRouting";
 
 /** @public The composition root's options; `main.ts` fills them from argv. */
 export interface BootOptions {
@@ -158,8 +164,8 @@ export const boot = (options: BootOptions) =>
     // Order is the harness rank: every definition is seeded as an instance in
     // this order, an existing install's connectors list is sorted into it once
     // (`connectorUpgrade.ts`), and a thread that names none runs on the first
-    // enabled one. Claude Code is the default, then Codex, and Command Code
-    // comes last.
+    // enabled one that can run. Claude Code is the default, Codex the fallback
+    // when it is not installed or signed in, and Command Code comes last.
     const registry = yield* makeRegistry([
       eraseConnectorDefinition(makeClaudeConnectorDefinition(options.claudeCode ?? {})),
       eraseConnectorDefinition(makeCodexConnectorDefinition(options.codex ?? {})),
@@ -169,6 +175,11 @@ export const boot = (options: BootOptions) =>
         ),
       ),
     ]);
+    // Which instances the default rule passes over because their latest probe
+    // says they cannot run. The connector manager writes it; selection, the
+    // engine's seed and the writer's fallback read it, so all three agree.
+    const unrunnable = yield* Ref.make<ReadonlySet<ConnectorInstanceId>>(new Set());
+    const unrunnableLayer = Layer.succeed(UnrunnableConnectors, unrunnable);
     // Routing follows the connectors page's own order, not the order instances
     // happened to be opened in — the same reading the engine seeds a new
     // thread's model from, so the two always name one instance. Both also skip
@@ -194,12 +205,13 @@ export const boot = (options: BootOptions) =>
         Layer.mergeAll(
           Layer.succeed(OpenConnectors, openConnectors),
           Layer.succeed(ConnectorModels, connectorModels),
+          unrunnableLayer,
         ),
       ),
     );
     const selection = ConnectorSelection.fromRegistry(
       registry,
-      routingPreference(Context.get(sqliteContext, SqlClient.SqlClient)),
+      routingPreference(Context.get(sqliteContext, SqlClient.SqlClient), Ref.get(unrunnable)),
     );
     const manager = SessionManager.layer.pipe(Layer.provide(Layer.mergeAll(engine, selection)));
     const attachments = AttachmentStore.layer;
@@ -225,6 +237,7 @@ export const boot = (options: BootOptions) =>
               SettingsStore.layer,
               ConnectorHost.layer,
               Layer.succeed(ConnectorRegistryService, registry),
+              unrunnableLayer,
             ),
           ),
         ),
@@ -286,7 +299,9 @@ export const boot = (options: BootOptions) =>
       // listening to the one engine every command goes through.
       TitleReactor.pipe(
         Layer.provideMerge(
-          TextGeneration.layer.pipe(Layer.provide(Layer.mergeAll(persistence, sharedSettings))),
+          TextGeneration.layer.pipe(
+            Layer.provide(Layer.mergeAll(persistence, sharedSettings, unrunnableLayer)),
+          ),
         ),
         Layer.provide(Layer.mergeAll(engine, sharedSettings)),
       ),

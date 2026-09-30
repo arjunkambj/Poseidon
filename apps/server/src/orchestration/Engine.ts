@@ -38,6 +38,7 @@ import { PoseidonRpcError } from "@poseidon/contracts/rpc";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as PubSub from "effect/PubSub";
+import * as Ref from "effect/Ref";
 import * as Scope from "effect/Scope";
 import * as Semaphore from "effect/Semaphore";
 import * as Layer from "effect/Layer";
@@ -60,6 +61,7 @@ import {
   OpenConnectors,
   seedModel,
   seedThreadDefaults,
+  UnrunnableConnectors,
 } from "../settings/connectorRouting";
 import { ReadModelStore } from "../persistence/ReadModels";
 import {
@@ -202,6 +204,7 @@ export class OrchestrationEngine extends Context.Service<
       // an effect, so it still reads the registry fresh on every seed.
       const openConnectors = yield* OpenConnectors;
       const connectorModels = yield* ConnectorModels;
+      const unrunnable = yield* UnrunnableConnectors;
 
       // Rows written by an older projector cannot be trusted: a field added
       // to `ThreadDoc` since would read back as `undefined`. Rebuilding is a
@@ -270,7 +273,13 @@ export class OrchestrationEngine extends Context.Service<
        * actually run on.
        */
       const defaultModel = (chosen: ConnectorInstanceId | undefined) =>
-        seedModel(sql, openConnectors, connectorModels, chosen);
+        seedModel(
+          sql,
+          openConnectors,
+          connectorModels,
+          chosen,
+          unrunnable === null ? null : Ref.get(unrunnable),
+        );
 
       /** Cross-aggregate facts the decider may check, gathered inside the txn. */
       const buildContext = (command: Command): Effect.Effect<DeciderContext, SqlError> =>

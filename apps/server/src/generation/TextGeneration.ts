@@ -24,6 +24,7 @@ import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Ref from "effect/Ref";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { DEFAULT_THREAD_TITLE } from "../orchestration/decider";
@@ -34,6 +35,7 @@ import type { PlannedEvent } from "../persistence/EventStore";
 import { ReadModelStore } from "../persistence/ReadModels";
 import { ConnectorCatalog, SettingsStore } from "../rpc/services";
 import { ConnectorRegistryService } from "../settings/ConnectorManager";
+import { UnrunnableConnectors } from "../settings/connectorRouting";
 import { commitContext, pullRequestBase, pullRequestContext, styleContext } from "./gitContext";
 import { parseCommitMessage, parsePullRequest, parseTitle } from "./parse";
 import {
@@ -134,6 +136,7 @@ export class TextGeneration extends Context.Service<
       const readModels = yield* ReadModelStore;
       const engine = yield* OrchestrationEngine;
       const sql = yield* SqlClient.SqlClient;
+      const unrunnable = yield* UnrunnableConnectors;
 
       const openIds = Effect.map(registry.instances, (all) =>
         all.map((instance) => instance.instanceId),
@@ -142,8 +145,12 @@ export class TextGeneration extends Context.Service<
         instance: (instanceId) =>
           registry.instance(instanceId).pipe(Effect.catch(() => Effect.succeed(null))),
         models: (instanceId) => catalog.models(instanceId),
-        routed: routedPick(sql, openIds, (instanceId: ConnectorInstanceId) =>
-          Effect.map(catalog.models(instanceId), (models) => models.map((model) => model.id)),
+        routed: routedPick(
+          sql,
+          openIds,
+          (instanceId: ConnectorInstanceId) =>
+            Effect.map(catalog.models(instanceId), (models) => models.map((model) => model.id)),
+          unrunnable === null ? null : Ref.get(unrunnable),
         ),
       };
 

@@ -6,7 +6,9 @@
  *
  * The owner-like document is the one an install from when Command Code came
  * first holds: Command Code, then Claude Code, no Codex, and a Command Code
- * model as the app-wide default.
+ * model as the app-wide default. The same manager also publishes which
+ * instances cannot run, and the default rule on both sides of the engine —
+ * `ConnectorSelection` and `seedModel` — has to pass over them together.
  */
 
 import { mkdtempSync } from "node:fs";
@@ -16,7 +18,11 @@ import * as nodePath from "node:path";
 import type { AnyConnectorDefinition, ConnectorProbe } from "@poseidon/connector-sdk/definition";
 import { eraseConnectorDefinition } from "@poseidon/connector-sdk/definition";
 import { makeRegistry, type ConnectorRegistry } from "@poseidon/connector-sdk/registry";
-import { makeConnectorInstanceId } from "@poseidon/contracts/ids";
+import {
+  makeConnectorInstanceId,
+  makeThreadId,
+  type ConnectorInstanceId,
+} from "@poseidon/contracts/ids";
 import {
   defaultSettings,
   Settings,
@@ -33,12 +39,16 @@ import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as SqlClientTag from "effect/unstable/sql/SqlClient";
+import type * as SqlClient from "effect/unstable/sql/SqlClient";
 
+import { ConnectorSelection } from "../orchestration/SessionManager";
+import type { ThreadDoc } from "../orchestration/state";
 import { runMigrations } from "../persistence/Migrations";
 import { layer as sqliteLayer } from "../persistence/Sqlite";
 import { SettingsStore } from "../rpc/services";
 import { ConnectorHost } from "./ConnectorHost";
 import { ConnectorManager, ConnectorRegistryService } from "./ConnectorManager";
+import { routingPreference, seedModel, UnrunnableConnectors } from "./connectorRouting";
 import {
   DEFAULT_MODEL_MIGRATION,
   defaultModelVerdict,
@@ -192,6 +202,8 @@ interface Booted {
   readonly manager: ConnectorManager["Service"];
   readonly store: SettingsStore["Service"];
   readonly registry: ConnectorRegistry;
+  readonly sql: SqlClient.SqlClient;
+  readonly unrunnable: Ref.Ref<ReadonlySet<ConnectorInstanceId>>;
 }
 
 /** `POSEIDON_HOME` in a temp directory for the calling scope, then back. */
@@ -234,6 +246,7 @@ const bootManager = (filename: string, missing: Ref.Ref<ReadonlySet<Kind>>) =>
       });
     }
     const registry = yield* makeRegistry(definitions);
+    const unrunnable = yield* Ref.make<ReadonlySet<ConnectorInstanceId>>(new Set());
     const ctx = yield* Layer.build(
       ConnectorManager.layer.pipe(
         Layer.provideMerge(
@@ -241,6 +254,7 @@ const bootManager = (filename: string, missing: Ref.Ref<ReadonlySet<Kind>>) =>
             SettingsStore.layer,
             ConnectorHost.layer,
             Layer.succeed(ConnectorRegistryService, registry),
+            Layer.succeed(UnrunnableConnectors, unrunnable),
           ),
         ),
         Layer.provideMerge(sqlite),
@@ -252,6 +266,8 @@ const bootManager = (filename: string, missing: Ref.Ref<ReadonlySet<Kind>>) =>
       manager,
       store: Context.get(ctx, SettingsStore),
       registry,
+      sql: Context.get(ctx, SqlClientTag.SqlClient),
+      unrunnable,
     } satisfies Booted;
   });
 
@@ -308,6 +324,43 @@ const ownerRow = (filename: string, model: string) =>
       onboardingCompleted: true,
     });
     return { cmd, claude };
+  });
+
+const threadId = makeThreadId();
+
+/** A thread with only what routing reads; `chosen` is its own pick. */
+const routedThread = (chosen?: ConnectorInstanceId) =>
+  ({
+    threadId,
+    settings: {
+      model: "any",
+      runtimeMode: "approval-required",
+      interactionMode: "default",
+      ...(chosen === undefined ? {} : { connectorInstanceId: chosen }),
+    },
+  }) as ThreadDoc;
+
+/** Where the entrypoint's selection sends a thread, and what the engine seeds it with. */
+const route = ({ registry, sql, unrunnable }: Booted, chosen?: ConnectorInstanceId) =>
+  Effect.gen(function* () {
+    const selection = yield* Effect.scoped(
+      Effect.map(
+        Layer.build(
+          ConnectorSelection.fromRegistry(registry, routingPreference(sql, Ref.get(unrunnable))),
+        ),
+        (built) => Context.get(built, ConnectorSelection),
+      ),
+    );
+    const instance = yield* selection.instanceFor(routedThread(chosen));
+    const open = Effect.map(registry.instances, (all) => all.map((one) => one.instanceId));
+    const models = (instanceId: ConnectorInstanceId) =>
+      registry.instance(instanceId).pipe(
+        Effect.flatMap((one) => one.listModels()),
+        Effect.map((listed) => listed.map((model) => model.id)),
+        Effect.orDie,
+      );
+    const model = yield* seedModel(sql, open, models, chosen, Ref.get(unrunnable));
+    return { instanceId: instance.instanceId, model };
   });
 
 describe("ConnectorManager and the harness rank", () => {
@@ -385,6 +438,52 @@ describe("ConnectorManager and the harness rank", () => {
         ),
       );
       expect(settled.defaults.model).toBe(CODEX_MODEL);
+    }),
+  );
+
+  it.effect("the default rule passes over a harness that cannot run, on both sides", () =>
+    Effect.gen(function* () {
+      const filename = databaseFile();
+      yield* withBoot(filename, new Set<Kind>(["claude"]), (booted, gone) =>
+        Effect.gen(function* () {
+          const { manager, store } = booted;
+          // A fresh install: seeded in rank order, then probed.
+          yield* manager.list(true);
+          const [claude, codex, cmd] = (yield* store.get).connectors;
+          expect([claude!.kind, codex!.kind, cmd!.kind]).toEqual(["claude", "codex", "cmd"]);
+
+          // Claude Code is not installed, so a thread that chose nothing runs
+          // on Codex, and is seeded with Codex's model rather than Claude's.
+          expect(yield* route(booted)).toEqual({
+            instanceId: codex!.connectorInstanceId,
+            model: CODEX_MODEL,
+          });
+          // A thread that chose Claude Code keeps it: the health banner says why
+          // it cannot run, and the choice was the user's.
+          expect(yield* route(booted, claude!.connectorInstanceId)).toEqual({
+            instanceId: claude!.connectorInstanceId,
+            model: CLAUDE_MODEL,
+          });
+
+          // Codex gone too: Command Code.
+          yield* Ref.set(gone, new Set<Kind>(["claude", "codex"]));
+          yield* manager.list(true);
+          expect((yield* route(booted)).instanceId).toBe(cmd!.connectorInstanceId);
+
+          // Nothing can run: the first enabled one, as before the rule existed.
+          yield* Ref.set(gone, new Set<Kind>(["claude", "codex", "cmd"]));
+          yield* manager.list(true);
+          expect(yield* route(booted)).toEqual({
+            instanceId: claude!.connectorInstanceId,
+            model: CLAUDE_MODEL,
+          });
+
+          // And back: Claude Code installed, Claude Code again.
+          yield* Ref.set(gone, new Set<Kind>());
+          yield* manager.list(true);
+          expect((yield* route(booted)).instanceId).toBe(claude!.connectorInstanceId);
+        }),
+      );
     }),
   );
 });

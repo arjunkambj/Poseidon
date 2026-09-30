@@ -28,6 +28,14 @@
  * with A's model fails its first turn on a model B has never heard of. Which
  * instances are open is `OpenConnectors`, below.
  *
+ * An entry whose latest probe says its harness cannot run — not installed, or
+ * signed out (`probeCanRun`) — is passed over the same way, behind every entry
+ * that can: the connectors page lists Claude Code first, and a machine without
+ * it should start new threads on Codex rather than on a harness that fails
+ * the first turn. When none of them can run the document's order stands, so
+ * the first enabled entry still takes the turn and the harness health banner
+ * says what to fix. Which instances cannot run is `UnrunnableConnectors`.
+ *
  * All of that is now the fallback. A thread that chose its connector instance
  * (`ThreadSettings.connectorInstanceId`) runs on that one while it is open, and
  * its model is seeded from that one; the rule above answers only for a thread
@@ -38,6 +46,7 @@ import { Effort, RuntimeMode } from "@poseidon/contracts/enums";
 import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import type * as Ref from "effect/Ref";
 import type * as SqlClient from "effect/unstable/sql/SqlClient";
 import type { SqlError } from "effect/unstable/sql/SqlError";
 
@@ -140,6 +149,38 @@ export const readConnectorRouting = (
   );
 
 /**
+ * @public The instances whose latest probe says their harness cannot run
+ * (`probeCanRun`). The connector manager writes it after every probe; routing
+ * and the engine's seed read it fresh each time. A `Context.Reference` like
+ * `OpenConnectors`, and it holds the `Ref` itself so the writer and every
+ * reader share one: `null` is "nobody is probing", and then no entry is
+ * passed over, which is what every test without a manager asserts.
+ */
+export const UnrunnableConnectors = Context.Reference<Ref.Ref<
+  ReadonlySet<ConnectorInstanceId>
+> | null>("server/settings/UnrunnableConnectors", { defaultValue: () => null });
+
+/** The reading `UnrunnableConnectors` hands a reader: `null` when nobody is probing. */
+export type Unrunnable = Effect.Effect<ReadonlySet<ConnectorInstanceId>> | null;
+
+const NONE: ReadonlySet<ConnectorInstanceId> = new Set();
+
+/**
+ * The enabled entries best first: every one that can run, in document order,
+ * then the ones that cannot, in document order too — so when none can, the
+ * first enabled entry is still first. The one ordering `ConnectorSelection`
+ * (through `routingPreference`) and `seedModel` both walk.
+ */
+const routedEntries = (
+  routing: ConnectorRouting,
+  unrunnable: Unrunnable,
+): Effect.Effect<ReadonlyArray<RoutableConnector>> =>
+  Effect.map(unrunnable ?? Effect.succeed(NONE), (skipped) => [
+    ...routing.enabled.filter((connector) => !skipped.has(connector.connectorInstanceId)),
+    ...routing.enabled.filter((connector) => skipped.has(connector.connectorInstanceId)),
+  ]);
+
+/**
  * @public The instance ids a new thread should be routed to, best first —
  * what `ConnectorSelection` prefers over the registry's own insertion order.
  * A read that fails must not take routing down with it, so it answers empty
@@ -147,9 +188,11 @@ export const readConnectorRouting = (
  */
 export const routingPreference = (
   sql: SqlClient.SqlClient,
+  unrunnable: Unrunnable = null,
 ): Effect.Effect<ReadonlyArray<ConnectorInstanceId>> =>
   readConnectorRouting(sql).pipe(
-    Effect.map((routing) => routing.enabled.map((connector) => connector.connectorInstanceId)),
+    Effect.flatMap((routing) => routedEntries(routing, unrunnable)),
+    Effect.map((entries) => entries.map((connector) => connector.connectorInstanceId)),
     Effect.catch(() => Effect.succeed([] as ReadonlyArray<ConnectorInstanceId>)),
   );
 
@@ -202,8 +245,9 @@ export const ConnectorModels = Context.Reference<
  * @public The model a `thread.create` without one starts on.
  *
  * The app-wide default outranks everything. Otherwise it is the `defaultModel`
- * of the connector this thread will actually run on — the first enabled entry
- * that is open, which is exactly what `ConnectorSelection` picks. When none of
+ * of the connector this thread will actually run on — the first entry in
+ * the routing order that is open, which is exactly what `ConnectorSelection`
+ * picks, given the same `unrunnable`. When none of
  * the enabled entries is open, selection falls back to whatever the registry
  * holds and no document entry can speak for it, so nothing is seeded and the
  * thread starts on that connector's own default instead of a foreign model.
@@ -229,6 +273,7 @@ export const seedModel = (
   open: Effect.Effect<ReadonlyArray<ConnectorInstanceId>> | null,
   models: ((instanceId: ConnectorInstanceId) => Effect.Effect<ReadonlyArray<string>>) | null = null,
   chosen?: ConnectorInstanceId,
+  unrunnable: Unrunnable = null,
 ): Effect.Effect<string | null, SqlError> =>
   Effect.gen(function* () {
     const routing = yield* readConnectorRouting(sql);
@@ -251,10 +296,11 @@ export const seedModel = (
     if (routing.sharedModel !== null) {
       return routing.sharedModel;
     }
+    const ranked = yield* routedEntries(routing, unrunnable);
     const routed =
       openIds === null
-        ? routing.enabled[0]
-        : routing.enabled.find((connector) => openIds.includes(connector.connectorInstanceId));
+        ? ranked[0]
+        : ranked.find((connector) => openIds.includes(connector.connectorInstanceId));
     if (routed?.defaultModel != null) {
       return routed.defaultModel;
     }

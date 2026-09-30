@@ -26,7 +26,7 @@ import type { ModelPickerSettings, Settings } from "@poseidon/contracts/settings
 import * as Effect from "effect/Effect";
 import type * as SqlClient from "effect/unstable/sql/SqlClient";
 
-import { readConnectorRouting, seedModel } from "../settings/connectorRouting";
+import { routingPreference, seedModel, type Unrunnable } from "../settings/connectorRouting";
 
 /** Said once when the chosen Writing model could not be used. */
 export const WRITER_FALLBACK_NOTICE =
@@ -204,24 +204,23 @@ export const resolveWriter = (
   });
 
 /**
- * Where a new thread would run and on what model: the first enabled connector
- * the registry holds open, in the connectors page's order, with the model the
- * engine would seed it with. Null when neither can be told.
+ * Where a new thread would run and on what model: the first instance in the
+ * routing order (`routingPreference`) the registry holds open, with the model
+ * the engine would seed it with. Null when neither can be told.
  */
 export const routedPick = (
   sql: SqlClient.SqlClient,
   open: Effect.Effect<ReadonlyArray<ConnectorInstanceId>>,
   modelIds: (instanceId: ConnectorInstanceId) => Effect.Effect<ReadonlyArray<string>>,
+  unrunnable: Unrunnable = null,
 ): Effect.Effect<WriterPick | null> =>
   Effect.gen(function* () {
-    const routing = yield* readConnectorRouting(sql);
+    const preferred = yield* routingPreference(sql, unrunnable);
     const openIds = yield* open;
-    const instanceId =
-      routing.enabled.find((connector) => openIds.includes(connector.connectorInstanceId))
-        ?.connectorInstanceId ?? openIds[0];
+    const instanceId = preferred.find((id) => openIds.includes(id)) ?? openIds[0];
     if (instanceId === undefined) {
       return null;
     }
-    const model = yield* seedModel(sql, open, modelIds);
+    const model = yield* seedModel(sql, open, modelIds, undefined, unrunnable);
     return model === null ? null : { connectorInstanceId: instanceId, model };
   }).pipe(Effect.catch(() => Effect.succeed(null)));

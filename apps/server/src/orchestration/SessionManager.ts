@@ -76,8 +76,9 @@ export class ConnectorSelection extends Context.Service<
    * lists instances in the order `open` was called, and the connector manager
    * only reopens entries whose signature changed, so disabling and re-enabling
    * a connector moves it to the end. The entrypoint passes the enabled
-   * connectors in settings-document order — the same reading the engine seeds a
-   * new thread's model from, so the two cannot name different instances. Tests
+   * connectors in settings-document order, with those whose probe says they
+   * cannot run moved behind the rest — the same reading the engine seeds a new
+   * thread's model from, so the two cannot name different instances. Tests
    * that wire a single connector pass nothing and get the registry's order.
    */
   static readonly fromRegistry = (
