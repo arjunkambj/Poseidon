@@ -155,18 +155,18 @@ export const boot = (options: BootOptions) =>
       sqlite,
       Layer.mergeAll(EventStore.layer, ReadModelStore.layer).pipe(Layer.provide(sqlite)),
     );
-    // Order is routing order on a fresh install: every definition is seeded as
-    // an instance in this order, and a thread that names none runs on the first
-    // enabled one. Command Code stays first, then Claude Code, so adding a
-    // connector changes no existing default.
+    // Order is the harness rank: every definition is seeded as an instance in
+    // this order on a fresh install, and a thread that names none runs on the
+    // first enabled one. Claude Code is the default, then Codex, and Command
+    // Code comes last.
     const registry = yield* makeRegistry([
+      eraseConnectorDefinition(makeClaudeConnectorDefinition(options.claudeCode ?? {})),
+      eraseConnectorDefinition(makeCodexConnectorDefinition(options.codex ?? {})),
       eraseConnectorDefinition(
         makeCmdConnectorDefinition(
           options.commandCodeHome === undefined ? {} : { commandCodeHome: options.commandCodeHome },
         ),
       ),
-      eraseConnectorDefinition(makeClaudeConnectorDefinition(options.claudeCode ?? {})),
-      eraseConnectorDefinition(makeCodexConnectorDefinition(options.codex ?? {})),
     ]);
     // Routing follows the connectors page's own order, not the order instances
     // happened to be opened in — the same reading the engine seeds a new
