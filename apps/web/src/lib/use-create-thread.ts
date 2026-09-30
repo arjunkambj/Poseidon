@@ -12,7 +12,9 @@
  *
  * A project whose newest thread is still blank (no user or agent message
  * yet) gets that thread back instead of another one, so pressing "new thread"
- * repeatedly never stacks empty threads.
+ * repeatedly never stacks empty threads — unless that thread is bound to
+ * another harness than the one a new thread would start on, as a blank one
+ * made before a change of default rank or of Settings → Models is.
  *
  * The home composer passes its own id and `navigate: false`: it has a first
  * message to send before leaving, and the draft it holds is keyed by that id,
@@ -33,6 +35,7 @@ import type { ThreadWorktree } from "@poseidon/contracts/git";
 import {
   makeCommandId,
   makeThreadId,
+  type ConnectorInstanceId,
   type ProjectId,
   type ThreadId,
 } from "@poseidon/contracts/ids";
@@ -47,11 +50,13 @@ import { useLastProject } from "@/state/ui";
 /**
  * The project's newest thread when nothing has been said in it yet. The read
  * model only sets `preview` from a user or assistant message, so its absence
- * on an idle thread means the thread is empty.
+ * on an idle thread means the thread is empty. `instance` is where a new
+ * thread would start; a blank thread bound to another one is not handed back.
  */
 export const blankLatestThread = (
   threads: ReadonlyArray<ThreadSummary>,
   projectId: ProjectId,
+  instance?: ConnectorInstanceId,
 ): ThreadSummary | undefined => {
   let latest: ThreadSummary | undefined;
   for (const thread of threads) {
@@ -64,7 +69,11 @@ export const blankLatestThread = (
       latest = thread;
     }
   }
-  return latest !== undefined && latest.status === "idle" && latest.preview === undefined
+  const bound = latest?.settings.connectorInstanceId;
+  return latest !== undefined &&
+    latest.status === "idle" &&
+    latest.preview === undefined &&
+    (bound === undefined || instance === undefined || bound === instance)
     ? latest
     : undefined;
 };
@@ -97,8 +106,11 @@ export const useCreateThread = () => {
         readonly worktree?: ThreadWorktree;
       } = {},
     ): Promise<boolean> => {
+      const settings = withCreateSeed(options.settings, seed);
       const blank =
-        options.threadId === undefined ? blankLatestThread(threads, projectId) : undefined;
+        options.threadId === undefined
+          ? blankLatestThread(threads, projectId, settings?.connectorInstanceId)
+          : undefined;
       if (blank !== undefined) {
         rememberProject(projectId);
         if (options.navigate !== false) {
@@ -115,7 +127,7 @@ export const useCreateThread = () => {
         type: "thread.create",
         threadId,
         projectId,
-        settings: withCreateSeed(options.settings, seed),
+        settings,
         ...(options.worktree === undefined ? {} : { worktree: options.worktree }),
       });
       setPending(false);
