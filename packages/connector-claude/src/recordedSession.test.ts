@@ -16,15 +16,15 @@
  * one turn that answers both.
  * The recordings are made through the real server; only their session launch
  * is played here — the probe's launches are a different class and are never
- * asked for. None of them is made yet: each needs a signed-in CLI, and until
- * its recording exists a scenario's suite is skipped under a title that says
- * so (`packages/testkit/fixtures/claude/README.md` lists them).
+ * asked for. Each was made with a signed-in CLI; a scenario whose recording
+ * is missing is skipped under a title that says so.
  *
  * The ladder here stands in for the server's, as far as these recordings
- * need it: a plan turn refuses every non-read, a sensitive path asks, a read
- * passes, full access passes the rest, and anything else asks. The replay checks every hook answer and every card
- * answer against the recorded one, so a ladder that answered differently from
- * the server's would fail the replay, not pass it quietly.
+ * need it: a plan turn refuses every non-read, a sensitive path (`.env`,
+ * `.git`) asks, a read passes, full access passes the rest, and anything else
+ * asks. The replay checks every hook answer and every card answer against
+ * the recorded one, so a ladder that answered differently from the server's
+ * would fail the replay, not pass it quietly.
  */
 
 import * as NodeFS from "node:fs";
@@ -72,7 +72,7 @@ const ladder: ConnectorPermissions["decide"] = ({ request, runtimeMode, interact
   Effect.succeed(
     interactionMode === "plan" && request.kind !== "file_read"
       ? "deny"
-      : JSON.stringify(request.input ?? {}).includes(".env")
+      : /\.(env|git)\b/.test(JSON.stringify(request.input ?? {}))
         ? "prompt"
         : request.kind === "file_read" || runtimeMode === "full-access"
           ? "allow"
@@ -371,7 +371,9 @@ describeRecorded("subagent", "a Claude Code session replaying claude/subagent", 
   it.live("opens a task for the delegation and nests the subagent's rows under it", () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const events = yield* replayTurn("subagent", "full-access", "deny");
+        // The subagent's listing names `.git`, so even full access asks; the
+        // recording allowed it once.
+        const events = yield* replayTurn("subagent", "full-access", "allow-once");
         expect(ofType(events, "event.unmapped")).toEqual([]);
         expect(ofType(events, "session.warning")).toEqual([]);
 
