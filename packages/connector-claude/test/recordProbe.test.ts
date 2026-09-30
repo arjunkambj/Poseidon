@@ -2,7 +2,7 @@
  * Records `fixtures/claude/probe/` from the real CLI when it is signed out,
  * and `fixtures/claude/probe-signed-in/` when it is signed in.
  *
- *     POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run test/recordProbe.test.ts
+ *     POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test/recordProbe.test.ts
  *
  * It runs the connector's own probe with its binary path pointed at the
  * testkit's stdio tee, so every launch — `--version`, `auth status --json`,

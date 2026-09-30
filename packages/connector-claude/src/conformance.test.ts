@@ -7,7 +7,7 @@
  * replay hands each case's launch the next recorded one, and exits 97 on any
  * line the connector sends that the recorded run was not sent.
  *
- *     POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/conformance.test.ts
+ *     POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/conformance.test.ts
  *
  * records it again: the operator's CLI behind the tee, in a scratch repo under
  * `/tmp/poseidon-h1`, capped at one turn and fifty cents a session. The cap

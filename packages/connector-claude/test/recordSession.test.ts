@@ -1,7 +1,7 @@
 /**
  * Records session scenarios from the real CLI into `fixtures/claude/`.
  *
- *     POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run test/recordSession.test.ts
+ *     POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test/recordSession.test.ts
  *
  * Each scenario drives the connector's real definition with its binary path
  * pointed at the testkit's stdio tee, in a throwaway git repo under

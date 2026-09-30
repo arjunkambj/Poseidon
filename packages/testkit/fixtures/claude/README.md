@@ -90,9 +90,9 @@ in; the signed-out session recorders skip themselves on a signed-in one. With
 signed-in ones are made with:
 
     POSEIDON_RECORD_CLAUDE=1 pnpm -F server exec vitest run test/e2e-claude/turn.test.ts test/e2e-claude/interrupt.test.ts test/e2e-claude/resume.test.ts test/e2e-claude/approval.test.ts test/e2e-claude/plan.test.ts test/e2e-claude/question.test.ts test/e2e-claude/subagent.test.ts test/e2e-claude/subagent-stop.test.ts test/e2e-claude/model.test.ts test/e2e-claude/attachment.test.ts test/e2e-claude/steering.test.ts
-    POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run test/recordProbe.test.ts
-    POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run test/recordSession.test.ts -t "generate-text: one"
-    POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/conformance.test.ts
+    POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test/recordProbe.test.ts
+    POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test/recordSession.test.ts -t "generate-text: one"
+    POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/conformance.test.ts
 
 Two directories are not recordings. `plugins/` holds the config files the
 real CLI wrote while installing two plugins into a scratch config directory,

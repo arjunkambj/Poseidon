@@ -4,7 +4,7 @@
  * Every other test of this connector replays a recording. This one spends the
  * operator's subscription, so it is opt-in and never runs in the gate:
  *
- *     POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/liveConformance.test.ts
+ *     POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/liveConformance.test.ts
  *
  * What it proves that a replay cannot: that the CLI installed today still
  * accepts the argv and the control requests the SDK and the connector send,

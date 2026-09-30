@@ -1241,15 +1241,15 @@ signed-out session recorders skip themselves on a signed-in CLI), and the
 conformance suite:
 
 ```sh
-POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run test/recordProbe.test.ts
-POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run test/recordSession.test.ts -t "generate-text: one"
-POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/conformance.test.ts
+POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test/recordProbe.test.ts
+POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test/recordSession.test.ts -t "generate-text: one"
+POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/conformance.test.ts
 ```
 
 Run the live suites once:
 
 ```sh
-POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/liveConformance.test.ts
+POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/liveConformance.test.ts
 POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_LIVE_CLAUDE=1 POSEIDON_CLAUDE_APPROVED_MODEL=<the default's id> pnpm exec vitest run apps/server/test/e2e-claude
 ```
 
@@ -1283,7 +1283,7 @@ drift, in the order they tell you:
    without `event.unmapped`, and still routes its calls through the gate:
 
    ```sh
-   POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/liveConformance.test.ts
+   POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/liveConformance.test.ts
    POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_LIVE_CLAUDE=1 pnpm exec vitest run apps/server/test/e2e-claude
    ```
 
