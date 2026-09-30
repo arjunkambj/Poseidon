@@ -866,20 +866,22 @@ the CLI's bundle, and one live check, which settled what the bundle had wrong:
   applies `effortLevel` first, then `ultracode`. Whether workflows run is
   decided per request: ultracode is in force only while workflows are enabled
   (managed settings, org policy, `disableWorkflows`, availability) and the
-  effort resolves to xhigh; `get_settings` reports that as
-  `applied.ultracode`.
+  effort allows it; `get_settings` reports that as `applied.ultracode`. The
+  bundle reading had the effort needing to resolve to xhigh, and the flag
+  raising the effort to xhigh at start; the live check found neither.
 - **The live check** (2.1.286, signed in, a Max account, 2026-10-01): the
   headless CLI started as the connector starts it, reading `get_settings`
   after each step, with one trivial turn ("Reply with exactly: ok", which
   started no workflow). `--settings '{"ultracode":true}'` with `--effort xhigh`
   gave `applied.ultracode: true` at xhigh; the flag without the effort gave
-  `applied.ultracode: true` at the CLI's default, medium — the flag does not
-  raise the effort, as the bundle reading had it. `apply_flag_settings` took
-  `{ ultracode: false }` (applied off, effort kept), `{ ultracode: true }`
-  (applied on, effort still where it was), `{ effortLevel: "low" }` alone with
-  the flag set (the flag stays in the flag layer but is no longer applied) and
-  both keys together (applied on at xhigh), each with success. None was
-  refused on this account. So the headless CLI honours the flag from both the
+  `applied.ultracode: true` at the CLI's default, medium, so the flag does not
+  raise the effort. `apply_flag_settings` took `{ ultracode: false }` (applied
+  off, effort kept), `{ ultracode: true }` (applied on, effort still where it
+  was), `{ effortLevel: "low" }` alone with the flag set (the flag stays in
+  the flag layer but is no longer applied) and both keys together (applied on
+  at xhigh), each with success. None was refused on this account. So with the
+  flag set, `applied.ultracode` was true at xhigh and at medium and false at
+  low; high was not tried. The headless CLI honours the flag from both the
   inline settings and `apply_flag_settings`, and the effort the mode runs at
   must be named beside it.
 - **The refusal** "apply_flag_settings: ultracode is not available for this
@@ -913,10 +915,10 @@ What the connector does:
   going off, both keys when both changed, and `effortLevel: "xhigh"` beside
   the flag whenever it goes on, since the CLI does not raise the effort for
   it; no call when neither changed. Taken with ultracode going on, the
-  session runs at xhigh. Refused, the effort and the flag go
-  back to what they were. Either way `model.changed` says what the CLI runs
-  on, with `ultracode` whenever the call named it, so a refusal turns the
-  thread's flag back off through the event.
+  session runs at xhigh. Refused, the effort and the flag go back to what
+  they were. Either way `model.changed` says what the CLI runs on, with
+  `ultracode` whenever the call named it, so a refusal turns the thread's flag
+  back off through the event.
 - **`generateText`** never uses ultracode.
 - **The Workflow tool** stays gated: it is not one of the no-permission tools
   (`approvals.ts`), so in approval-required each workflow launch asks on a

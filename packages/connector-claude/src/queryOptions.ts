@@ -80,7 +80,10 @@ export const permissionModeFor = (settings: ThreadSettings): PermissionMode => {
 export const sdkEffortFor = (effort: Effort | undefined): EffortLevel | undefined =>
   effort === undefined || effort === "minimal" || effort === "ultra" ? undefined : effort;
 
-/** The effort ultracode runs at; the CLI sets it itself when ultracode goes on. */
+/**
+ * The effort ultracode runs at. The CLI leaves the effort where it was when
+ * the flag goes on (live check, CLI 2.1.286), so a launch and a switch name it.
+ */
 export const ULTRACODE_EFFORT = "xhigh" satisfies EffortLevel;
 
 /**
@@ -88,9 +91,10 @@ export const ULTRACODE_EFFORT = "xhigh" satisfies EffortLevel;
  * `settings` — the `--settings` flag layer, where the SDK documents
  * `Settings.ultracode` is provided — and the effort ultracode runs at,
  * whatever the thread's own effort says. The CLI reads `ultracode` from its
- * merged settings at start and defaults the effort to xhigh with it (CLI
- * 2.1.280 bundle); the explicit effort keeps the two in step. Off adds
- * nothing, so the launch is exactly what it was before ultracode existed.
+ * merged settings at start but does not raise the effort for it — the flag
+ * alone ran at the default, medium (live check, CLI 2.1.286) — so the
+ * explicit effort is what puts the mode at xhigh. Off adds nothing, so the
+ * launch is exactly what it was before ultracode existed.
  */
 export const ultracodeLaunchOptions = (
   settings: ThreadSettings,

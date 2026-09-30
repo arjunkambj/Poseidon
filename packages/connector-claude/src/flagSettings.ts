@@ -8,14 +8,14 @@
  * beside the flag going on. What CLI 2.1.286 does with each, read back
  * through its `get_settings` on a signed-in account:
  *
- * - `ultracode: true` sets the flag and leaves the effort where it was, so
- *   ultracode at low effort is what a flag alone gets; the effort the mode
+ * - `ultracode: true` sets the flag and leaves the effort where it was — a
+ *   fresh session's medium, where the flag is applied — so the xhigh the mode
  *   runs at has to be named;
  * - `ultracode: false` clears it with the effort kept;
- * - an `effortLevel` alone leaves the flag set, but below xhigh the CLI no
- *   longer applies it, so an effort pick that ends ultracode says
- *   `ultracode: false` beside it — the server's rules put it in the patch
- *   (`settingsRules.ts`).
+ * - an `effortLevel` alone leaves the flag set, applied or not by the effort
+ *   (applied at medium and xhigh, not at low), so an effort pick that ends
+ *   ultracode says `ultracode: false` beside it — the server's rules put it in
+ *   the patch (`settingsRules.ts`).
  *
  * The settings the session then runs on are what `model.changed` reports:
  * xhigh once ultracode went on, and the effort and flag from before when the
