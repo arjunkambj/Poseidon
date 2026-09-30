@@ -4,14 +4,18 @@
  * in streaming-input mode (SDK 0.3.280).
  *
  * One switch is one call, whatever changed: `{ effortLevel }` for an effort,
- * `{ ultracode }` for the flag, both keys when both changed. The CLI applies
- * the effort first and the flag after it (CLI 2.1.280, its SDK handler):
+ * `{ ultracode }` for the flag, both keys when both changed — and xhigh always
+ * beside the flag going on. What CLI 2.1.286 does with each, read back
+ * through its `get_settings` on a signed-in account:
  *
- * - `ultracode: true` puts the session in ultracode at xhigh;
- * - `ultracode: false` leaves it with the effort kept;
- * - an `effortLevel` alone leaves the flag where it was, so an effort pick
- *   that ends ultracode says `ultracode: false` beside it — the server's
- *   rules put it in the patch (`settingsRules.ts`).
+ * - `ultracode: true` sets the flag and leaves the effort where it was, so
+ *   ultracode at low effort is what a flag alone gets; the effort the mode
+ *   runs at has to be named;
+ * - `ultracode: false` clears it with the effort kept;
+ * - an `effortLevel` alone leaves the flag set, but below xhigh the CLI no
+ *   longer applies it, so an effort pick that ends ultracode says
+ *   `ultracode: false` beside it — the server's rules put it in the patch
+ *   (`settingsRules.ts`).
  *
  * The settings the session then runs on are what `model.changed` reports:
  * xhigh once ultracode went on, and the effort and flag from before when the
@@ -38,7 +42,8 @@ const ultracodeOf = (settings: ThreadSettings): boolean => settings.ultracode ==
 /**
  * The one `applyFlagSettings` argument that moves the CLI from `before` to
  * `after`, or null when neither the effort nor the flag changed. An effort
- * the CLI has no rung for is `null`, its model's default.
+ * the CLI has no rung for is `null`, its model's default. Ultracode going on
+ * names xhigh whatever the thread's effort says, as the launch does.
  */
 export const flagSettingsFor = (
   before: ThreadSettings,
@@ -47,9 +52,12 @@ export const flagSettingsFor = (
   const effortChanged = after.effort !== before.effort;
   const ultracodeChanged = ultracodeOf(after) !== ultracodeOf(before);
   if (!effortChanged && !ultracodeChanged) return null;
+  if (ultracodeChanged && ultracodeOf(after)) {
+    return { effortLevel: ULTRACODE_EFFORT, ultracode: true };
+  }
   return {
     ...(effortChanged ? { effortLevel: sdkEffortFor(after.effort) ?? null } : {}),
-    ...(ultracodeChanged ? { ultracode: ultracodeOf(after) } : {}),
+    ...(ultracodeChanged ? { ultracode: false } : {}),
   };
 };
 

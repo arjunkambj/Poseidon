@@ -34,10 +34,7 @@ describe("flagSettingsFor", () => {
     expect(flagSettingsFor(at({ effort: "low" }), base)).toEqual({ effortLevel: null });
   });
 
-  it("names only the flag when only the flag changed", () => {
-    expect(
-      flagSettingsFor(at({ effort: "xhigh" }), at({ effort: "xhigh", ultracode: true })),
-    ).toEqual({ ultracode: true });
+  it("names only the flag when only the flag went off", () => {
     expect(
       flagSettingsFor(
         at({ effort: "xhigh", ultracode: true }),
@@ -45,6 +42,18 @@ describe("flagSettingsFor", () => {
       ),
     ).toEqual({ ultracode: false });
     expect(flagSettingsFor(at({ ultracode: true }), base)).toEqual({ ultracode: false });
+  });
+
+  it("names xhigh beside the flag going on, whatever the effort was", () => {
+    // The CLI sets the flag and keeps its effort (2.1.286), so the effort the
+    // mode runs at is named, even when the thread already says xhigh.
+    expect(
+      flagSettingsFor(at({ effort: "xhigh" }), at({ effort: "xhigh", ultracode: true })),
+    ).toEqual({ effortLevel: "xhigh", ultracode: true });
+    expect(flagSettingsFor(base, at({ ultracode: true }))).toEqual({
+      effortLevel: "xhigh",
+      ultracode: true,
+    });
   });
 
   it("names both when both changed", () => {
@@ -94,10 +103,10 @@ describe("switchFlags", () => {
     expect(result).toMatchObject({ switched: true, ultracodeSwitched: true });
   });
 
-  it("runs at xhigh after the flag went on, even with no effort beside it", async () => {
+  it("runs at xhigh after the flag went on, even with no effort in the patch", async () => {
     const { calls, apply } = recorder(true);
     const result = await Effect.runPromise(switchFlags(base, at({ ultracode: true }), apply));
-    expect(calls).toEqual([{ ultracode: true }]);
+    expect(calls).toEqual([{ effortLevel: "xhigh", ultracode: true }]);
     expect(result.settings).toEqual(at({ effort: "xhigh", ultracode: true }));
   });
 
