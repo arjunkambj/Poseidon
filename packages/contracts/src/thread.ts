@@ -24,7 +24,9 @@ export type Mention = typeof Mention.Type;
  * `connectorInstanceId` is the harness the user picked for this thread. It is
  * optional because every event written before threads could choose one lacks
  * it, and because a thread may leave the choice to routing: absent means "the
- * default rule" — the first enabled connector that is open.
+ * default rule" — the first enabled connector that is open and whose probe says
+ * it can run (`probeCanRun`), or the first enabled one that is open when none
+ * can.
  *
  * `ultracode` is a Claude Code session mode: `xhigh` effort plus standing
  * dynamic-workflow orchestration (the harness's Workflow tool). It is off when

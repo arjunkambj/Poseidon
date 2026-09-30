@@ -714,7 +714,9 @@ Picking a model picks its instance too: the start screen sends both on
 new thread shows the saved default model under the first instance the pickers
 offer it from (under a switched-off instance only when no other lists it), else
 the first model the pickers offer (`newTaskModelPick`), so a switched-off
-harness is never the implicit seed. A thread created without a model — the
+harness is never the implicit seed. "First" is in the default rule's order
+(`runnableFirst`): an instance whose probe says it cannot run comes after every
+one that can. A thread created without a model — the
 sidebar's "+", the palette, the new-thread key — is sent that same seed
 (`threadCreateSeed`, via `useCreateThread`); only while no instance lists it is
 the choice left to the server's seed rule. Once the thread has run anything
@@ -723,7 +725,8 @@ with a tooltip saying to start a new thread, and a pick in the thread's own
 flyout sends the model alone. The instance a thread runs on, or would, is
 `threadConnectorInstanceId` (`apps/web/src/lib/connector-routing.ts`): the bound
 session's, else the thread's chosen one while it is enabled, else the first
-enabled one.
+enabled one whose probe says it can run (`runnableFirst`), or the first enabled
+one when none can.
 
 `/effort` and `/mode` offer what the header pickers offer. Efforts are the
 current model's `efforts`, or the whole ladder when it states none, always

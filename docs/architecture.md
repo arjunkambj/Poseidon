@@ -1930,8 +1930,10 @@ thread runs on: by the bound session's persisted `connectorInstanceId` when it
 has one; otherwise by the instance the thread chose
 (`ThreadSettings.connectorInstanceId`) while that instance is open; otherwise
 the default rule, the first instance in the settings document's order that is
-actually open. `connectorRouting.ts` is the single reading of that order, shared
-with the engine's model seeding so the two can never name different instances.
+actually open, passing over any whose probe says it cannot run (`probeCanRun`)
+unless none can. `connectorRouting.ts` is the single reading of that order,
+shared with the engine's model seeding so the two can never name different
+instances.
 A `thread.create` that chose an instance and named no model is seeded from that
 instance: its `defaultModel`, then its first model, ahead of the app-wide
 default, which may belong to another harness.
