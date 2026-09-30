@@ -3,12 +3,12 @@
  * `thread/resume` for a thread the CLI already has, or `thread/fork` for a
  * new thread that carries one of those on.
  *
- * All three name the working directory, the approval policy and the sandbox
- * the thread's modes call for (`modes.ts`), the model unless the thread runs
- * on the CLI's default, and the config the session's plugins add
- * (`plugins.ts`) when they add any. A resume or a fork is asked for without the
- * thread's turns (`excludeTurns`): Poseidon has its own timeline, and the full
- * history is a payload the CLI itself calls deprecated.
+ * All three name the working directory, the approval policy, its reviewer
+ * and the sandbox the thread's modes call for (`modes.ts`), the model unless
+ * the thread runs on the CLI's default, and the config the session's plugins
+ * add (`plugins.ts`) when they add any. A resume or a fork is asked for
+ * without the thread's turns (`excludeTurns`): Poseidon has its own timeline,
+ * and the full history is a payload the CLI itself calls deprecated.
  *
  * A resume the CLI refuses because it has no rollout for the id — the thread
  * was made under another `CODEX_HOME`, or its files were cleaned up — starts
@@ -25,7 +25,7 @@ import * as Effect from "effect/Effect";
 
 import { call } from "./handshake";
 import { codexModelFor, toEffort } from "./models";
-import { APPROVAL_POLICY, sandboxModeFor } from "./modes";
+import { APPROVAL_POLICY, APPROVALS_REVIEWER, sandboxModeFor } from "./modes";
 import { ThreadOpenResponse } from "./protocol";
 import type { RpcClient, RpcFailed } from "./rpc";
 
@@ -53,6 +53,7 @@ const baseParams = (cwd: string, settings: ThreadSettings, config: ThreadConfig 
   return {
     cwd,
     approvalPolicy: APPROVAL_POLICY,
+    approvalsReviewer: APPROVALS_REVIEWER,
     sandbox: sandboxModeFor(settings.runtimeMode),
     ...(model === undefined ? {} : { model }),
     ...(config === undefined ? {} : { config }),

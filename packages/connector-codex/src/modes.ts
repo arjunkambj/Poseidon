@@ -23,6 +23,11 @@
  * Auto-accept edits writes the workspace, and full access lifts the sandbox.
  * `thread/start` takes the sandbox by name; `turn/start` wants the policy
  * spelled out, so the two forms live side by side.
+ *
+ * Every ask goes to the user: the thread is opened with `approvalsReviewer`
+ * `user`. Left unnamed it is whatever the operator's `config.toml` says, and
+ * `auto_review` there has a Codex subagent approve or deny each ask itself,
+ * so none would reach the ladder.
  */
 
 import type { RuntimeMode } from "@poseidon/contracts/enums";
@@ -31,6 +36,9 @@ export type ApprovalPolicy = "untrusted";
 export type SandboxMode = "read-only" | "workspace-write" | "danger-full-access";
 
 export const APPROVAL_POLICY: ApprovalPolicy = "untrusted";
+
+/** Who the CLI routes an approval ask to: always Poseidon's client. */
+export const APPROVALS_REVIEWER = "user";
 
 export const sandboxModeFor = (mode: RuntimeMode): SandboxMode => {
   switch (mode) {
