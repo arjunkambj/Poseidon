@@ -95,6 +95,9 @@ const RESTATED_STREAM_EVENTS = new Set([
 /** `system/status` values that only say a request is under way. */
 const REQUEST_STATUSES = new Set(["requesting"]);
 
+/** The line the CLI writes as a user message once the user interrupted a request. */
+const INTERRUPTED = /^\[Request interrupted by user( for tool use)?\]$/;
+
 /** The `task_*` system messages: a subagent's, or a background command's, lifecycle. */
 const TASK_MESSAGES = new Set([
   "task_started",
@@ -288,10 +291,18 @@ export const makeTranslator = (options: {
    * A user message the CLI wrote: the results of the calls the model made.
    * `tool_use_result` is the tool's structured output, and belongs to the
    * message's one result — a message carrying several is read without it.
+   * The CLI's own line saying the user interrupted (`interrupt`) is a text
+   * block beside them, or alone; the turn's stop reason already says it.
    */
   const user = (message: Json): ReadonlyArray<PendingRuntimeEvent> => {
     const blocks = asArray(asRecord(message.message).content).map(asRecord);
     const results = blocks.filter((block) => block.type === "tool_result");
+    const markers = blocks.filter(
+      (block) => block.type === "text" && INTERRUPTED.test(asString(block.text) ?? ""),
+    );
+    if (markers.length > 0 && results.length + markers.length === blocks.length) {
+      return results.flatMap((block) => tools.finished(block, undefined));
+    }
     if (results.length === 0 || results.length !== blocks.length) return [unmapped(message)];
     const structured = results.length === 1 ? message.tool_use_result : undefined;
     return results.flatMap((block) => tools.finished(block, structured));

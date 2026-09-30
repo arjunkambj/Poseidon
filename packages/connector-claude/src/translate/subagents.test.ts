@@ -1,10 +1,10 @@
 /**
  * The pieces a subagent's row is built from: how a task's state reads as a
- * row's status, the title a Task or Agent call gives its task, and the hold
- * that keeps a subagent's messages until its task's row is open. How the
- * SDK's own messages become nested rows is for the real CLI's recordings to
- * prove, in `recordedFrames.test.ts` and `recordedSession.test.ts`, once
- * `subagent` is recorded with a signed-in CLI; no recording has a subagent yet.
+ * row's status, the title a Task or Agent call gives its task, the hold that
+ * keeps a subagent's messages until its task's row is open, and which `task_*`
+ * messages are read at all. How the SDK's own messages become nested rows is
+ * for the real CLI's recordings to prove, in `recordedFrames.test.ts` and
+ * `recordedSession.test.ts` (`subagent`, `subagent-stop`).
  */
 
 import { makeItemId } from "@poseidon/contracts/ids";
@@ -111,5 +111,40 @@ describe("a task's lifecycle", () => {
   it("reads nothing of a call whose row is not a task's, for the translator to keep unmapped", () => {
     // A background shell command's task_* messages name its Bash call.
     expect(makeSubagents().lifecycle("call-bash", message)).toBeNull();
+  });
+});
+
+describe("the lifecycle of a call that is not a task", () => {
+  // The shapes `steering` recorded for a foreground `sleep 5; echo one`.
+  const started = {
+    type: "system",
+    subtype: "task_started",
+    task_id: "b1",
+    tool_use_id: "call-bash",
+    task_type: "local_bash",
+    is_backgrounded: false,
+  };
+  const notified = {
+    type: "system",
+    subtype: "task_notification",
+    task_id: "b1",
+    tool_use_id: "call-bash",
+    status: "completed",
+  };
+
+  it("adds nothing for a foreground shell command, whose own result settles its row", () => {
+    const subagents = makeSubagents();
+    for (const message of [started, notified]) {
+      expect(subagents.callOf(message)).toBe("call-bash");
+      expect(subagents.lifecycle("call-bash", message)).toEqual([]);
+    }
+  });
+
+  it("leaves a background command's messages unread", () => {
+    const subagents = makeSubagents();
+    const background = { ...started, is_backgrounded: true };
+    expect(subagents.callOf(background)).toBe("call-bash");
+    expect(subagents.lifecycle("call-bash", background)).toBeNull();
+    expect(subagents.lifecycle("call-bash", notified)).toBeNull();
   });
 });

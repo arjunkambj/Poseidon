@@ -13,8 +13,11 @@
  *   `task_notification` then name only one of the two. They become
  *   `task.updated` while the task runs and `task.completed` once it settled —
  *   `completed`, or `failed` for a failure, a kill or a stop. The same family
- *   reports the CLI's background shell commands, whose own row settled when
- *   the command was launched and cannot say how it ended; a `task_*` message
+ *   reports the CLI's shell commands. A foreground one (`task_type`
+ *   `local_bash`, not `is_backgrounded`) is a command the CLI waited on long
+ *   enough to track: its row settles with its own result, so its `task_*`
+ *   messages add nothing (`steering`). A background one's row settled when the
+ *   command was launched and cannot say how it ended; a `task_*` message
  *   whose call opened a row of another kind is kept unmapped, whole, until a
  *   mapping onto that row exists;
  * - the subagent's own messages — its stream, its snapshots and the results of
@@ -94,7 +97,8 @@ export interface Subagents {
   readonly callOf: (message: Json) => string | undefined;
   /**
    * A `task_*` system message whose call has a row → its task events: none
-   * for what a settled task's row already shows. Null for a message this does
+   * for what a settled task's row already shows, nor for a foreground shell
+   * command's, whose row its own result settles. Null for a message this does
    * not read — a call whose row is not a task's (a background shell command,
    * or another tool the CLI runs as a task), or a `task_*` kind it does not
    * know — which the translator keeps unmapped.
@@ -122,6 +126,8 @@ export const makeSubagents = (): Subagents => {
   const tasks = new Map<string, Task>();
   /** The CLI's `task_id` → the call's `tool_use` id, for every task it reported. */
   const calls = new Map<string, string>();
+  /** The CLI's `task_id`s of shell commands it ran in the foreground. */
+  const foreground = new Set<string>();
   const held = new Map<string, Array<Json>>();
 
   const event = (
@@ -159,13 +165,19 @@ export const makeSubagents = (): Subagents => {
     const named = asString(message.tool_use_id);
     if (message.subtype === "task_started" && taskId !== undefined && named !== undefined) {
       calls.set(taskId, named);
+      if (message.task_type === "local_bash" && message.is_backgrounded === false) {
+        foreground.add(taskId);
+      }
     }
     return named ?? (taskId === undefined ? undefined : calls.get(taskId));
   };
 
   const lifecycle: Subagents["lifecycle"] = (toolUseId, message) => {
     const task = tasks.get(toolUseId);
-    if (task === undefined) return null;
+    if (task === undefined) {
+      const taskId = asString(message.task_id);
+      return taskId !== undefined && foreground.has(taskId) ? [] : null;
+    }
     if (task.settled) return [];
     const settle = (status: ItemStatus): ReadonlyArray<PendingRuntimeEvent> => {
       task.settled = true;
