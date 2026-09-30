@@ -26,6 +26,7 @@ claudeScenario(
     description:
       "One turn through the real server against a CLI that is not signed in: the probe finds no login, and the CLI answers the message with its own sign-in error and an error result without calling the API.",
     prompts: [PROMPT],
+    signedOut: true,
   },
   "says the CLI is signed out and names the command that signs it in",
   (run) =>

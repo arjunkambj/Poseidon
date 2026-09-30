@@ -114,6 +114,12 @@ export interface ClaudeScenario {
   readonly prompts: ReadonlyArray<string>;
   /** Files committed into the scratch repo before the first turn. */
   readonly seed?: Readonly<Record<string, string>>;
+  /**
+   * The scenario is about a CLI that is not signed in. Live, or recording,
+   * against the operator's CLI once it is signed in, it could only fail — and
+   * would spend a turn doing so — so those drivers skip it, saying why.
+   */
+  readonly signedOut?: true;
 }
 
 export interface ClaudeRun {
@@ -400,7 +406,19 @@ export const claudeScenario = (
       hookTimeout: 120_000,
     });
     describe(label, () => {
-      it.live(test, () => runScenario(driver, spec, body));
+      it.live(test, (context) =>
+        driver === "replay" || spec.signedOut !== true
+          ? runScenario(driver, spec, body)
+          : Effect.gen(function* () {
+              const probe = yield* claudeConnectorDefinition
+                .probe(LIVE_CONFIG_DIR === undefined ? {} : { configDir: LIVE_CONFIG_DIR })
+                .pipe(Effect.orDie);
+              if (probe.auth === "present") {
+                context.skip(`the CLI is signed in; ${spec.scenario} needs one that is not`);
+              }
+              yield* runScenario(driver, spec, body);
+            }),
+      );
     });
   }
 };
