@@ -51,8 +51,11 @@ claudeScenario(
       yield* autoApprove(client, open);
 
       const started = yield* startTurn(client, open, { text: PROPOSE });
+      // The card stays up after the turn: the plan turn is over once the CLI's
+      // own result has ended it with the plan still pending.
       const proposed = yield* open.view.awaitValue(
-        (view) => (view.pendingPlan !== null && isSettled(view)) || view.status === "error",
+        (view) =>
+          (view.pendingPlan !== null && view.currentTurnId === null) || view.status === "error",
         started,
       );
       expect(proposed.status).not.toBe("error");

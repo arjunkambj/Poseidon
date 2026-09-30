@@ -6,13 +6,16 @@
  * messages carry the call's id as `parent_tool_use_id` — lands in rows nested
  * under it (`parentItemId`), which is what the timeline folds into the task
  * row; and the `task_*` lifecycle settles the task. The thread runs in full
- * access, so the listing needs no card.
+ * access, but a listing that names `.git` — the model tends to leave it out
+ * of a `find` — touches a sensitive path, which asks in every mode; such a
+ * card is answered for it, since this scenario is about the nesting, not the
+ * gate.
  */
 
 import { expect } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
-import { connect, isSettled, startTurn, staticCredentials } from "../e2e/harness";
+import { autoApprove, connect, isSettled, startTurn, staticCredentials } from "../e2e/harness";
 import { claudeScenario } from "./harness";
 
 const DELEGATE = "Use the Task tool with a general-purpose agent to list the files here.";
@@ -32,6 +35,7 @@ claudeScenario(
       const server = yield* run.boot;
       const client = yield* connect(Effect.succeed(staticCredentials(server)));
       const open = yield* run.openThread(client, { runtimeMode: "full-access" });
+      yield* autoApprove(client, open);
 
       const started = yield* startTurn(client, open, { text: DELEGATE });
       const done = yield* open.view.awaitValue(isSettled, started);
