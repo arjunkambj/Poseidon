@@ -69,12 +69,13 @@ describe("claudeConnectorDefinition", () => {
       });
       expect(instance.kind).toBe(CLAUDE_KIND);
       expect(instance.capabilities).toEqual(CLAUDE_CAPABILITIES);
-      // The harness's own slash commands, skills, installed plugins and
-      // session files; MCP servers are not managed here.
+      // The harness's own slash commands, skills, installed plugins, MCP
+      // servers and session files.
       expect(Object.keys(instance.extensions ?? {})).toEqual([
         "commands",
         "skills",
         "plugins",
+        "mcpServers",
         "sessions",
       ]);
     }).pipe(Effect.scoped),

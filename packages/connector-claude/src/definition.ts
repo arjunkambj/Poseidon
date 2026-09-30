@@ -24,10 +24,12 @@ import * as Semaphore from "effect/Semaphore";
 
 import { resolveBinary, terminalCommand, type ResolvedBinary } from "./binary";
 import { CLAUDE_CAPABILITIES } from "./capabilities";
+import { runClaude } from "./cli";
 import { ClaudeConnectorConfig } from "./configSchema";
 import { childEnv } from "./env";
 import { makeClaudeGenerateText } from "./generateText";
 import { CLAUDE_KIND } from "./kind";
+import { makeClaudeMcpServers } from "./mcpServers";
 import { LOGIN_ARGS, probe as probeBinary, readInitialization, type Initialization } from "./probe";
 import { makeClaudePlugins } from "./plugins";
 import type { SessionLimits } from "./queryOptions";
@@ -75,7 +77,10 @@ export interface ClaudeConnectorOptions {
 export const makeClaudeConnectorDefinition = (
   options: ClaudeConnectorOptions = {},
 ): ConnectorDefinition<ClaudeConnectorConfig> => {
-  /** The definition's, so instances that share a config never link into it at once. */
+  /**
+   * The definition's, so instances that share a config never link into it, or
+   * run two MCP server writes and their ledger writes on it, at once.
+   */
   const writeMutex = Semaphore.makeUnsafe(1);
   return {
     kind: CLAUDE_KIND,
@@ -191,6 +196,16 @@ export const makeClaudeConnectorDefinition = (
               writeMutex,
             }),
             plugins: makeClaudePlugins({ env: childEnv(process.env, config) }),
+            mcpServers: makeClaudeMcpServers({
+              env: childEnv(process.env, config),
+              // The same default-deny environment a session gets, resolved per
+              // run, so the CLI edits the config the ledger sits beside.
+              run: runClaude({
+                binary: () => resolveBinary(config, process.env),
+                env: () => childEnv(process.env, config),
+              }),
+              writeMutex,
+            }),
             sessions: makeClaudeSessionFiles({ env: childEnv(process.env, config) }),
           },
         };
