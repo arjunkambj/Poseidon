@@ -58,6 +58,34 @@ describe("threadConnectorInstanceId", () => {
     ).toBe("on");
   });
 
+  it("passes over an instance whose probe says it cannot run, as the server does", () => {
+    const probedAt = "2026-10-01T00:00:00.000Z";
+    const probed = (name: string, probe: ConnectorSummary["probe"]) => ({
+      ...instance(name, true),
+      probe,
+    });
+    const missing = probed("missing", { status: "not-installed", probedAt });
+    const signedOut = probed("signed-out", { status: "ready", probedAt, auth: "absent" });
+    const broken = probed("broken", { status: "error", probedAt, installed: false });
+
+    expect(
+      threadConnectorInstanceId(null, null, [missing, signedOut, instance("next", true)]),
+    ).toBe("next");
+    expect(threadConnectorInstanceId(null, null, [broken, instance("next", true)])).toBe("next");
+    // Nothing can run: the first enabled one, whose banner says what to fix.
+    expect(threadConnectorInstanceId(null, null, [missing, signedOut])).toBe("missing");
+    // A thread that chose one keeps it; a probe still running moves nothing.
+    expect(threadConnectorInstanceId(null, id("missing"), [missing, instance("next", true)])).toBe(
+      "missing",
+    );
+    expect(
+      threadConnectorInstanceId(null, null, [
+        probed("probing", { status: "probing", probedAt }),
+        instance("next", true),
+      ]),
+    ).toBe("probing");
+  });
+
   it("answers null when nothing is configured or everything is off", () => {
     expect(threadConnectorInstanceId(null, null, [])).toBeNull();
     expect(threadConnectorInstanceId(undefined, id("off"), [instance("off", false)])).toBeNull();

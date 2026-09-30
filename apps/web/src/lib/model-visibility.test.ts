@@ -259,6 +259,35 @@ describe("newTaskModelPick", () => {
     const prefs = setHarness(setHarness(none, "a", false), "b", false);
     expect(newTaskModelPick(catalog, prefs, null)).toBeNull();
   });
+
+  it("passes over a harness whose probe says it cannot run, as the server routes", () => {
+    const missing = (entry: ConnectorModels, probe: ConnectorModels["connector"]["probe"]) => ({
+      ...entry,
+      connector: { ...entry.connector, probe },
+    });
+    const probedAt = "2026-10-01T00:00:00.000Z";
+    const notInstalled = missing(catalog[0]!, { status: "not-installed", probedAt });
+    const signedOut = missing(catalog[1]!, { status: "not-authenticated", probedAt });
+
+    // The first harness is not installed: New task starts on the next one.
+    expect(newTaskModelPick([notInstalled, catalog[1]!], none, null)).toEqual({
+      connectorInstanceId: id("b"),
+      model: "m1",
+    });
+    // A saved default both list goes under the one that can run.
+    expect(newTaskModelPick([notInstalled, catalog[1]!], none, "m1")).toEqual({
+      connectorInstanceId: id("b"),
+      model: "m1",
+    });
+    // Neither can run: the first one still, so the health banner explains it.
+    expect(newTaskModelPick([notInstalled, signedOut], none, null)).toEqual({
+      connectorInstanceId: id("a"),
+      model: "m1",
+    });
+    // A probe still running is not a reason to move.
+    const probing = missing(catalog[0]!, { status: "probing", probedAt });
+    expect(newTaskModelPick([probing, catalog[1]!], none, null)?.connectorInstanceId).toBe("a");
+  });
 });
 
 describe("threadCreateSeed", () => {

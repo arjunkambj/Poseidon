@@ -14,17 +14,20 @@
  * the thread chose (`settings.connectorInstanceId`) while it is still there to
  * run on, else the default rule in `apps/server/src/settings/connectorRouting.ts`
  * — the first enabled connector in the order the settings document lists them
- * *that is also open*. `connectors.list` answers in that same document order,
- * so the client reads the document half of the rule off it.
+ * that can run and is also open. `connectors.list` answers in that same
+ * document order, so the client reads the document half of the rule off it,
+ * and "can run" off each summary's probe (`probeCanRun`, the server's own
+ * reading): an instance whose harness is not installed or is signed out goes
+ * behind every one that can, and when none can the first enabled one stays
+ * first, so the health banner has something to explain. A probe still running
+ * counts as able, so the picker does not empty or jump while probes land.
  *
  * It deliberately stops there. Openness is a registry fact the client cannot
- * see — `probe` is the nearest thing and it is not the same question, and a
- * probe that has not answered yet would empty the picker again, which is the
- * bug this module exists to fix. So when the instance is enabled but fails to
- * open, the picker lists its models while the turn will actually run on the
- * next one. That window is narrow and self-correcting: the thread binds a
- * session on its first turn and `bound` takes over from then on, and a
- * connector that cannot open is a connector the user has to fix anyway.
+ * see. So when the instance is enabled but fails to open, the picker lists its
+ * models while the turn will actually run on the next one. That window is
+ * narrow and self-correcting: the thread binds a session on its first turn and
+ * `bound` takes over from then on, and a connector that cannot open is a
+ * connector the user has to fix anyway.
  *
  * Only for *listing* models and what the harness can do. The switch
  * behaviour (`modelSwitch`, `effortSwitch`) stays keyed on the bound session: a
@@ -34,8 +37,22 @@
  */
 
 import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
-import type { ConnectorSummary } from "@poseidon/contracts/connectors";
+import { probeCanRun, type ConnectorSummary } from "@poseidon/contracts/connectors";
 import type { ConnectorCapabilities } from "@poseidon/contracts/runtime";
+
+/**
+ * The default rule's order over anything that carries a connector summary:
+ * the ones whose probe says they can run, in the order given, then the rest in
+ * that order too. New task's model (`newTaskModelPick`) walks the same order,
+ * so what it shows is where the thread would go.
+ */
+export const runnableFirst = <A>(
+  items: ReadonlyArray<A>,
+  summaryOf: (item: A) => ConnectorSummary,
+): ReadonlyArray<A> => [
+  ...items.filter((item) => probeCanRun(summaryOf(item).probe)),
+  ...items.filter((item) => !probeCanRun(summaryOf(item).probe)),
+];
 
 export const threadConnectorInstanceId = (
   bound: ConnectorInstanceId | null | undefined,
@@ -48,7 +65,7 @@ export const threadConnectorInstanceId = (
   const enabled = connectors.filter((connector) => connector.enabled);
   return (
     enabled.find((connector) => connector.connectorInstanceId === chosen)?.connectorInstanceId ??
-    enabled[0]?.connectorInstanceId ??
+    runnableFirst(enabled, (connector) => connector)[0]?.connectorInstanceId ??
     null
   );
 };

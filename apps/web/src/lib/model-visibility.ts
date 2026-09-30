@@ -15,6 +15,7 @@ import type { ThreadSettingsPatch } from "@poseidon/contracts/orchestration";
 import type { ModelPickerSettings } from "@poseidon/contracts/settings";
 import { DEFAULT_MODEL_PICKER_SETTINGS } from "@poseidon/contracts/settings";
 
+import { runnableFirst } from "@/lib/connector-routing";
 import { defaultModelPick, type ModelPick } from "@/lib/model-picks";
 
 /** A stored switch, read as an own key so an id like `constructor` is not a hit. */
@@ -74,17 +75,24 @@ export const visibleCatalog = (
  * that, wherever the full catalog lists it, since the user chose it. With none
  * saved, the first model the pickers offer, so a harness or model switched off
  * is never the implicit seed.
+ *
+ * "First" is the default rule's order (`runnableFirst`), not the catalog's
+ * alone: a harness whose probe says it is not installed or signed out comes
+ * after every one that can run, so New task starts on the next harness rather
+ * than on one whose first turn would fail — and on the first one still when
+ * none can, where the health banner says what to fix.
  */
 export const newTaskModelPick = (
   catalog: ReadonlyArray<ConnectorModels>,
   prefs: ModelPickerSettings,
   defaultModel: string | null | undefined,
 ): ModelPick | null => {
-  const visible = visibleCatalog(catalog, prefs, null);
+  const ranked = runnableFirst(catalog, (group) => group.connector);
+  const visible = visibleCatalog(ranked, prefs, null);
   const offered =
     defaultModel == null ||
     visible.some(({ models }) => models.some((model) => model.id === defaultModel));
-  return defaultModelPick(offered ? visible : catalog, defaultModel);
+  return defaultModelPick(offered ? visible : ranked, defaultModel);
 };
 
 /**
