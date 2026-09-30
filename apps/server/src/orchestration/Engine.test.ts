@@ -340,6 +340,7 @@ describe("OrchestrationEngine", () => {
     Effect.scoped(
       Effect.gen(function* () {
         const persistence = Layer.succeedContext(yield* Layer.build(persistenceLayer()));
+        const preferred = makeConnectorInstanceId();
 
         yield* Effect.gen(function* () {
           const sql = yield* SqlClient.SqlClient;
@@ -358,7 +359,7 @@ describe("OrchestrationEngine", () => {
                     config: { defaultModel: "acme/disabled" },
                   },
                   {
-                    connectorInstanceId: makeConnectorInstanceId(),
+                    connectorInstanceId: preferred,
                     enabled: true,
                     config: { defaultModel: "acme/preferred" },
                   },
@@ -384,8 +385,12 @@ describe("OrchestrationEngine", () => {
           });
           // The first *enabled* entry of the document, which is the one
           // `ConnectorSelection` routes to — a disabled connector's model must
-          // not win, and neither must a later enabled one's.
-          expect((yield* engine.threadDoc(threadId))?.settings.model).toBe("acme/preferred");
+          // not win, and neither must a later enabled one's. The thread is
+          // pinned there, so a probe landing before its first turn cannot
+          // send that turn to a harness without the model.
+          const settings = (yield* engine.threadDoc(threadId))?.settings;
+          expect(settings?.model).toBe("acme/preferred");
+          expect(settings?.connectorInstanceId).toBe(preferred);
         }).pipe(Effect.provide(OrchestrationEngine.layer.pipe(Layer.provideMerge(persistence))));
       }),
     ),

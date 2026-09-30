@@ -378,9 +378,21 @@ const routedThread = (chosen?: ConnectorInstanceId) =>
     },
   }) as ThreadDoc;
 
-/** Where the entrypoint's selection sends a thread, and what the engine seeds it with. */
+/**
+ * What the engine seeds a new thread with, and where the entrypoint's
+ * selection then sends its first turn: the engine pins a thread that chose
+ * nothing to the instance it seeded from.
+ */
 const route = ({ registry, sql, unrunnable }: Booted, chosen?: ConnectorInstanceId) =>
   Effect.gen(function* () {
+    const open = Effect.map(registry.instances, (all) => all.map((one) => one.instanceId));
+    const models = (instanceId: ConnectorInstanceId) =>
+      registry.instance(instanceId).pipe(
+        Effect.flatMap((one) => one.listModels()),
+        Effect.map((listed) => listed.map((model) => model.id)),
+        Effect.orDie,
+      );
+    const seeded = yield* seedModel(sql, open, models, chosen, Ref.get(unrunnable));
     const selection = yield* Effect.scoped(
       Effect.map(
         Layer.build(
@@ -389,16 +401,9 @@ const route = ({ registry, sql, unrunnable }: Booted, chosen?: ConnectorInstance
         (built) => Context.get(built, ConnectorSelection),
       ),
     );
-    const instance = yield* selection.instanceFor(routedThread(chosen));
-    const open = Effect.map(registry.instances, (all) => all.map((one) => one.instanceId));
-    const models = (instanceId: ConnectorInstanceId) =>
-      registry.instance(instanceId).pipe(
-        Effect.flatMap((one) => one.listModels()),
-        Effect.map((listed) => listed.map((model) => model.id)),
-        Effect.orDie,
-      );
-    const model = yield* seedModel(sql, open, models, chosen, Ref.get(unrunnable));
-    return { instanceId: instance.instanceId, model };
+    const pinned = chosen ?? seeded?.connectorInstanceId ?? undefined;
+    const instance = yield* selection.instanceFor(routedThread(pinned));
+    return { instanceId: instance.instanceId, model: seeded?.model ?? null };
   });
 
 describe("ConnectorManager and the harness rank", () => {
@@ -609,6 +614,27 @@ describe("ConnectorManager and the harness rank", () => {
           yield* Ref.set(gone, new Set<Kind>());
           yield* manager.list(true);
           expect((yield* route(booted)).instanceId).toBe(claude!.connectorInstanceId);
+        }),
+      );
+    }),
+  );
+
+  it.effect("a saved default model starts a thread on the harness that lists it", () =>
+    Effect.gen(function* () {
+      const filename = databaseFile();
+      yield* withBoot(filename, new Set(), (booted) =>
+        Effect.gen(function* () {
+          const { manager, store } = booted;
+          yield* manager.list(true);
+          const current = yield* store.get;
+          const [, codex] = current.connectors;
+          // Claude Code routes first, but the default is Codex's model: the
+          // thread goes where the model is, as New task's pick does.
+          yield* store.update({ defaults: { ...current.defaults, model: CODEX_MODEL } });
+          expect(yield* route(booted)).toEqual({
+            instanceId: codex!.connectorInstanceId,
+            model: CODEX_MODEL,
+          });
         }),
       );
     }),

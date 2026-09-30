@@ -4461,16 +4461,25 @@ instance still takes the turn, so the health banner above the composer says
 what to fix. That order is the fallback: a thread that chose its instance runs
 on it, and is seeded from its default or first model, while it is open.
 
+A thread created with neither a model nor an instance is seeded by the engine
+(`seedModel`): the app-wide default under the first open instance in that order
+that lists it, which is where New task's pick puts it too; failing that, the
+routed instance's own default or first model. The thread is pinned to the
+instance its model came from, because routing is read again at its first turn,
+and a probe that lands in between must not send that turn to a harness that
+has never heard of the model.
+
 The registry's order is the harness rank, and an existing install is brought
 up to it once per boot (`apps/server/src/settings/connectorUpgrade.ts`). A
 kind the document's `offeredConnectorKinds` does not list gets one enabled
 instance, unless one of that kind is there already, and is listed from then on,
 so an instance the user removes stays removed. The first time, the connectors
-are also sorted into the rank. A saved default model outranks routing, so one
-that only Command Code runs would keep new threads on it: once an enabled
-Claude Code or Codex instance that can run has answered its model list, a
-default none of them lists is cleared, unless Command Code answered and does
-not list it either. Both one-time steps are recorded in `connectorMigrations`.
+are also sorted into the rank. A saved default model starts new threads on the
+harness that lists it, so one that only Command Code runs would keep them
+there: once an enabled Claude Code or Codex instance that can run has answered
+its model list, a default none of them lists is cleared, unless Command Code
+answered and does not list it either. Both one-time steps are recorded in
+`connectorMigrations`.
 A settings row the store could not decode is left alone: the upgrade waits for
 a boot after a save of the user's has archived and replaced it.
 

@@ -1154,6 +1154,30 @@ describe("the thread's connector instance", () => {
     expect(payload.settings.connectorInstanceId).toBe(CHOSEN);
   });
 
+  it("pins a thread that chose nothing to the instance its model was seeded from", () => {
+    const create = (settings: { model?: string; connectorInstanceId?: typeof CHOSEN }) => {
+      const result = decide(
+        {
+          ...baseCommand,
+          type: "thread.create",
+          threadId: makeThreadId(),
+          projectId: makeProjectId(),
+          settings,
+        } as Command,
+        { project: null, thread: null },
+        ctx({ defaultConnectorInstanceId: OTHER }),
+        env,
+      );
+      if (!result.accepted) throw new Error("rejected");
+      return (result.events[0]!.payload as { settings: { connectorInstanceId?: string } }).settings
+        .connectorInstanceId;
+    };
+    expect(create({})).toBe(OTHER);
+    // The command's own choice stands, and a model it named was not seeded.
+    expect(create({ connectorInstanceId: CHOSEN })).toBe(CHOSEN);
+    expect(create({ model: "acme/named" })).toBeUndefined();
+  });
+
   it("lets a thread change instance before anything has run", () => {
     const result = update(chosenThread());
     expect(result.accepted).toBe(true);

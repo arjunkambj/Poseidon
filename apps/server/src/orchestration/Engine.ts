@@ -265,12 +265,13 @@ export class OrchestrationEngine extends Context.Service<
       /**
        * The model a `thread.create` without one starts on. A thread that chose
        * its connector instance starts on that instance's own default or first
-       * model; otherwise the app-wide default comes first, and then the routed
-       * connector's own, so that a `defaultModel` on the connectors page means
-       * "new threads on this connector" rather than nothing at all.
-       * `seedModel` is the same rule `ConnectorSelection` routes by, so the
-       * seeded model belongs to the instance the thread's first turn will
-       * actually run on.
+       * model; otherwise the app-wide default comes first, under an instance
+       * that lists it, and then the routed connector's own, so that a
+       * `defaultModel` on the connectors page means "new threads on this
+       * connector" rather than nothing at all. `seedModel` walks the order
+       * `ConnectorSelection` routes by, and names the instance it seeded
+       * from: the thread is pinned there, so a probe that lands before its
+       * first turn cannot route that turn to a harness without its model.
        */
       const defaultModel = (chosen: ConnectorInstanceId | undefined) =>
         seedModel(
@@ -289,7 +290,7 @@ export class OrchestrationEngine extends Context.Service<
           const roots = command.type === "project.create" ? yield* readModels.workspaceRoots : [];
           // A command that names its model never needs a seed, and asking a
           // chosen instance for its models is not free.
-          const model =
+          const seeded =
             command.type === "thread.create" &&
             command.settings?.model === undefined &&
             command.fork === undefined
@@ -323,7 +324,8 @@ export class OrchestrationEngine extends Context.Service<
               restoring.some(
                 (doc) => doc.threadId !== thread.threadId && sharesWorkspaceRoot(doc, thread),
               ),
-            defaultModel: model,
+            defaultModel: seeded?.model ?? null,
+            defaultConnectorInstanceId: seeded?.connectorInstanceId ?? null,
             defaultEffort: defaults.effort,
             defaultRuntimeMode: defaults.runtimeMode,
             forkSource,

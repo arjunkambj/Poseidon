@@ -204,9 +204,11 @@ export const resolveWriter = (
   });
 
 /**
- * Where a new thread would run and on what model: the first instance in the
- * routing order (`routingPreference`) the registry holds open, with the model
- * the engine would seed it with. Null when neither can be told.
+ * Where a new thread would run and on what model: the instance and model the
+ * engine would seed it with (`seedModel`), which is the first instance in the
+ * routing order (`routingPreference`) the registry holds open unless the
+ * app-wide default model is another open instance's. Null when neither can be
+ * told.
  */
 export const routedPick = (
   sql: SqlClient.SqlClient,
@@ -221,6 +223,8 @@ export const routedPick = (
     if (instanceId === undefined) {
       return null;
     }
-    const model = yield* seedModel(sql, open, modelIds, undefined, unrunnable);
-    return model === null ? null : { connectorInstanceId: instanceId, model };
+    const seeded = yield* seedModel(sql, open, modelIds, undefined, unrunnable);
+    return seeded === null
+      ? null
+      : { connectorInstanceId: seeded.connectorInstanceId ?? instanceId, model: seeded.model };
   }).pipe(Effect.catch(() => Effect.succeed(null)));

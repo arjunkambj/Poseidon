@@ -14,7 +14,14 @@ import { isAbsolute } from "node:path";
 
 import { DEFAULT_RUNTIME_MODE } from "@poseidon/contracts/enums";
 import type { Effort, RuntimeMode } from "@poseidon/contracts/enums";
-import type { EventId, ItemId, ProjectId, ThreadId, TurnId } from "@poseidon/contracts/ids";
+import type {
+  ConnectorInstanceId,
+  EventId,
+  ItemId,
+  ProjectId,
+  ThreadId,
+  TurnId,
+} from "@poseidon/contracts/ids";
 import { threadLocksConnector } from "@poseidon/contracts/orchestration";
 import type {
   Actor,
@@ -75,6 +82,11 @@ export interface DeciderContext {
   readonly restoreInFlight: (thread: ThreadDoc) => boolean;
   /** Settings defaults for a thread whose create command did not choose them. */
   readonly defaultModel: string | null;
+  /**
+   * The instance `defaultModel` was seeded from, which a thread that chose
+   * none is pinned to — only when the seed is what the thread starts on.
+   */
+  readonly defaultConnectorInstanceId?: ConnectorInstanceId | null;
   readonly defaultEffort: Effort | null;
   readonly defaultRuntimeMode: RuntimeMode | null;
   /** The thread a forking `thread.create` names, or `null` when it does not exist. */
@@ -248,6 +260,9 @@ export const decide = (
       }
       const patch = fork?.patch ?? command.settings ?? {};
       const model = patch.model ?? ctx.defaultModel;
+      const connectorInstanceId =
+        patch.connectorInstanceId ??
+        (patch.model === undefined ? (ctx.defaultConnectorInstanceId ?? undefined) : undefined);
       if (model === null) {
         return rejected("no model is configured — pick a default in Settings → Models");
       }
@@ -267,9 +282,7 @@ export const decide = (
             runtimeMode: patch.runtimeMode ?? ctx.defaultRuntimeMode ?? DEFAULT_RUNTIME_MODE,
             interactionMode: patch.interactionMode ?? "default",
             ...effort,
-            ...(patch.connectorInstanceId === undefined
-              ? {}
-              : { connectorInstanceId: patch.connectorInstanceId }),
+            ...(connectorInstanceId === undefined ? {} : { connectorInstanceId }),
           },
           ...(command.worktree === undefined ? {} : { worktree: command.worktree }),
           ...(fork === null ? {} : { fork: fork.fork }),

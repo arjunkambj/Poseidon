@@ -527,7 +527,10 @@ describe("ConnectorManager", () => {
         // connector was never asked about.
         const routing = yield* readConnectorRouting(sql);
         expect(routing.enabled[0]!.connectorInstanceId).toBe(routed.instanceId);
-        expect(yield* seedModel(sql, openIds(registry))).toBe("acme/first");
+        expect(yield* seedModel(sql, openIds(registry))).toEqual({
+          model: "acme/first",
+          connectorInstanceId: first.connectorInstanceId,
+        });
       }),
     ),
   );
@@ -569,16 +572,22 @@ describe("ConnectorManager", () => {
         );
         const routed = yield* selection.instanceFor(routedThread());
         expect(routed.instanceId).toBe(working.connectorInstanceId);
-        expect(yield* seedModel(sql, openIds(registry))).toBe("acme/working");
+        expect(yield* seedModel(sql, openIds(registry))).toEqual({
+          model: "acme/working",
+          connectorInstanceId: working.connectorInstanceId,
+        });
 
         // Without the registry to consult, the document's order is all there
         // is — which is the reading every engine test without a connector gets.
-        expect(yield* seedModel(sql, null)).toBe("ghost/never-opened");
+        expect(yield* seedModel(sql, null)).toEqual({
+          model: "ghost/never-opened",
+          connectorInstanceId: ghost.connectorInstanceId,
+        });
       }),
     ),
   );
 
-  it.effect("nothing open seeds nothing, and a shared default outranks both", () =>
+  it.effect("nothing open seeds nothing, and a shared default stands when none can say", () =>
     withFixture(({ manager, store, sql, registry }) =>
       Effect.gen(function* () {
         const ghost = {
@@ -597,9 +606,13 @@ describe("ConnectorManager", () => {
         // registry falls back to: the thread starts on the connector's own.
         expect(yield* seedModel(sql, openIds(registry))).toBeNull();
 
+        // Nobody to ask which instance runs it: the app-wide default, unpinned.
         const current = yield* store.get;
         yield* store.update({ defaults: { ...current.defaults, model: "acme/shared" } });
-        expect(yield* seedModel(sql, openIds(registry))).toBe("acme/shared");
+        expect(yield* seedModel(sql, openIds(registry))).toEqual({
+          model: "acme/shared",
+          connectorInstanceId: null,
+        });
       }),
     ),
   );
@@ -659,9 +672,10 @@ describe("ConnectorManager", () => {
         expect(routing.enabled[0]!.defaultModel).toBeNull();
         expect(yield* seedModel(sql, openIds(registry))).toBeNull();
 
-        expect(yield* seedModel(sql, openIds(registry), connectorModels(registry))).toBe(
-          "fake/model",
-        );
+        expect(yield* seedModel(sql, openIds(registry), connectorModels(registry))).toEqual({
+          model: "fake/model",
+          connectorInstanceId: routing.enabled[0]!.connectorInstanceId,
+        });
       }),
     ),
   );
@@ -697,16 +711,22 @@ describe("ConnectorManager", () => {
         expect(
           (yield* selection.instanceFor(routedThread(chosen.connectorInstanceId))).instanceId,
         ).toBe(chosen.connectorInstanceId);
-        expect(yield* seedModel(sql, open, models, chosen.connectorInstanceId)).toBe("acme/chosen");
-        // A thread that chose nothing still goes by the default rule.
+        expect(yield* seedModel(sql, open, models, chosen.connectorInstanceId)).toEqual({
+          model: "acme/chosen",
+          connectorInstanceId: chosen.connectorInstanceId,
+        });
+        // A thread that chose nothing still goes by the default rule. No
+        // instance lists the app-wide default, so the routed one's own model
+        // is seeded rather than one it has never heard of.
+        const routedSeed = { model: "fake/model", connectorInstanceId: first.connectorInstanceId };
         expect((yield* selection.instanceFor(routedThread())).instanceId).toBe(
           first.connectorInstanceId,
         );
-        expect(yield* seedModel(sql, open, models)).toBe("acme/shared");
+        expect(yield* seedModel(sql, open, models)).toEqual(routedSeed);
 
         // The seeded entry has no default of its own: choosing it starts on
         // its first model, still ahead of the app-wide default.
-        expect(yield* seedModel(sql, open, models, first.connectorInstanceId)).toBe("fake/model");
+        expect(yield* seedModel(sql, open, models, first.connectorInstanceId)).toEqual(routedSeed);
 
         // Disabled since: routing and the seed both fall back to the default rule.
         yield* store.update({ connectors: [first, { ...chosen, enabled: false }] });
@@ -714,7 +734,7 @@ describe("ConnectorManager", () => {
         expect(
           (yield* selection.instanceFor(routedThread(chosen.connectorInstanceId))).instanceId,
         ).toBe(first.connectorInstanceId);
-        expect(yield* seedModel(sql, open, models, chosen.connectorInstanceId)).toBe("acme/shared");
+        expect(yield* seedModel(sql, open, models, chosen.connectorInstanceId)).toEqual(routedSeed);
 
         // Removed altogether: the same fallback.
         yield* store.update({ connectors: [first] });

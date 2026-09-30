@@ -243,16 +243,35 @@ export const ConnectorModels = Context.Reference<
   ((instanceId: ConnectorInstanceId) => Effect.Effect<ReadonlyArray<string>>) | null
 >("server/settings/ConnectorModels", { defaultValue: () => null });
 
+/** @public A seeded model, and the instance it was seeded from when one was. */
+export interface SeededModel {
+  readonly model: string;
+  /**
+   * The instance the model came from, which the thread is pinned to so that
+   * its first turn runs where the model is: routing is read again at that
+   * turn, and a probe landing in between must not move the thread onto a
+   * harness that has never heard of its model. `null` when no instance can
+   * speak for it.
+   */
+  readonly connectorInstanceId: ConnectorInstanceId | null;
+}
+
 /**
- * @public The model a `thread.create` without one starts on.
+ * @public The model a `thread.create` without one starts on, and where.
  *
- * The app-wide default outranks everything. Otherwise it is the `defaultModel`
- * of the connector this thread will actually run on — the first entry in the
- * routing order that is open, which is exactly what `ConnectorSelection` picks,
- * given the same `unrunnable`. When none of the enabled entries is open,
- * selection falls back to whatever the registry holds and no document entry
- * can speak for it, so nothing is seeded and the thread starts on that
- * connector's own default instead of a foreign model.
+ * The routed instance is the first entry in the routing order that is open,
+ * which is exactly what `ConnectorSelection` picks, given the same
+ * `unrunnable`. When none of the enabled entries is open, selection falls
+ * back to whatever the registry holds and no document entry can speak for
+ * it, so nothing is seeded and the thread starts on that connector's own
+ * default instead of a foreign model.
+ *
+ * The app-wide default comes first, under the first instance in that same
+ * order that lists it — the rule New task's pick follows in the renderer, so
+ * a thread started either way lands on the same harness. One model belongs
+ * to one harness, and seeding it onto whichever instance routing picks would
+ * start a Codex thread on a Claude model. When no open instance lists it,
+ * the routed instance's own `defaultModel` answers, and then its first model.
  *
  * Last comes the connector itself. A fresh install has filled in none of the
  * three: `defaultSettings()` writes `model: null`, the connector seed writes
@@ -260,7 +279,8 @@ export const ConnectorModels = Context.Reference<
  * probe — so every `thread.create` was rejected and the app could not be used
  * until the user found Settings → Models by themselves. Asking the routed
  * instance for its first model is what makes the first thread possible, and it
- * names a model that instance certainly has.
+ * names a model that instance certainly has. Only when no instance can name
+ * one does the app-wide default stand on its own, unpinned, as it used to.
  *
  * A thread that chose its instance (`chosen`) skips all of that while the
  * instance is open: its `defaultModel`, then its first model. The app-wide
@@ -276,10 +296,14 @@ export const seedModel = (
   models: ((instanceId: ConnectorInstanceId) => Effect.Effect<ReadonlyArray<string>>) | null = null,
   chosen?: ConnectorInstanceId,
   unrunnable: Unrunnable = null,
-): Effect.Effect<string | null, SqlError> =>
+): Effect.Effect<SeededModel | null, SqlError> =>
   Effect.gen(function* () {
     const routing = yield* readConnectorRouting(sql);
     const openIds = open === null ? null : yield* open;
+    const from = (model: string, connectorInstanceId: ConnectorInstanceId): SeededModel => ({
+      model,
+      connectorInstanceId,
+    });
     if (chosen !== undefined) {
       const entry = routing.enabled.find((connector) => connector.connectorInstanceId === chosen);
       // With nobody tracking the registry, the document's enabled list is the
@@ -287,33 +311,45 @@ export const seedModel = (
       const isOpen = openIds === null ? entry !== undefined : openIds.includes(chosen);
       if (isOpen) {
         if (entry?.defaultModel != null) {
-          return entry.defaultModel;
+          return from(entry.defaultModel, chosen);
         }
         const first = models === null ? undefined : (yield* models(chosen))[0];
         if (first !== undefined) {
-          return first;
+          return from(first, chosen);
         }
       }
     }
-    if (routing.sharedModel !== null) {
-      return routing.sharedModel;
+    const shared =
+      routing.sharedModel === null
+        ? null
+        : { model: routing.sharedModel, connectorInstanceId: null };
+    const ranked = (yield* routedEntries(routing, unrunnable)).filter(
+      (connector) => openIds === null || openIds.includes(connector.connectorInstanceId),
+    );
+    if (shared !== null) {
+      // Nobody to ask which instance runs it: the app-wide default stands alone.
+      if (models === null) {
+        return shared;
+      }
+      for (const connector of ranked) {
+        if ((yield* models(connector.connectorInstanceId)).includes(shared.model)) {
+          return from(shared.model, connector.connectorInstanceId);
+        }
+      }
     }
-    const ranked = yield* routedEntries(routing, unrunnable);
-    const routed =
-      openIds === null
-        ? ranked[0]
-        : ranked.find((connector) => openIds.includes(connector.connectorInstanceId));
+    const routed = ranked[0];
     if (routed?.defaultModel != null) {
-      return routed.defaultModel;
-    }
-    if (models === null) {
-      return null;
+      return from(routed.defaultModel, routed.connectorInstanceId);
     }
     // Whichever instance the turn would run on: the routed entry when there is
     // one, and otherwise the instance `ConnectorSelection` falls back to.
     const instanceId = routed?.connectorInstanceId ?? openIds?.[0];
-    if (instanceId === undefined) {
-      return null;
+    const first =
+      models === null || instanceId === undefined ? undefined : (yield* models(instanceId))[0];
+    if (first !== undefined) {
+      // The registry's fallback is not pinned: it is not an entry of the
+      // document, and selection finds it again by itself.
+      return { model: first, connectorInstanceId: routed?.connectorInstanceId ?? null };
     }
-    return (yield* models(instanceId))[0] ?? null;
+    return shared;
   });
