@@ -48,7 +48,7 @@ describe("codexConnectorDefinition", () => {
     }),
   );
 
-  it.effect("opens instances with the connector's capabilities, skills and MCP servers", () =>
+  it.effect("opens instances with the connector's capabilities and extensions", () =>
     Effect.gen(function* () {
       const instance = yield* codexConnectorDefinition.createInstance({
         instanceId: makeConnectorInstanceId(),
@@ -60,7 +60,7 @@ describe("codexConnectorDefinition", () => {
       expect(instance.extensions?.skills).toBeDefined();
       expect(instance.extensions?.mcpServers).toBeDefined();
       expect(instance.extensions?.sessions).toBeDefined();
-      expect(instance.extensions?.plugins).toBeUndefined();
+      expect(instance.extensions?.plugins).toBeDefined();
     }).pipe(Effect.scoped),
   );
 

@@ -1,10 +1,10 @@
 /**
  * The Codex connector definition: probe, instance creation, session start,
- * resume and fork, one-shot text (`generateText.ts`), and the skills, MCP server and
- * session-file extensions. Everything else — the binary, the environment, the
- * JSON-RPC client, the handshake, the translation — lives in the sibling
- * modules this wires together. Sessions come back raw; the engine's
- * SessionManager adds the turn-scoped wrapper.
+ * resume and fork, one-shot text (`generateText.ts`), and the skills, plugins,
+ * MCP server and session-file extensions. Everything else — the binary, the
+ * environment, the JSON-RPC client, the handshake, the translation — lives in
+ * the sibling modules this wires together. Sessions come back raw; the
+ * engine's SessionManager adds the turn-scoped wrapper.
  */
 
 import * as NodeOS from "node:os";
@@ -23,6 +23,7 @@ import { CodexConnectorConfig } from "./configSchema";
 import { childEnv, expandHome } from "./env";
 import { makeCodexGenerateText } from "./generateText";
 import { makeCodexMcpServers } from "./extensions/mcpServers";
+import { makeCodexPlugins } from "./extensions/plugins";
 import { makeCodexSkills } from "./extensions/skills";
 import { CODEX_KIND } from "./kind";
 import type { CodexModelFacts } from "./models";
@@ -38,8 +39,8 @@ export const UNREADABLE_REF_WARNING =
 export interface CodexConnectorOptions {
   /**
    * The `CODEX_HOME` the extensions read and write — the skills root, the
-   * `codex mcp` commands, Poseidon's MCP ledger and the session rollouts an
-   * import reads. Omitted, it is the instance's own `codexHome`, else
+   * `codex mcp` and `codex plugin` commands, Poseidon's MCP ledger and the
+   * session rollouts an import reads. Omitted, it is the instance's own `codexHome`, else
    * `~/.codex`. Live sessions are unaffected.
    * Tests pass a temporary directory so no real config is touched.
    */
@@ -49,7 +50,8 @@ export interface CodexConnectorOptions {
 }
 
 /**
- * The skills, MCP server and session-file extensions for one instance.
+ * The skills, plugins, MCP server and session-file extensions for one
+ * instance.
  * `writeMutex` is the definition's, so instances that share a `CODEX_HOME`
  * never interleave two `codex mcp add` runs and their ledger writes.
  */
@@ -64,19 +66,20 @@ const codexExtensions = (
     (config.codexHome === undefined
       ? NodePath.join(home, ".codex")
       : expandHome(config.codexHome, home));
+  const cli = {
+    binary: () => resolveBinary(config, process.env),
+    // The same default-deny environment a session gets, with CODEX_HOME
+    // named explicitly so the CLI reads and edits the config the ledger
+    // sits beside.
+    env: () => childEnv(process.env, { codexHome }),
+  };
   return {
     skills: makeCodexSkills({
       codexHome,
       agentsSkillsRoot: options.agentsSkillsRoot ?? NodePath.join(home, ".agents", "skills"),
     }),
-    mcpServers: makeCodexMcpServers({
-      binary: () => resolveBinary(config, process.env),
-      // The same default-deny environment a session gets, with CODEX_HOME
-      // named explicitly so the CLI edits the config the ledger sits beside.
-      env: () => childEnv(process.env, { codexHome }),
-      codexHome,
-      writeMutex,
-    }),
+    plugins: makeCodexPlugins(cli),
+    mcpServers: makeCodexMcpServers({ ...cli, codexHome, writeMutex }),
     sessions: makeCodexSessionFiles({ codexHome }),
   };
 };

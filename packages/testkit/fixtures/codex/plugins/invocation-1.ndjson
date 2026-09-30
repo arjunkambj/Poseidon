@@ -1,0 +1,41 @@
+{"dir":"from-harness","channel":"stdout","at":153,"data":"{"}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"  \"installed\": ["}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"    {"}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"      \"pluginId\": \"notes@scratch-market\","}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"      \"name\": \"notes\","}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"      \"marketplaceName\": \"scratch-market\","}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"      \"version\": \"1.0.0\","}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"      \"installed\": true,"}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"      \"enabled\": true,"}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"      \"source\": {"}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"        \"source\": \"local\","}
+{"dir":"from-harness","channel":"stdout","at":153,"data":"        \"path\": \"<TMP>/poseidon-codex-plugin-market/plugins/notes\""}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"      },"}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"      \"marketplaceSource\": {"}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"        \"sourceType\": \"local\","}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"        \"source\": \"<TMP>/poseidon-codex-plugin-market\""}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"      },"}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"      \"installPolicy\": \"AVAILABLE\","}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"      \"authPolicy\": \"ON_USE\""}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"    },"}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"    {"}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"      \"pluginId\": \"drafts@scratch-market\","}
+{"dir":"from-harness","channel":"stdout","at":154,"data":"      \"name\": \"drafts\","}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"      \"marketplaceName\": \"scratch-market\","}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"      \"version\": \"1.0.0\","}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"      \"installed\": true,"}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"      \"enabled\": false,"}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"      \"source\": {"}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"        \"source\": \"local\","}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"        \"path\": \"<TMP>/poseidon-codex-plugin-market/plugins/drafts\""}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"      },"}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"      \"marketplaceSource\": {"}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"        \"sourceType\": \"local\","}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"        \"source\": \"<TMP>/poseidon-codex-plugin-market\""}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"      },"}
+{"dir":"from-harness","channel":"stdout","at":155,"data":"      \"installPolicy\": \"AVAILABLE\","}
+{"dir":"from-harness","channel":"stdout","at":156,"data":"      \"authPolicy\": \"ON_USE\""}
+{"dir":"from-harness","channel":"stdout","at":156,"data":"    }"}
+{"dir":"from-harness","channel":"stdout","at":156,"data":"  ],"}
+{"dir":"from-harness","channel":"stdout","at":156,"data":"  \"available\": []"}
+{"dir":"from-harness","channel":"stdout","at":156,"data":"}"}

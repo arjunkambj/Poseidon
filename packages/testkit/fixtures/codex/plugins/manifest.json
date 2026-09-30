@@ -1,0 +1,21 @@
+{
+  "formatVersion": 1,
+  "kind": "codex",
+  "transport": "stdio-jsonrpc",
+  "scenario": "plugins",
+  "description": "The plugins extension on a scratch CODEX_HOME with a local marketplace of two plugins, both installed with the CLI and one then disabled in config.toml: codex plugin list --json.",
+  "cliVersion": "0.159.2",
+  "recordedOn": "2026-09-30",
+  "model": "default",
+  "real": true,
+  "prompts": [],
+  "invocations": [
+    {
+      "argv": ["plugin", "list", "--json"],
+      "cwd": "<TMP>",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}
