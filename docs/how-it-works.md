@@ -4446,9 +4446,9 @@ to be opened in — the same reading a new thread's default model is seeded from
 so the two can never name different instances. An enabled instance whose latest
 probe says its harness cannot run (`probeCanRun`: not installed, or signed out)
 goes behind every one that can; the manager publishes those instances to
-`UnrunnableConnectors`, which selection, the seed and the writer's routed
-fallback all read, and the renderer applies the same rule to the probes
-`connectors.list` carries. A probe still running counts as able, and when
+`UnrunnableConnectors` together with the summaries, which selection, the seed
+and the writer's routed fallback all read, and the renderer applies the same
+rule to the probes `connectors.list` carries. A probe still running counts as able, and when
 nothing can run the first enabled instance still takes the turn, so the health
 banner above the composer says what to fix. That order is the fallback: a
 thread that chose its instance runs on it, and is seeded from its default or

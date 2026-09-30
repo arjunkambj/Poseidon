@@ -224,7 +224,11 @@ export class ConnectorManager extends Context.Service<
           return next;
         });
 
-      /** What routing passes over: every instance whose latest probe says it cannot run. */
+      /**
+       * What routing passes over: every instance whose latest probe says it
+       * cannot run. Published with the summaries, never ahead of them, so the
+       * server's default rule and the renderer's mirror of it switch together.
+       */
       const publishUnrunnable: Effect.Effect<void> =
         unrunnable === null
           ? Effect.void
@@ -243,8 +247,12 @@ export class ConnectorManager extends Context.Service<
       const recordProbe = (id: string, probe: ConnectorProbe): Effect.Effect<void> =>
         Effect.andThen(
           Ref.update(probes, (all) => new Map(all).set(id, probe)),
-          Effect.andThen(forget(fallbackModels, id), publishUnrunnable),
+          forget(fallbackModels, id),
         );
+
+      /** The summaries and the unrunnable set they imply, published together. */
+      const publish = (summaries: ReadonlyArray<ConnectorSummary>): Effect.Effect<void> =>
+        Effect.andThen(publishUnrunnable, SubscriptionRef.set(summariesRef, summaries));
 
       const closeEntry = (id: string, entry: Entry): Effect.Effect<void> =>
         Effect.gen(function* () {
@@ -254,7 +262,6 @@ export class ConnectorManager extends Context.Service<
           yield* forget(probes, id);
           yield* forget(declared, id);
           yield* forget(fallbackModels, id);
-          yield* publishUnrunnable;
         });
 
       const summariesFor = (settings: Settings): Effect.Effect<ReadonlyArray<ConnectorSummary>> =>
@@ -325,7 +332,7 @@ export class ConnectorManager extends Context.Service<
             const probe = yield* probeOf(conn);
             yield* recordProbe(conn.connectorInstanceId, probe);
           }
-          yield* SubscriptionRef.set(summariesRef, yield* summariesFor(settings));
+          yield* publish(yield* summariesFor(settings));
         }).pipe(
           Effect.catchCause((cause) => Effect.logWarning("reconcile failed", cause)),
           // A pass that died or was interrupted must not strand the entrypoint;
@@ -455,7 +462,7 @@ export class ConnectorManager extends Context.Service<
                   yield* recordProbe(conn.connectorInstanceId, probe);
                 }
                 const summaries = yield* summariesFor(settings);
-                yield* SubscriptionRef.set(summariesRef, summaries);
+                yield* publish(summaries);
                 return summaries;
               }),
             )
