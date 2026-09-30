@@ -178,7 +178,11 @@ const GENERATE_REQUEST = {
   effort: "low",
 } as const;
 
-/** `auth status --json` exits 1 when signed out; asked only when recording. */
+/**
+ * `auth status --json` exits 1 when signed out; asked only when recording.
+ * The signed-out scenarios are skipped once it says signed in: made again,
+ * they would spend, and show answered turns where they pin refusals.
+ */
 const signedIn = (): boolean => {
   const real = resolveBinary({}, process.env);
   if (real === null) return false;
@@ -244,19 +248,21 @@ describe("session recordings", () => {
       ),
   );
 
-  it.live.skipIf(!RECORD)("signed-out: one turn against a CLI that is not signed in", () =>
-    recordScenario(
-      {
-        scenario: "signed-out",
-        description:
-          "One turn sent to a CLI that is not signed in: the CLI answers with its own sign-in error and an error result, without calling the API.",
-        prompts: [SIGNED_OUT_PROMPT],
-      },
-      (recording) => turn(recording, SIGNED_OUT_PROMPT),
-    ),
+  it.live.skipIf(!RECORD || signedIn())(
+    "signed-out: one turn against a CLI that is not signed in",
+    () =>
+      recordScenario(
+        {
+          scenario: "signed-out",
+          description:
+            "One turn sent to a CLI that is not signed in: the CLI answers with its own sign-in error and an error result, without calling the API.",
+          prompts: [SIGNED_OUT_PROMPT],
+        },
+        (recording) => turn(recording, SIGNED_OUT_PROMPT),
+      ),
   );
 
-  it.live.skipIf(!RECORD)(
+  it.live.skipIf(!RECORD || signedIn())(
     "signed-out-steer: a message steered into a running turn on a CLI that is not signed in",
     () =>
       recordScenario(
@@ -286,7 +292,7 @@ describe("session recordings", () => {
       ),
   );
 
-  it.live.skipIf(!RECORD || OLDER_BINARY === undefined)(
+  it.live.skipIf(!RECORD || OLDER_BINARY === undefined || signedIn())(
     "receiptless-steer: a steer refused on a CLI that sends no command_lifecycle receipts",
     () =>
       recordScenario(
@@ -319,7 +325,7 @@ describe("session recordings", () => {
       ),
   );
 
-  it.live.skipIf(!RECORD)(
+  it.live.skipIf(!RECORD || signedIn())(
     "local-command: two of the CLI's own slash commands on a CLI that is not signed in",
     () =>
       recordScenario(
@@ -339,7 +345,7 @@ describe("session recordings", () => {
       ),
   );
 
-  it.live.skipIf(!RECORD)(
+  it.live.skipIf(!RECORD || signedIn())(
     "session-controls: the model, the effort, an image and /compact on a CLI that is not signed in",
     () =>
       recordScenario(
