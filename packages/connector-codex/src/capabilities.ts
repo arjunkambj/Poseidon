@@ -31,8 +31,11 @@ export const CODEX_CAPABILITIES: ConnectorCapabilities = {
   // `thread/resume` against the CLI's own rollout, from a new process
   // (`resume`); a thread it has no rollout for starts afresh (`resume-missing`).
   resume: true,
-  // `thread/fork` exists; nothing in Poseidon needs it yet.
-  fork: false,
+  // `thread/fork` copies the source thread's rollout into a new thread and
+  // leaves the source alone; a fork the CLI refuses fails rather than
+  // starting fresh (`fork`: the forked thread names the word the source was
+  // told, in a thread of its own).
+  fork: true,
   // `turn/interrupt` stops the running turn and leaves the thread, and the
   // same process answers the next (`interrupt`).
   interrupt: "turn",

@@ -102,6 +102,8 @@ export interface CodexSessionOptions {
   readonly settings: ThreadSettings;
   /** The thread to resume; absent for a fresh one. */
   readonly sessionRef?: CodexSessionRef;
+  /** Fork `sessionRef`'s thread into a new one rather than resume it (`threadOpen.ts`). */
+  readonly fork?: boolean;
   /** Said once after `session.started` — why a resume became a fresh start. */
   readonly warning?: string;
   /**
@@ -193,6 +195,7 @@ export const makeCodexSession = (
         cwd: options.workspaceRoot,
         settings,
         ...(options.sessionRef === undefined ? {} : { resume: options.sessionRef.threadId }),
+        ...(options.fork === true ? { fork: true } : {}),
       });
     }).pipe(
       Effect.mapError((error) => failed(error.message)),
@@ -206,7 +209,8 @@ export const makeCodexSession = (
     /**
      * Whether the CLI's thread may carry a collaboration mode, so every turn
      * names its own (`plans.ts`): once a turn named one, or from the start
-     * for a resumed thread, which the previous process may have left in plan.
+     * for a resumed or forked thread, which the previous process may have
+     * left in plan.
      */
     let carriesMode = options.sessionRef !== undefined && opened.warning === undefined;
     /** The model and effort the CLI's thread holds, so a turn names each change. */

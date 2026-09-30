@@ -1,17 +1,21 @@
 /**
- * Opening the session's thread on a fresh app-server: `thread/start`, or
- * `thread/resume` for a thread the CLI already has.
+ * Opening the session's thread on a fresh app-server: `thread/start`,
+ * `thread/resume` for a thread the CLI already has, or `thread/fork` for a
+ * new thread that carries one of those on.
  *
- * Both name the working directory, the approval policy and the sandbox the
- * thread's modes call for (`modes.ts`), and the model unless the thread runs
- * on the CLI's default. A resume is asked for without the thread's turns
- * (`excludeTurns`): Poseidon has its own timeline, and the full history is a
- * payload the CLI itself calls deprecated.
+ * All three name the working directory, the approval policy and the sandbox
+ * the thread's modes call for (`modes.ts`), and the model unless the thread
+ * runs on the CLI's default. A resume or a fork is asked for without the
+ * thread's turns (`excludeTurns`): Poseidon has its own timeline, and the full
+ * history is a payload the CLI itself calls deprecated.
  *
  * A resume the CLI refuses because it has no rollout for the id — the thread
  * was made under another `CODEX_HOME`, or its files were cleaned up — starts
  * a new thread instead, and says so with the warning the session passes on.
- * Any other refusal fails the start.
+ * A fork never does: the CLI copies the source's rollout into a thread of its
+ * own and leaves the source as it was (`fork`), and a fork it refuses fails
+ * the start, so the server can start the thread its own way and carry the
+ * conversation over as text. Any other refusal fails the start too.
  */
 
 import type { Effort } from "@poseidon/contracts/enums";
@@ -50,7 +54,7 @@ const baseParams = (cwd: string, settings: ThreadSettings) => {
   };
 };
 
-/** What the CLI opened, from its answer to `thread/start` or `thread/resume`. */
+/** What the CLI opened, from its answer to `thread/start`, `thread/resume` or `thread/fork`. */
 export const openedFrom = (response: ThreadOpenResponse): OpenedThread => {
   const effort = toEffort(response.reasoningEffort);
   return {
@@ -75,9 +79,19 @@ export const openThread = (input: {
   readonly settings: ThreadSettings;
   /** The CLI's thread to resume; absent for a fresh one. */
   readonly resume?: string;
+  /** Fork `resume` into a new thread of the CLI's instead of carrying it on. */
+  readonly fork?: boolean;
 }): Effect.Effect<OpenedThread, RpcFailed> => {
   const { rpc, cwd, settings } = input;
   if (input.resume === undefined) return start(rpc, cwd, settings);
+  if (input.fork === true) {
+    return call(
+      rpc,
+      "thread/fork",
+      { threadId: input.resume, excludeTurns: true, ...baseParams(cwd, settings) },
+      ThreadOpenResponse,
+    ).pipe(Effect.map(openedFrom));
+  }
   return call(
     rpc,
     "thread/resume",

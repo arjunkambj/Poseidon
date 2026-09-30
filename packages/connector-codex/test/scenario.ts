@@ -55,8 +55,11 @@ export interface Recording {
 
 export interface Session {
   readonly threadId: ThreadId;
-  /** Opens a session on the tee, fresh or resuming `sessionRef`. */
-  readonly open: (sessionRef?: unknown) => Effect.Effect<Recording, unknown, Scope.Scope>;
+  /** Opens a session on the tee, fresh, resuming `sessionRef`, or forking it. */
+  readonly open: (
+    sessionRef?: unknown,
+    fork?: boolean,
+  ) => Effect.Effect<Recording, unknown, Scope.Scope>;
   readonly repo: string;
 }
 
@@ -100,11 +103,11 @@ export const recordScenario = (
         workspaceRoot: repo,
         settings: spec.settings ?? SETTINGS,
       };
-      const open = (sessionRef?: unknown) =>
+      const open = (sessionRef?: unknown, fork?: boolean) =>
         Effect.gen(function* () {
           const handle = yield* sessionRef === undefined
             ? instance.startSession(input)
-            : instance.resumeSession({ ...input, sessionRef });
+            : instance.resumeSession({ ...input, sessionRef, ...(fork === true ? { fork } : {}) });
           const collector = yield* makeStreamCollector(handle.events);
           return { handle, collector };
         });

@@ -81,7 +81,10 @@ export type ModelListResponse = typeof ModelListResponse.Type;
 
 // ── thread/start, thread/resume, turn/start ────────────────────
 
-/** What `thread/start` and `thread/resume` answer: the thread, and what it runs on. */
+/**
+ * What `thread/start`, `thread/resume` and `thread/fork` answer: the thread,
+ * and what it runs on.
+ */
 export const ThreadOpenResponse = Schema.Struct({
   thread: Schema.Struct({
     /** The id `thread/resume` and every turn name the thread by. */

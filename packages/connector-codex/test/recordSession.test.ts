@@ -115,6 +115,29 @@ describe("session recordings", () => {
     ),
   );
 
+  it.live.skipIf(!RECORD)("fork: a second process forks the thread and recalls a word", () =>
+    recordScenario(
+      {
+        scenario: "fork",
+        description:
+          "Two app-server processes: the first starts the thread and is told a word to remember; it is closed, and the second forks the thread (thread/fork) into a new one and names the word there.",
+        prompts: [PROMPTS.remember, PROMPTS.recall],
+      },
+      (session) =>
+        Effect.gen(function* () {
+          const first = yield* session.open();
+          yield* turn(first, text(PROMPTS.remember));
+          const ref = yield* first.handle.sessionRef();
+          yield* closed(first);
+          const second = yield* session.open(ref, true);
+          yield* turn(second, text(PROMPTS.recall));
+          const forked = yield* second.handle.sessionRef();
+          yield* closed(second);
+          expect(forked).not.toEqual(ref);
+        }),
+    ),
+  );
+
   it.live.skipIf(!RECORD)("resume-missing: a resume of a thread the CLI does not have", () =>
     recordScenario(
       {

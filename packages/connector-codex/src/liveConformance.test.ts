@@ -74,6 +74,7 @@ const SENT_REQUESTS = [
   "model/list",
   "thread/start",
   "thread/resume",
+  "thread/fork",
   "turn/start",
   "turn/steer",
   "turn/interrupt",

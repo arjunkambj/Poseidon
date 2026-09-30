@@ -77,11 +77,14 @@ export const replaying = (scenario: string, settings: ThreadSettings = SETTINGS)
       workspaceRoot: workspace,
       settings,
     };
-    const open = (sessionRef?: unknown): Effect.Effect<Opened, unknown, Scope.Scope> =>
+    const open = (
+      sessionRef?: unknown,
+      fork?: boolean,
+    ): Effect.Effect<Opened, unknown, Scope.Scope> =>
       Effect.gen(function* () {
         const handle = yield* sessionRef === undefined
           ? instance.startSession(input)
-          : instance.resumeSession({ ...input, sessionRef });
+          : instance.resumeSession({ ...input, sessionRef, ...(fork === true ? { fork } : {}) });
         return { handle, collector: yield* makeStreamCollector(handle.events) };
       });
     const assertDone = () => {

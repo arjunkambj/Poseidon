@@ -8,6 +8,7 @@
  * them), and a turn that ended `end_turn`. `interrupt`: a turn stopped on its
  * first text, then a follow-up on the same process. `resume`: a second
  * process resuming the thread by the first one's ref and recalling the word.
+ * `fork`: the same, forked into a thread of the CLI's own that recalls it too.
  * `resume-missing`: a resume of a thread the CLI does not have, started
  * afresh with a warning. `model-switch`: `model.changed`, and the second turn
  * on the switched model. `ultra-effort`: a thread at effort `ultra` names it
@@ -179,6 +180,49 @@ describe("a Codex session replaying codex/resume", () => {
         const secondIn = secondUsage.input + secondUsage.cacheRead;
         expect(secondIn).toBeGreaterThan(0);
         expect(secondIn).toBeLessThan(firstIn * 1.5);
+      }),
+    ),
+  );
+});
+
+describe("a Codex session replaying codex/fork", () => {
+  it.live("forks the thread in a second process into a new one, which recalls the first turn", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { open, assertDone, replayed } = yield* replaying("fork");
+        const [remember, recall] = prompts("fork");
+        const first = yield* open();
+        yield* turn(first, text(remember!));
+        const ref = yield* first.handle.sessionRef();
+        const before = yield* closed(first);
+
+        const second = yield* open(ref, true);
+        yield* turn(second, text(recall!));
+        const after = yield* closed(second);
+        assertDone();
+        expect(replayed.pids()).toHaveLength(2);
+
+        // A thread of its own, in the same workspace: the source is left as it was.
+        const forkedRef = parseSessionRef(ofType(after, "session.started")[0]!.payload.sessionRef);
+        const sourceRef = parseSessionRef(ref);
+        expect(forkedRef?.threadId).toBeDefined();
+        expect(forkedRef?.threadId).not.toBe(sourceRef?.threadId);
+        expect(forkedRef?.cwd).toBe(sourceRef?.cwd);
+        expect(ofType(after, "session.warning")).toEqual([]);
+        expect(ofType(after, "event.unmapped")).toEqual([]);
+        expect(rows(after, "assistant_message")[0]!.text).toBe("walrus");
+        expect(stopReasons([...before, ...after])).toEqual(["end_turn", "end_turn"]);
+      }),
+    ),
+  );
+
+  it.live("refuses to fork a reference that is not its own, rather than starting afresh", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { open, replayed } = yield* replaying("fork");
+        const error = yield* Effect.flip(open({ sessionId: "not a codex ref" }, true));
+        expect((error as { readonly _tag?: string })._tag).toBe("SpawnFailed");
+        expect(replayed.pids()).toEqual([]);
       }),
     ),
   );

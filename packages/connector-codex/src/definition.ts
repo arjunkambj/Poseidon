@@ -1,6 +1,6 @@
 /**
- * The Codex connector definition: probe, instance creation, session start and
- * resume, one-shot text (`generateText.ts`), and the skills, MCP server and
+ * The Codex connector definition: probe, instance creation, session start,
+ * resume and fork, one-shot text (`generateText.ts`), and the skills, MCP server and
  * session-file extensions. Everything else — the binary, the environment, the
  * JSON-RPC client, the handshake, the translation — lives in the sibling
  * modules this wires together. Sessions come back raw; the engine's
@@ -129,7 +129,12 @@ export const makeCodexConnectorDefinition = (
             return handshake.models;
           });
 
-        const start = (input: StartSessionInput, sessionRef?: CodexSessionRef, warning?: string) =>
+        const start = (
+          input: StartSessionInput,
+          sessionRef?: CodexSessionRef,
+          warning?: string,
+          fork = false,
+        ) =>
           Effect.gen(function* () {
             const { binary, env } = yield* launch;
             if (binary === null) return yield* failed(NOT_FOUND);
@@ -145,6 +150,7 @@ export const makeCodexConnectorDefinition = (
               modelFacts,
               ...(sessionRef === undefined ? {} : { sessionRef }),
               ...(warning === undefined ? {} : { warning }),
+              ...(fork ? { fork } : {}),
             });
           });
 
@@ -155,11 +161,16 @@ export const makeCodexConnectorDefinition = (
           startSession: (input) => start(input),
           // A thread the CLI no longer has is started afresh inside the session
           // (`threadOpen.ts`); a reference this connector cannot read is here.
+          // A fork of either fails instead, so the server carries the
+          // conversation over as text.
           resumeSession: (input) => {
             const ref = parseSessionRef(input.sessionRef);
-            return ref === undefined
-              ? start(input, undefined, UNREADABLE_REF_WARNING)
-              : start(input, ref);
+            if (ref === undefined) {
+              return input.fork === true
+                ? Effect.fail(failed("the session to fork is not a Codex session reference"))
+                : start(input, undefined, UNREADABLE_REF_WARNING);
+            }
+            return start(input, ref, undefined, input.fork === true);
           },
           listModels,
           generateText: makeCodexGenerateText({

@@ -1,0 +1,47 @@
+{
+  "formatVersion": 1,
+  "kind": "codex",
+  "transport": "stdio-jsonrpc",
+  "scenario": "fork",
+  "description": "Two app-server processes: the first starts the thread and is told a word to remember; it is closed, and the second forks the thread (thread/fork) into a new one and names the word there.",
+  "cliVersion": "0.159.2",
+  "recordedOn": "2026-09-30",
+  "model": "gpt-6-astra",
+  "real": true,
+  "prompts": [
+    "Remember the word walrus. Reply with exactly: ok",
+    "Which word did I ask you to remember? Reply with that word only."
+  ],
+  "invocations": [
+    {
+      "argv": [
+        "app-server",
+        "-c",
+        "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
+        "-c",
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\"",
+        "-c",
+        "shell_environment_policy.set.POSEIDON_CODEX_MCP_TOKEN=\"\""
+      ],
+      "cwd": "<SCRATCH>/fork",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "app-server",
+        "-c",
+        "mcp_servers.poseidon.url=\"http://127.0.0.1:9/mcp\"",
+        "-c",
+        "mcp_servers.poseidon.bearer_token_env_var=\"POSEIDON_CODEX_MCP_TOKEN\"",
+        "-c",
+        "shell_environment_policy.set.POSEIDON_CODEX_MCP_TOKEN=\"\""
+      ],
+      "cwd": "<SCRATCH>/fork",
+      "file": "invocation-2.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}
