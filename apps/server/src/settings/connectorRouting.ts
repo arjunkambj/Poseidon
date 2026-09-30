@@ -270,17 +270,20 @@ export interface SeededModel {
  * order that lists it — the rule New task's pick follows in the renderer, so
  * a thread started either way lands on the same harness. One model belongs
  * to one harness, and seeding it onto whichever instance routing picks would
- * start a Codex thread on a Claude model. When no open instance lists it,
- * the routed instance's own `defaultModel` answers, and then its first model.
+ * start a Codex thread on a Claude model. When no open instance lists it, it
+ * still stands, unpinned, as New task sends it: a list can come back empty
+ * because a handshake failed or a probe is still running, and the CLI may
+ * take an alias it does not list, so "nobody listed it" is no reason to put
+ * another model in place of the one the user chose.
  *
- * Last comes the connector itself. A fresh install has filled in none of the
- * three: `defaultSettings()` writes `model: null`, the connector seed writes
- * the kind's empty `defaultConfig()`, and nothing ever fills either from a
- * probe — so every `thread.create` was rejected and the app could not be used
- * until the user found Settings → Models by themselves. Asking the routed
- * instance for its first model is what makes the first thread possible, and it
- * names a model that instance certainly has. Only when no instance can name
- * one does the app-wide default stand on its own, unpinned, as it used to.
+ * With no app-wide default, the routed instance's own `defaultModel` answers,
+ * and then the connector itself. A fresh install has filled in none of them:
+ * `defaultSettings()` writes `model: null`, the connector seed writes the
+ * kind's empty `defaultConfig()`, and nothing ever fills either from a probe —
+ * so every `thread.create` was rejected and the app could not be used until
+ * the user found Settings → Models by themselves. Asking the routed instance
+ * for its first model is what makes the first thread possible, and it names a
+ * model that instance certainly has.
  *
  * A thread that chose its instance (`chosen`) skips all of that while the
  * instance is open: its `defaultModel`, then its first model. The app-wide
@@ -336,6 +339,7 @@ export const seedModel = (
           return from(shared.model, connector.connectorInstanceId);
         }
       }
+      return shared;
     }
     const routed = ranked[0];
     if (routed?.defaultModel != null) {
@@ -351,5 +355,5 @@ export const seedModel = (
       // document, and selection finds it again by itself.
       return { model: first, connectorInstanceId: routed?.connectorInstanceId ?? null };
     }
-    return shared;
+    return null;
   });

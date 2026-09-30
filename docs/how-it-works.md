@@ -4464,11 +4464,16 @@ on it, and is seeded from its default or first model, while it is open.
 
 A thread created with neither a model nor an instance is seeded by the engine
 (`seedModel`): the app-wide default under the first open instance in that order
-that lists it, which is where New task's pick puts it too; failing that, the
-routed instance's own default or first model. The thread is pinned to the
-instance its model came from, because routing is read again at its first turn,
-and a probe that lands in between must not send that turn to a harness that
-has never heard of the model.
+that lists it, which is where New task's pick puts it too. A default no open
+instance lists still stands, unpinned, as New task sends it: an empty list can
+be a failed handshake or an alias the CLI takes without listing it. With no
+app-wide default, the routed instance's own default or first model is seeded.
+The thread is pinned to the instance its model came from, because routing is
+read again at its first turn, and a probe that lands in between must not send
+that turn to a harness that has never heard of the model. The lists are the
+catalog's (the latest probe's, else one bounded `listModels()` remembered until
+the next probe), and the engine reads them before it takes its write lock, so
+a create never holds every other write while a harness starts.
 
 The registry's order is the harness rank, and an existing install is brought
 up to it once per boot (`apps/server/src/settings/connectorUpgrade.ts`). A

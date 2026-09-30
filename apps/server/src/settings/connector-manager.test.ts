@@ -716,17 +716,21 @@ describe("ConnectorManager", () => {
           connectorInstanceId: chosen.connectorInstanceId,
         });
         // A thread that chose nothing still goes by the default rule. No
-        // instance lists the app-wide default, so the routed one's own model
-        // is seeded rather than one it has never heard of.
-        const routedSeed = { model: "fake/model", connectorInstanceId: first.connectorInstanceId };
+        // instance lists the app-wide default, and that is no reason to put
+        // another model in place of the user's: it stands, unpinned, as New
+        // task's pick sends it (`defaultModelPick` in the renderer).
+        const sharedSeed = { model: "acme/shared", connectorInstanceId: null };
         expect((yield* selection.instanceFor(routedThread())).instanceId).toBe(
           first.connectorInstanceId,
         );
-        expect(yield* seedModel(sql, open, models)).toEqual(routedSeed);
+        expect(yield* seedModel(sql, open, models)).toEqual(sharedSeed);
 
         // The seeded entry has no default of its own: choosing it starts on
         // its first model, still ahead of the app-wide default.
-        expect(yield* seedModel(sql, open, models, first.connectorInstanceId)).toEqual(routedSeed);
+        expect(yield* seedModel(sql, open, models, first.connectorInstanceId)).toEqual({
+          model: "fake/model",
+          connectorInstanceId: first.connectorInstanceId,
+        });
 
         // Disabled since: routing and the seed both fall back to the default rule.
         yield* store.update({ connectors: [first, { ...chosen, enabled: false }] });
@@ -734,7 +738,7 @@ describe("ConnectorManager", () => {
         expect(
           (yield* selection.instanceFor(routedThread(chosen.connectorInstanceId))).instanceId,
         ).toBe(first.connectorInstanceId);
-        expect(yield* seedModel(sql, open, models, chosen.connectorInstanceId)).toEqual(routedSeed);
+        expect(yield* seedModel(sql, open, models, chosen.connectorInstanceId)).toEqual(sharedSeed);
 
         // Removed altogether: the same fallback.
         yield* store.update({ connectors: [first] });
