@@ -1,0 +1,46 @@
+{
+  "formatVersion": 1,
+  "kind": "claude",
+  "transport": "sdk-stream",
+  "scenario": "probe-signed-in",
+  "description": "The connector's probe: --version, auth status --json, and the zero-turn SDK handshake that lists the models. No message is sent. Recorded signed in.",
+  "cliVersion": "2.1.286",
+  "sdkVersion": "0.3.280",
+  "recordedOn": "2026-10-01",
+  "model": "default",
+  "real": true,
+  "prompts": [],
+  "invocations": [
+    {
+      "argv": ["--version"],
+      "cwd": "<TMP>",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["auth", "status", "--json"],
+      "cwd": "<TMP>",
+      "file": "invocation-2.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--input-format",
+        "stream-json",
+        "--setting-sources=",
+        "--permission-mode",
+        "default",
+        "--no-session-persistence"
+      ],
+      "cwd": "<TMP>",
+      "file": "invocation-3.ndjson",
+      "exitCode": 143,
+      "signal": null
+    }
+  ]
+}

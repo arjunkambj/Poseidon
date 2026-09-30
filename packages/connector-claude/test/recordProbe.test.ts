@@ -1,5 +1,6 @@
 /**
- * Records `fixtures/claude/probe/` from the real CLI.
+ * Records `fixtures/claude/probe/` from the real CLI when it is signed out,
+ * and `fixtures/claude/probe-signed-in/` when it is signed in.
  *
  *     POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run test/recordProbe.test.ts
  *
@@ -7,7 +8,10 @@
  * testkit's stdio tee, so every launch — `--version`, `auth status --json`,
  * and the zero-turn SDK handshake that lists the models — is captured exactly
  * as the CLI answered, then finalised and scrubbed. The probe sends no
- * message to the API, so recording it costs nothing.
+ * message to the API, so recording it costs nothing. The two are kept apart
+ * because each is the only record of what the CLI says in that state: a CLI
+ * signed in cannot record the signed-out answers again, nor the other way
+ * round.
  *
  * Skipped unless asked for: it reads the operator's real CLI and account.
  */
@@ -37,11 +41,12 @@ describe("the probe recording", () => {
       const result = yield* probe({ binaryPath: launcher });
       expect(result.version).toBeDefined();
 
+      const signedIn = result.auth === "present";
       const dir = finalizeSdkStreamRecording({
         kind: CLAUDE_KIND,
-        scenario: "probe",
+        scenario: signedIn ? "probe-signed-in" : "probe",
         rawDir,
-        description: `The connector's probe: --version, auth status --json, and the zero-turn SDK handshake that lists the models. No message is sent. Recorded ${result.auth === "present" ? "signed in" : "signed out"}.`,
+        description: `The connector's probe: --version, auth status --json, and the zero-turn SDK handshake that lists the models. No message is sent. Recorded ${signedIn ? "signed in" : "signed out"}.`,
         cliVersion: result.version!,
         sdkVersion: sdkVersion(),
         model: "default",
