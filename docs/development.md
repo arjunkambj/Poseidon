@@ -919,10 +919,16 @@ names the repository never writes. A signed-in account also brings its
 claude.ai connectors and synced plugins into the init, and the model may name
 a connector that needs authorising in its answer; the scrubber replaces
 those, the org and account ids in the synced directory's name and the id of
-the plugin's directory under it. A streamed answer can split a name across two
-deltas, so grep each streamed block's deltas joined as well: the scrubber
-joins them, but a grep of the file alone would miss what it did not know to
-replace. Anything it missed is fixed in the scrubber
+the plugin's directory under it. The last of those, and the joined deltas
+below, came after the first signed-in round: of those recordings only
+`edit-approval` was made again, so `conformance`, `deny`, `image`,
+`interrupt`, `model-switch`, `plain-reply`, `plan-accept`, `question`,
+`resume`, `sensitive-full-access`, `steering`, `subagent` and `subagent-stop`
+still carry the synced plugin's directory id until they are recorded again.
+A streamed answer can split a name across two deltas, so grep each streamed
+block's deltas joined as well: the scrubber joins them, but a grep of the file
+alone would miss what it did not know to replace. Anything it missed is fixed
+in the scrubber
 (`packages/testkit/src/sdkStreamRecording.ts`) and the scenario recorded
 again — the capture is never edited.
 
