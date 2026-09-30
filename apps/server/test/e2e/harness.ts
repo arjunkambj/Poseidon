@@ -73,6 +73,7 @@ import { watchThread, type ThreadWatch, type ViewMark, type Watch } from "./watc
 import { boot, type BootedServer, type BootOptions } from "../../src/boot";
 import { layer as sqliteLayer } from "../../src/persistence/Sqlite";
 import { SettingsStore } from "../../src/rpc/services";
+import { DEFAULT_MODEL_MIGRATION, RANK_MIGRATION } from "../../src/settings/connectorUpgrade";
 
 /**
  * The model every scenario runs on.
@@ -247,9 +248,13 @@ export const forEachDriver = (title: string, body: (driver: Driver) => void): vo
  * Writes the settings row `boot` will find.
  *
  * Without one the connector manager treats the home as a fresh install and
- * seeds its own `cmd` instance — which is right for a first run and wrong for
- * a test, because then the test cannot say which binary the instance points
- * at. Automatic thread titles are switched off in it.
+ * seeds an instance of every harness it ships — which is right for a first run
+ * and wrong for a test, because then the test cannot say which binary the
+ * instance points at, and a new thread routes to Claude Code. So the row also
+ * says every kind was offered and every connector upgrade applied
+ * (`connectorUpgrade.ts`): the manager then leaves `connectors` exactly as the
+ * test wrote it, and a thread routes to the one it names. Automatic thread
+ * titles are switched off in it.
  */
 export const seedSettings = (
   home: E2EHome,
@@ -269,6 +274,8 @@ export const seedSettings = (
       yield* store.update({
         ...defaultSettings(),
         connectors,
+        offeredConnectorKinds: ["claude", "codex", "cmd"],
+        connectorMigrations: [RANK_MIGRATION, DEFAULT_MODEL_MIGRATION],
         generation: { ...DEFAULT_GENERATION_SETTINGS, autoTitle: false },
       });
     }),

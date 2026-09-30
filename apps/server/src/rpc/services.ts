@@ -587,8 +587,9 @@ export class SettingsStore extends Context.Service<
     readonly changes: Stream.Stream<Settings>;
     /**
      * True when no `settings` row existed at boot. The connector manager reads
-     * this to seed a default instance on first run only — a user who later
-     * removes every connector must not see it resurrected on the next boot.
+     * this to tell a first run, which it seeds, from a document with no
+     * connectors left in it — a user who removed every connector must not see
+     * them resurrected on the next boot.
      */
     readonly freshInstall: boolean;
   }

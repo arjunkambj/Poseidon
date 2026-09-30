@@ -110,6 +110,10 @@ const fixture = (
         Layer.provide(sqlite),
       ),
     );
+    // What the entrypoint waits on before it admits a client: the first
+    // settings value is upgraded and reconciled by then, so a test's own
+    // write cannot land in front of the seed and be seeded around.
+    yield* Context.get(ctx, ConnectorManager).ready;
     return {
       manager: Context.get(ctx, ConnectorManager),
       catalog: Context.get(ctx, ConnectorCatalog),

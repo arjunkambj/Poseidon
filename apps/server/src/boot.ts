@@ -156,9 +156,10 @@ export const boot = (options: BootOptions) =>
       Layer.mergeAll(EventStore.layer, ReadModelStore.layer).pipe(Layer.provide(sqlite)),
     );
     // Order is the harness rank: every definition is seeded as an instance in
-    // this order on a fresh install, and a thread that names none runs on the
-    // first enabled one. Claude Code is the default, then Codex, and Command
-    // Code comes last.
+    // this order, an existing install's connectors list is sorted into it once
+    // (`connectorUpgrade.ts`), and a thread that names none runs on the first
+    // enabled one. Claude Code is the default, then Codex, and Command Code
+    // comes last.
     const registry = yield* makeRegistry([
       eraseConnectorDefinition(makeClaudeConnectorDefinition(options.claudeCode ?? {})),
       eraseConnectorDefinition(makeCodexConnectorDefinition(options.codex ?? {})),

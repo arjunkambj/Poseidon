@@ -10,9 +10,10 @@
  * so routing follows the reconcile without touching the session layer.
  *
  * On a fresh install — no settings row ever existed — each registered
- * definition is seeded as one enabled instance, so the app works out of the
- * box. A user who later removes every connector has a settings row by then,
- * so the seed never resurrects deleted instances.
+ * definition is seeded as one enabled instance, in the registry's order, so
+ * the app works out of the box. An existing install gets the same once per
+ * kind it was never given (`connectorUpgrade.ts`), and a kind it was given is
+ * never given again, so the seed never resurrects deleted instances.
  *
  * `connectors.list` answers from the last reconcile's probes; `refresh: true`
  * reconciles the current document and then re-runs every probe, which is what
@@ -30,6 +31,7 @@
 import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
 import { makeConnectorInstanceId } from "@poseidon/contracts/ids";
 import type { ConnectorSummary, ModelOption } from "@poseidon/contracts/connectors";
+import { probeCanRun } from "@poseidon/contracts/connectors";
 import type { ConnectorCapabilities } from "@poseidon/contracts/runtime";
 import type { ConnectorProbe } from "@poseidon/connector-sdk/definition";
 import { toWireProbe } from "@poseidon/connector-sdk/definition";
@@ -51,6 +53,12 @@ import * as SubscriptionRef from "effect/SubscriptionRef";
 
 import { ConnectorCatalog, SettingsStore } from "../rpc/services";
 import { ConnectorHost } from "./ConnectorHost";
+import {
+  DEFAULT_MODEL_MIGRATION,
+  defaultModelVerdict,
+  rankedAheadOfLast,
+  upgradeConnectors,
+} from "./connectorUpgrade";
 
 /** The registry as a service so tests and `main.ts` inject the same instance. */
 export class ConnectorRegistryService extends Context.Service<
@@ -136,7 +144,11 @@ export class ConnectorManager extends Context.Service<
       const summariesRef = yield* SubscriptionRef.make<ReadonlyArray<ConnectorSummary>>([]);
       /** Serialises reconcile passes and explicit re-probes. */
       const mutex = yield* Semaphore.make(1);
-      const seeded = yield* Ref.make(false);
+      const upgraded = yield* Ref.make(false);
+      /** Set once the default-model check has run to a verdict, this boot or an earlier one. */
+      const defaultModelSettled = yield* Ref.make(false);
+      /** One check at a time: the loop and a refresh must not both write its marker. */
+      const settleMutex = yield* Semaphore.make(1);
       /** Completed by the first reconcile, once it has registered instances. */
       const registered = yield* Deferred.make<void>();
 
@@ -297,49 +309,85 @@ export class ConnectorManager extends Context.Service<
         );
 
       /**
-       * First run only: an empty connectors list with no settings row behind it
-       * gets one enabled instance per registered definition. The update emits
-       * a fresh settings value, which the loop reconciles like any other edit.
+       * Once per boot, on the first settings value: the document brought up to
+       * what this build ships (`upgradeConnectors`) — on a fresh install, one
+       * enabled instance per registered definition. The update emits a fresh
+       * settings value, which the loop reconciles like any other edit.
        */
-      const maybeSeed = (settings: Settings): Effect.Effect<boolean> =>
+      const maybeUpgrade = (settings: Settings): Effect.Effect<boolean> =>
         Effect.gen(function* () {
-          if (yield* Ref.get(seeded)) {
+          if (yield* Ref.get(upgraded)) {
             return false;
           }
-          yield* Ref.set(seeded, true);
-          if (
-            !store.freshInstall ||
-            settings.connectors.length > 0 ||
-            registry.definitions.length === 0
-          ) {
+          yield* Ref.set(upgraded, true);
+          const patch = upgradeConnectors(
+            settings,
+            registry.definitions,
+            store.freshInstall,
+            makeConnectorInstanceId,
+          );
+          if (patch === null) {
             return false;
           }
-          const written = yield* store
-            .update({
-              connectors: registry.definitions.map((definition) => ({
-                connectorInstanceId: makeConnectorInstanceId(),
-                kind: definition.kind,
-                displayName: definition.metadata.displayName,
-                enabled: true,
-                config: definition.defaultConfig(),
-              })),
-            })
-            .pipe(Effect.exit);
+          const written = yield* store.update(patch).pipe(Effect.exit);
           if (Exit.isFailure(written)) {
             // No new settings value was emitted, so no reconcile is coming for
-            // it. Report "did not seed" and let this pass reconcile instead —
-            // `ready` hangs otherwise, and with it the entrypoint.
-            yield* Effect.logWarning("seed failed", written.cause);
+            // it. Report "did not upgrade" and let this pass reconcile instead
+            // — `ready` hangs otherwise, and with it the entrypoint.
+            yield* Effect.logWarning("connector upgrade failed", written.cause);
             return false;
           }
           return true;
         });
 
-      yield* Stream.runForEach(store.changes, (settings) =>
-        Effect.flatMap(maybeSeed(settings), (didSeed) =>
-          didSeed ? Effect.void : mutex.withPermits(1)(reconcile(settings)),
-        ),
-      ).pipe(Effect.forkScoped);
+      /**
+       * The saved default model against the rank, once (`defaultModelVerdict`).
+       * It needs model lists, so it runs after a reconcile has probed, and it
+       * runs again after every later one until it reaches a verdict — the
+       * harnesses it asks may be installed or signed in while the app runs.
+       */
+      const settleDefaultModel: Effect.Effect<void> = settleMutex
+        .withPermits(1)(
+          Effect.gen(function* () {
+            if (yield* Ref.get(defaultModelSettled)) {
+              return;
+            }
+            const settings = yield* store.get;
+            if (settings.connectorMigrations.includes(DEFAULT_MODEL_MIGRATION)) {
+              yield* Ref.set(defaultModelSettled, true);
+              return;
+            }
+            const model = settings.defaults.model;
+            const ahead = rankedAheadOfLast(registry.definitions);
+            let verdict: ReturnType<typeof defaultModelVerdict> = "keep";
+            if (model !== null && ahead.length > 0) {
+              const probed = yield* Ref.get(probes);
+              const answers: Array<ReadonlyArray<string>> = [];
+              for (const conn of settings.connectors) {
+                const probe = probed.get(conn.connectorInstanceId);
+                if (
+                  conn.enabled &&
+                  ahead.includes(conn.kind) &&
+                  probe !== undefined &&
+                  probeCanRun(probe)
+                ) {
+                  const listed = yield* models(conn.connectorInstanceId);
+                  answers.push(listed.map((option) => option.id));
+                }
+              }
+              verdict = defaultModelVerdict(model, answers);
+            }
+            if (verdict === "undecided") {
+              return;
+            }
+            yield* store.update({
+              ...(verdict === "clear" ? { defaults: { ...settings.defaults, model: null } } : {}),
+              connectorMigrations: [...settings.connectorMigrations, DEFAULT_MODEL_MIGRATION],
+            });
+            yield* Ref.set(defaultModelSettled, true);
+          }),
+        )
+        .pipe(Effect.catchCause((cause) => Effect.logWarning("default model check failed", cause)));
 
       const list = (refresh = false): Effect.Effect<ReadonlyArray<ConnectorSummary>> =>
         refresh
@@ -391,8 +439,22 @@ export class ConnectorManager extends Context.Service<
           return found;
         });
 
+      // Forked only now: the loop reaches `models` through the default-model
+      // check, and a fiber that starts at once must not find it undeclared.
+      yield* Stream.runForEach(store.changes, (settings) =>
+        Effect.flatMap(maybeUpgrade(settings), (didUpgrade) =>
+          didUpgrade
+            ? Effect.void
+            : Effect.andThen(mutex.withPermits(1)(reconcile(settings)), settleDefaultModel),
+        ),
+      ).pipe(Effect.forkScoped);
+
       return ConnectorManager.of({
-        list,
+        // A re-probe is what follows installing or signing in to a harness,
+        // which the default-model check may be waiting for. It runs after the
+        // mutex is released, since it may write the document.
+        list: (refresh) =>
+          refresh === true ? Effect.tap(list(true), () => settleDefaultModel) : list(),
         models,
         ready: Deferred.await(registered),
         changes: SubscriptionRef.changes(summariesRef),
