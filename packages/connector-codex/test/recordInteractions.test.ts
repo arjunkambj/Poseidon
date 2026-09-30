@@ -163,7 +163,7 @@ describe("interaction recordings", () => {
     recordScenario(
       {
         scenario: "plugin-skill",
-        description: `One Poseidon plugin enabled for the session: its skills directory handed over with skills/extraRoots/set, its HTTP MCP server (pointed at a port nothing listens on) in thread/start's config. The turn references the plugin's ${SCRATCH_SKILL.name} skill, whose SKILL.md names the word; every card is allowed once.`,
+        description: `One Poseidon plugin enabled for the session: its skills directory handed over with skills/extraRoots/set, its HTTP MCP server (pointed at a port nothing listens on) in thread/start's config as one dotted mcp_servers key, beside poseidon's. The turn references the plugin's ${SCRATCH_SKILL.name} skill, whose SKILL.md names the word: the skill found in skills/list and attached as a skill input; every card is allowed once.`,
         prompts: [INTERACTION_PROMPTS.skill],
         plugins: [SCRATCH_PLUGIN],
         prepare: writeScratchPlugin,

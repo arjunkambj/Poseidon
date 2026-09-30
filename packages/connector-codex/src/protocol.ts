@@ -16,7 +16,12 @@
 
 import * as Schema from "effect/Schema";
 
-/** The release whose bindings and recordings these schemas were read against. */
+/**
+ * The release whose bindings and recordings these schemas were read against.
+ * `SkillsListResponse`'s `path` and `enabled`, like the `thread/fork` and
+ * `skills/extraRoots/set` requests, were read against 0.159.2, whose
+ * recordings are the only ones to use them.
+ */
 export const PROTOCOL_CLI_VERSION = "0.156.1";
 
 // ── initialize ─────────────────────────────────────────────────
@@ -102,3 +107,20 @@ export const TurnStartResponse = Schema.Struct({
   turn: Schema.Struct({ id: Schema.String }),
 });
 export type TurnStartResponse = typeof TurnStartResponse.Type;
+
+// ── skills/list ────────────────────────────────────────────────
+
+/**
+ * What `skills/list` answers: per working directory, the skills the CLI
+ * loads there, each with its `SKILL.md`, which a `skill` input names.
+ */
+export const SkillsListResponse = Schema.Struct({
+  data: Schema.Array(
+    Schema.Struct({
+      skills: Schema.Array(
+        Schema.Struct({ name: Schema.String, path: Schema.String, enabled: Schema.Boolean }),
+      ),
+    }),
+  ),
+});
+export type SkillsListResponse = typeof SkillsListResponse.Type;

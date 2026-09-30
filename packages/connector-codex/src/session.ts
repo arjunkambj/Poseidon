@@ -73,7 +73,7 @@ import type { CodexModelFacts } from "./models";
 import { APPROVAL_POLICY, sandboxPolicyFor } from "./modes";
 import { collaborationModeFor } from "./plans";
 import { pluginMcpClashWarning, pluginSkillRoots, pluginThreadConfig } from "./plugins";
-import { TurnStartResponse } from "./protocol";
+import { SkillsListResponse, TurnStartResponse } from "./protocol";
 import { makeCodexQuestions, USER_INPUT_REQUEST } from "./questions";
 import { makeRpcClient, type RpcServerRequest } from "./rpc";
 import { refusalFor } from "./serverRequests";
@@ -90,7 +90,7 @@ import {
   type PendingRuntimeEvent,
 } from "./translate/pending";
 import { makeTranslator } from "./translate/translator";
-import { userInput } from "./userInput";
+import { referencesSkills, skillPathsFrom, userInput } from "./userInput";
 
 export interface CodexSessionOptions {
   readonly instanceId: ConnectorInstanceId;
@@ -468,6 +468,29 @@ export const makeCodexSession = (
         return result;
       });
 
+    /**
+     * The `SKILL.md` of each skill the CLI loads, when the turn references a
+     * skill (`userInput.ts`). A CLI that will not list them leaves each
+     * reference as a sentence naming it.
+     */
+    const skillPaths = (turn: TurnInput) =>
+      referencesSkills(turn)
+        ? call(rpc, "skills/list", { cwds: [options.workspaceRoot] }, SkillsListResponse).pipe(
+            Effect.map(skillPathsFrom),
+            Effect.catch((error) =>
+              services.logger
+                .log("warn", "codex skills/list failed", { error: error.message })
+                .pipe(Effect.as(new Map<string, string>())),
+            ),
+          )
+        : Effect.succeed(new Map<string, string>());
+
+    /** A turn or a steer as the CLI's `input`. */
+    const inputFor = (turn: TurnInput) =>
+      Effect.gen(function* () {
+        return userInput(turn, yield* staged(turn), yield* skillPaths(turn));
+      });
+
     /** What starts the CLI's turn: `turn/start`, or `thread/compact/start` for a compaction. */
     const startTurn = (
       turn: TurnInput,
@@ -477,7 +500,7 @@ export const makeCodexSession = (
       compaction
         ? call(rpc, "thread/compact/start", { threadId: codexThreadId }, ThreadCompactStartResponse)
         : Effect.gen(function* () {
-            const input = userInput(turn, yield* staged(turn));
+            const input = yield* inputFor(turn);
             const { params, next, mode } = turnParams(input);
             const response = yield* call(rpc, "turn/start", params, TurnStartResponse);
             // Only an accepted turn changed the thread: a refused one leaves
@@ -564,7 +587,7 @@ export const makeCodexSession = (
         if (expectedTurnId === null) {
           return yield* new NotSteerable({ threadId, reason: "the running turn did not start" });
         }
-        const input = userInput(turn, yield* staged(turn));
+        const input = yield* inputFor(turn);
         yield* call(
           rpc,
           "turn/steer",

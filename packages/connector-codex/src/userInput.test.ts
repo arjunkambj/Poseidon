@@ -11,7 +11,7 @@ import { makeThreadId } from "@poseidon/contracts/ids";
 import { describe, expect, it } from "vitest";
 
 import { stageAttachments } from "./attachments";
-import { userInput } from "./userInput";
+import { skillPathsFrom, userInput } from "./userInput";
 
 const RED_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGO4IycHRAwQCgAhpgRhTxp8CQAAAABJRU5ErkJggg==",
@@ -53,6 +53,52 @@ describe("userInput", () => {
         text_elements: [],
       },
     ]);
+  });
+
+  it("attaches a skill the CLI lists as a skill input, and names the rest", () => {
+    expect(
+      userInput(
+        {
+          text: "go",
+          attachments: [],
+          mentions: [],
+          references: [
+            { kind: "skill", name: "tidy" },
+            { kind: "plugin", name: "browser" },
+            { kind: "skill", name: "lost" },
+            { kind: "skill", name: "tidy" },
+          ],
+        },
+        { images: ["/tmp/x.png"], promptLines: [] },
+        new Map([["tidy", "/skills/tidy/SKILL.md"]]),
+      ),
+    ).toEqual([
+      {
+        type: "text",
+        text: 'go\nUse the "lost" skill.\nUse the "browser" plugin.',
+        text_elements: [],
+      },
+      { type: "skill", name: "tidy", path: "/skills/tidy/SKILL.md" },
+      { type: "localImage", path: "/tmp/x.png" },
+    ]);
+  });
+});
+
+describe("skillPathsFrom", () => {
+  it("maps each enabled skill to its SKILL.md, the first of a name winning", () => {
+    expect(
+      skillPathsFrom({
+        data: [
+          {
+            skills: [
+              { name: "tidy", path: "/repo/.codex/skills/tidy/SKILL.md", enabled: true },
+              { name: "off", path: "/home/.codex/skills/off/SKILL.md", enabled: false },
+            ],
+          },
+          { skills: [{ name: "tidy", path: "/home/.codex/skills/tidy/SKILL.md", enabled: true }] },
+        ],
+      }),
+    ).toEqual(new Map([["tidy", "/repo/.codex/skills/tidy/SKILL.md"]]));
   });
 });
 
