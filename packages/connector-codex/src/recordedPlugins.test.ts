@@ -99,7 +99,7 @@ describe("a Codex session replaying codex/plugin-skill", () => {
         expect(roots?.params).toEqual({ extraRoots: SCRATCH_PLUGIN.skillsDirs });
         const start = sent.find((frame) => frame.method === "thread/start");
         expect(start?.params?.config).toEqual({
-          mcp_servers: { [pluginMcpKey("scratch", "words")]: { url: "http://127.0.0.1:9/mcp" } },
+          [`mcp_servers.${pluginMcpKey("scratch", "words")}`]: { url: "http://127.0.0.1:9/mcp" },
         });
         const turnStart = sent.find((frame) => frame.method === "turn/start");
         expect(turnStart?.params?.input).toEqual([

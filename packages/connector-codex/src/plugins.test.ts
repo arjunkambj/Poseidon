@@ -32,7 +32,7 @@ describe("pluginSkillRoots", () => {
 });
 
 describe("pluginThreadConfig", () => {
-  it("names each server under its plugin, in the CLI's own table", () => {
+  it("names each server under its plugin, one dotted key each, so poseidon's entry stays", () => {
     expect(
       pluginThreadConfig([
         plugin({
@@ -55,12 +55,14 @@ describe("pluginThreadConfig", () => {
         }),
       ]),
     ).toEqual({
-      mcp_servers: {
-        "plugin-tools-local": { command: "/bin/serve", args: ["--stdio"], env: { TOKEN: "t" } },
-        "plugin-tools-remote": {
-          url: "https://example.com/mcp",
-          http_headers: { Authorization: "Bearer x" },
-        },
+      "mcp_servers.plugin-tools-local": {
+        command: "/bin/serve",
+        args: ["--stdio"],
+        env: { TOKEN: "t" },
+      },
+      "mcp_servers.plugin-tools-remote": {
+        url: "https://example.com/mcp",
+        http_headers: { Authorization: "Bearer x" },
       },
     });
   });
@@ -78,7 +80,7 @@ describe("pluginThreadConfig", () => {
         plugin({ name: "p", mcpServers: [{ name: "s", transport: "stdio", command: "one" }] }),
         plugin({ name: "p", mcpServers: [{ name: "s", transport: "stdio", command: "two" }] }),
       ]),
-    ).toEqual({ mcp_servers: { "plugin-p-s": { command: "one" } } });
+    ).toEqual({ "mcp_servers.plugin-p-s": { command: "one" } });
   });
 });
 

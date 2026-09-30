@@ -12,14 +12,19 @@
  *   directory of `<name>/SKILL.md` folders and a single skill folder alike;
  *   checked against 0.159.2's `skills/list`, which then lists the skill.
  * - **MCP servers.** They go in the `config` of `thread/start` (or of
- *   `thread/resume`, `thread/fork`) as `mcp_servers.plugin-<plugin>-<server>`,
- *   which the CLI merges into the user's own table for this thread only:
- *   nothing is written to `config.toml`, and nothing goes on the argv, where
- *   `ps` would show a header's or a variable's value. The thread starts them
- *   and reports each in `mcpServer/startupStatus/updated` (`plugin-skill`).
- *   The prefix keeps a plugin from ever taking over the `poseidon` entry, and
- *   each part is kept to the letters, digits, `-` and `_` the CLI allows in a
- *   server name.
+ *   `thread/resume`, `thread/fork`), one dotted key per server,
+ *   `mcp_servers.plugin-<plugin>-<server>`, for this thread only: nothing is
+ *   written to `config.toml`, and nothing goes on the argv, where `ps` would
+ *   show a header's or a variable's value. Dotted, because the CLI lays the
+ *   thread's config over the argv's `-c` overrides key by key: a nested
+ *   `mcp_servers` table replaced the one those overrides built, and the thread
+ *   lost `poseidon` (checked on 0.159.2; `config.toml`'s servers, a layer
+ *   below, survived). A dotted key sets its own server and nothing else. The
+ *   thread starts them and reports each in `mcpServer/startupStatus/updated`
+ *   beside `poseidon` (`plugin-skill`). The prefix keeps a plugin from ever
+ *   taking over the `poseidon` entry, and each part is kept to the letters,
+ *   digits, `-` and `_` the CLI allows in a server name, so a key holds no
+ *   dot of its own.
  *
  * A plugin's hooks, commands and agents have no Codex counterpart and are not
  * loaded.
@@ -56,19 +61,20 @@ const codexMcpServerFor = (server: SessionMcpServer): Record<string, unknown> | 
 };
 
 /**
- * The thread's `config` for the enabled plugins' MCP servers, or undefined
- * when they have none; the first of a repeated key wins.
+ * The thread's `config` for the enabled plugins' MCP servers, one
+ * `mcp_servers.<key>` entry each, or undefined when they have none; the
+ * first of a repeated key wins.
  */
 export const pluginThreadConfig = (
   plugins: ReadonlyArray<SessionPlugin>,
-): { readonly mcp_servers: Record<string, Record<string, unknown>> } | undefined => {
+): Readonly<Record<string, Record<string, unknown>>> | undefined => {
   const servers: Record<string, Record<string, unknown>> = {};
   for (const plugin of plugins) {
     for (const server of plugin.mcpServers) {
-      const key = pluginMcpKey(plugin.name, server.name);
+      const key = `mcp_servers.${pluginMcpKey(plugin.name, server.name)}`;
       const config = codexMcpServerFor(server);
       if (config !== null && !(key in servers)) servers[key] = config;
     }
   }
-  return Object.keys(servers).length === 0 ? undefined : { mcp_servers: servers };
+  return Object.keys(servers).length === 0 ? undefined : servers;
 };
