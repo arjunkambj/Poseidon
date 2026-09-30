@@ -2425,15 +2425,16 @@ rewind point. One that arrives before its task's row is open is held until the
 row opens; whatever is still held when the turn ends is shown unnested. Unlike
 Command Code's, a subagent's own tool calls reach the PreToolUse hook — the
 SDK's hook input names the subagent (`agent_id`) — so they are gated one by
-one. `fixtures/claude/subagent/` is the recording that will show a delegation
-end to end; it waits for a signed-in CLI.
+one. `fixtures/claude/subagent/` shows a delegation end to end, and
+`fixtures/claude/subagent-stop/` one stopped while its turn goes on.
 
 **Model and effort.** `updateSettings` switches the model with the SDK's
 `setModel` (none for `default`, so the CLI's default applies again) and the
 effort with `applyFlagSettings({ effortLevel })`, both on the running process
 and taking effect from its next request; `modelSwitch` and `effortSwitch` are
 `in-session`. `fixtures/claude/session-controls/` has the CLI taking both, with
-no restart. The session then emits `model.changed` with what the CLI runs on:
+no restart, and `fixtures/claude/model-switch/` has the next turn answered on
+the switch. The session then emits `model.changed` with what the CLI runs on:
 the new pick once the CLI took it, the one before when it refused, so the
 thread never shows a model the session is not using.
 
@@ -2453,8 +2454,8 @@ message as a slash command only when its last block is text. Any other file is
 named by path, as Command Code's are: the server's staged file where it is, a
 file from elsewhere copied into the thread's attachments directory, which is
 among the CLI's readable directories. A file that cannot be read or copied is
-still named by its path, with a `session.warning`. `fixtures/claude/image/` is
-the recording that will show a model answering from an image.
+still named by its path, with a `session.warning`. `fixtures/claude/image/`
+has a model answering from an image.
 
 **Steering.** `steering` is true: `steer` writes one more user message to the
 running CLI, with no `turn.started`. The CLI queues it and takes it one of two
@@ -2477,8 +2478,7 @@ with `NotSteerable` and the server queues the message, and once an init lists
 no `msg_lifecycle_v1` the session announces `steering: false`
 (`fixtures/claude/receiptless-steer/`, CLI 2.1.150). `fixtures/claude/signed-out-steer/` has a message
 steered in after the CLI's `system/init` and run next;
-`fixtures/claude/steering/`, which will show one folded into a running loop,
-waits for a signed-in CLI.
+`fixtures/claude/steering/` has one folded into a running loop.
 
 **Signed out.** A CLI that is not signed in answers each message with its own
 "Not logged in" line and an error result, without calling the API. The

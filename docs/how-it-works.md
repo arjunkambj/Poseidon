@@ -381,7 +381,8 @@ under the environment a session gets:
    reaches the API. An instance keeps its list, so the model picker does not
    start a CLI each time it opens.
 
-`fixtures/claude/probe/` is that probe recorded, signed out.
+`fixtures/claude/probe/` is that probe recorded signed out, and
+`fixtures/claude/probe-signed-in/` recorded signed in.
 
 `apps/web/src/lib/connector-health.ts` reads a `ConnectorSummary` into one of
 five states — `ready`, `probing`, `not-installed`, `signed-out`, `error` — plus

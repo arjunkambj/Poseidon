@@ -14,20 +14,21 @@ format they are the `claude` kind over the `sdk-stream` transport
 ([development.md](development.md#sdk-stream)). Where a claim rests on a
 recording, the recording is named.
 
-The recordings made so far were all made while the CLI on the recording
-machine was signed out. So they show the launch, the handshake, the control
-requests, the message receipts and the CLI's refusals exactly, but no model
-answer, tool call, plan, question or subagent. The scenarios that will show
-those are written and wait for a signed-in CLI
-(`packages/testkit/fixtures/claude/README.md` lists them, and
-[Needs a signed-in run](#needs-a-signed-in-run) lists everything that waits,
-with the commands). Where a claim about
-that half rests on the SDK's declarations or on reading the CLI's own bundled
-code instead of a recording, this document says so, and names the recording
-that will pin it. Until those exist their replays are skipped in the gate
-under titles that say so, and so is the conformance suite's approval case:
-Claude Code can be made to ask on demand, so that case is owed, not optional
+The recordings come in two sets. The first was made while the CLI on the
+recording machine was signed out (2.1.280): the launch, the handshake, the
+control requests, the message receipts and the CLI's refusals, exactly, and
+nothing a model did. The second was made once it was signed in (2.1.286, on
+the CLI's default model, which on the recording account runs as Opus 5.5):
+answered turns, tool calls and their cards, a plan, a question, a subagent and
+a stopped one, an interrupt, a steer, a resume, a model switch, an image, one
+piece of generated text, and the conformance suite with its approval case —
+which is owed, not optional, because Claude Code can be made to ask on demand
 ([philosophy.md](philosophy.md#4-a-connectors-promises-are-executable)).
+`packages/testkit/fixtures/claude/README.md` lists each. Where a claim still
+rests on the SDK's declarations or on reading the CLI's own bundled code
+instead of a recording, this document says so, and
+[Still waiting](#still-waiting) lists everything that does, with what would
+settle it.
 
 Its companions: [architecture.md](architecture.md#the-claude-code-connector)
 for the shape of the connector inside Poseidon,
@@ -109,12 +110,15 @@ own.
 ## Version policy
 
 The connector runs whatever is installed. The CLI updates itself, and the
-harness is the user's. `OLDEST_TESTED_VERSION` in `probe.ts` is the release the
-recordings were made at, **2.1.280**. Below it the probe adds a warning; at or
-above it, it says nothing; a version string that does not parse is not
-refused. The floor moves only when the recordings are made again on a newer
-release, and `recordedFrames.test.ts` fails if any recording's manifest names a
-CLI older than it.
+harness is the user's. `OLDEST_TESTED_VERSION` in `probe.ts` is the oldest
+release the recordings were made at, **2.1.280**. Below it the probe adds a
+warning; at or above it, it says nothing; a version string that does not parse
+is not refused. The floor moves only when the recordings are made again on a
+newer release, and `recordedFrames.test.ts` fails if any recording's manifest
+names a CLI older than it. The signed-in recordings are at 2.1.286, but the
+signed-out ones stay at 2.1.280: a CLI that is signed in cannot make them
+again, and they are the only record of its refusals. So the floor stays at
+2.1.280 until both sets are made on one release.
 
 The SDK is pinned in `package.json` (**0.3.280**), because its launch argv and
 control protocol are what the recordings replay. Every manifest records the
@@ -205,7 +209,8 @@ what each holds).
 
 `probe` in `probe.ts` asks three questions of the binary a session would run,
 under the environment a session would get (`env.ts`), from the system temp
-directory. `fixtures/claude/probe/` is the probe recorded.
+directory. `fixtures/claude/probe/` is the probe recorded signed out, and
+`fixtures/claude/probe-signed-in/` the same probe once the CLI was signed in.
 
 When no `claude` resolves, the probe asks nothing and reports
 `not-installed` with `installCommand`, `npm install -g
@@ -213,13 +218,15 @@ When no `claude` resolves, the probe asks nothing and reports
 as. That is the line the connectors page and the harness banner offer to
 copy or run.
 
-1. **`claude --version`** prints `2.1.280 (Claude Code)`. A non-zero exit or
+1. **`claude --version`** prints `2.1.286 (Claude Code)`. A non-zero exit or
    an unparsable answer is status `error`, with the CLI's own output as the
    message.
 2. **`claude auth status --json`** prints a document with `loggedIn`,
-   `authMethod`, `apiProvider`, and the account's email once signed in.
-   Signed out it prints `loggedIn: false`, `authMethod: "none"` **and exits
-   1**, so the output is read whatever the exit code. `loggedIn` true is
+   `authMethod` and `apiProvider`, and, signed in, the account's `email`,
+   `orgId`, `orgName` and `subscriptionType` (on a claude.ai login,
+   `authMethod: "claude.ai"`, exit 0). Signed out it prints `loggedIn: false`,
+   `authMethod: "none"` **and exits 1**, so the output is read whatever the
+   exit code. `loggedIn` true is
    `auth: present` and status `ready`; false is `absent`, status
    `not-authenticated`, and the message `not signed in — run <loginCommand>`,
    where `loginCommand` is `claude auth login` spelled by `terminalCommand`.
@@ -239,7 +246,11 @@ and output styles, and the current permission mode. `models` is the CLI's own
 list for this account. Its first row is `default`, whose description names
 the model it currently stands for, and each row has a `value`, a
 `displayName`, a `resolvedModel` and, when the model takes one, its
-`supportedEffortLevels` (`low` to `max` in the recording; one row has none).
+`supportedEffortLevels` (`low` to `max` in the recordings; `haiku` has none).
+Signed out the list has five rows. Signed in, the recording account's has
+twelve: `default` (Opus 5.5 there), `opus`, `claude-fable-5-1`, `sonnet`,
+`haiku`, and seven dated or older models, of which `claude-opus-4-6` and
+`claude-sonnet-4-6` offer every rung but `xhigh`.
 `toModelOptions` (`models.ts`) keeps every row, labels it with its display
 name, groups it under "Claude", and keeps the effort rungs Poseidon's ladder
 knows. The row's `description` (for example "Sonnet 5 · Efficient for routine
@@ -260,20 +271,25 @@ one row per name: the built-in one when a row is marked, otherwise the first.
 2.1.280 lists its plumbing beside the commands a user runs, all marked
 built-in: a name led by `_` (`__remote-workflow`), `workflow-launch-exec`,
 `heapdump`, and retired commands whose description starts `(removed)`; these
-are dropped. Because the handshake runs with
-`settingSources: []`, the list holds only the CLI's built-in and bundled
-commands. The user's and the project's own commands (`.claude/commands`,
-plugins, MCP prompts) are not listed, though the CLI still runs them when a
-message names one. For the same reason the list does not depend on the
-project, so the extension ignores its scope. The recorder scrubs the command
-list down to one `scrubbed-entry` row, so the replayed tests
-(`definition.test.ts`, `models.test.ts`) assert on that row, and the mapping is
-unit-tested on the SDK's declared fields and on rows shaped like 2.1.280's
-signed-out handshake list (`commands.test.ts`).
+are dropped. Signed in, 2.1.286 lists the same plumbing among 55 rows, and one
+more kind of retired row, a command kept as a pointer to its new name
+(`extra-usage`, "Renamed to /usage-credits"), which is dropped too. That list
+was read from the signed-in probe's capture before the recorder scrubbed it.
+Because the handshake runs with `settingSources: []`, the list holds only the
+CLI's built-in and bundled commands. The user's and the project's own
+commands (`.claude/commands`, plugins, MCP prompts) are not listed, though the
+CLI still runs them when a message names one. For the same reason the list
+does not depend on the project, so the extension ignores its scope. The
+recorder scrubs the command list down to one `scrubbed-entry` row, so the
+replayed tests (`definition.test.ts`, `models.test.ts`) assert on that row,
+and the mapping is unit-tested on the SDK's declared fields and on rows shaped
+like the handshake lists of 2.1.280 signed out and 2.1.286 signed in
+(`commands.test.ts`).
 
 The account comes from `auth status` first and from the initialize response's
 `account.email` otherwise. The recorded, signed-out response says only
-`tokenSource: "none"`.
+`tokenSource: "none"`; signed in it carries `email`, `organization`,
+`subscriptionType` and `apiProvider`.
 
 ## The child environment
 
@@ -374,9 +390,13 @@ at the per-thread endpoint with `Authorization: Bearer <token>`. The SDK hands
 the CLI its MCP configuration on the command line, so **the bearer is in the
 CLI's argv and visible to `ps` on the machine** for as long as the session
 runs. It is minted per session and revoked with it, and the recorder scrubs
-it. `system/init` reports the server's status. In the recordings it is
-`failed` with source `dynamic`, because the connector's tests point it at a
-port nothing listens on.
+it. `system/init` reports the server's status, with source `dynamic`. In the
+connector-level recordings it is `failed`, because those tests point it at a
+port nothing listens on; through the real server it is `connected`. A
+signed-in account's init also lists the claude.ai connectors the account has
+(source `claudeai`), some `needs-auth`, with their tools, and the CLI tells the
+model about the ones that need authorising, which it then tends to mention in
+its answer. The recorder replaces their names.
 
 **The process.** `spawn.ts` starts the CLI `detached`, so it leads its own
 process group, and sends every signal to the whole group, which is the only
@@ -434,6 +454,7 @@ itself (`control_request`, `control_response`, `control_cancel_request`,
 | `assistant` snapshot                                                        | the finished text and reasoning rows, and a row per `tool_use` block                  |
 | `assistant` snapshot with `error`                                           | `runtime.error` with the CLI's line; fatal, naming the login command, when signed out |
 | `user` message of `tool_result` blocks                                      | settles the rows the calls opened                                                     |
+| `user` message "[Request interrupted by user]", alone or beside results     | nothing: the turn's stop reason says it                                               |
 | `system/init`                                                               | `mcp.status.updated`; the model it names is kept for the context window               |
 | `system/status: requesting`                                                 | nothing: a request is on its way, and the deltas say so again                         |
 | `system/status` with only a `permissionMode`                                | nothing: the session reads the CLI's mode off it                                      |
@@ -458,7 +479,11 @@ the user picked.
 A text or thinking row is opened by its block's `content_block_start` and
 completed by the snapshot's matching block (`translate/textRows.ts`). A
 thinking block can come back with its text left out and only a signature
-kept. Its row is still completed, with no text. A row still open when the
+kept. Its row is still completed, with no text. Under the CLI's default
+thinking display (the connector passes no `--thinking-display`) every one does
+on 2.1.286: the `thinking_delta`s carry empty strings and the snapshot's block
+only a signature, in every signed-in recording, so a reasoning row marks where
+the model thought and holds no text. A row still open when the
 turn's `result` arrives is completed there with the text its deltas grew, so
 none stays in progress after the turn.
 
@@ -483,9 +508,12 @@ Command Code's exit 3 is. A fatal error is a row on the timeline, and nothing
 the thread sends will work until the user signs in. Other failed requests stay
 non-fatal, because the next message may well work.
 
-None of the notices is in a recording yet: each needs a signed-in CLI that
-retries, refuses or nears a limit, so their reading rests on the SDK's
-declarations (`translate/notices.test.ts`). A refused answer that a fallback
+`rate_limit_event` is in every signed-in recording, status `allowed` on every
+turn, which maps to nothing; so are `system/thinking_tokens` estimates and
+`system/commands_changed`, left out on purpose (`translate/notices.ts`). None
+of the other notices is recorded: each needs a CLI that retries, refuses or
+nears a limit, so their reading rests on the SDK's declarations
+(`translate/notices.test.ts`). A refused answer that a fallback
 model replaced stays on the timeline, since the contract has no event that
 takes a row back.
 
@@ -524,6 +552,12 @@ CLI 2.1.280's `system/init` tool list is `Task`, `AskUserQuestion`, `Bash`,
 (scheduling, worktrees, messaging, monitoring). It lists no `Glob`, `Grep`,
 `LS`, `MultiEdit` or `TodoWrite`. They stay in the tables because older
 releases and other accounts have offered them, and a row costs nothing.
+Signed in, 2.1.286 adds `RemoteTrigger` and, beside MCP servers that offer
+resources, `ListMcpResourcesTool`, `ReadMcpResourceTool` and
+`ReadMcpResourceDirTool`. The list names `Task`, but the model's delegations
+are `Agent` calls in every recording that has one. ExitPlanMode is deferred:
+in `plan-accept` the model fetched it with `ToolSearch` (`select:ExitPlanMode`)
+before calling it.
 
 ## Approvals
 
@@ -562,9 +596,13 @@ hook that cannot reach a verdict answers `ask`, and a `canUseTool` that
 cannot answer answers `deny`.
 
 That the CLI does not consult its mode or its allow rules again once a hook
-said `ask` comes from reading the permission code bundled in CLI 2.1.280, not
-from a recording yet. `sensitive-full-access` (`cat .env` under full access,
-which must still open a card) is the recording that will pin it.
+said `ask` is recorded. In `sensitive-full-access` the CLI ran in
+`bypassPermissions`, the hook answered `ask` for `cat .env`, and the CLI asked
+`canUseTool` (`decision_reason_type: "hook"`) and kept its deny. In `subagent`
+a subagent's `find` named `.git`, also a sensitive path, and asked the same way
+under full access. The SDK warns `CLAUDE_SDK_CAN_USE_TOOL_SHADOWED` when a
+session starts in `bypassPermissions` with a `canUseTool`, saying the callback
+will not be asked; for a call a hook asks about, it is.
 
 The gate counts every call it sees. At the end of a turn the session compares
 that count with the tool calls that ran, and emits a `session.warning` if
@@ -599,7 +637,11 @@ turn. The hook lets them past with no verdict, and `canUseTool` allows one if
 it is ever asked. A subagent's own calls are still gated one by one. Skill is
 not on the list, since the CLI asks before running a skill no rule allows.
 Monitor, the worktree tools, the cron tools and RemoteTrigger are not on it
-either, since they run commands or change the working directory.
+either, since they run commands or change the working directory. Recorded so
+far: Agent passing with no verdict under full access (`subagent`), and
+ToolSearch in a plan turn (`plan-accept`), which the ladder would have
+refused. The others have not been called in a recording, and neither has
+Skill.
 
 ### The answers
 
@@ -636,9 +678,15 @@ call. There is no Poseidon mode for the CLI's own `auto` mode.
 
 A plan turn runs in the CLI's `plan` mode. The model writes its plan to a
 markdown file of the CLI's own directly under `<config dir>/plans/`, then
-calls ExitPlanMode. Reading CLI 2.1.280's bundle shows it filling the call's
-input with the file's markdown and path (`plan`, `planFilePath`) before it asks
-`canUseTool`.
+calls ExitPlanMode, whose input the CLI fills with the file's markdown and
+path (`plan`, `planFilePath`) before it asks `canUseTool`. `plan-accept` shows
+the whole of it: the model read `app.js` (a read, allowed), fetched
+ExitPlanMode with ToolSearch, wrote `<config dir>/plans/<slug>.md` (no
+verdict from the hook; the CLI's plan mode allowed it), and called
+ExitPlanMode. Refused with `PLAN_CAPTURED`, it answered with one line and the
+turn ended `end_turn`. Accepted, the next turn ran in `default` mode, edited
+`app.js` on an allowed card, and checked the result with a `node` command on
+another.
 
 - ExitPlanMode passes the hook with no verdict, since the ladder refuses every
   non-read in a plan turn and would refuse the very call that hands the plan
@@ -659,8 +707,7 @@ input with the file's markdown and path (`plan`, `planFilePath`) before it asks
 
 `respondToPlan` has nothing to release. Accept, accept with auto-accept, and
 revise are the server's settings change and next turn, as on every connector,
-and that next turn runs out of plan mode. `plan-accept` is the recording that
-will show it end to end.
+and that next turn runs out of plan mode.
 
 ## Questions
 
@@ -680,8 +727,11 @@ call, an interrupt or a close denies the call, and `user-input.resolved` is
 emitted exactly once whichever way it ends.
 
 AskUserQuestion is offered to SDK sessions without any environment switch: the
-recorded `system/init` tool list has it. `question` is the recording that will
-show a card answered.
+recorded `system/init` tool list has it. `question` shows a card answered: the
+model called it directly with one single-choice question, a header and four
+colours; the card took the first, the CLI handed the model
+`"Which colour …?"="Red"` as the tool's result, and the model wrote `red` to
+`colour.txt` on an allowed card.
 
 ## Subagents
 
@@ -691,11 +741,14 @@ CLI's `task_started`, `task_progress`, `task_updated` and `task_notification`
 system messages name the call's `tool_use_id`, or a `task_id` their
 `task_started` tied to it. They become `task.updated` while the task runs and
 `task.completed` once it settles: `completed`, or `failed` for a failure, a
-kill or a stop. A task_* message for a background shell command — whose row
-settled with the CLI's placeholder when the command was launched — or of a
-kind the connector does not know is kept as `event.unmapped`, whole, until a
-recording shows how it maps onto that row; one for a task already settled
-restates it and adds nothing.
+kill or a stop. The same messages report a shell command the CLI waited on
+long enough to track (`task_type: "local_bash"`, `is_backgrounded: false`;
+`steering`'s `sleep 5`): its row settles with its own result, so they add
+nothing. A task_* message for a background shell command — whose row settled
+with the CLI's placeholder when the command was launched — or of a kind the
+connector does not know is kept as `event.unmapped`, whole, until a recording
+shows how it maps onto that row; one for a task already settled restates it
+and adds nothing.
 
 With `forwardSubagentText`, every message the subagent sends carries the
 call's id as `parent_tool_use_id`. Each is translated as a main-loop message
@@ -709,14 +762,23 @@ unnested (a held lifecycle message becomes `event.unmapped`).
 
 Unlike Command Code's, a subagent's own tool calls reach the PreToolUse hook —
 the hook input names the subagent (`agent_id`) — so they are gated one by one.
-`subagent` is the recording that will show a delegation end to end.
+`subagent` shows a delegation end to end, in this order: the Agent call,
+`task_started` naming it, the prompt the subagent was handed as a user message
+of its own (not shown again), `task_progress`, the subagent's `find` asked
+about and allowed, its result and answer, then `task_updated` with
+`completed`, `task_notification`, and only then the Agent call's own result.
+So a task settles before the call's result arrives, and no late lifecycle
+message finds a finished row to move.
 
 Stopping one subagent (`stopTask` on the handle) calls the SDK's `stopTask`
 with the CLI's `task_id` that the task's `task_started` tied to its call; the
 CLI then reports the task stopped, which settles the row as failed, and the
 turn goes on. A row whose task has settled, or whose id no `task_started` has
-named yet, has nothing to stop. This rests on the SDK's declarations until
-`subagent-stop` is recorded.
+named yet, has nothing to stop. `subagent-stop` shows it: the `stop_task`
+request, then `task_updated` with `killed`, `task_notification` with
+`stopped`, the subagent's own "[Request interrupted by user]", and the Agent
+call's result as an error, "[Request interrupted by user for tool use]". The
+model then answered on its own and the turn ended `end_turn`.
 
 ## Resume, rewind and fork
 
@@ -739,17 +801,22 @@ totalCostUsd? }`:
 A ref that does not parse (another connector's, a session id that is not a
 uuid) starts a fresh session with a `session.warning`. A resume the CLI refuses
 with "No conversation found with session ID: …" does the same. The CLI says it
-on stderr, which the SDK does not read from a custom spawn, so a failed
+on stderr (2.1.286, run by hand with an unknown id: that line on stderr, a
+`result` with subtype `error_during_execution` carrying it in `errors` on
+stdout, exit 1, and no request), which the SDK does not read from a custom
+spawn, so a failed
 handshake's `SpawnFailed` carries the end of the CLI's stderr (at most 500
 characters) after the SDK's own message. The line can land after the CLI's
 exit, which is when the SDK rejects, so the tail is read once the stderr
-stream has ended (`drained` in `spawn.ts`), waiting at most two seconds. `resume` is the recording that will
-show a second turn recalling the first after a restart.
+stream has ended (`drained` in `spawn.ts`), waiting at most two seconds.
+`resume` shows a second turn recalling the first after a restart: the second
+server's launch is `--resume=<id>`, its init names the same id, and the answer
+is the word the first turn was told.
 
 Rollback and fork are not offered (`rollback: false`, `fork: false`). The SDK
-can rewind (`resumeSessionAt`) and fork (`forkSession`), but nothing recorded
-shows either, and Poseidon's checkpoints are git, which does not depend on
-them.
+can rewind (`resumeSessionAt`) and fork (`forkSession`), but the connector
+uses neither and no recording exercises either, and Poseidon's checkpoints are
+git, which does not depend on them.
 
 ## Model and effort
 
@@ -760,9 +827,13 @@ effort with `applyFlagSettings({ effortLevel })` — one call, which also names
 running process from its next request, and
 `fixtures/claude/session-controls/` has the CLI answering `set_model` (an
 explicit id, and none) and `apply_flag_settings` with success, in one process
-with no restart. The session then emits `model.changed` with what the CLI runs
-on: the new pick once the CLI took it, the previous one when it refused, so
-the thread never shows a model, effort or ultracode the session is not using.
+with no restart. `model-switch` does it signed in between two answered turns:
+`set_model` to the id the default runs as and `apply_flag_settings` with
+effort `low`, both taken, the same session id before and after, and the
+second turn answered. The session then emits `model.changed` with what the
+CLI runs on: the new pick once the CLI took it, the previous one when it
+refused, so the thread never shows a model, effort or ultracode the session
+is not using.
 
 The thread model `default` leaves the SDK's `model` option out altogether. On
 the recording account the CLI's `system/init` named what it resolved to, and
@@ -779,7 +850,8 @@ Workflow tool on its own. It is a setting, not an effort rung and not a slash
 command. The thread keeps it as `ThreadSettings.ultracode`, off when absent,
 and the server's rules keep it consistent with the effort (on sets xhigh, off
 keeps the effort, an effort pick turns it off; see
-[architecture.md](architecture.md)). The evidence, all read, none recorded:
+[architecture.md](architecture.md)). The evidence is the SDK's declarations,
+the CLI's bundle, and one live check, which settled what the bundle had wrong:
 
 - **The SDK** (0.3.280, `sdk.d.ts`) declares `Settings.ultracode?: boolean` —
   "Enable ultracode for the session: xhigh effort plus standing
@@ -790,22 +862,32 @@ keeps the effort, an effort pick turns it off; see
   streaming input mode", which is the mode a session runs in, and a `null` or
   `false` `ultracode` resets it "to off with the current effort kept".
 - **The CLI** (2.1.280, `strings` on `bin/claude.exe`) reads `ultracode` from
-  its merged settings at start and defaults the effort to xhigh with it. Its
-  SDK handler for `apply_flag_settings` applies `effortLevel` first, then
-  `ultracode`: `true` sets the session's effort to xhigh, `false` keeps it.
-  An `effortLevel` alone leaves the flag as it was there — only the Remote
-  Control handler turns ultracode off on an effort — so an effort pick that
-  ends ultracode sends `ultracode: false` beside it. Whether workflows run is
+  its merged settings at start. Its SDK handler for `apply_flag_settings`
+  applies `effortLevel` first, then `ultracode`. Whether workflows run is
   decided per request: ultracode is in force only while workflows are enabled
   (managed settings, org policy, `disableWorkflows`, availability) and the
   effort resolves to xhigh; `get_settings` reports that as
   `applied.ultracode`.
+- **The live check** (2.1.286, signed in, a Max account, 2026-10-01): the
+  headless CLI started as the connector starts it, reading `get_settings`
+  after each step, with one trivial turn ("Reply with exactly: ok", which
+  started no workflow). `--settings '{"ultracode":true}'` with `--effort xhigh`
+  gave `applied.ultracode: true` at xhigh; the flag without the effort gave
+  `applied.ultracode: true` at the CLI's default, medium — the flag does not
+  raise the effort, as the bundle reading had it. `apply_flag_settings` took
+  `{ ultracode: false }` (applied off, effort kept), `{ ultracode: true }`
+  (applied on, effort still where it was), `{ effortLevel: "low" }` alone with
+  the flag set (the flag stays in the flag layer but is no longer applied) and
+  both keys together (applied on at xhigh), each with success. None was
+  refused on this account. So the headless CLI honours the flag from both the
+  inline settings and `apply_flag_settings`, and the effort the mode runs at
+  must be named beside it.
 - **The refusal** "apply_flag_settings: ultracode is not available for this
   session (dynamic workflows are off, the model does not support xhigh effort,
   or an effort cap … excludes it)" is in the bundle, in the Remote Control
   handler. The SDK handler has no such gate that the bundle shows, so an
-  account without workflows may take the flag and simply never run one —
-  which only a signed-in run settles.
+  account without workflows may take the flag and simply never run one; the
+  check's account has workflows, so it does not say.
 - **The interactive switch** is `/effort ultracode`, a local-jsx command that
   needs the terminal UI and is not reachable over the SDK. There is no
   `/ultracode` command.
@@ -827,9 +909,11 @@ What the connector does:
   the launch is exactly what it was before.
 - **Mid-session** (`flagSettings.ts`): `updateSettings` makes one
   `applyFlagSettings` call for the effort and the flag together —
-  `{ effortLevel }` for an effort alone, `{ ultracode }` for the flag alone,
-  both keys when both changed, no call when neither did. Taken with ultracode
-  going on, the session runs at xhigh. Refused, the effort and the flag go
+  `{ effortLevel }` for an effort alone, `{ ultracode: false }` for the flag
+  going off, both keys when both changed, and `effortLevel: "xhigh"` beside
+  the flag whenever it goes on, since the CLI does not raise the effort for
+  it; no call when neither changed. Taken with ultracode going on, the
+  session runs at xhigh. Refused, the effort and the flag go
   back to what they were. Either way `model.changed` says what the CLI runs
   on, with `ultracode` whenever the call named it, so a refusal turns the
   thread's flag back off through the event.
@@ -875,15 +959,17 @@ the CLI delivers it as a `StructuredOutput` tool call that ends the turn, which
 is exactly what `tools: []` and the deny-all `canUseTool` refuse, and no
 signed-in recording shows which wins. The caller parses the text either way.
 
-`fixtures/claude/generate-text-signed-out/` is the only recording, made with
-the CLI signed out: the SDK turned these options into `--max-turns 1`,
+`fixtures/claude/generate-text-signed-out/` was made with the CLI signed out:
+the SDK turned these options into `--max-turns 1`,
 `--tools ""`, `--setting-sources=`, `--strict-mcp-config`,
 `--no-session-persistence` and `--effort low`, carried the system prompt in its
 `initialize` request, and the CLI's `system/init` listed no tools and no MCP
 servers before it refused for the login. `generateText.test.ts` replays it
-through the definition and gets that refusal as `GenerationFailed`. A signed-in
-`generate-text` recording, with an answer in it, is still to be made
-([Needs a signed-in run](#needs-a-signed-in-run)).
+through the definition and gets that refusal as `GenerationFailed`.
+`fixtures/claude/generate-text/` is the same call signed in: the same argv,
+an init with no tools and no MCP servers, one request on the default model
+(a third of a cent at list price), and "Fix Flaky Login Test" as the result's
+text, which the test replays as the answer.
 
 ## Compaction
 
@@ -933,8 +1019,9 @@ as Command Code's are: the server's staged file where it is, and a file from
 anywhere else copied into the thread's attachments directory first. That
 directory is among the CLI's `additionalDirectories`, so the model can read
 what is named there. A file that cannot be read or copied is still named, with
-a `session.warning` saying why. `image` is the recording that will show a model
-answering from an image.
+a `session.warning` saying why. `image` shows a model answering from one: a
+2×2 red PNG staged through the server went as a block, and the model named its
+colour without a tool call.
 
 ## Steering and turn accounting
 
@@ -983,8 +1070,10 @@ no `capabilities` at all and which sends no receipts.
 message was written after `system/init` and before the first `result`; the CLI
 receipted it `queued`, ended the first turn (receipt `cancelled` for the
 refused message), then `started` the steered one and gave it a `result` of its
-own. `steering` is the recording that will show a message folded into a running
-loop.
+own. `steering` records the other way, a message folded into a running loop:
+written while the turn's `sleep 5; echo one` ran, it was receipted `queued`,
+`started` once the command's result was in and before the next request, and
+the turn's one `result` answered both messages.
 
 **Interrupt** is the SDK's `interrupt()` on the running process
 (`interrupt: "session"` — the process stays, and the next message goes to it).
@@ -996,35 +1085,42 @@ When the turn was already held at a `result` for that message, no `result`
 follows its cancellation, so the session ends the held turn on the message's
 end-state receipt instead (`interrupted`); the same goes for any steered
 message the turn is held for that ends without being `started`.
-`interrupt` is the recording that will show what the next turn finds.
+`interrupt` shows what an interrupt leaves: the CLI answered the request at
+once (`still_queued: []`), wrote the partial snapshot, its "[Request
+interrupted by user]" line as a user message, and a `result` with subtype
+`error_during_execution`, `is_error` true and `terminal_reason:
+"aborted_streaming"`, and receipted the message `cancelled`. The turn ends
+`interrupted`, with no error row. The next message went to the same process
+and session id, and was answered.
 
 ## Capabilities
 
 `CLAUDE_CAPABILITIES` in `capabilities.ts`, and why each value is what it is:
 
-| Capability       | Value        | Why                                                                                                                                             |
-| ---------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modelSwitch`    | `in-session` | `setModel` on the running process; `session-controls`                                                                                           |
-| `effortSwitch`   | `in-session` | `applyFlagSettings({ effortLevel })`; `session-controls`                                                                                        |
-| `steering`       | `true`       | one more message to the running CLI, the turn held by its receipts; `signed-out-steer`; `false` once the CLI's init lists no `msg_lifecycle_v1` |
-| `planMode`       | `true`       | permission mode `plan`, the plan handed over through ExitPlanMode                                                                               |
-| `subagents`      | `true`       | Task/Agent, the task_* messages, and nested rows                                                                                                |
-| `images`         | `true`       | image content blocks; `session-controls` has the CLI reading one                                                                                |
-| `resume`         | `true`       | `resume: <sessionId>` against the CLI's own transcript                                                                                          |
-| `fork`           | `false`      | nothing recorded forks a session                                                                                                                |
-| `interrupt`      | `session`    | `Query.interrupt()` inside the one long-lived process                                                                                           |
-| `stopTask`       | `true`       | `Query.stopTask(task_id)` with the CLI's id for the row; `subagent-stop` is the recording that will show it                                     |
-| `rollback`       | `false`      | `resumeSessionAt` exists, but nothing recorded shows it; Poseidon's checkpoints are git                                                         |
-| `compaction`     | `true`       | `/compact` runs as the CLI's command; `session-controls`                                                                                        |
-| `questions`      | `true`       | AskUserQuestion, offered to SDK sessions (recorded `system/init`)                                                                               |
-| `runtimeModes`   | all three    | the PreToolUse hook puts every call in every mode past the ladder                                                                               |
-| `attachments`    | `files`      | images as blocks, anything else by path under a readable directory                                                                              |
-| `textGeneration` | `true`       | `generateText`: one tool-less `query()` with no session; only its signed-out refusal is recorded (`generate-text-signed-out`)                   |
-| `ultracode`      | `true`       | `Settings.ultracode` at launch and through `applyFlagSettings`; SDK declarations and the CLI bundle only, nothing recorded                      |
+| Capability       | Value        | Why                                                                                                                                                                                              |
+| ---------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `modelSwitch`    | `in-session` | `setModel` on the running process; `session-controls`, and `model-switch` signed in                                                                                                              |
+| `effortSwitch`   | `in-session` | `applyFlagSettings({ effortLevel })`; `model-switch` has the next turn answered at the new effort in the same process                                                                            |
+| `steering`       | `true`       | one more message to the running CLI, the turn held by its receipts; `steering` (folded into the loop) and `signed-out-steer` (run next); `false` once the CLI's init lists no `msg_lifecycle_v1` |
+| `planMode`       | `true`       | permission mode `plan`, the plan handed over through ExitPlanMode; `plan-accept`                                                                                                                 |
+| `subagents`      | `true`       | Agent calls, the task_* messages, and nested rows; `subagent`                                                                                                                                    |
+| `images`         | `true`       | image content blocks; `image` has the model naming the picture's colour                                                                                                                          |
+| `resume`         | `true`       | `resume: <sessionId>` against the CLI's own transcript; `resume`                                                                                                                                 |
+| `fork`           | `false`      | the connector never calls `forkSession`, and no recording forks a session                                                                                                                        |
+| `interrupt`      | `session`    | `Query.interrupt()` inside the one long-lived process; `interrupt` has the next message answered by the same process                                                                             |
+| `stopTask`       | `true`       | `Query.stopTask(task_id)` with the CLI's id for the row; `subagent-stop`                                                                                                                         |
+| `rollback`       | `false`      | `resumeSessionAt` exists, but the connector never calls it and no recording rewinds; Poseidon's checkpoints are git                                                                              |
+| `compaction`     | `true`       | `/compact` runs as the CLI's command; `session-controls` (signed out; a signed-in `/compact` waits for the operator's approval)                                                                  |
+| `questions`      | `true`       | AskUserQuestion as the question card; `question`                                                                                                                                                 |
+| `runtimeModes`   | all three    | the PreToolUse hook puts every call in every mode past the ladder; `sensitive-full-access` has an `ask` reaching the card under `bypassPermissions`                                              |
+| `attachments`    | `files`      | images as blocks, anything else by path under a readable directory                                                                                                                               |
+| `textGeneration` | `true`       | `generateText`: one tool-less `query()` with no session; `generate-text` answered, `generate-text-signed-out` refused                                                                            |
+| `ultracode`      | `true`       | `Settings.ultracode` at launch and through `applyFlagSettings`; the live check in [Ultracode](#ultracode), no recording                                                                          |
 
-`planMode`, `subagents`, `questions`, `stopTask` and `ultracode` rest on the SDK's declarations and on
-reading the CLI's bundle until their recordings are made; the capability
-comments say which recording will pin each.
+Every value but `ultracode`, `compaction` and the two left `false` rests on a
+recording made signed in. `ultracode` rests on the SDK's declarations, the
+CLI's bundle and the live check, which showed the flag taken but not a
+workflow run; `compaction`, on the signed-out recording of the command's path.
 
 ## Known CLI behaviour worth remembering
 
@@ -1057,136 +1153,111 @@ comments say which recording will pin each.
 - **MCP configuration travels in argv,** so the bearer is visible to `ps`.
 - **`system/init` capabilities** in 2.1.280: `interrupt_receipt_v1`,
   `interrupt_cancel_queued_v1`, `msg_lifecycle_v1`, `mcp_read_resource_v1`,
-  `mcp_tool_ui_meta_v1`. 2.1.150's init has no `capabilities` field and it
+  `mcp_tool_ui_meta_v1`; 2.1.286 adds `sdk_mcp_tools_list_changed` and
+  `sdk_mcp_manifests`. 2.1.150's init has no `capabilities` field and it
   sends no receipts (`receiptless-steer`).
 - **A probe's handshake is stopped, not ended:** its recorded exit is 143.
+- **An interrupted turn is an error result** (`interrupt`):
+  `error_during_execution`, `is_error: true`, `terminal_reason:
+"aborted_streaming"`, after a user message "[Request interrupted by user]";
+  the message's receipt ends `cancelled`.
+- **A budget cap ends the turn before a pending call is asked about.** A
+  session whose first request cost more than its `maxBudgetUsd` got its
+  `error_max_budget_usd` result while the call the request made was still at
+  the hook, and the CLI asked `canUseTool` about that call after the result
+  (a first conformance recording, under a ten-cent cap, since remade under
+  fifty). Production sets no cap.
+- **A session's first request writes the prompt cache** and costs ten to
+  twenty cents at list price on the default model (Opus 5.5); the next ones in
+  the session read it and cost a few cents, or a third of a cent for a
+  one-shot with no tools (`generate-text`).
+- **A shell command the CLI waits on long enough is a task** too
+  (`local_bash`, not backgrounded; `steering`), reported by `task_started` and
+  `task_notification` beside its own result.
+- **Thinking comes back empty** under the default thinking display (every
+  signed-in recording).
 
-## Needs a signed-in run
+## Still waiting
 
-Every claim below still rests on the SDK's declarations, on reading the CLI's
-bundled code, or on unit tests of the pure pieces, because the CLI on the
-recording machine is signed out. Each is settled by a recording or a live run
-once it is signed in ([Owner commands](#owner-commands)).
+The signed-in recordings (CLI 2.1.286, 2026-10-01) settled what the list here
+used to hold: every scenario that was waiting is recorded and replayed in the
+gate, conformance with its approval case; the live suites ran once on the
+CLI's default model; the capability values rest on the recordings named in
+[Capabilities](#capabilities); and the round's fixes and additions each have
+their recording — the no-permission tools as far as `subagent` and
+`plan-accept` call them, thinking blocks, the harness command list, the order
+of a foreground subagent's lifecycle and its result, and a stopped one. The
+resume fallback's wording was read off a run of the CLI by hand. What still
+rests on the SDK's declarations, the CLI's bundle or unit tests, and why:
 
-**The scenarios waiting for a signed-in CLI**, their tests in place and skipped
-under replay (`packages/testkit/fixtures/claude/README.md` has the table):
-
-- `plain-reply`: one answered turn, streamed text, usage, `end_turn`.
-- `interrupt`: a turn stopped after its first text, and whether the same
-  process serves the next.
-- `resume`: two turns with the server restarted between, the second launch
-  `--resume`, and whether that init names the same session id
-  (`resume.test.ts` compares them).
-- `edit-approval`: a write asked about in approval-required, allowed once.
-- `deny`: `touch denied.txt` denied at every card, the file absent.
-- `sensitive-full-access`: `cat .env` under `bypassPermissions` still opens a
-  card, which pins that a hook's `ask` reaches `canUseTool` in every mode.
-- `plan-accept`: ExitPlanMode's plan card, accepted, then implemented out of
-  plan mode.
-- `question`: AskUserQuestion as a card, answered with its first option.
-- `subagent`: a Task delegation with its rows nested under the task row.
-- `model-switch`: the model and the effort switched between two turns in one
-  process.
-- `image`: a model answering from an image content block.
-- `steering`: a message folded into a running agent loop.
-- `generate-text`: a `generateText` call answered — the text on the `result`,
-  and whether a plain one-shot keeps to one turn with no tools.
-
-**Conformance and the live suites:**
-
-- `conformance` re-recorded signed in, so the suite's turns are answered ones,
-  with its approval case (a file write stopped on a card and allowed once),
-  which the replay runs only once the recording has it.
-- One run of the `POSEIDON_LIVE_CLAUDE=1` suites on the CLI's default model.
-
-**The provisional capability values** (`capabilities.ts`): `effortSwitch` and
-`steering` are backed only by signed-out recordings; `interrupt` (`session`)
-has no recording of what an interrupt leaves behind; `rollback` and `fork` stay
-`false` until a recording shows `resumeSessionAt` or `forkSession`.
-
-**This round's fixes and additions:**
-
-- The resume fallback's wording on a real missing conversation: that the CLI's
-  stderr, carried into `SpawnFailed`, says "No conversation found with session
-  ID: …" (read from the 2.1.280 binary with `strings`, never from a run).
-- The no-permission tools: that Agent, TodoWrite, ToolSearch, EnterPlanMode and
-  the task-list tools run without a card in approval-required and plan turns,
-  and that Skill is still asked.
-- A thinking block whose snapshot comes back with no text: that its streamed
-  row settles, and what the CLI's default thinking display (without
-  `--thinking-display`) shows in it.
-- `system/local_command_output` from a harness command: 2.1.280 answered local
-  commands as `<synthetic>` snapshots signed out; a signed-in CLI may write it.
-- The harness command list as a signed-in CLI reports it. The recorder scrubs
-  the list to one `scrubbed-entry`, so this is read in the running app's `/`
-  menu rather than from a recording.
-- The notices: `rate_limit_event` on every turn (status `allowed` maps to
-  nothing) and its warning statuses, `api_retry`, the model-refusal messages,
-  and the `informational` and `notification` shapes. A fallback model's
-  `retracted_message_uuids` leave the refused rows on the timeline.
-- Foreground subagents: the order of the Task `tool_result` and
-  `task_notification`, since a late `task_updated` could show a finished task
-  row as running again.
-- Background agents (`run_in_background`): whether the headless CLI holds its
-  `result` until they finish, as its bundle suggests, or runs a turn of its own
-  that would close the wrong Poseidon turn.
-- `lastAssistantUuid` taking a synthetic local-command snapshot's uuid, which
-  matters only once rollback is offered.
-
-**Ultracode** ([Ultracode](#ultracode)), built from the SDK's declarations and
-the CLI's bundle with unit tests on the options and calls only:
-
-- Launch: whether a headless CLI honours `settings: { ultracode: true }` from
-  the SDK's inline settings, and runs at xhigh with workflows on.
-- `apply_flag_settings` with `ultracode`: taken on an account with workflows;
-  on one without, whether the SDK handler refuses (the thread's flag goes back
-  off) or takes it and never runs a workflow (the thread shows it on).
-  `get_settings`' `applied.ultracode` would tell the two apart.
-- The Workflow tool's approval card in approval-required, and what its input
-  shows on the card.
-- How the `local_workflow` task_started and task_notification messages render
-  (`translate/subagents.ts` keeps them unmapped today).
-- Whether the headless CLI holds its `result` until a workflow finishes, or
-  closes the Poseidon turn early — the Workflow tool returns at once with a
-  task id and reports back in a later task notification.
-- A model switch while ultracode is on, to a model without xhigh (the composer
-  sends `ultracode: false` with such a pick; the CLI's own behaviour is
-  unknown).
+- **A signed-in `/compact`.** It costs a summarisation request, so it is made
+  only with the operator's approval; `session-controls` has the command's
+  path signed out.
+- **The notices** other than `rate_limit_event` at `allowed`: `api_retry`,
+  the model-refusal messages with a fallback's `retracted_message_uuids`, the
+  `informational` and `notification` shapes, and a rate limit's warning
+  statuses. Each needs a CLI that retries, refuses or nears a limit, which a
+  scenario cannot ask for.
+- **Background agents** (`run_in_background`): whether the headless CLI holds
+  its `result` until they finish, or runs a turn of its own that would close
+  the wrong Poseidon turn. None of the recorded delegations was backgrounded.
+- **`system/local_command_output`**, which 2.1.280 never wrote signed out; the
+  local commands were not recorded again signed in.
+- **The no-permission tools not yet called**: TodoWrite, the task-list tools
+  and EnterPlanMode running without a card, and Skill still asked.
+- **`lastAssistantUuid` taking a synthetic local-command snapshot's uuid**,
+  which matters only once rollback is offered.
+- **Rollback and fork**, which stay `false`: nothing calls
+  `resumeSessionAt` or `forkSession`, and no recording is made for them.
+- **Ultracode beyond the flag.** The live check ([Ultracode](#ultracode))
+  showed the flag taken at launch and mid-session and started no workflow, on
+  purpose. Still unrecorded: a Workflow call's approval card in
+  approval-required and what its input shows; how the `local_workflow`
+  task_started and task_notification messages render (kept unmapped today);
+  whether the headless CLI holds its `result` until a workflow finishes; an
+  account without workflows taking or refusing the flag; and a switch, while
+  ultracode is on, to a model without `xhigh`.
 
 ### Owner commands
 
-Run these in your own shell, from the repository root. The recording and live
-commands spend the account's subscription on the CLI's default model.
+Run these in your own shell, from the repository root, once `claude auth
+status` says `"loggedIn": true`. The recording and live commands spend the
+account's subscription on the CLI's default model.
 
-Sign in, and check it took (the document must say `"loggedIn": true`):
+Record the end-to-end scenarios through the server:
 
 ```sh
-claude auth login
-claude auth status
+POSEIDON_RECORD_CLAUDE=1 pnpm -F server exec vitest run test/e2e-claude/turn.test.ts test/e2e-claude/interrupt.test.ts test/e2e-claude/resume.test.ts test/e2e-claude/approval.test.ts test/e2e-claude/plan.test.ts test/e2e-claude/question.test.ts test/e2e-claude/subagent.test.ts test/e2e-claude/subagent-stop.test.ts test/e2e-claude/model.test.ts test/e2e-claude/attachment.test.ts test/e2e-claude/steering.test.ts
 ```
 
-Record the waiting scenarios through the server:
+Record the connector's own: the probe (free), `generate-text` (the
+signed-out session recorders skip themselves on a signed-in CLI), and the
+conformance suite:
 
 ```sh
-POSEIDON_RECORD_CLAUDE=1 pnpm -F server exec vitest run test/e2e-claude/turn.test.ts test/e2e-claude/interrupt.test.ts test/e2e-claude/resume.test.ts test/e2e-claude/approval.test.ts test/e2e-claude/plan.test.ts test/e2e-claude/question.test.ts test/e2e-claude/subagent.test.ts test/e2e-claude/model.test.ts test/e2e-claude/attachment.test.ts test/e2e-claude/steering.test.ts
-```
-
-Re-record the conformance suite signed in:
-
-```sh
+POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run test/recordProbe.test.ts
+POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run test/recordSession.test.ts -t "generate-text: one"
 POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/conformance.test.ts
 ```
 
 Run the live suites once:
 
 ```sh
-POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/liveConformance.test.ts
-POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_LIVE_CLAUDE=1 pnpm exec vitest run apps/server/test/e2e-claude
+POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_LIVE_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/liveConformance.test.ts
+POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_LIVE_CLAUDE=1 POSEIDON_CLAUDE_APPROVED_MODEL=<the default's id> pnpm exec vitest run apps/server/test/e2e-claude
 ```
 
-A replay skipped for want of its recording runs by itself once the recording
-exists. Then check the capability values above against the new recordings, and
-move each item they settle off this list.
+`POSEIDON_CLAUDE_APPROVED_MODEL` names the explicit id the CLI's default runs
+as (`claude-opus-5-5` on the recording account), which `model.test.ts`
+switches to; without it that scenario stops live rather than spend on a model
+nobody approved. The run of 2026-10-01 passed all nine cases of the live
+conformance suite and every end-to-end scenario but the signed-out one, which
+failed for the CLI being signed in; it now skips itself live on a signed-in
+CLI.
+
+A new recording replaces the old whole; check it against the recording
+hygiene rules in [development.md](development.md#making-one) before it is
+committed.
 
 ## After a new CLI release
 
