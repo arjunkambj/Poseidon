@@ -1,0 +1,12 @@
+{"dir":"from-harness","channel":"stdout","at":103,"data":"{"}
+{"dir":"from-harness","channel":"stdout","at":103,"data":"  \"loggedIn\": true,"}
+{"dir":"from-harness","channel":"stdout","at":103,"data":"  \"authMethod\": \"claude.ai\","}
+{"dir":"from-harness","channel":"stdout","at":103,"data":"  \"apiProvider\": \"firstParty\","}
+{"dir":"from-harness","channel":"stdout","at":103,"data":"  \"analyticsDisabled\": false,"}
+{"dir":"from-harness","channel":"stdout","at":103,"data":"  \"projectsDirectory\": \"<HOME>/.claude/projects\","}
+{"dir":"from-harness","channel":"stdout","at":103,"data":"  \"configDirectory\": \"<HOME>/.claude\","}
+{"dir":"from-harness","channel":"stdout","at":103,"data":"  \"email\": \"user@example.com\","}
+{"dir":"from-harness","channel":"stdout","at":103,"data":"  \"orgId\": \"00000000-0000-0000-0000-000000000000\","}
+{"dir":"from-harness","channel":"stdout","at":103,"data":"  \"orgName\": \"<ACCOUNT>\","}
+{"dir":"from-harness","channel":"stdout","at":103,"data":"  \"subscriptionType\": \"max\""}
+{"dir":"from-harness","channel":"stdout","at":106,"data":"}"}

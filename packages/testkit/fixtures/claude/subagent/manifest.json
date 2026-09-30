@@ -1,0 +1,79 @@
+{
+  "formatVersion": 1,
+  "kind": "claude",
+  "transport": "sdk-stream",
+  "scenario": "subagent",
+  "description": "Full access: the model delegates listing the scratch repo's files to a general-purpose agent with the Task tool; the subagent's calls run nested under the task, and the model reports what it found.",
+  "cliVersion": "2.1.286",
+  "sdkVersion": "0.3.280",
+  "recordedOn": "2026-10-01",
+  "model": "claude-opus-5-5",
+  "real": true,
+  "prompts": ["Use the Task tool with a general-purpose agent to list the files here."],
+  "invocations": [
+    {
+      "argv": [
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--input-format",
+        "stream-json",
+        "--effort",
+        "medium",
+        "--max-turns",
+        "4",
+        "--max-budget-usd",
+        "0.5",
+        "--permission-prompt-tool",
+        "stdio",
+        "--mcp-config",
+        "{\"mcpServers\":{\"poseidon\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:62406/mcp\",\"headers\":{\"Authorization\":\"<REDACTED>\"}}}}",
+        "--setting-sources=user,project,local",
+        "--permission-mode",
+        "bypassPermissions",
+        "--allow-dangerously-skip-permissions",
+        "--include-partial-messages",
+        "--add-dir",
+        "<SCRATCH>/poseidon-e2e-subagent-wuv5sK/poseidon/attachments/01a0f452-b1d3-7001-b285-2d8da5a2bb48",
+        "--plugin-dir-no-mcp",
+        "<SCRATCH>/poseidon-e2e-subagent-wuv5sK/poseidon/builtin-plugins/browser",
+        "--session-id=deb677c1-44ea-4f9e-b9b1-c3b870c9781e"
+      ],
+      "cwd": "<SCRATCH>/poseidon-e2e-subagent-wuv5sK/workspace",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["--version"],
+      "cwd": "<TMP>",
+      "file": "invocation-2.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["auth", "status", "--json"],
+      "cwd": "<TMP>",
+      "file": "invocation-3.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--input-format",
+        "stream-json",
+        "--setting-sources=",
+        "--permission-mode",
+        "default",
+        "--no-session-persistence"
+      ],
+      "cwd": "<TMP>",
+      "file": "invocation-4.ndjson",
+      "exitCode": 143,
+      "signal": null
+    }
+  ]
+}

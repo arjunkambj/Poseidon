@@ -1,0 +1,79 @@
+{
+  "formatVersion": 1,
+  "kind": "claude",
+  "transport": "sdk-stream",
+  "scenario": "deny",
+  "description": "Approval-required: the model is asked to run `touch denied.txt`; every approval card is denied, the command never runs, and the turn ends on the model's reply.",
+  "cliVersion": "2.1.286",
+  "sdkVersion": "0.3.280",
+  "recordedOn": "2026-10-01",
+  "model": "claude-opus-5-5",
+  "real": true,
+  "prompts": ["Run the shell command `touch denied.txt` with the Bash tool."],
+  "invocations": [
+    {
+      "argv": [
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--input-format",
+        "stream-json",
+        "--effort",
+        "medium",
+        "--max-turns",
+        "4",
+        "--max-budget-usd",
+        "0.5",
+        "--permission-prompt-tool",
+        "stdio",
+        "--mcp-config",
+        "{\"mcpServers\":{\"poseidon\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:53402/mcp\",\"headers\":{\"Authorization\":\"<REDACTED>\"}}}}",
+        "--setting-sources=user,project,local",
+        "--permission-mode",
+        "default",
+        "--allow-dangerously-skip-permissions",
+        "--include-partial-messages",
+        "--add-dir",
+        "<SCRATCH>/poseidon-e2e-deny-xWlkv7/poseidon/attachments/01a0f436-4a24-7001-aeb7-39d70be87a1a",
+        "--plugin-dir-no-mcp",
+        "<SCRATCH>/poseidon-e2e-deny-xWlkv7/poseidon/builtin-plugins/browser",
+        "--session-id=7225a8e4-3f02-4775-b843-0631aa089814"
+      ],
+      "cwd": "<SCRATCH>/poseidon-e2e-deny-xWlkv7/workspace",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["--version"],
+      "cwd": "<TMP>",
+      "file": "invocation-2.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["auth", "status", "--json"],
+      "cwd": "<TMP>",
+      "file": "invocation-3.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--input-format",
+        "stream-json",
+        "--setting-sources=",
+        "--permission-mode",
+        "default",
+        "--no-session-persistence"
+      ],
+      "cwd": "<TMP>",
+      "file": "invocation-4.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}
