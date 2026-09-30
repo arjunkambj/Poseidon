@@ -4548,11 +4548,12 @@ server the user hand-authored.
 
 **Skills** are discovered, not written: each harness's skills extension, asked
 through `connectors.skills.list`, walks the roots that harness loads, reads the
-`name` and `description` out of each `SKILL.md` frontmatter, and lets a project
-skill win a name collision, matching the harness's own precedence. Claude
-Code's (`packages/connector-claude/src/skills.ts`) walks
-`<workspaceRoot>/.claude/skills` and `<config>/skills`, the instance's
-`CLAUDE_CONFIG_DIR` or `~/.claude`; Codex's walks its `.codex` and `.agents`
+`name` and `description` out of each `SKILL.md` frontmatter, and lets the copy
+the harness runs win a name collision, matching the harness's own precedence.
+Claude Code's (`packages/connector-claude/src/skills.ts`) walks
+`<config>/skills`, the instance's `CLAUDE_CONFIG_DIR` or `~/.claude`, and then
+`<workspaceRoot>/.claude/skills`, since the CLI runs a personal skill over a
+project one of the same name; Codex's walks its `.codex` and `.agents`
 roots; Command Code's (`packages/connector-cmd/src/skills.ts`) walks
 `<workspaceRoot>/.commandcode/skills` and `~/.commandcode/skills`. The
 composer's `/` and `$` popovers ask the thread's own instance for that list,

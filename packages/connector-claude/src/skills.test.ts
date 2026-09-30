@@ -39,12 +39,12 @@ const userSkill = skill(
   "name: release-notes\ndescription: >\n  Writes the notes\n  for a release.",
 );
 const accountSkill = skill(NodePath.join(configDir, "skills"), "triage", "name: triage");
-const shadowed = skill(
+const userReview = skill(
   NodePath.join(home, ".claude", "skills"),
   "review",
   "name: review\ndescription: from the user",
 );
-const repoSkill = skill(
+const shadowed = skill(
   NodePath.join(workspace, ".claude", "skills"),
   "review",
   'name: review\ndescription: "from the repo"',
@@ -68,19 +68,20 @@ describe("the Claude Code skills extension", () => {
           description: "Writes the notes for a release.",
           enabled: true,
         },
-        { name: "review", path: shadowed, description: "from the user", enabled: true },
+        { name: "review", path: userReview, description: "from the user", enabled: true },
       ]);
     }),
   );
 
-  it.effect("puts the project's skills first, and a project skill wins its name", () =>
+  it.effect("puts the user's skills first, and a user skill wins its name, as in the CLI", () =>
     Effect.gen(function* () {
       const listed = yield* skillsFor({ HOME: home }).list({ workspaceRoot: workspace });
       expect(listed.map((found) => [found.name, found.path])).toEqual([
-        ["no-name", unnamed],
-        ["review", repoSkill],
         ["release-notes", userSkill],
+        ["review", userReview],
+        ["no-name", unnamed],
       ]);
+      expect(listed.map((found) => found.path)).not.toContain(shadowed);
     }),
   );
 

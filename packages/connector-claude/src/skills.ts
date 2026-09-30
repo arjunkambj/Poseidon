@@ -5,9 +5,12 @@
  * A session loads skills from the user and project settings sources
  * (`queryOptions.ts`), and those keep them in two roots:
  *
- * - project: `<workspaceRoot>/.claude/skills`;
  * - user: `<config>/skills`, where `<config>` is the instance's
- *   `CLAUDE_CONFIG_DIR`, else `~/.claude` — the account its sessions use.
+ *   `CLAUDE_CONFIG_DIR`, else `~/.claude` — the account its sessions use;
+ * - project: `<workspaceRoot>/.claude/skills`.
+ *
+ * When both hold a skill of one name, the CLI runs the user's (personal over
+ * project, in Claude Code's own precedence), so that is the one listed.
  *
  * A skill is `<root>/<entry>/SKILL.md`, named and described by its
  * frontmatter, and the entry may be a symlink to a directory elsewhere. Dot
@@ -92,15 +95,15 @@ export interface ClaudeSkillsOptions {
   readonly writeMutex: Semaphore.Semaphore;
 }
 
-/** The skill roots a scope reaches, the project's first. */
+/** The skill roots a scope reaches, the user's first. */
 const skillRoots = (
   options: Pick<ClaudeSkillsOptions, "env">,
   scope: ExtensionScope,
 ): ReadonlyArray<string> => [
+  NodePath.join(claudeConfigDir(options.env), "skills"),
   ...(scope.workspaceRoot === null
     ? []
     : [NodePath.join(scope.workspaceRoot, ".claude", "skills")]),
-  NodePath.join(claudeConfigDir(options.env), "skills"),
 ];
 
 export const makeClaudeSkills = (options: ClaudeSkillsOptions): SkillsExtension => {
@@ -109,8 +112,8 @@ export const makeClaudeSkills = (options: ClaudeSkillsOptions): SkillsExtension 
 
   const list = (scope: ExtensionScope) =>
     Effect.gen(function* () {
-      // One row per name: the first root that has it — the project's before
-      // the user's — is the one listed.
+      // One row per name: the first root that has it — the user's before the
+      // project's, the copy the CLI runs — is the one listed.
       const seen = new Set<string>();
       const out: Array<SkillSummary> = [];
       for (const root of skillRoots(options, scope)) {
