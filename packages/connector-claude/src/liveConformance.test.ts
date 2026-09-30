@@ -16,7 +16,7 @@
  *
  * Kept deliberately cheap: the CLI's default model only (`default`, which
  * leaves the SDK's `model` option out), one-line prompts, and the same caps
- * the conformance recording runs under — one turn and ten cents a session.
+ * the conformance recording runs under — one turn and fifty cents a session.
  * The approval case asks for one small file write and allows it once; the
  * deny case asks for another and refuses it.
  *
@@ -56,7 +56,7 @@ const APPROVAL_PROMPT = "Create a file named conformance.txt containing exactly 
 const DENY_PROMPT = "Create a file named denied.txt containing exactly the text: no";
 
 /** The conformance recording's caps. */
-const LIMITS = { maxTurns: 1, maxBudgetUsd: 0.1 } as const;
+const LIMITS = { maxTurns: 1, maxBudgetUsd: 0.5 } as const;
 
 const ROOT = "/tmp/poseidon-h1";
 

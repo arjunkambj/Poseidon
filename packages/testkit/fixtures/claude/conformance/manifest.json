@@ -3,13 +3,16 @@
   "kind": "claude",
   "transport": "sdk-stream",
   "scenario": "conformance",
-  "description": "The connector conformance suite, one session launch per case in the suite's order, each sent the same one-line prompt.",
-  "cliVersion": "2.1.280",
+  "description": "The connector conformance suite, one session launch per case in the suite's order: each case's one-line prompt, and the approval case's file write stopped on a card and allowed once.",
+  "cliVersion": "2.1.286",
   "sdkVersion": "0.3.280",
-  "recordedOn": "2026-09-23",
-  "model": "claude-opus-5-5[1m]",
+  "recordedOn": "2026-10-01",
+  "model": "claude-opus-5-5",
   "real": true,
-  "prompts": ["Reply with exactly: ok"],
+  "prompts": [
+    "Reply with exactly: ok",
+    "Create a file named conformance.txt containing exactly the text: ok"
+  ],
   "invocations": [
     {
       "argv": [
@@ -21,7 +24,7 @@
         "--max-turns",
         "1",
         "--max-budget-usd",
-        "0.1",
+        "0.5",
         "--permission-prompt-tool",
         "stdio",
         "--mcp-config",
@@ -32,12 +35,12 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "<TMP>/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
-        "--session-id=3038e312-4e17-4d04-8800-320f1bf32ba0"
+        "<TMP>/claude-attachments-liaZq9/01a0f45c-917f-7000-8577-fa4539cfd6df",
+        "--session-id=2ac4b88d-78aa-48ad-a109-ce0f6f8b7bef"
       ],
       "cwd": "<SCRATCH>/workspace",
       "file": "invocation-1.ndjson",
-      "exitCode": 1,
+      "exitCode": 0,
       "signal": null
     },
     {
@@ -50,7 +53,7 @@
         "--max-turns",
         "1",
         "--max-budget-usd",
-        "0.1",
+        "0.5",
         "--permission-prompt-tool",
         "stdio",
         "--mcp-config",
@@ -61,12 +64,12 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "<TMP>/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
-        "--session-id=ba3b3e57-fafa-443d-9587-141e8f8eb321"
+        "<TMP>/claude-attachments-liaZq9/01a0f45c-917f-7000-8577-fa4539cfd6df",
+        "--session-id=1d94a43d-8462-4cff-90c8-e6a7315acde6"
       ],
       "cwd": "<SCRATCH>/workspace",
       "file": "invocation-2.ndjson",
-      "exitCode": 1,
+      "exitCode": 0,
       "signal": null
     },
     {
@@ -79,7 +82,7 @@
         "--max-turns",
         "1",
         "--max-budget-usd",
-        "0.1",
+        "0.5",
         "--permission-prompt-tool",
         "stdio",
         "--mcp-config",
@@ -90,12 +93,12 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "<TMP>/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
-        "--session-id=98db9a79-807a-4132-8e7c-ac8b9e65320f"
+        "<TMP>/claude-attachments-liaZq9/01a0f45c-917f-7000-8577-fa4539cfd6df",
+        "--session-id=7401ff43-6bb8-42ee-9f1d-ef8f202ae47e"
       ],
       "cwd": "<SCRATCH>/workspace",
       "file": "invocation-3.ndjson",
-      "exitCode": 1,
+      "exitCode": 0,
       "signal": null
     },
     {
@@ -108,7 +111,7 @@
         "--max-turns",
         "1",
         "--max-budget-usd",
-        "0.1",
+        "0.5",
         "--permission-prompt-tool",
         "stdio",
         "--mcp-config",
@@ -119,8 +122,8 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "<TMP>/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
-        "--session-id=f70d8cf0-03d2-4b27-8db9-3bcbd045c0db"
+        "<TMP>/claude-attachments-liaZq9/01a0f45c-917f-7000-8577-fa4539cfd6df",
+        "--session-id=520ac1bf-6e34-4e9e-aaa1-4d5e0b3422d2"
       ],
       "cwd": "<SCRATCH>/workspace",
       "file": "invocation-4.ndjson",
@@ -137,7 +140,7 @@
         "--max-turns",
         "1",
         "--max-budget-usd",
-        "0.1",
+        "0.5",
         "--permission-prompt-tool",
         "stdio",
         "--mcp-config",
@@ -148,12 +151,41 @@
         "--allow-dangerously-skip-permissions",
         "--include-partial-messages",
         "--add-dir",
-        "<TMP>/claude-attachments-ohKnXh/01a0d0a1-6b84-7000-9386-73469ea7f799",
-        "--session-id=973376c1-1597-4fc7-bec9-198554eba3b2"
+        "<TMP>/claude-attachments-liaZq9/01a0f45c-917f-7000-8577-fa4539cfd6df",
+        "--session-id=46cbd24e-76c3-4100-8640-3e9e9d4a3ba9"
       ],
       "cwd": "<SCRATCH>/workspace",
       "file": "invocation-5.ndjson",
-      "exitCode": 143,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--input-format",
+        "stream-json",
+        "--max-turns",
+        "1",
+        "--max-budget-usd",
+        "0.5",
+        "--permission-prompt-tool",
+        "stdio",
+        "--mcp-config",
+        "{\"mcpServers\":{\"poseidon\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:9/mcp\",\"headers\":{\"Authorization\":\"<REDACTED>\"}}}}",
+        "--setting-sources=user,project,local",
+        "--permission-mode",
+        "default",
+        "--allow-dangerously-skip-permissions",
+        "--include-partial-messages",
+        "--add-dir",
+        "<TMP>/claude-attachments-liaZq9/01a0f45c-917f-7000-8577-fa4539cfd6df",
+        "--session-id=5991aeaf-5f06-4ff2-88f0-a9459d2aa610"
+      ],
+      "cwd": "<SCRATCH>/workspace",
+      "file": "invocation-6.ndjson",
+      "exitCode": 0,
       "signal": null
     }
   ]

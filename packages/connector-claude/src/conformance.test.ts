@@ -10,14 +10,19 @@
  *     POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude vitest run src/conformance.test.ts
  *
  * records it again: the operator's CLI behind the tee, in a scratch repo under
- * `/tmp/poseidon-h1`, capped at one turn and a few cents a session.
+ * `/tmp/poseidon-h1`, capped at one turn and fifty cents a session. The cap
+ * is above what a session's first request costs on the default model, whose
+ * prompt cache it writes (ten to twenty cents at list price on 2.1.286): under
+ * ten cents the CLI ended the approval case's turn for the budget before its
+ * write was even asked about.
  *
  * The suite's approval case asks for a file write, which the test ladder
  * (every call "prompt") stops on a card. It runs whenever the recording has
  * it — a recording made signed in does, since the case's prompt is in its
  * manifest — and always when recording. The recording here was made signed
- * out, where the CLI refuses every turn before any tool call, so the case is
- * not in it; a skipped case says so until it is re-recorded signed in.
+ * in, so it has the case; one made signed out, where the CLI refuses every
+ * turn before any tool call, would not, and the case would be skipped under
+ * a title that says so.
  *
  * `isProcessGone` looks from outside, as the suite requires: in a replay, at
  * the pid every replayed process drops; in a recording, at the process groups
@@ -121,7 +126,7 @@ const driver = RECORD ? recorder() : replayer();
 afterAll(() => driver.finish());
 
 runConnectorConformance(
-  makeClaudeConnectorDefinition({ limits: { maxTurns: 1, maxBudgetUsd: 0.1 } }),
+  makeClaudeConnectorDefinition({ limits: { maxTurns: 1, maxBudgetUsd: 0.5 } }),
   {
     instanceId: makeConnectorInstanceId(),
     services: Effect.runSync(testServices()),
