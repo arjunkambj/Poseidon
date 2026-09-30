@@ -1,0 +1,110 @@
+{
+  "formatVersion": 1,
+  "kind": "claude",
+  "transport": "sdk-stream",
+  "scenario": "mcp-servers",
+  "description": "The MCP servers extension on a scratch CLAUDE_CONFIG_DIR and workspace, each holding one hand-written server: claude mcp add-json (user http with a header variable, user stdio with env, a project server), an edit as remove and add-json, the refusals that run nothing, a name the CLI rejects, and two removes. config-files.json keeps what the CLI left in .claude.json's mcpServers and in .mcp.json after each launch.",
+  "cliVersion": "2.1.286",
+  "recordedOn": "2026-10-01",
+  "model": "default",
+  "real": true,
+  "prompts": [],
+  "invocations": [
+    {
+      "argv": [
+        "mcp",
+        "add-json",
+        "--scope",
+        "user",
+        "--",
+        "web",
+        "{\"type\":\"http\",\"url\":\"http://127.0.0.1:9/web\",\"headers\":{\"Authorization\":\"Bearer ${POSEIDON_TEST_TOKEN}\"}}"
+      ],
+      "cwd": "<TMP>",
+      "file": "invocation-1.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "mcp",
+        "add-json",
+        "--scope",
+        "user",
+        "--",
+        "local",
+        "{\"type\":\"stdio\",\"command\":\"true\",\"args\":[\"--flag\",\"two words\"],\"env\":{\"MODE\":\"test\"}}"
+      ],
+      "cwd": "<TMP>",
+      "file": "invocation-2.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "mcp",
+        "add-json",
+        "--scope",
+        "project",
+        "--",
+        "proj",
+        "{\"type\":\"stdio\",\"command\":\"true\"}"
+      ],
+      "cwd": "<SCRATCH>/workspace",
+      "file": "invocation-3.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "remove", "--scope", "user", "--", "web"],
+      "cwd": "<TMP>",
+      "file": "invocation-4.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "mcp",
+        "add-json",
+        "--scope",
+        "user",
+        "--",
+        "web",
+        "{\"type\":\"http\",\"url\":\"http://127.0.0.1:9/web-two\",\"headers\":{\"Authorization\":\"Bearer ${POSEIDON_TEST_TOKEN}\"}}"
+      ],
+      "cwd": "<TMP>",
+      "file": "invocation-5.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": [
+        "mcp",
+        "add-json",
+        "--scope",
+        "user",
+        "--",
+        "bad name",
+        "{\"type\":\"http\",\"url\":\"http://127.0.0.1:9/web\",\"headers\":{\"Authorization\":\"Bearer ${POSEIDON_TEST_TOKEN}\"}}"
+      ],
+      "cwd": "<TMP>",
+      "file": "invocation-6.ndjson",
+      "exitCode": 1,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "remove", "--scope", "user", "--", "web"],
+      "cwd": "<TMP>",
+      "file": "invocation-7.ndjson",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "argv": ["mcp", "remove", "--scope", "project", "--", "proj"],
+      "cwd": "<SCRATCH>/workspace",
+      "file": "invocation-8.ndjson",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}

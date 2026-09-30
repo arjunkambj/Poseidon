@@ -41,7 +41,7 @@ import type { ClaudeSpawnOptions, ClaudeSpawnedProcess } from "./spawn";
 import type { ToolGate } from "./toolGate";
 
 /** The name Poseidon's MCP server is registered under in the session. */
-const POSEIDON_MCP_SERVER = "poseidon";
+export const POSEIDON_MCP_SERVER = "poseidon";
 
 /**
  * The CLI permission mode for a thread's modes. A plan turn runs in `plan`;

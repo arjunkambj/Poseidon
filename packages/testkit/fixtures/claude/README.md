@@ -78,6 +78,21 @@ Signed in, 2.1.286, on the CLI's default model, with short prompts:
 | `image`                 | `apps/server/test/e2e-claude/attachment.test.ts`       | A 2×2 red PNG sent as an image content block; the model names its colour.                                                                                                                                                                               |
 | `steering`              | `apps/server/test/e2e-claude/steering.test.ts`         | Full access: `sleep 5; echo one`, a message steered in once the command's row shows, folded into the running loop, and one turn whose answer ends with "banana". Also `recordedSession.test.ts`.                                                        |
 
+No account, 2.1.286 (`~/.local/bin/claude`), on a scratch `CLAUDE_CONFIG_DIR`
+and `HOME`; the commands make no request, so it spent nothing:
+
+| Scenario      | Recorded by                                                | What it is                                                                                                                                                                                                                                      |
+| ------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mcp-servers` | `packages/connector-claude/src/mcpServersRecorded.test.ts` | The MCP servers extension: `claude mcp add-json` of a user http server, a user stdio server and a project server, an edit as `remove` and `add-json`, a name the CLI rejects, and two `remove`s, each file seeded with one hand-written server. |
+
+`mcp-servers/` also holds `config-files.json`, because the extension reads the
+CLI's files rather than asking the CLI: after each launch, what the real CLI
+left in `.claude.json`'s `mcpServers` and the whole of the workspace's
+`.mcp.json`. The rest of `.claude.json` is the CLI's own state (its machine
+and user ids, first start time) and was not kept. The recorder checks the file
+names no scratch or home path; the entries are the recorder's own servers and
+the two it seeded.
+
 A compaction of a real conversation costs a summarisation request, so a
 signed-in `/compact` is recorded only with the operator's approval;
 `session-controls` shows the command's path without one.
@@ -93,6 +108,10 @@ signed-in ones are made with:
     POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test/recordProbe.test.ts
     POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test/recordSession.test.ts -t "generate-text: one"
     POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/conformance.test.ts
+
+`mcp-servers` needs no account and never reads the operator's config:
+
+    POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/mcpServersRecorded.test.ts
 
 Two directories are not recordings. `plugins/` holds the config files the
 real CLI wrote while installing two plugins into a scratch config directory,

@@ -1,0 +1,2 @@
+{"dir":"from-harness","channel":"stdout","at":296,"data":"Removed MCP server web from user config"}
+{"dir":"from-harness","channel":"stdout","at":297,"data":"File modified: <SCRATCH>/config/.claude.json"}

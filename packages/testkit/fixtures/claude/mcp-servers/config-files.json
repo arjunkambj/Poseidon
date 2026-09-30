@@ -1,0 +1,326 @@
+[
+  {
+    "file": "invocation-1.ndjson",
+    "argv": [
+      "mcp",
+      "add-json",
+      "--scope",
+      "user",
+      "--",
+      "web",
+      "{\"type\":\"http\",\"url\":\"http://127.0.0.1:9/web\",\"headers\":{\"Authorization\":\"Bearer ${POSEIDON_TEST_TOKEN}\"}}"
+    ],
+    "user": {
+      "hand-made": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/hand",
+        "headers": {
+          "X-Team": "${TEAM_TOKEN}"
+        }
+      },
+      "web": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/web",
+        "headers": {
+          "Authorization": "Bearer ${POSEIDON_TEST_TOKEN}"
+        }
+      }
+    },
+    "project": {
+      "mcpServers": {
+        "hand-project": {
+          "command": "true",
+          "args": []
+        }
+      }
+    }
+  },
+  {
+    "file": "invocation-2.ndjson",
+    "argv": [
+      "mcp",
+      "add-json",
+      "--scope",
+      "user",
+      "--",
+      "local",
+      "{\"type\":\"stdio\",\"command\":\"true\",\"args\":[\"--flag\",\"two words\"],\"env\":{\"MODE\":\"test\"}}"
+    ],
+    "user": {
+      "hand-made": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/hand",
+        "headers": {
+          "X-Team": "${TEAM_TOKEN}"
+        }
+      },
+      "web": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/web",
+        "headers": {
+          "Authorization": "Bearer ${POSEIDON_TEST_TOKEN}"
+        }
+      },
+      "local": {
+        "type": "stdio",
+        "command": "true",
+        "args": ["--flag", "two words"],
+        "env": {
+          "MODE": "test"
+        }
+      }
+    },
+    "project": {
+      "mcpServers": {
+        "hand-project": {
+          "command": "true",
+          "args": []
+        }
+      }
+    }
+  },
+  {
+    "file": "invocation-3.ndjson",
+    "argv": [
+      "mcp",
+      "add-json",
+      "--scope",
+      "project",
+      "--",
+      "proj",
+      "{\"type\":\"stdio\",\"command\":\"true\"}"
+    ],
+    "user": {
+      "hand-made": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/hand",
+        "headers": {
+          "X-Team": "${TEAM_TOKEN}"
+        }
+      },
+      "web": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/web",
+        "headers": {
+          "Authorization": "Bearer ${POSEIDON_TEST_TOKEN}"
+        }
+      },
+      "local": {
+        "type": "stdio",
+        "command": "true",
+        "args": ["--flag", "two words"],
+        "env": {
+          "MODE": "test"
+        }
+      }
+    },
+    "project": {
+      "mcpServers": {
+        "hand-project": {
+          "command": "true",
+          "args": []
+        },
+        "proj": {
+          "type": "stdio",
+          "command": "true",
+          "args": []
+        }
+      }
+    }
+  },
+  {
+    "file": "invocation-4.ndjson",
+    "argv": ["mcp", "remove", "--scope", "user", "--", "web"],
+    "user": {
+      "hand-made": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/hand",
+        "headers": {
+          "X-Team": "${TEAM_TOKEN}"
+        }
+      },
+      "local": {
+        "type": "stdio",
+        "command": "true",
+        "args": ["--flag", "two words"],
+        "env": {
+          "MODE": "test"
+        }
+      }
+    },
+    "project": {
+      "mcpServers": {
+        "hand-project": {
+          "command": "true",
+          "args": []
+        },
+        "proj": {
+          "type": "stdio",
+          "command": "true",
+          "args": []
+        }
+      }
+    }
+  },
+  {
+    "file": "invocation-5.ndjson",
+    "argv": [
+      "mcp",
+      "add-json",
+      "--scope",
+      "user",
+      "--",
+      "web",
+      "{\"type\":\"http\",\"url\":\"http://127.0.0.1:9/web-two\",\"headers\":{\"Authorization\":\"Bearer ${POSEIDON_TEST_TOKEN}\"}}"
+    ],
+    "user": {
+      "hand-made": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/hand",
+        "headers": {
+          "X-Team": "${TEAM_TOKEN}"
+        }
+      },
+      "local": {
+        "type": "stdio",
+        "command": "true",
+        "args": ["--flag", "two words"],
+        "env": {
+          "MODE": "test"
+        }
+      },
+      "web": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/web-two",
+        "headers": {
+          "Authorization": "Bearer ${POSEIDON_TEST_TOKEN}"
+        }
+      }
+    },
+    "project": {
+      "mcpServers": {
+        "hand-project": {
+          "command": "true",
+          "args": []
+        },
+        "proj": {
+          "type": "stdio",
+          "command": "true",
+          "args": []
+        }
+      }
+    }
+  },
+  {
+    "file": "invocation-6.ndjson",
+    "argv": [
+      "mcp",
+      "add-json",
+      "--scope",
+      "user",
+      "--",
+      "bad name",
+      "{\"type\":\"http\",\"url\":\"http://127.0.0.1:9/web\",\"headers\":{\"Authorization\":\"Bearer ${POSEIDON_TEST_TOKEN}\"}}"
+    ],
+    "user": {
+      "hand-made": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/hand",
+        "headers": {
+          "X-Team": "${TEAM_TOKEN}"
+        }
+      },
+      "local": {
+        "type": "stdio",
+        "command": "true",
+        "args": ["--flag", "two words"],
+        "env": {
+          "MODE": "test"
+        }
+      },
+      "web": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/web-two",
+        "headers": {
+          "Authorization": "Bearer ${POSEIDON_TEST_TOKEN}"
+        }
+      }
+    },
+    "project": {
+      "mcpServers": {
+        "hand-project": {
+          "command": "true",
+          "args": []
+        },
+        "proj": {
+          "type": "stdio",
+          "command": "true",
+          "args": []
+        }
+      }
+    }
+  },
+  {
+    "file": "invocation-7.ndjson",
+    "argv": ["mcp", "remove", "--scope", "user", "--", "web"],
+    "user": {
+      "hand-made": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/hand",
+        "headers": {
+          "X-Team": "${TEAM_TOKEN}"
+        }
+      },
+      "local": {
+        "type": "stdio",
+        "command": "true",
+        "args": ["--flag", "two words"],
+        "env": {
+          "MODE": "test"
+        }
+      }
+    },
+    "project": {
+      "mcpServers": {
+        "hand-project": {
+          "command": "true",
+          "args": []
+        },
+        "proj": {
+          "type": "stdio",
+          "command": "true",
+          "args": []
+        }
+      }
+    }
+  },
+  {
+    "file": "invocation-8.ndjson",
+    "argv": ["mcp", "remove", "--scope", "project", "--", "proj"],
+    "user": {
+      "hand-made": {
+        "type": "http",
+        "url": "http://127.0.0.1:9/hand",
+        "headers": {
+          "X-Team": "${TEAM_TOKEN}"
+        }
+      },
+      "local": {
+        "type": "stdio",
+        "command": "true",
+        "args": ["--flag", "two words"],
+        "env": {
+          "MODE": "test"
+        }
+      }
+    },
+    "project": {
+      "mcpServers": {
+        "hand-project": {
+          "command": "true",
+          "args": []
+        }
+      }
+    }
+  }
+]
