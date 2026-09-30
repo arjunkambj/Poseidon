@@ -182,7 +182,7 @@ const TOKEN_SHAPED = /\b(sk|pk|ghp|gho|Bearer)[-_ ][A-Za-z0-9._~+/=-]{12,}/g;
  * --json`).
  */
 const TEXT_PAIR = /"([A-Za-z_]+)"\s*:\s*"([^"\\]*)"/g;
-/** A uuid joined to another by `_`, as the CLI names a directory per org and account. */
+/** Two uuids joined by `_`, as the CLI names a directory per org and account. */
 const JOINED_UUID =
   /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi;
 
@@ -191,8 +191,9 @@ const JOINED_UUID =
  * organisation's name and id, the account uuid — from the init and account
  * payloads and `auth status`, mapped to what replaces it everywhere. Session
  * ids are uuids too and stay: only a uuid under an identity key is scrubbed,
- * and one joined by `_` to such a uuid, which is how the CLI names the
- * directory of an org's synced skills and plugins (`<org id>_<account id>`).
+ * and two uuids joined by `_`, which is how the CLI names the directory of an
+ * org's synced skills and plugins (`<org id>_<account id>`) — a capture with
+ * no `auth status` in it names the org nowhere else.
  */
 const accountValues = (values: ReadonlyArray<unknown>): Map<string, string> => {
   const found = new Map<string, string>();
@@ -236,8 +237,8 @@ const accountValues = (values: ReadonlyArray<unknown>): Map<string, string> => {
   for (const value of values) walk(value, false);
   for (const text of texts) {
     for (const [, first, second] of text.matchAll(JOINED_UUID)) {
-      if (found.has(first!)) note(second!);
-      if (found.has(second!)) note(first!);
+      note(first!);
+      note(second!);
     }
   }
   return found;
@@ -421,7 +422,8 @@ interface ScrubContext {
  * those under the scratch root, and one scrubbed entry for the rest. Elsewhere an operator entry is replaced where it is listed: a list
  * item that is its name, and an object whose `name` it is, whose `description`
  * and `name@…` `source` go with it. An operator MCP server's tools become one
- * `mcp__<stand-in>__scrubbed-entry` per list. A name the caller gave is
+ * `mcp__<stand-in>__scrubbed-entry` per list, and its name and label are
+ * replaced in text wherever they stand alone. A name the caller gave is
  * replaced in text and keys too, wherever it stands alone, and the machine's
  * name becomes `<HOST>`.
  */
@@ -445,6 +447,22 @@ const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
   const serverTools = context.operatorServers.map(
     (server) => [mcpToolPrefix(server), context.entries.get(server)!] as const,
   );
+  // A server the account connected is named in prose by its label, the name
+  // without the domain its source put in front (`claude.ai Canva` → `Canva`):
+  // the model repeats what the harness tells it about them.
+  const serverWords = context.operatorServers
+    .flatMap((server) => {
+      const stand = context.entries.get(server)!;
+      const label = server.replace(/^\S+\.\S+ /, "");
+      return label === server
+        ? [[server, stand]]
+        : [
+            [server, stand],
+            [label, stand],
+          ];
+    })
+    .sort((a, b) => b[0]!.length - a[0]!.length)
+    .map(([word, stand]) => [standalone(word!), stand!] as const);
   /** An operator server's tool, as one stand-in per server. */
   const serverTool = (entry: string): string | undefined => {
     const server = serverTools.find(([prefix]) => entry.startsWith(prefix));
@@ -458,6 +476,7 @@ const makeScrubber = (context: ScrubContext): ((value: unknown) => unknown) => {
     for (const [from, to] of paths) out = out.replaceAll(from, to);
     for (const host of hosts) out = out.replaceAll(host, "<HOST>");
     for (const [name, stand] of named) out = out.replaceAll(name, stand);
+    for (const [word, stand] of serverWords) out = out.replaceAll(word, stand);
     if (username !== null) {
       out = out.replaceAll(new RegExp(`\\b${username}\\b`, "g"), "user");
     }

@@ -321,7 +321,7 @@ describe("finalizeSdkStreamRecording", () => {
     });
   });
 
-  it("scrubs an org id printed as text, the account id joined to it, and the operator's own servers and plugins", async () => {
+  it("scrubs an org id printed as text, joined org and account ids, and the operator's own servers and plugins", async () => {
     const rawDir = NodePath.join(ROOT, "raw-connected");
     const launcher = makeTeeLauncher({ realBinary: COUNTERPART, rawDir });
     const orgId = "6c1b0f7e-2d3a-4b5c-8d9e-0f1a2b3c4d5e";
@@ -333,6 +333,8 @@ describe("finalizeSdkStreamRecording", () => {
     // `auth status --json` pretty-prints, so the tee captures it a line at a time.
     run.send({ type: "note", lines: ["{", `  "orgId": "${orgId}",`, "}"] });
     await run.awaitLine(typed("echo"));
+    run.send({ type: "note", text: "The Tracker connector needs authorization." });
+    await run.awaitLine((line) => typed("echo")(line) && JSON.stringify(line).includes("text"));
     run.send({
       type: "note",
       mcp_servers: [
@@ -376,6 +378,9 @@ describe("finalizeSdkStreamRecording", () => {
       expect(written).not.toContain(leak);
     }
     const [stream] = loadSdkStreamRecording("sample", "connected", fixtures).invocations;
+    expect(JSON.stringify(stream!.frames)).toContain(
+      "The user-skill-1 connector needs authorization.",
+    );
     const echoed = stream!.frames.filter((frame) => typed("echo")(frame.data)).at(-1)!.data;
     expect(echoed).toMatchObject({
       message: {
