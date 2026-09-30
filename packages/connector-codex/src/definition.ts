@@ -40,8 +40,8 @@ export interface CodexConnectorOptions {
   /**
    * The `CODEX_HOME` the extensions read and write — the skills root, the
    * `codex mcp` and `codex plugin` commands, Poseidon's MCP ledger and the
-   * session rollouts an import reads. Omitted, it is the instance's own `codexHome`, else
-   * `~/.codex`. Live sessions are unaffected.
+   * session rollouts an import reads. Omitted, it is the instance's own
+   * `codexHome`, else `~/.codex`. Live sessions are unaffected.
    * Tests pass a temporary directory so no real config is touched.
    */
   readonly codexHome?: string;

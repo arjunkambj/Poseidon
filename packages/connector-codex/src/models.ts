@@ -6,9 +6,11 @@
  * ones this CLI offers this user today (`fixtures/codex/probe/`).
  *
  * Rows the server marks `hidden` are left out, as its own picker leaves them
- * out. The row it marks `isDefault` goes first: a thread that names no model
- * runs on it, because a session leaves `model` out of `thread/start` and the
- * CLI picks its own.
+ * out. The row it marks `isDefault`, the server's default, goes first. A
+ * thread that names no model runs on what the CLI picks, since a session
+ * leaves `model` out of `thread/start`: the model the user's `config.toml`
+ * names, which need not be that row (0.159.2 marked `gpt-6.1-sol` while
+ * such a thread ran on `gpt-6-astra`), else the server's default.
  */
 
 import { EFFORT_ORDER, type Effort } from "@poseidon/contracts/enums";
