@@ -3083,12 +3083,13 @@ deleting the source changes nothing.
 One case is forked by the harness itself instead: a fork of the source's latest
 message (or of the whole thread, from the menu), while nothing runs in the
 source, into the same workspace, on a harness that can fork its sessions —
-Command Code today. Its first turn resumes the source's session as a new
-harness session, so the model has the source's full history, tool calls
-included, and no transcript is added; the source's own session is left as it
-was, and the fork stays on the source's connector. If the harness cannot fork
-it after all, the fork starts fresh with the transcript as above. Every other
-fork, and every fork on Claude, is a transcript copy.
+Command Code and Codex today, Codex through its app-server's `thread/fork`. Its
+first turn resumes the source's session as a new harness session, so the model
+has the source's full history, tool calls included, and no transcript is
+added; the source's own session is left as it was, and the fork stays on the
+source's connector. If the harness cannot fork it after all, the fork starts
+fresh with the transcript as above. Every other fork, and every fork on Claude
+Code or any other harness, is a transcript copy.
 
 A fork names its source: "Forked from <title>" under the greeting while it is
 empty, and a fork icon beside the title in the header, whose tooltip says the
