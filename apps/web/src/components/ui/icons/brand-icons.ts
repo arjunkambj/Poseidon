@@ -17,21 +17,22 @@
 
 import type { DetectedEditor, EditorId } from "@poseidon/contracts/editors";
 import {
-  Anthropic,
+  ClaudeAiColor,
   ClaudeCodeColor,
   Code,
   CodexColor,
   Cursor,
-  Deepseek,
+  DeepseekColor,
   FolderOpen,
-  Google,
+  GeminiColor,
+  GoogleColor,
   type HoneyIcon,
-  Kimi,
-  Meta,
-  Mistral,
-  Nvidia,
+  KimiColor,
+  MetaColor,
+  MistralColor,
+  NvidiaColor,
   Openai,
-  Qwen,
+  QwenColor,
   Server,
   Terminal,
   Windsurf,
@@ -122,21 +123,23 @@ export const spansProviders = (
 /**
  * Provider keys → their mark. The keys are the id prefixes and family headers
  * the recorded model lists carry (normalised as `providerKey` does), with the
- * spellings one provider goes by folded together.
+ * spellings one provider goes by folded together. Anthropic's models draw
+ * Claude's mark and Gemini's its own; OpenAI, xAI and Z.ai ship no colour
+ * variant, so theirs stay monochrome.
  */
 const PROVIDER_MARKS: Readonly<Record<string, HoneyIcon>> = {
-  anthropic: Anthropic,
-  deepseek: Deepseek,
-  gemini: Google,
-  google: Google,
-  kimi: Kimi,
-  meta: Meta,
-  mistral: Mistral,
-  mistralai: Mistral,
-  moonshotai: Kimi,
-  nvidia: Nvidia,
+  anthropic: ClaudeAiColor,
+  deepseek: DeepseekColor,
+  gemini: GeminiColor,
+  google: GoogleColor,
+  kimi: KimiColor,
+  meta: MetaColor,
+  mistral: MistralColor,
+  mistralai: MistralColor,
+  moonshotai: KimiColor,
+  nvidia: NvidiaColor,
   openai: Openai,
-  qwen: Qwen,
+  qwen: QwenColor,
   xai: Xai,
   zai: Zai,
   zaiorg: Zai,

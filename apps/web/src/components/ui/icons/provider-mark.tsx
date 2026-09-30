@@ -1,7 +1,8 @@
 /**
  * A model's provider mark, drawn before its name in a row whose harness spans
- * providers (`spansProviders`): monochrome and bold like any icon beside text
- * (bold is also Meta's official mark). A provider Honeyicons has no logo for
+ * providers (`spansProviders`): in the brand's colours where Honeyicons ships
+ * them, else monochrome, and bold either way (bold is also Meta's official
+ * mark). A provider Honeyicons has no logo for
  * gets an empty box the same size, so the names stay aligned; no generic glyph
  * stands in for a logo. So does a row with no provider (`undefined`) in a list
  * where other rows have one, such as search results mixing harnesses. It is
