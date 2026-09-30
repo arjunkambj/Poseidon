@@ -326,7 +326,8 @@ describe("finalizeSdkStreamRecording", () => {
     const launcher = makeTeeLauncher({ realBinary: COUNTERPART, rawDir });
     const orgId = "6c1b0f7e-2d3a-4b5c-8d9e-0f1a2b3c4d5e";
     const accountId = "9e8d7c6b-5a49-4382-9170-6f5e4d3c2b1a";
-    const synced = `${NodeOS.homedir()}/.claude/plugins/synced/${orgId}_${accountId}/p1`;
+    const installId = "bb0c1d2e-3f40-4a5b-9c6d-7e8f9a0b1c2d";
+    const synced = `${NodeOS.homedir()}/.claude/plugins/synced/${orgId}_${accountId}/${installId}`;
 
     const run = converse(launcher, STREAM_ARGS, { cwd: REPO });
     await run.awaitLine(typed("ready"));
@@ -374,7 +375,7 @@ describe("finalizeSdkStreamRecording", () => {
     const written = NodeFS.readdirSync(dir)
       .map((name) => NodeFS.readFileSync(NodePath.join(dir, name), "utf8"))
       .join("\n");
-    for (const leak of [orgId, accountId, "Tracker", "tracker"]) {
+    for (const leak of [orgId, accountId, installId, "Tracker", "tracker"]) {
       expect(written).not.toContain(leak);
     }
     const [stream] = loadSdkStreamRecording("sample", "connected", fixtures).invocations;

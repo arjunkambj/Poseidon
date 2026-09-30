@@ -183,9 +183,12 @@ const TOKEN_SHAPED = /\b(sk|pk|ghp|gho|Bearer)[-_ ][A-Za-z0-9._~+/=-]{12,}/g;
  * --json`).
  */
 const TEXT_PAIR = /"([A-Za-z_]+)"\s*:\s*"([^"\\]*)"/g;
-/** Two uuids joined by `_`, as the CLI names a directory per org and account. */
-const JOINED_UUID =
-  /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi;
+const UUID_TEXT = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+/**
+ * Two uuids joined by `_`, as the CLI names a directory per org and account,
+ * and the uuid of what was synced into it when one follows.
+ */
+const JOINED_UUID = new RegExp(`(${UUID_TEXT})_(${UUID_TEXT})(?:/(${UUID_TEXT}))?`, "gi");
 
 /**
  * Every string in the capture that names the account — the email, the
@@ -194,7 +197,8 @@ const JOINED_UUID =
  * ids are uuids too and stay: only a uuid under an identity key is scrubbed,
  * and two uuids joined by `_`, which is how the CLI names the directory of an
  * org's synced skills and plugins (`<org id>_<account id>`) — a capture with
- * no `auth status` in it names the org nowhere else.
+ * no `auth status` in it names the org nowhere else — with the uuid a synced
+ * plugin's own directory under it is named by.
  */
 const accountValues = (values: ReadonlyArray<unknown>): Map<string, string> => {
   const found = new Map<string, string>();
@@ -237,9 +241,10 @@ const accountValues = (values: ReadonlyArray<unknown>): Map<string, string> => {
   };
   for (const value of values) walk(value, false);
   for (const text of texts) {
-    for (const [, first, second] of text.matchAll(JOINED_UUID)) {
+    for (const [, first, second, synced] of text.matchAll(JOINED_UUID)) {
       note(first!);
       note(second!);
+      if (synced !== undefined) note(synced);
     }
   }
   return found;
