@@ -171,19 +171,22 @@ how).
 ## Claude Code's own skills
 
 The instance carries the `skills` extension (`skills.ts`), so the composer's
-`$` menu and the Customize page's Skills tab list the skills a session loads,
-and the tab gives Claude Code its first section. It reads the two roots the
-user and project settings sources keep them in, `<workspaceRoot>/.claude/skills`
-and `<config>/skills` (`<config>` as for plugins), one skill per
-`<entry>/SKILL.md`, named and described by its frontmatter; a project skill
-wins its name, and dot entries are skipped. Skills a plugin carries are listed
-with the plugin.
+`/` and `$` menus and the Customize page's Skills tab list the skills a session
+loads, and the tab gives Claude Code its first section. It reads the two roots
+the user and project settings sources keep them in, `<config>/skills`
+(`<config>` as for plugins) and `<workspaceRoot>/.claude/skills`, one skill per
+`<entry>/SKILL.md`, named and described by its frontmatter; a user skill wins
+its name, as it does in the CLI (personal over project), and dot entries are
+skipped. Skills a plugin carries are listed with the plugin.
 
 The CLI does not load the shared agents folder, `~/.agents/skills`, so the
 extension also offers the skills there that the user root does not hold yet,
 by entry or by name, and links one in as a relative symlink — the shape the
-skills installer writes. Nothing else is written. MCP servers are not managed
-here: the CLI keeps the user's in `~/.claude.json`, a file it rewrites itself.
+skills installer writes. The link's path is taken between real directories, so
+a `~/.claude` that is itself a symlink into a dotfiles repo still gets one that
+resolves, and a link whose target is gone is replaced. Nothing else is
+written. MCP servers are not managed here: the CLI keeps the user's in
+`~/.claude.json`, a file it rewrites itself.
 
 ## Session files
 

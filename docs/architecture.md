@@ -1100,6 +1100,9 @@ What a connector is, and the promises it must keep.
 - `sessionFiles.ts` — what a `sessions` extension reads with: JSON Lines a
   line at a time, files newest first, a title from a prompt, a transcript
   within its caps.
+- `skills.ts` — what a `skills` extension shares: the SKILL.md frontmatter
+  parser, and linking a skill from `~/.agents/skills` into a harness's user
+  root as a relative symlink taken between real directories.
 - `approvalGate.ts` — the shared approval flow: ask the permission ladder, and
   on prompt open a request and park until the user answers.
 - `registry.ts` — definitions by kind, live instances by id.
@@ -1142,11 +1145,13 @@ plan cards AskUserQuestion and ExitPlanMode open), `questions.ts` and
 files by path), `userMessage.ts`, `sessionRef.ts`, `steering.ts` (when a
 steered turn is over), `session.ts` (one long-lived CLI process per thread),
 `sessionFiles.ts` (the `sessions` extension: the CLI's own transcripts under
-`<config>/projects`, read for an import), and `translate/` (SDK messages →
-`RuntimeEvent`; `tools.ts` holds the tool rows, `subagents.ts` the tasks and
-their nested rows, `compaction.ts` the compaction row). `makeClaudeConnectorDefinition`
-takes the turn and budget caps a recording puts on every session; production
-passes none.
+`<config>/projects`, read for an import), `skills.ts` (the `skills` extension:
+`<config>/skills` and `<workspaceRoot>/.claude/skills`, and linking a skill in
+from `~/.agents/skills`), and `translate/` (SDK messages → `RuntimeEvent`;
+`tools.ts` holds the tool rows, `subagents.ts` the tasks and their nested rows,
+`compaction.ts` the compaction row). `makeClaudeConnectorDefinition` takes the
+turn and budget caps a recording puts on every session, which production
+leaves unset, and `agentsSkillsRoot`, which a test moves.
 
 May import `connector-sdk`, `contracts` and `shared`; its tests also import
 `testkit`. It is the only place in the tree that knows `claude` exists, apart from the
@@ -2119,8 +2124,11 @@ read-only, and may name the session a thread's persisted `sessionRef` points
 at (`sourceIdOf`); it takes no `ExtensionScope`. Command Code carries `skills`
 and `mcpServers` but no `plugins`, since it has none, and no `commands`, since
 nothing lists which of its slash commands a headless run executes. Claude Code
-carries `commands`, read from the CLI's initialize handshake, and `plugins`,
-read from the CLI's own config files (`connector-claude/src/plugins.ts`).
+carries `commands`, read from the CLI's initialize handshake, `plugins`, read
+from the CLI's own config files (`connector-claude/src/plugins.ts`), and
+`skills` (`connector-claude/src/skills.ts`: `<config>/skills` and
+`<workspaceRoot>/.claude/skills`, plus `available`/`link` from
+`~/.agents/skills`, which the CLI does not load).
 Codex carries `plugins`, from `codex plugin list --json`, and no `commands`:
 its app-server runs no slash command of its own from a turn's text. Claude
 Code and Codex carry `sessions`, read from the transcripts each CLI writes
