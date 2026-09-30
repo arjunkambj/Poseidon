@@ -46,6 +46,10 @@
  *     receipts), so each recorded one is mapped to the live one when the
  *     message arrives, and every later harness frame carries the live uuid
  *     wherever the recorded one stood;
+ *   - so is the session id the SDK hands the CLI (`--session-id`, or
+ *     `--resume` for one it carries on), which the CLI names its session by
+ *     from its `system/init` on: when the live argv names another id than the
+ *     recorded one, every harness frame carries the live one instead;
  *   - after the last frame it waits for stdin to close, then leaves the way the
  *     recorded run left, by exit code or by signal.
  *
@@ -237,8 +241,22 @@ const early = new Map();
 const earlyUsers = [];
 /** The SDK's own request ids: recorded → live. */
 const liveIds = new Map();
-/** The user messages' uuids: recorded → live. */
+/** The user messages' uuids, and the session's id: recorded → live. */
 const liveUuids = new Map();
+
+/** The session id an argv hands the CLI: `--session-id` or `--resume`, either spelling. */
+const sessionIdOf = (args) => {
+  for (const [at, arg] of args.entries()) {
+    const flag = /^--(?:session-id|resume)(?:=(.+))?$/.exec(arg);
+    if (flag !== null) return flag[1] ?? args[at + 1];
+  }
+  return undefined;
+};
+const recordedSession = sessionIdOf(invocation.argv);
+const liveSession = sessionIdOf(argv);
+if (recordedSession !== undefined && liveSession !== undefined && recordedSession !== liveSession) {
+  liveUuids.set(recordedSession, liveSession);
+}
 
 const isObject = (value) => value !== null && typeof value === "object";
 const answerId = (data) =>

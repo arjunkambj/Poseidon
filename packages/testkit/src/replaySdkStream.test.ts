@@ -32,6 +32,9 @@ const typed =
 
 type Run = ReturnType<typeof converse>;
 
+/** The session id the recording of `named` was handed. */
+const RECORDED_SESSION = "0f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0";
+
 const initialize = (requestId: string): unknown => ({
   type: "control_request",
   request_id: requestId,
@@ -188,6 +191,33 @@ beforeAll(async () => {
     fixturesRoot: FIXTURES,
   });
 
+  // A session run handed its id, which a note names back.
+  const namedRaw = NodePath.join(ROOT, "raw-named");
+  const named = converse(
+    makeTeeLauncher({
+      realBinary: NodePath.join(ROOT, "bin", "counterpart.mjs"),
+      rawDir: namedRaw,
+    }),
+    [...STREAM_ARGS, `--session-id=${RECORDED_SESSION}`],
+    { cwd: repo },
+  );
+  await named.awaitLine(typed("ready"));
+  named.send({ type: "note", session_id: RECORDED_SESSION });
+  await named.awaitLine(typed("echo"));
+  named.child.stdin.end();
+  expect((await named.exited).code).toBe(0);
+  finalizeSdkStreamRecording({
+    kind: "sample",
+    scenario: "named",
+    rawDir: namedRaw,
+    description: "an ordinary node program handed a session id",
+    cliVersion: "9.9.9",
+    sdkVersion: "0.0.0",
+    model: "none",
+    prompts: [],
+    fixturesRoot: FIXTURES,
+  });
+
   // Two user messages, each asked about and answered before the next is sent.
   const oneByOneRaw = NodePath.join(ROOT, "raw-one-by-one");
   const oneByOne = converse(
@@ -289,6 +319,23 @@ describe("sdkStreamReplayer", () => {
     });
     run.child.stdin.end();
     expect((await run.exited).code).toBe(0);
+  });
+
+  it("rewrites the recorded session id to the one the live argv hands it", async () => {
+    const live = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
+    for (const flag of [[`--session-id=${live}`], ["--resume", live]]) {
+      const binaryPath = replayer.config("named", {
+        tmpDir: NodePath.join(ROOT, `replay-${(configs += 1)}`),
+      }).binaryPath;
+      const run = converse(binaryPath, [...STREAM_ARGS, ...flag], { cwd: REPLAY_REPO });
+      await run.awaitLine(typed("ready"));
+      run.send({ type: "note", session_id: live });
+      expect(await run.awaitLine(typed("echo"))).toMatchObject({
+        message: { session_id: live },
+      });
+      run.child.stdin.end();
+      expect((await run.exited).code).toBe(0);
+    }
   });
 
   it("takes a user message that crossed an open request's answer, in its recorded place", async () => {
