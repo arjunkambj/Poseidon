@@ -61,6 +61,7 @@ import { UnrunnableConnectors } from "./connectorRouting";
 import {
   DEFAULT_MODEL_MIGRATION,
   defaultModelVerdict,
+  type DefaultModelAnswer,
   rankedAheadOfLast,
   upgradeConnectors,
 } from "./connectorUpgrade";
@@ -394,28 +395,44 @@ export class ConnectorManager extends Context.Service<
             let verdict: ReturnType<typeof defaultModelVerdict> = "keep";
             if (model !== null && ahead.length > 0) {
               const probed = yield* Ref.get(probes);
-              const answers: Array<ReadonlyArray<string>> = [];
-              for (const conn of settings.connectors) {
-                const probe = probed.get(conn.connectorInstanceId);
-                if (
-                  conn.enabled &&
-                  ahead.includes(conn.kind) &&
-                  probe !== undefined &&
-                  probeCanRun(probe)
-                ) {
-                  const listed = yield* models(conn.connectorInstanceId);
-                  answers.push(listed.map((option) => option.id));
-                }
-              }
-              verdict = defaultModelVerdict(model, answers);
+              // Every enabled instance with a probe is asked, whatever the probe
+              // found: a signed-out harness still lists its models, and one
+              // whose probe timed out may answer from its open instance.
+              const answersOf = (ranked: boolean) =>
+                Effect.forEach(
+                  settings.connectors.filter(
+                    (conn) =>
+                      conn.enabled &&
+                      ahead.includes(conn.kind) === ranked &&
+                      probed.has(conn.connectorInstanceId),
+                  ),
+                  (conn) =>
+                    Effect.map(models(conn.connectorInstanceId), (listed): DefaultModelAnswer => ({
+                      models: listed.map((option) => option.id),
+                      canRun: probeCanRun(probed.get(conn.connectorInstanceId)!),
+                    })),
+                );
+              const aheadAnswers = yield* answersOf(true);
+              // The last harness is asked only when it can decide something.
+              const lastAnswers = aheadAnswers.some((answer) => answer.models.includes(model))
+                ? []
+                : yield* answersOf(false);
+              verdict = defaultModelVerdict(model, aheadAnswers, lastAnswers);
             }
             if (verdict === "undecided") {
               return;
             }
-            yield* store.update({
-              ...(verdict === "clear" ? { defaults: { ...settings.defaults, model: null } } : {}),
-              connectorMigrations: [...settings.connectorMigrations, DEFAULT_MODEL_MIGRATION],
-            });
+            // Read again: the lists above may have taken a while, and clients
+            // are connected by now. Only the model the verdict was reached for
+            // is cleared, and every other default is the one just read.
+            const fresh = yield* store.get;
+            if (!fresh.connectorMigrations.includes(DEFAULT_MODEL_MIGRATION)) {
+              const clear = verdict === "clear" && fresh.defaults.model === model;
+              yield* store.update({
+                ...(clear ? { defaults: { ...fresh.defaults, model: null } } : {}),
+                connectorMigrations: [...fresh.connectorMigrations, DEFAULT_MODEL_MIGRATION],
+              });
+            }
             yield* Ref.set(defaultModelSettled, true);
           }),
         )

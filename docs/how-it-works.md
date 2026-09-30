@@ -4462,8 +4462,10 @@ so an instance the user removes stays removed. The first time, the connectors
 are also sorted into the rank. A saved default model outranks routing, so one
 that only Command Code runs would keep new threads on it: once an enabled
 Claude Code or Codex instance that can run has answered its model list, a
-default none of them lists is cleared. Both one-time steps are recorded in
-`connectorMigrations`.
+default none of them lists is cleared, unless Command Code answered and does
+not list it either. Both one-time steps are recorded in `connectorMigrations`.
+A settings row the store could not decode is left alone: the upgrade waits for
+a boot after a save of the user's has archived and replaced it.
 
 ### The CLI's own config files
 

@@ -117,24 +117,38 @@ export const upgradeConnectors = (
 export const rankedAheadOfLast = (shipped: ReadonlyArray<Shipped>): ReadonlyArray<string> =>
   shipped.slice(0, -1).map((definition) => definition.kind);
 
+/** One enabled instance's model list, and whether its probe says it can run. */
+export interface DefaultModelAnswer {
+  readonly models: ReadonlyArray<string>;
+  readonly canRun: boolean;
+}
+
 /**
  * What to do with a saved default model, from the model lists of the enabled
- * instances of `rankedAheadOfLast` whose probes say they can run:
+ * instances ranked ahead of the last harness (`ahead`) and of the last one's
+ * (`last`):
  *
- * - `keep` when one of them lists it: the user chose a harness that ranks
- *   ahead anyway.
- * - `clear` when none lists it and at least one of them answered: new
- *   threads then start where routing sends them.
- * - `undecided` while none of them has answered — not installed, signed out
- *   or still probing — so a later boot asks again rather than clearing a
- *   default whose replacement cannot run yet.
+ * - `keep` when one ahead lists it: the user chose a harness that ranks ahead
+ *   anyway. Also when the last harness answered and does not list it — the
+ *   model is not the one this check exists to take new threads off, and an
+ *   ahead harness that was slow to answer may well run it.
+ * - `clear` otherwise, once one ahead that can run has answered: new threads
+ *   then start where routing sends them.
+ * - `undecided` while none that can run has — not installed, signed out or
+ *   still probing — so a later boot asks again rather than clearing a default
+ *   whose replacement cannot run yet.
  */
 export const defaultModelVerdict = (
   model: string,
-  answers: ReadonlyArray<ReadonlyArray<string>>,
+  ahead: ReadonlyArray<DefaultModelAnswer>,
+  last: ReadonlyArray<DefaultModelAnswer>,
 ): "keep" | "clear" | "undecided" => {
-  if (answers.some((models) => models.includes(model))) {
+  if (ahead.some((answer) => answer.models.includes(model))) {
     return "keep";
   }
-  return answers.some((models) => models.length > 0) ? "clear" : "undecided";
+  const lastAnswered = last.some((answer) => answer.models.length > 0);
+  if (lastAnswered && !last.some((answer) => answer.models.includes(model))) {
+    return "keep";
+  }
+  return ahead.some((answer) => answer.canRun && answer.models.length > 0) ? "clear" : "undecided";
 };

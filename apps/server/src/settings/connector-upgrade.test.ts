@@ -32,6 +32,7 @@ import { POSEIDON_HOME_ENV } from "@poseidon/shared/paths";
 import { makeFakeConnector } from "@poseidon/testkit/fakeConnector";
 import { describe, expect, it } from "@effect/vitest";
 import * as Context from "effect/Context";
+import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -179,11 +180,38 @@ describe("upgradeConnectors", () => {
 });
 
 describe("defaultModelVerdict", () => {
+  const can = (...models: ReadonlyArray<string>) => ({ models, canRun: true });
+  const cannot = (...models: ReadonlyArray<string>) => ({ models, canRun: false });
+
   it("keeps a model a harness ahead lists, clears one none does, waits for an answer", () => {
-    expect(defaultModelVerdict(CODEX_MODEL, [[CLAUDE_MODEL], [CODEX_MODEL]])).toBe("keep");
-    expect(defaultModelVerdict(CMD_MODEL, [[CLAUDE_MODEL], []])).toBe("clear");
-    expect(defaultModelVerdict(CMD_MODEL, [[], []])).toBe("undecided");
-    expect(defaultModelVerdict(CMD_MODEL, [])).toBe("undecided");
+    expect(defaultModelVerdict(CODEX_MODEL, [can(CLAUDE_MODEL), can(CODEX_MODEL)], [])).toBe(
+      "keep",
+    );
+    expect(defaultModelVerdict(CMD_MODEL, [can(CLAUDE_MODEL), can()], [can(CMD_MODEL)])).toBe(
+      "clear",
+    );
+    // Command Code could not say either: nothing but the harnesses ahead to go by.
+    expect(defaultModelVerdict(CMD_MODEL, [can(CLAUDE_MODEL)], [])).toBe("clear");
+    expect(defaultModelVerdict(CMD_MODEL, [can(), can()], [can(CMD_MODEL)])).toBe("undecided");
+    expect(defaultModelVerdict(CMD_MODEL, [], [])).toBe("undecided");
+  });
+
+  it("keeps a model a harness that cannot run lists, and asks one that can to clear", () => {
+    // Codex signed out still lists its models, and the choice was the user's.
+    expect(defaultModelVerdict(CODEX_MODEL, [can(CLAUDE_MODEL), cannot(CODEX_MODEL)], [])).toBe(
+      "keep",
+    );
+    // Only signed-out harnesses answered: Command Code's model waits.
+    expect(defaultModelVerdict(CMD_MODEL, [cannot(CLAUDE_MODEL)], [can(CMD_MODEL)])).toBe(
+      "undecided",
+    );
+  });
+
+  it("keeps a model Command Code answered without, whoever else was slow", () => {
+    // Codex timed out and listed nothing; its model is still not Command Code's.
+    expect(defaultModelVerdict(CODEX_MODEL, [can(CLAUDE_MODEL), can()], [can(CMD_MODEL)])).toBe(
+      "keep",
+    );
   });
 });
 
@@ -435,6 +463,68 @@ describe("ConnectorManager and the harness rank", () => {
           expect(settled.connectorMigrations).toContain(DEFAULT_MODEL_MIGRATION);
         }),
       );
+    }),
+  );
+
+  it.effect("a default model of a harness that cannot run this boot is kept", () =>
+    Effect.gen(function* () {
+      const filename = databaseFile();
+      yield* ownerRow(filename, CODEX_MODEL);
+      // Codex is signed out or not found this boot, but its instance still
+      // lists the model: the user's choice is not the check's to undo.
+      const settled = yield* withBoot(filename, new Set<Kind>(["codex"]), ({ store }) =>
+        awaitSettings(store, (settings) =>
+          settings.connectorMigrations.includes(DEFAULT_MODEL_MIGRATION),
+        ),
+      );
+      expect(settled.defaults.model).toBe(CODEX_MODEL);
+    }),
+  );
+
+  it.effect("the default-model check writes over no default changed while it asked", () =>
+    Effect.gen(function* () {
+      const filename = databaseFile();
+      yield* ownerRow(filename, CMD_MODEL);
+      const asked = yield* Deferred.make<void>();
+      const answer = yield* Deferred.make<void>();
+      // Codex's probe finds no models, so the check asks its instance, which
+      // answers only once the test has changed the defaults under it.
+      const slowCodex: Tweak = (kind, definition) =>
+        kind !== "codex"
+          ? definition
+          : {
+              ...definition,
+              probe: (config) =>
+                Effect.map(definition.probe(config), (probe) => ({ ...probe, models: [] })),
+              createInstance: (input) =>
+                Effect.map(definition.createInstance(input), (instance) => ({
+                  ...instance,
+                  listModels: () =>
+                    Effect.andThen(
+                      Deferred.succeed(asked, undefined),
+                      Effect.andThen(Deferred.await(answer), instance.listModels()),
+                    ),
+                })),
+            };
+      const settled = yield* withBoot(
+        filename,
+        new Set(),
+        ({ store }) =>
+          Effect.gen(function* () {
+            yield* Deferred.await(asked);
+            const current = yield* store.get;
+            yield* store.update({
+              defaults: { ...current.defaults, model: CLAUDE_MODEL, effort: "high" },
+            });
+            yield* Deferred.succeed(answer, undefined);
+            return yield* awaitSettings(store, (settings) =>
+              settings.connectorMigrations.includes(DEFAULT_MODEL_MIGRATION),
+            );
+          }),
+        slowCodex,
+      );
+      expect(settled.defaults.model).toBe(CLAUDE_MODEL);
+      expect(settled.defaults.effort).toBe("high");
     }),
   );
 
