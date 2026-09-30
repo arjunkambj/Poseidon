@@ -69,11 +69,21 @@ describe("blankLatestThread", () => {
         connectorInstanceId: there,
       },
     });
-    expect(blankLatestThread([bound], A, here)).toBeUndefined();
-    expect(blankLatestThread([bound], A, there)?.threadId).toBe("t1");
+    expect(blankLatestThread([bound], A, { connectorInstanceId: here })).toBeUndefined();
+    expect(blankLatestThread([bound], A, { connectorInstanceId: there })?.threadId).toBe("t1");
     // No preference yet, or a thread bound to none: handed back as before.
     expect(blankLatestThread([bound], A)?.threadId).toBe("t1");
-    expect(blankLatestThread([thread("t2", "2026-09-19T11:00:00Z")], A, here)?.threadId).toBe("t2");
+    expect(
+      blankLatestThread([thread("t2", "2026-09-19T11:00:00Z")], A, { connectorInstanceId: here })
+        ?.threadId,
+    ).toBe("t2");
+  });
+
+  it("returns nothing when the blank thread is on another model than a new one would be", () => {
+    const blank = thread("t1", "2026-09-19T10:00:00Z");
+    // The default changed within one harness since the blank thread was made.
+    expect(blankLatestThread([blank], A, { model: "other" })).toBeUndefined();
+    expect(blankLatestThread([blank], A, { model: "m" })?.threadId).toBe("t1");
   });
 });
 

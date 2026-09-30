@@ -35,7 +35,6 @@ import type { ThreadWorktree } from "@poseidon/contracts/git";
 import {
   makeCommandId,
   makeThreadId,
-  type ConnectorInstanceId,
   type ProjectId,
   type ThreadId,
 } from "@poseidon/contracts/ids";
@@ -50,13 +49,14 @@ import { useLastProject } from "@/state/ui";
 /**
  * The project's newest thread when nothing has been said in it yet. The read
  * model only sets `preview` from a user or assistant message, so its absence
- * on an idle thread means the thread is empty. `instance` is where a new
- * thread would start; a blank thread bound to another one is not handed back.
+ * on an idle thread means the thread is empty. `seed` is where a new thread
+ * would start and on what model; a blank thread bound to another instance, or
+ * on another model, is not handed back.
  */
 export const blankLatestThread = (
   threads: ReadonlyArray<ThreadSummary>,
   projectId: ProjectId,
-  instance?: ConnectorInstanceId,
+  seed?: Pick<ThreadSettingsPatch, "model" | "connectorInstanceId">,
 ): ThreadSummary | undefined => {
   let latest: ThreadSummary | undefined;
   for (const thread of threads) {
@@ -70,10 +70,12 @@ export const blankLatestThread = (
     }
   }
   const bound = latest?.settings.connectorInstanceId;
+  const instance = seed?.connectorInstanceId;
   return latest !== undefined &&
     latest.status === "idle" &&
     latest.preview === undefined &&
-    (bound === undefined || instance === undefined || bound === instance)
+    (bound === undefined || instance === undefined || bound === instance) &&
+    (seed?.model === undefined || latest.settings.model === seed.model)
     ? latest
     : undefined;
 };
@@ -109,7 +111,7 @@ export const useCreateThread = () => {
       const settings = withCreateSeed(options.settings, seed);
       const blank =
         options.threadId === undefined
-          ? blankLatestThread(threads, projectId, settings?.connectorInstanceId)
+          ? blankLatestThread(threads, projectId, settings)
           : undefined;
       if (blank !== undefined) {
         rememberProject(projectId);
