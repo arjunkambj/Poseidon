@@ -10,18 +10,16 @@
  * avatar or beside a model name. Map keys are written unquoted on purpose:
  * a quoted connector kind is refused anywhere in the renderer.
  *
- * Colour variants (`*Color`) are for a logo that stands alone, such as an
- * avatar or a menu's leading icon; they are exempt from the bold-icon gate.
- * The monochrome logos are drawn with `variant="bold"` like every other icon.
+ * A logo is drawn in its brand colours (`*Color`) wherever Honeyicons ships
+ * them; those are exempt from the bold-icon gate. A logo with no colour
+ * variant is monochrome and drawn with `variant="bold"` like every other icon.
  */
 
 import type { DetectedEditor, EditorId } from "@poseidon/contracts/editors";
 import {
   Anthropic,
-  ClaudeCode,
   ClaudeCodeColor,
   Code,
-  Codex,
   CodexColor,
   Cursor,
   Deepseek,
@@ -47,10 +45,15 @@ const lookup = <T>(table: Readonly<Record<string, T>>, key: string | undefined):
 
 // ── Connectors ─────────────────────────────────────────────────
 
-/** A connector's `iconKey` → the monochrome mark for a heading or a card. */
+/** A connector's `iconKey` → its colour logo, for an avatar or a heading. */
+const HARNESS_LOGOS: Readonly<Record<string, HoneyIcon>> = {
+  "claude-code": ClaudeCodeColor,
+  codex: CodexColor,
+};
+
+/** A connector's `iconKey` → the icon for a heading or a card. */
 const CONNECTOR_ICONS: Readonly<Record<string, HoneyIcon>> = {
-  "claude-code": ClaudeCode,
-  codex: Codex,
+  ...HARNESS_LOGOS,
   terminal: Terminal,
   server: Server,
 };
@@ -62,12 +65,6 @@ const CONNECTOR_ICONS: Readonly<Record<string, HoneyIcon>> = {
  */
 export const connectorIconFor = (iconKey: string | undefined): HoneyIcon =>
   lookup(CONNECTOR_ICONS, iconKey) ?? Server;
-
-/** A connector's `iconKey` → its colour logo, for an avatar. */
-const HARNESS_LOGOS: Readonly<Record<string, HoneyIcon>> = {
-  "claude-code": ClaudeCodeColor,
-  codex: CodexColor,
-};
 
 /**
  * The colour logo an avatar draws for a connector, or `undefined` when the

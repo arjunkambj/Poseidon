@@ -1,9 +1,7 @@
 import {
   Anthropic,
-  ClaudeCode,
   ClaudeCodeColor,
   Code,
-  Codex,
   CodexColor,
   Cursor,
   Deepseek,
@@ -35,9 +33,9 @@ import {
 } from "./brand-icons";
 
 describe("connectorIconFor", () => {
-  it("draws a harness's monochrome logo when its key names one", () => {
-    expect(connectorIconFor("claude-code")).toBe(ClaudeCode);
-    expect(connectorIconFor("codex")).toBe(Codex);
+  it("draws a harness's colour logo when its key names one", () => {
+    expect(connectorIconFor("claude-code")).toBe(ClaudeCodeColor);
+    expect(connectorIconFor("codex")).toBe(CodexColor);
   });
 
   it("maps the generic keys a connector may name", () => {

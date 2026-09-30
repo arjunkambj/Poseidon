@@ -110,7 +110,8 @@ describe("HarnessPickerView", () => {
     expect(rail.map((entry) => entry.iconKey)).toEqual([LOGO_ICON_KEY, LOGO_ICON_KEY]);
     const html = render(rail, initialPickerState(rail, current));
     expect(logoPath).not.toBe("");
-    expect(html.split(logoPath)).toHaveLength(3);
+    // Two rail avatars and the two flyout headings.
+    expect(html.split(logoPath)).toHaveLength(5);
     expect(html).not.toContain(">Co<");
     // The tooltip and label still name the harness.
     expect(tagsWith(html, 'id="p-harness-0"')[0]).toContain('aria-label="Comet Cloud"');
@@ -126,7 +127,7 @@ describe("HarnessPickerView", () => {
     }
   });
 
-  it("heads each flyout with its harness's monochrome mark before the name", () => {
+  it("heads each flyout with its harness's colour logo before the name", () => {
     const heading = (html: string) =>
       (html.split('aria-label="Comet Cloud models"')[1] ?? "").split('id="p-model-')[0] ?? "";
     const markOf = (key: string | undefined) => {
@@ -138,8 +139,7 @@ describe("HarnessPickerView", () => {
     expect(withLogo).toContain('data-slot="flyout-mark"');
     expect(withLogo.indexOf(markOf(LOGO_ICON_KEY))).toBeGreaterThan(-1);
     expect(withLogo.indexOf(markOf(LOGO_ICON_KEY))).toBeLessThan(withLogo.indexOf(">Comet Cloud<"));
-    // Monochrome: the colour logo is kept for avatars.
-    expect(withLogo).not.toContain(logoPath);
+    expect(withLogo).toContain(logoPath);
     // No key (descriptors loading): the generic glyph, never a blank.
     const plain = heading(render(railFor(), initialPickerState(railFor(), current)));
     expect(plain).toContain(markOf(undefined));
@@ -184,8 +184,8 @@ describe("HarnessPickerView", () => {
   it("leads each search result with its harness's logo when it has one", () => {
     const rail = railFor(false, new Map([["harness", LOGO_ICON_KEY]]));
     const html = render(rail, { ...initialPickerState(rail, current), query: "swift" });
-    // Two rail avatars and two result rows.
-    expect(html.split(logoPath)).toHaveLength(5);
+    // Two rail avatars, two flyout headings and two result rows.
+    expect(html.split(logoPath)).toHaveLength(7);
   });
 
   it("draws a checkbox on every row in compare mode, flyouts and search results alike", () => {
