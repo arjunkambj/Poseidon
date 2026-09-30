@@ -4547,6 +4547,17 @@ reports no servers for it and writes fail with a `conflict` naming the file,
 because a rewrite would be built from an empty base and would delete every
 server the user hand-authored.
 
+Claude Code's and Codex's MCP servers are in files their CLIs own and rewrite,
+so their extensions write through the CLI instead: `claude mcp add-json` and
+`remove` (`packages/connector-claude/src/mcpServers.ts`), `codex mcp add` and
+`remove`. Claude Code's reads `mcpServers` from `.claude.json` (user scope) and
+`<workspaceRoot>/.mcp.json` (project scope) without starting the CLI, whose
+own listing health-checks every server; Codex's reads `codex mcp list --json`.
+Neither CLI can carry a marker on an entry, so the names Poseidon added are
+kept in a ledger beside each config, `poseidon-mcp.json`, and add/remove
+refuse any other name the same way. The MCP tab lists one section per instance
+in the connectors page's order, so Claude Code's comes first.
+
 **Skills** are discovered, not written: each harness's skills extension, asked
 through `connectors.skills.list`, walks the roots that harness loads, reads the
 `name` and `description` out of each `SKILL.md` frontmatter, and lets the copy

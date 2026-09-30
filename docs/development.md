@@ -897,6 +897,7 @@ POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run test
 POSEIDON_HOME=/tmp/poseidon-h1 POSEIDON_RECORD_CLAUDE=1 \
   pnpm -F @poseidon/connector-claude exec vitest run test/recordSession.test.ts -t "generate-text: one"
 POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/conformance.test.ts
+POSEIDON_RECORD_CLAUDE=1 pnpm -F @poseidon/connector-claude exec vitest run src/mcpServersRecorded.test.ts
 ```
 
 Each points the connector's `binaryPath` at the testkit's stdio tee, drives the
@@ -910,6 +911,13 @@ the CLI refused the turn without calling the API. The probe recorder writes
 and the session recorder's signed-out scenarios skip themselves on a signed-in
 CLI, since made again they would spend and show answers where they pin
 refusals; `-t` picks the one scenario wanted.
+`src/mcpServersRecorded.test.ts` records the MCP servers extension itself —
+every `claude mcp add-json` and `remove` it runs — on a scratch
+`CLAUDE_CONFIG_DIR`, `HOME` and workspace under `/tmp/poseidon-claude-mcp`,
+each file seeded with one hand-written server, so the operator's own config is
+never read or written and no request is made. Since the extension reads the
+files rather than asking the CLI, the recorder also keeps what the CLI left in
+them after each launch (`config-files.json`), and the replay writes that back.
 
 Before a Claude recording is committed, check what the scrubber left: grep
 every new or changed fixture for the operator's email and account names, the

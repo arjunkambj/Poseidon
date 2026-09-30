@@ -43,42 +43,44 @@ The connector is `packages/connector-claude`. It implements the
 `apps/server/src/boot.ts` registers it first, so a thread that picks no
 instance runs on Claude Code whenever its probe says it can run.
 
-| module                    | what it owns                                                              |
-| ------------------------- | ------------------------------------------------------------------------- |
-| `definition.ts`           | the `ConnectorDefinition`: probe, instance, start and resume, models      |
-| `configSchema.ts`         | `binaryPath`, `configDir`, `defaultModel`, and the settings form          |
-| `binary.ts`               | which executable `claude` means, and how to spell a command for the user  |
-| `env.ts`                  | the default-deny child environment                                        |
-| `probe.ts`                | `--version`, `auth status --json`, the zero-turn handshake, version floor |
-| `models.ts`               | the CLI's model rows and their effort ladders                             |
-| `commands.ts`             | the CLI's own slash commands, for the composer's `/` menu                 |
-| `capabilities.ts`         | what a Claude Code session can do, and why                                |
-| `spawn.ts`                | the SDK's `spawnClaudeCodeProcess`: a process group, and proof it is gone |
-| `queryOptions.ts`         | the SDK options a session starts with; runtime mode → permission mode     |
-| `flagSettings.ts`         | effort and ultracode switched mid-session in one `applyFlagSettings` call |
-| `generateText.ts`         | one piece of text outside any session: a one-shot, tool-less `query()`    |
-| `inputQueue.ts`           | the streaming-input prompt the session writes user messages to            |
-| `userMessage.ts`          | one composer turn as the user message the CLI reads                       |
-| `references.ts`           | skill and plugin references as prompt lines                               |
-| `pluginOptions.ts`        | Poseidon's enabled plugins as SDK `plugins` and `mcpServers` entries      |
-| `plugins.ts`              | the `plugins` extension: Claude Code's own installed plugins, read-only   |
-| `skills.ts`               | the `skills` extension: the user's and project's skills, and linking      |
-| `sessionFiles.ts`         | the `sessions` extension: the CLI's own transcripts, read for an import   |
-| `attachments.ts`          | images as content blocks, other files by path                             |
-| `session.ts`              | one long-lived CLI process per thread: send, steer, interrupt, close      |
-| `sessionRef.ts`           | the persisted session reference                                           |
-| `toolGate.ts`             | the PreToolUse hook and `canUseTool`, both through the permission ladder  |
-| `approvals.ts`            | the CLI's tool names in Poseidon's approval vocabulary                    |
-| `interactions.ts`         | the question and plan cards AskUserQuestion and ExitPlanMode open         |
-| `questions.ts`            | AskUserQuestion's input and the answer it takes back                      |
-| `plans.ts`                | the plan ExitPlanMode hands over, and the CLI's plan file                 |
-| `steering.ts`             | when a steered turn is over, and its summed usage                         |
-| `translate/`              | SDK messages → `RuntimeEvent`s                                            |
-| `translate/tools.ts`      | the tool rows                                                             |
-| `translate/subagents.ts`  | tasks, and the rows nested under them                                     |
-| `translate/compaction.ts` | the compaction row                                                        |
-| `translate/notices.ts`    | the CLI's notices: warnings, and the ones left out on purpose             |
-| `translate/result.ts`     | a `result` → usage, context and the turn's completion                     |
+| module                    | what it owns                                                               |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `definition.ts`           | the `ConnectorDefinition`: probe, instance, start and resume, models       |
+| `configSchema.ts`         | `binaryPath`, `configDir`, `defaultModel`, and the settings form           |
+| `binary.ts`               | which executable `claude` means, and how to spell a command for the user   |
+| `env.ts`                  | the default-deny child environment                                         |
+| `probe.ts`                | `--version`, `auth status --json`, the zero-turn handshake, version floor  |
+| `models.ts`               | the CLI's model rows and their effort ladders                              |
+| `commands.ts`             | the CLI's own slash commands, for the composer's `/` menu                  |
+| `capabilities.ts`         | what a Claude Code session can do, and why                                 |
+| `spawn.ts`                | the SDK's `spawnClaudeCodeProcess`: a process group, and proof it is gone  |
+| `queryOptions.ts`         | the SDK options a session starts with; runtime mode → permission mode      |
+| `flagSettings.ts`         | effort and ultracode switched mid-session in one `applyFlagSettings` call  |
+| `generateText.ts`         | one piece of text outside any session: a one-shot, tool-less `query()`     |
+| `inputQueue.ts`           | the streaming-input prompt the session writes user messages to             |
+| `userMessage.ts`          | one composer turn as the user message the CLI reads                        |
+| `references.ts`           | skill and plugin references as prompt lines                                |
+| `pluginOptions.ts`        | Poseidon's enabled plugins as SDK `plugins` and `mcpServers` entries       |
+| `plugins.ts`              | the `plugins` extension: Claude Code's own installed plugins, read-only    |
+| `skills.ts`               | the `skills` extension: the user's and project's skills, and linking       |
+| `mcpServers.ts`           | the `mcpServers` extension: user and project servers, through `claude mcp` |
+| `cli.ts`                  | one short CLI command for an extension, in the default-deny environment    |
+| `sessionFiles.ts`         | the `sessions` extension: the CLI's own transcripts, read for an import    |
+| `attachments.ts`          | images as content blocks, other files by path                              |
+| `session.ts`              | one long-lived CLI process per thread: send, steer, interrupt, close       |
+| `sessionRef.ts`           | the persisted session reference                                            |
+| `toolGate.ts`             | the PreToolUse hook and `canUseTool`, both through the permission ladder   |
+| `approvals.ts`            | the CLI's tool names in Poseidon's approval vocabulary                     |
+| `interactions.ts`         | the question and plan cards AskUserQuestion and ExitPlanMode open          |
+| `questions.ts`            | AskUserQuestion's input and the answer it takes back                       |
+| `plans.ts`                | the plan ExitPlanMode hands over, and the CLI's plan file                  |
+| `steering.ts`             | when a steered turn is over, and its summed usage                          |
+| `translate/`              | SDK messages → `RuntimeEvent`s                                             |
+| `translate/tools.ts`      | the tool rows                                                              |
+| `translate/subagents.ts`  | tasks, and the rows nested under them                                      |
+| `translate/compaction.ts` | the compaction row                                                         |
+| `translate/notices.ts`    | the CLI's notices: warnings, and the ones left out on purpose              |
+| `translate/result.ts`     | a `result` → usage, context and the turn's completion                      |
 
 The package may import `connector-sdk`, `contracts` and `shared`; its tests
 also import `testkit`. Nothing else in the tree names `claude`, apart from the
@@ -184,9 +186,60 @@ extension also offers the skills there that the user root does not hold yet,
 by entry or by name, and links one in as a relative symlink — the shape the
 skills installer writes. The link's path is taken between real directories, so
 a `~/.claude` that is itself a symlink into a dotfiles repo still gets one that
-resolves, and a link whose target is gone is replaced. Nothing else is
-written. MCP servers are not managed here: the CLI keeps the user's in
-`~/.claude.json`, a file it rewrites itself.
+resolves, and a link whose target is gone is replaced. Nothing else is written.
+
+## Claude Code's own MCP servers
+
+The instance carries the `mcpServers` extension (`mcpServers.ts`), so the
+Customize page's MCP tab lists, adds and removes the servers a session loads,
+and Claude Code, the default harness, has the tab's first section. Poseidon's
+two scopes map onto two of the CLI's:
+
+- user: `mcpServers` in `<config>/.claude.json` — `$CLAUDE_CONFIG_DIR/.claude.json`
+  for an instance with an account of its own, else `~/.claude.json`;
+- project: `mcpServers` in `<workspaceRoot>/.mcp.json`.
+
+The CLI's third scope, `local` (a project's entry in `.claude.json`, private to
+one user), has no Poseidon scope and is not listed.
+
+`.claude.json` is the CLI's own file, rewritten by every CLI that runs, so
+Poseidon never writes it, nor `.mcp.json`. Writes go through the CLI's own
+commands, spawned with the default-deny environment and the instance's
+`CLAUDE_CONFIG_DIR` (`cli.ts`): `claude mcp add-json --scope user|project --
+<name> <json>` and `claude mcp remove --scope user|project -- <name>`, run in
+the workspace for the project scope, where the CLI finds `.mcp.json`, and in
+the system temp directory otherwise. The name follows `--`, so one that looks
+like a flag stays the server's. Reading is a read-only parse of the two files
+rather than `claude mcp list` or `get`, because both health-check what they
+list: they start every stdio server and connect to every http one, which a
+page that only shows the entries has no business doing. An entry is `stdio`
+(`command`, `args`, `env`; a bare `command` with no `type` is stdio too) or
+`http` (`url`, `headers`); `sse` is shown as http, and anything else, `ws`
+included, is not listed.
+
+Ownership is kept in a ledger beside the config, `<config>/poseidon-mcp.json`
+(`<config>` as for plugins), naming the servers Poseidon added in the user
+scope and, per workspace, in the project scope. A server the ledger names is
+`managed`; `add` refuses a name the user configured themselves in that scope
+and `remove` refuses to delete one, both with `conflict`, and a ledger that
+cannot be read counts as empty. The CLI refuses to add a name its scope already
+holds, so editing one of ours is a remove and an add; when the add fails, the
+entry as it was is added back before the failure is reported.
+
+A file that exists but does not parse lists nothing, and every write to its
+scope is refused with `conflict`: the CLI, finding its `.claude.json`
+corrupted, backs it up and starts a fresh one, which would take the user's
+other servers out of use. What the CLI cannot express is refused with
+`invalid`: a disabled server, since the CLI adds servers enabled and turns one
+off per project from `/mcp`, and the name `poseidon`, which every session gives
+Poseidon's own MCP server. That server and a plugin's servers are passed per
+session on the command line (`queryOptions.ts`), so they are in neither file
+and never listed. Every listed server is shown enabled.
+
+`fixtures/claude/mcp-servers/` is the extension run against 2.1.286 on a
+scratch config and workspace (`mcpServersRecorded.test.ts`); it records the
+CLI's `add-json` and `remove` answers, and what the CLI left in the two files
+after each, which the replay puts back.
 
 ## Session files
 
@@ -1201,6 +1254,17 @@ workflow run; `compaction`, on the signed-out recording of the command's path.
   `task_notification` beside its own result.
 - **Thinking comes back empty** under the default thinking display (every
   signed-in recording).
+- **`claude mcp add-json` never replaces a server:** a name the scope already
+  holds exits 1 with "MCP server <name> already exists in user config", and a
+  name outside letters, digits, `-` and `_` exits 1 with "Invalid name"
+  (`mcp-servers`). It checks little else: an http `url` that is not a URL is
+  written as given. Refusals go to stderr, successes to stdout, and `remove`
+  adds a "File modified:" line naming the file.
+- **A `.claude.json` that does not parse is replaced,** not refused: any
+  command, `mcp add-json` included, backs it up under `<config>/backups/`,
+  starts a fresh one without the user's servers, and exits 1.
+- **`claude mcp list` and `get` health-check** every server they show,
+  starting stdio ones and connecting to http ones, and have no JSON output.
 
 ## Still waiting
 

@@ -2125,10 +2125,12 @@ at (`sourceIdOf`); it takes no `ExtensionScope`. Command Code carries `skills`
 and `mcpServers` but no `plugins`, since it has none, and no `commands`, since
 nothing lists which of its slash commands a headless run executes. Claude Code
 carries `commands`, read from the CLI's initialize handshake, `plugins`, read
-from the CLI's own config files (`connector-claude/src/plugins.ts`), and
+from the CLI's own config files (`connector-claude/src/plugins.ts`),
 `skills` (`connector-claude/src/skills.ts`: `<config>/skills` and
 `<workspaceRoot>/.claude/skills`, plus `available`/`link` from
-`~/.agents/skills`, which the CLI does not load).
+`~/.agents/skills`, which the CLI does not load), and `mcpServers`, read from
+`.claude.json` and `.mcp.json` and written through `claude mcp add-json` and
+`remove` (`connector-claude/src/mcpServers.ts`).
 Codex carries `plugins`, from `codex plugin list --json`, and no `commands`:
 its app-server runs no slash command of its own from a turn's text. Claude
 Code and Codex carry `sessions`, read from the transcripts each CLI writes
