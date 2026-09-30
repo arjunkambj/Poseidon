@@ -40,8 +40,8 @@ for the commands that run and record it.
 
 The connector is `packages/connector-claude`. It implements the
 `ConnectorDefinition` interface of `packages/connector-sdk`, and
-`apps/server/src/boot.ts` registers it after Command Code, so a fresh install
-routes new threads to Command Code until the user picks this instance.
+`apps/server/src/boot.ts` registers it first, so a thread that picks no
+instance runs on Claude Code whenever its probe says it can run.
 
 | module                    | what it owns                                                              |
 | ------------------------- | ------------------------------------------------------------------------- |

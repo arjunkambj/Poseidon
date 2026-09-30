@@ -8,11 +8,12 @@ terminal, settings.
 Nothing above the connector boundary knows which CLI is running. A _connector_
 owns a harness — how to find its binary, how to spawn it, how to translate what
 it emits into the `RuntimeEvent` vocabulary — and everything else is written
-against that vocabulary. Three connectors ship today:
-`packages/connector-cmd`, for the Command Code CLI (`cmd`),
-`packages/connector-claude`, for the Claude Code CLI (`claude`) driven through
-the Claude Agent SDK, and `packages/connector-codex`, for the Codex CLI
-(`codex`) over its app-server.
+against that vocabulary. Three connectors ship today, in the order new threads
+prefer them: `packages/connector-claude`, for the Claude Code CLI (`claude`)
+driven through the Claude Agent SDK, `packages/connector-codex`, for the Codex
+CLI (`codex`) over its app-server, and `packages/connector-cmd`, for the
+Command Code CLI (`cmd`). Claude Code is the default, and Codex the fallback
+when it is not installed or not signed in.
 
 This document describes the pieces and how they connect, written against the
 code as it stands. Its companions:
@@ -946,11 +947,15 @@ reads the answer leniently (a code fence, a sentence before the object, plain
 text). Each call is capped at 120 s, and interrupting it interrupts the
 connector's call.
 
-`boot.ts` registers Command Code first, Claude Code second and Codex third.
-The order is
-routing order on a fresh install: every definition is seeded as an enabled
-instance in that order, and a thread that names no instance runs on the first
-enabled one.
+`boot.ts` registers Claude Code first, Codex second and Command Code third.
+The order is the harness rank: every definition is seeded as an enabled
+instance in that order on a fresh install, and a thread that names no instance
+runs on the first enabled one whose probe says it can run (`probeCanRun`), or
+on the first enabled one when none can. An existing install is brought up to
+the rank once (`settings/connectorUpgrade.ts`): it gets one instance of each
+kind it was never offered, its connectors are sorted into the rank, and a
+saved default model that only Command Code runs is cleared once Claude Code or
+Codex has answered its model list.
 
 ### packages/contracts
 

@@ -1,8 +1,11 @@
 # Command Code connector reference
 
-Poseidon drives one agentic harness: the Command Code CLI, spelled `cmd`. This
-document describes how the connector finds that binary, what it spawns, what
-comes back, and what it writes into the user's machine while a session is open.
+Poseidon drives three agentic harnesses: Claude Code, Codex and the Command
+Code CLI, spelled `cmd`. Command Code is ranked last, after Claude Code and
+Codex, so a thread runs on it when the user picks it or when neither of the
+others can run. This document describes how its connector finds that binary,
+what it spawns, what comes back, and what it writes into the user's machine
+while a session is open.
 
 Everything here is read off the code as it stands and off the real recordings
 under `packages/testkit/fixtures/cmd/`, which are captures of the actual CLI —

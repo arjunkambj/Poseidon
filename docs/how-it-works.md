@@ -1,15 +1,17 @@
 # How it works
 
-Poseidon is an Electron desktop app that drives the Command Code CLI — an
-agentic coding harness that normally runs in a terminal — from a graphical
-interface. This document traces what actually happens at runtime, in order,
-with the real names of the processes, commands, events, RPC methods and files
-involved, and a path into the source for each step.
-[architecture.md](architecture.md) describes the pieces themselves,
-[philosophy.md](philosophy.md) the rules they keep,
+Poseidon is an Electron desktop app that drives Claude Code, Codex and the
+Command Code CLI — agentic coding harnesses that normally run in a terminal —
+from a graphical interface. Claude Code is the default, Codex the fallback when
+it is not installed or not signed in, and Command Code comes last. This
+document traces what actually happens at runtime, in order, with the real names
+of the processes, commands, events, RPC methods and files involved, and a path
+into the source for each step. [architecture.md](architecture.md) describes
+the pieces themselves, [philosophy.md](philosophy.md) the rules they keep,
 [development.md](development.md) how to run them, and
-[command-code-connector.md](command-code-connector.md) and
-[claude-code-connector.md](claude-code-connector.md) what the CLI on the far
+[claude-code-connector.md](claude-code-connector.md),
+[codex-connector.md](codex-connector.md) and
+[command-code-connector.md](command-code-connector.md) what the CLI on the far
 end does.
 
 Three processes matter.
@@ -43,7 +45,7 @@ The renderer never touches the filesystem, git or a child process: everything
 it knows arrives over one authenticated WebSocket. The server is the single
 writer of durable state, and it is event-sourced — a client dispatches a
 `Command` and reads the events that come back. The connector is the only part
-that knows what a Command Code CLI is; everything above it is written against
+that knows what a harness's CLI is; everything above it is written against
 the connector-neutral `RuntimeEvent` vocabulary in
 `packages/contracts/src/runtime.ts`.
 
@@ -95,10 +97,10 @@ Stdout and stderr are the server's log; **fd 3 carries the handshake**.
 - the orchestration engine (`orchestration/Engine.ts`), the session manager
   and the reactors (`ProviderCommandReactor`, `CheckpointReactor`,
   `AttachmentReactor`, `makeSessionSupervisor`);
-- the connector registry, seeded with the Command Code, Claude Code and Codex
-  definitions in that order (`packages/connector-cmd/src/definition.ts`,
-  `packages/connector-claude/src/definition.ts`,
-  `packages/connector-codex/src/definition.ts`), and the `ConnectorManager`
+- the connector registry, seeded with the Claude Code, Codex and Command Code
+  definitions in that order (`packages/connector-claude/src/definition.ts`,
+  `packages/connector-codex/src/definition.ts`,
+  `packages/connector-cmd/src/definition.ts`), and the `ConnectorManager`
   that reconciles it against the settings document;
 - permissions, git/files, attachments, the browser service and the MCP
   gateway;
@@ -277,7 +279,7 @@ else opens with it, and the dock stays closed.
 Its steps, each with Back and Next:
 
 1. **Harnesses.** One row per enabled connector instance, in the order
-   `connectors.list` gives them — the registry's, Command Code first. A row
+   `connectors.list` gives them — the registry's, Claude Code first. A row
    shows the harness's logo (or its monogram), a spinner while the probe
    below runs or a Re-check is pending, then its status badge, whether it is
    installed, its version and whether it is signed in (`harnessFacts`). A
@@ -306,9 +308,10 @@ checked in Settings → Connectors.
 
 `ConnectorManager` (`apps/server/src/settings/ConnectorManager.ts`) seeds one
 enabled instance per registered definition on a fresh install, in the
-registry's order, then probes each. Command Code is registered first, so a
-thread that names no instance still routes to it. For Command Code,
-`packages/connector-cmd/src/probe.ts` does the work:
+registry's order, then probes each. Claude Code is registered first and Codex
+second, so a thread that names no instance runs on Claude Code, or on Codex
+when Claude Code's probe says it is not installed or not signed in (below).
+For Command Code, `packages/connector-cmd/src/probe.ts` does the work:
 
 1. resolve the binary (`packages/connector-cmd/src/binary.ts`): the configured
    `binaryPath`, then `cmd` on `PATH` plus the global bin directories a GUI
@@ -4440,9 +4443,27 @@ before it is reported as an error.
 
 Routing follows the settings document's order, not the order instances happened
 to be opened in — the same reading a new thread's default model is seeded from,
-so the two can never name different instances. That order is the fallback: a
+so the two can never name different instances. An enabled instance whose latest
+probe says its harness cannot run (`probeCanRun`: not installed, or signed out)
+goes behind every one that can; the manager publishes those instances to
+`UnrunnableConnectors`, which selection, the seed and the writer's routed
+fallback all read, and the renderer applies the same rule to the probes
+`connectors.list` carries. A probe still running counts as able, and when
+nothing can run the first enabled instance still takes the turn, so the health
+banner above the composer says what to fix. That order is the fallback: a
 thread that chose its instance runs on it, and is seeded from its default or
 first model, while it is open.
+
+The registry's order is the harness rank, and an existing install is brought
+up to it once per boot (`apps/server/src/settings/connectorUpgrade.ts`). A
+kind the document's `offeredConnectorKinds` does not list gets one enabled
+instance, unless one of that kind is there already, and is listed from then on,
+so an instance the user removes stays removed. The first time, the connectors
+are also sorted into the rank. A saved default model outranks routing, so one
+that only Command Code runs would keep new threads on it: once an enabled
+Claude Code or Codex instance that can run has answered its model list, a
+default none of them lists is cleared. Both one-time steps are recorded in
+`connectorMigrations`.
 
 ### The CLI's own config files
 

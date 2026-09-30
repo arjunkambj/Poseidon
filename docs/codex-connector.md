@@ -26,9 +26,9 @@ and run it live.
 
 The connector is `packages/connector-codex`. It implements the
 `ConnectorDefinition` interface of `packages/connector-sdk`, and
-`apps/server/src/boot.ts` registers it third, after Command Code and Claude
-Code, so a fresh install routes new threads to Command Code until the user
-picks this instance. Adding it changed no existing install's routing.
+`apps/server/src/boot.ts` registers it second, after Claude Code and before
+Command Code, so a thread that picks no instance runs on Codex when Claude
+Code is not installed or not signed in.
 
 | module                     | what it owns                                                                     |
 | -------------------------- | -------------------------------------------------------------------------------- |

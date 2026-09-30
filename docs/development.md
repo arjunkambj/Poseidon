@@ -10,18 +10,24 @@ repository root. For what the pieces are, read
 
 ## Prerequisites
 
-| Thing            | Version                     | Where it is written                    |
-| ---------------- | --------------------------- | -------------------------------------- |
-| Node             | `>=22.16`                   | `package.json` `engines.node`          |
-| pnpm             | `11.21.0`                   | `package.json` `packageManager`        |
-| Command Code CLI | whatever you have installed | `packages/connector-cmd/src/binary.ts` |
-| git              | any                         | checkpoints shell out to it            |
+| Thing            | Version                     | Where it is written                       |
+| ---------------- | --------------------------- | ----------------------------------------- |
+| Node             | `>=22.16`                   | `package.json` `engines.node`             |
+| pnpm             | `11.21.0`                   | `package.json` `packageManager`           |
+| Claude Code CLI  | whatever you have installed | `packages/connector-claude/src/binary.ts` |
+| Codex CLI        | whatever you have installed | `packages/connector-codex/src/binary.ts`  |
+| Command Code CLI | whatever you have installed | `packages/connector-cmd/src/binary.ts`    |
+| git              | any                         | checkpoints shell out to it               |
 
 pnpm comes from the `packageManager` field, so `corepack enable` is enough.
 
-The app drives the Command Code CLI, so a working `cmd` is a prerequisite for
-anything past the first screen. `resolveBinary` in
-`packages/connector-cmd/src/binary.ts` looks for it in this order:
+The app drives Claude Code, Codex and the Command Code CLI, so at least one
+working harness is a prerequisite for anything past the first screen. A new
+thread runs on Claude Code, on Codex when Claude Code is not installed or not
+signed in, and on Command Code only when neither can run or the thread picks
+it. Setup and Settings → Connectors probe each one and show the command that
+installs it or signs it in. For Command Code, `resolveBinary` in
+`packages/connector-cmd/src/binary.ts` looks for `cmd` in this order:
 
 1. the `binaryPath` configured on the connector instance,
 2. `cmd` on `PATH`, then in `/usr/local/bin`, `/opt/homebrew/bin`,
