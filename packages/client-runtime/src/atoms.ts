@@ -389,15 +389,23 @@ export const makeRuntime = (connectionLayer: ConnectionLayer) => {
   const fileSearchAtom = (projectId: ProjectId, threadId: ThreadId | null) =>
     fileSearchByScopeAtom(JSON.stringify([projectId, threadId]));
 
-  /** The model list a connector instance reported, for the header picker. */
+  /**
+   * The model list a connector instance reported, for the composer and the
+   * connectors page. Asked again on every `connectors.subscribe` push, like
+   * `modelCatalogAtom`: a probe, or an instance that found a fuller list than
+   * its first, changes what the server answers.
+   */
   const connectorModelsAtom = Atom.family((instanceId: ConnectorInstanceId | null) =>
     runtime.atom(
-      instanceId === null
-        ? Effect.succeed([] as ReadonlyArray<ModelOption>)
-        : Effect.gen(function* () {
-            const client = yield* (yield* Connection).client;
-            return yield* client["connectors.models"]({ instanceId });
-          }),
+      (get) => {
+        get(connectorsAtom);
+        return instanceId === null
+          ? Effect.succeed([] as ReadonlyArray<ModelOption>)
+          : Effect.gen(function* () {
+              const client = yield* (yield* Connection).client;
+              return yield* client["connectors.models"]({ instanceId });
+            });
+      },
       { initialValue: [] as ReadonlyArray<ModelOption> },
     ),
   );

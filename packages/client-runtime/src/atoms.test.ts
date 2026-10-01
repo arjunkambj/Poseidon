@@ -124,6 +124,8 @@ interface StubData {
   readonly protocolVersion?: number;
   /** Answers `connectors.subscribe`, then holds the feed open. */
   readonly connectors?: ReadonlyArray<ConnectorSummary>;
+  /** Answers `connectors.subscribe` from a queue — how a test pushes a new list. */
+  readonly connectorsFeed?: Queue.Queue<ReadonlyArray<ConnectorSummary>>;
   /** Answers `connectors.models` per instance — how a test makes one fail. */
   readonly models?: (
     instanceId: ConnectorInstanceId,
@@ -193,6 +195,10 @@ const fakeClient = (
       if (key === "orchestration.dispatch" && data.dispatch !== undefined) {
         const dispatch = data.dispatch;
         return ({ command }: { command: Command }) => Effect.sync(() => dispatch(command));
+      }
+      if (key === "connectors.subscribe" && data.connectorsFeed !== undefined) {
+        const feed = data.connectorsFeed;
+        return () => Stream.fromQueue(feed);
       }
       if (key === "connectors.subscribe" && data.connectors !== undefined) {
         const connectors = data.connectors;
@@ -715,6 +721,34 @@ describe("atoms", () => {
           ["a", ["a/one", "a/two"]],
         ]);
         expect(asked).not.toContain("off");
+      }),
+    ),
+  );
+
+  it.live("an instance's models are asked again on every connectors push", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const instance = yield* Ref.make(INSTANCE);
+        const feed = yield* Queue.unbounded<ReadonlyArray<ConnectorSummary>>();
+        const answers = [[model("a/short")], [model("a/short"), model("a/full")]];
+        let asked = 0;
+        const { registry, connectorModelsAtom } = yield* runtimeWith(
+          fakeClient(new Map(), instance, {
+            connectorsFeed: feed,
+            models: () => Effect.sync(() => answers[Math.min(asked++, answers.length - 1)]!),
+          }),
+          { status: "connected", serverInstanceId: INSTANCE },
+        );
+        const atom = connectorModelsAtom("a" as ConnectorInstanceId);
+        registry.mount(atom);
+        yield* Queue.offer(feed, [connectorSummary("a", true)]);
+        yield* Effect.promise(() => awaitValue(registry, atom, (models) => models.length === 1));
+        // A probe — or an instance that found its full list — lands.
+        yield* Queue.offer(feed, [connectorSummary("a", true)]);
+        const fuller = yield* Effect.promise(() =>
+          awaitValue(registry, atom, (models) => models.length === 2),
+        );
+        expect(fuller.map((entry) => entry.id)).toEqual(["a/short", "a/full"]);
       }),
     ),
   );
