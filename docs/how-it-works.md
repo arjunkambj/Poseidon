@@ -4555,8 +4555,13 @@ so their extensions write through the CLI instead: `claude mcp add-json` and
 own listing health-checks every server; Codex's reads `codex mcp list --json`.
 Neither CLI can carry a marker on an entry, so the names Poseidon added are
 kept in a ledger beside each config, `poseidon-mcp.json`, and add/remove
-refuse any other name the same way. The MCP tab lists one section per instance
-in the connectors page's order, so Claude Code's comes first.
+refuse any other name the same way; Claude Code's also keeps a fingerprint of
+each entry, so a name the user later removed and added again by hand is
+theirs. Claude Code's CLI has no flag for a disabled server — a session turns
+one off per project from `/mcp` — so its section lists every server enabled
+and refuses a save with the dialog's Enabled switch off with `invalid`, saying
+so. The MCP tab lists one section per instance in the connectors page's order,
+so Claude Code's comes first.
 
 **Skills** are discovered, not written: each harness's skills extension, asked
 through `connectors.skills.list`, walks the roots that harness loads, reads the

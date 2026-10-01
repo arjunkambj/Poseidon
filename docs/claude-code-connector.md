@@ -195,8 +195,10 @@ Customize page's MCP tab lists, adds and removes the servers a session loads,
 and Claude Code, the default harness, has the tab's first section. Poseidon's
 two scopes map onto two of the CLI's:
 
-- user: `mcpServers` in `<config>/.claude.json` — `$CLAUDE_CONFIG_DIR/.claude.json`
-  for an instance with an account of its own, else `~/.claude.json`;
+- user: `mcpServers` in `<config>/.claude.json` —
+  `$CLAUDE_CONFIG_DIR/.claude.json` for an instance with an account of its own,
+  else `~/.claude.json` — or in the legacy `<config>/.config.json`, which the
+  CLI reads instead while it exists;
 - project: `mcpServers` in `<workspaceRoot>/.mcp.json`.
 
 The CLI's third scope, `local` (a project's entry in `.claude.json`, private to
@@ -218,18 +220,31 @@ page that only shows the entries has no business doing. An entry is `stdio`
 included, is not listed.
 
 Ownership is kept in a ledger beside the config, `<config>/poseidon-mcp.json`
-(`<config>` as for plugins), naming the servers Poseidon added in the user
-scope and, per workspace, in the project scope. A server the ledger names is
-`managed`; `add` refuses a name the user configured themselves in that scope
-and `remove` refuses to delete one, both with `conflict`, and a ledger that
-cannot be read counts as empty. The CLI refuses to add a name its scope already
-holds, so editing one of ours is a remove and an add; when the add fails, the
-entry as it was is added back before the failure is reported.
+(`<config>` as for plugins), keyed by the file the CLI keeps the servers in —
+the `.claude.json` it resolved, or a workspace's `.mcp.json` — and naming each
+server Poseidon added there with a fingerprint of the entry the CLI stored: a
+hash of its JSON, keys sorted and empty lists left out, so no header or env
+value is copied. A server is `managed` while the ledger names it for that file
+and its entry still has that fingerprint. One the user removed and added again
+by hand, edited by hand, or that a checkout of `.mcp.json` replaced is theirs,
+and every write drops such names from the ledger; so is a same-named server in
+another instance's `.claude.json`, even when the two share a config directory
+and so a ledger. `add` refuses a name the user configured themselves in that
+scope and `remove` refuses to delete one, both with `conflict`. A ledger that
+cannot be read lists nothing as ours and refuses every write with `conflict`,
+naming it, rather than be replaced by one that forgot what it held; it is
+written through a temporary file. The CLI refuses to add a name its scope
+already holds, so editing one of ours is a remove and an add, run
+uninterruptibly; when the add fails, or cannot run at all, the entry as it was
+is added back before the failure is reported.
 
 A file that exists but does not parse lists nothing, and every write to its
 scope is refused with `conflict`: the CLI, finding its `.claude.json`
 corrupted, backs it up and starts a fresh one, which would take the user's
-other servers out of use. What the CLI cannot express is refused with
+other servers out of use. A `.mcp.json` with top-level keys besides
+`mcpServers` (`$schema`, a note) is refused the same way, naming the keys: the
+CLI rewrites the file with `mcpServers` alone. What the CLI cannot express is
+refused with
 `invalid`: a disabled server, since the CLI adds servers enabled and turns one
 off per project from `/mcp`, and the name `poseidon`, which every session gives
 Poseidon's own MCP server. That server and a plugin's servers are passed per
@@ -1254,15 +1269,23 @@ workflow run; `compaction`, on the signed-out recording of the command's path.
   `task_notification` beside its own result.
 - **Thinking comes back empty** under the default thinking display (every
   signed-in recording).
-- **`claude mcp add-json` never replaces a server:** a name the scope already
-  holds exits 1 with "MCP server <name> already exists in user config", and a
-  name outside letters, digits, `-` and `_` exits 1 with "Invalid name"
-  (`mcp-servers`). It checks little else: an http `url` that is not a URL is
-  written as given. Refusals go to stderr, successes to stdout, and `remove`
-  adds a "File modified:" line naming the file.
+- **`claude mcp add-json` rejects a bad name:** one outside letters, digits,
+  `-` and `_` exits 1 with "Invalid name" (`mcp-servers`). Refusals go to
+  stderr, successes to stdout, and `remove` adds a "File modified:" line naming
+  the file (`mcp-servers`). Seen by hand on 2.1.286 and not in the recording:
+  it never replaces a server, a name the scope already holds exiting 1 with
+  "MCP server <name> already exists in user config", and it checks little else,
+  writing an http `url` that is not a URL as given.
 - **A `.claude.json` that does not parse is replaced,** not refused: any
   command, `mcp add-json` included, backs it up under `<config>/backups/`,
-  starts a fresh one without the user's servers, and exits 1.
+  starts a fresh one without the user's servers, and exits 1 (seen by hand on
+  2.1.286; not recorded).
+- **`claude mcp add-json` and `remove` in the project scope rewrite
+  `.mcp.json` whole,** keeping `mcpServers` and dropping every other top-level
+  key, `$schema` included (seen by hand on 2.1.286; the extension refuses such
+  a file before the CLI runs, so the recording has no launch of it).
+- **The user-scope file is the legacy `<config>/.config.json`** while one
+  exists, `.claude.json` otherwise (read from the 2.1.286 binary).
 - **`claude mcp list` and `get` health-check** every server they show,
   starting stdio ones and connecting to http ones, and have no JSON output.
 
@@ -1359,10 +1382,10 @@ drift, in the order they tell you:
    translator and fails on any `event.unmapped`, and on a manifest older than
    `OLDEST_TESTED_VERSION`.
 2. **The replayed suites** — `conformance.test.ts`, `sessionControls.test.ts`,
-   `steering.test.ts`, `recordedSession.test.ts`, and the end-to-end suite in
-   `apps/server/test/e2e-claude/`. The replayer exits 97 on any line the
-   connector sends that the recorded run was not sent, so a change in the
-   SDK's launch or control traffic fails here.
+   `steering.test.ts`, `recordedSession.test.ts`, `mcpServersRecorded.test.ts`,
+   and the end-to-end suite in `apps/server/test/e2e-claude/`. The replayer
+   exits 97 on any line the connector sends that the recorded run was not
+   sent, so a change in the SDK's launch or control traffic fails here.
 3. **The live suites**, the only thing that proves the CLI installed today
    still takes what the SDK and the connector send, is signed in, maps
    without `event.unmapped`, and still routes its calls through the gate:
@@ -1388,5 +1411,10 @@ Beyond the tests, the things to read after an upgrade:
   name, and its capabilities, for a receipt or interrupt option that changed.
 - Whether a hook's `ask` still reaches `canUseTool` under `bypassPermissions`
   — the claim full access rests on.
+- The `claude mcp` subcommands and the entries they store: re-run the
+  `mcp-servers` recorder on its scratch config and diff `config-files.json`
+  (an entry's shape, where the user-scope file is under `CLAUDE_CONFIG_DIR`,
+  what `add-json` and `remove` print and exit with). The replay hands back the
+  old files, so a move in either is invisible to it.
 - A new SDK release, whose argv and control protocol the recordings replay;
   moving the SDK pin means making the recordings again.
