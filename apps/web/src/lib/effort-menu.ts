@@ -6,10 +6,10 @@
  * The menu reads the model's ladder lowest first (`orderEfforts`), and the
  * costly multi-agent modes sit at its top, named and noted alike: `ultra`,
  * which is an effort rung, and ultracode, which is a session flag at `xhigh`
- * (`@/lib/ultracode`). Ultracode is listed where it is
- * offered, and while it is on even where it is not, so the menu never hides
- * the setting it is in and another pick can turn it off. While it is on, the
- * menu's value is the Ultracode entry rather than `xhigh`.
+ * (`@/lib/ultracode`). Ultracode is listed where it is offered, and while it
+ * is on even where it is not, so the menu never hides the setting it is in and
+ * another pick can turn it off. While it is on, the menu's value is the
+ * Ultracode entry rather than `xhigh`.
  */
 
 import type { Effort } from "@poseidon/contracts/enums";

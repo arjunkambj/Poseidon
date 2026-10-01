@@ -545,9 +545,8 @@ current keys.
 The row itself (`ThreadSettingsControls` in `header-controls.tsx`) holds, in
 order, the runtime-mode picker, the plan toggle, the model and effort pickers
 and the context meter. The effort picker also holds Ultracode (§6) and Codex's
-`ultra`. On an
-open thread each pick is a `thread.settings.update`; on the start screen it
-goes into the local settings that `thread.create` carries.
+`ultra`. On an open thread each pick is a `thread.settings.update`; on the
+start screen it goes into the local settings that `thread.create` carries.
 `use-send-draft.ts` uploads any attachments first (a browser `File` has no
 filesystem path, so the server must hold the bytes before the command can name
 them) and latches so one Enter cannot start two real turns. While a turn is in
@@ -1683,7 +1682,7 @@ stays put. The composer's `/effort` rows list the same entries, and its
 (`slashMenuItems` in `apps/web/src/components/composer/slash-menu.tsx`); an
 `/effort` rung picked while it is on is left to the server's rule.
 
-Without the menu, the word "ultracode" in a prompt opts that one turn into
+With Ultracode off, the word "ultracode" in a prompt opts that one turn into
 Claude Code's Workflow tool: the CLI's own keyword trigger, which Poseidon
 passes through as plain text.
 

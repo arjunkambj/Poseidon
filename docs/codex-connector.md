@@ -728,8 +728,8 @@ default. The effort keys never step onto it (`stepEffort`). The effort menu
 and the `/effort` rows list it at the top of the ladder as "Ultra", noted as
 max effort with automatic task delegation that uses many more tokens, the way
 they list Claude Code's Ultracode (`apps/web/src/lib/effort-menu.ts`). Claude
-Code and Command Code list no such rung. `ultra-effort` records one turn at it on
-the default model: `turn/start` names `effort: "ultra"`, the CLI's
+Code and Command Code list no such rung. `ultra-effort` records one turn at it
+on the default model: `turn/start` names `effort: "ultra"`, the CLI's
 `thread/settings/updated` restates it (with `multiAgentMode` still
 `explicitRequestOnly`), and the one-word prompt delegated nothing. What
 delegation it does launch comes back as `collabAgentToolCall` items, which the
