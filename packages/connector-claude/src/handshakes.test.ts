@@ -220,6 +220,45 @@ describe("a provisional model list", () => {
     }).pipe(Effect.scoped),
   );
 
+  it.effect("is asked about once per config, however many instances share it", () =>
+    Effect.gen(function* () {
+      const { handshake, lingers } = scripted([COMPILED]);
+      const { definition, config, instance } = yield* open(handshake);
+      yield* definition.createInstance({
+        instanceId: makeConnectorInstanceId(),
+        config,
+        services: yield* testServices(),
+      });
+      yield* instance.listModels();
+      for (const delay of ASK_AGAIN_AFTER) {
+        yield* settle;
+        yield* TestClock.adjust(delay);
+      }
+      yield* settle;
+      expect(lingers).toHaveLength(1 + ASK_AGAIN_AFTER.length);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("is not asked about again once a round ran out on it", () =>
+    Effect.gen(function* () {
+      const { handshake, lingers } = scripted([COMPILED]);
+      const { definition, config, instance } = yield* open(handshake, fakeClaude());
+      yield* instance.listModels();
+      for (const delay of ASK_AGAIN_AFTER) {
+        yield* settle;
+        yield* TestClock.adjust(delay);
+      }
+      yield* settle;
+      expect(lingers).toHaveLength(1 + ASK_AGAIN_AFTER.length);
+      // A probe that gets the same compiled-in list starts no new round.
+      yield* definition.probe(config);
+      yield* settle;
+      yield* TestClock.adjust("10 minutes");
+      yield* settle;
+      expect(lingers).toHaveLength(2 + ASK_AGAIN_AFTER.length);
+    }).pipe(Effect.scoped),
+  );
+
   it.effect("from the probe starts the instance asking again too", () =>
     Effect.gen(function* () {
       const { handshake, lingers } = scripted([COMPILED, CATALOG]);

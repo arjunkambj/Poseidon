@@ -30,7 +30,7 @@ import { runClaude } from "./cli";
 import { ClaudeConnectorConfig } from "./configSchema";
 import { childEnv } from "./env";
 import { makeClaudeGenerateText } from "./generateText";
-import { handshakeKey, makeHandshakes, type HandshakeSource } from "./handshakes";
+import { handshakeKey, holderOf, makeHandshakes, type HandshakeSource } from "./handshakes";
 import { CLAUDE_KIND } from "./kind";
 import { makeClaudeMcpServers } from "./mcpServers";
 import { LOGIN_ARGS, probe as probeBinary, readInitialization, type Handshake } from "./probe";
@@ -98,6 +98,16 @@ export const ASK_AGAIN_AFTER: ReadonlyArray<Duration.Input> = [
  */
 export const LINGER = "6 seconds";
 
+/**
+ * One config's asking again: whether a round is running, and whose
+ * provisional answer the last round ran out on — that account is not asked
+ * about again until a full answer, or another account's, is heard.
+ */
+interface AskingAgain {
+  running: boolean;
+  spentOn: string | undefined;
+}
+
 export const makeClaudeConnectorDefinition = (
   options: ClaudeConnectorOptions = {},
 ): ConnectorDefinition<ClaudeConnectorConfig> => {
@@ -108,6 +118,8 @@ export const makeClaudeConnectorDefinition = (
   const writeMutex = Semaphore.makeUnsafe(1);
   /** The latest handshake per config, which the probe and the instances share. */
   const handshakes = makeHandshakes();
+  /** The asking again per config, which only one instance runs at a time. */
+  const rounds = new Map<string, AskingAgain>();
   const handshake = options.handshake ?? readInitialization;
   return {
     kind: CLAUDE_KIND,
@@ -193,10 +205,16 @@ export const makeClaudeConnectorDefinition = (
         );
 
         /**
-         * A provisional answer, from the probe or this instance, is asked about
-         * again a bounded number of times, until a full one is heard. Answers
-         * this asking produced do not start it over, so it cannot feed itself.
+         * A provisional answer, from the probe or an instance, is asked about
+         * again a bounded number of times, until a full one is heard. One
+         * round runs per config, however many instances share it. Answers this
+         * asking produced do not start it over, so it cannot feed itself, and
+         * once a round runs out on an account's compiled-in list, that account
+         * is not asked about again — each probe would otherwise start another
+         * round — until a full answer or another account's is heard.
          */
+        const asking = rounds.get(key) ?? { running: false, spentOn: undefined };
+        rounds.set(key, asking);
         const askAgain = Effect.gen(function* () {
           for (const delay of ASK_AGAIN_AFTER) {
             yield* Effect.sleep(delay);
@@ -204,13 +222,30 @@ export const makeClaudeConnectorDefinition = (
             if (current !== null && !current.answer.provisional) return;
             yield* Effect.ignore(ask("retry", LINGER));
           }
+          const after = yield* SubscriptionRef.get(shared);
+          if (after !== null && after.answer.provisional) asking.spentOn = holderOf(after.answer);
+        });
+        // Each change reads the answer afresh, so one queued behind a round
+        // sees what the round left rather than what started it.
+        const onChange = Effect.gen(function* () {
+          const current = yield* SubscriptionRef.get(shared);
+          if (current === null) return;
+          if (!current.answer.provisional) {
+            asking.spentOn = undefined;
+            return;
+          }
+          if (
+            current.source === "retry" ||
+            asking.running ||
+            asking.spentOn === holderOf(current.answer)
+          ) {
+            return;
+          }
+          asking.running = true;
+          yield* askAgain.pipe(Effect.ensuring(Effect.sync(() => (asking.running = false))));
         });
         yield* SubscriptionRef.changes(shared).pipe(
-          Stream.filter(
-            (recorded) =>
-              recorded !== null && recorded.answer.provisional && recorded.source !== "retry",
-          ),
-          Stream.runForEach(() => askAgain),
+          Stream.runForEach(() => onChange),
           Effect.forkScoped,
         );
 
