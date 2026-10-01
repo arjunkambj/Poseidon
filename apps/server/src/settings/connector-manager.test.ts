@@ -15,7 +15,7 @@ import {
   makeThreadId,
   type ConnectorInstanceId,
 } from "@poseidon/contracts/ids";
-import type { ConnectorSummary } from "@poseidon/contracts/connectors";
+import type { ConnectorSummary, ModelOption } from "@poseidon/contracts/connectors";
 import { POSEIDON_HOME_ENV } from "@poseidon/shared/paths";
 import type { AnyConnectorDefinition, ConnectorServices } from "@poseidon/connector-sdk/definition";
 import { eraseConnectorDefinition, ProbeFailed } from "@poseidon/connector-sdk/definition";
@@ -28,6 +28,7 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Queue from "effect/Queue";
 import * as Ref from "effect/Ref";
 import * as Stream from "effect/Stream";
 import type * as Reactivity from "effect/unstable/reactivity/Reactivity";
@@ -495,6 +496,41 @@ describe("ConnectorManager", () => {
                   Ref.update(listed, (count) => count + 1),
                   instance.listModels(),
                 ),
+            })),
+        }),
+      );
+    }),
+  );
+
+  it.effect("a list an instance hears after its probe replaces the probe's and is pushed", () =>
+    Effect.gen(function* () {
+      const heard = yield* Queue.unbounded<ReadonlyArray<ModelOption>>();
+      const fuller: ReadonlyArray<ModelOption> = [
+        { id: "fake/model", label: "Fake 2", family: "Fake", efforts: [] },
+        { id: "fake/other", label: "Fake 1", family: "Fake", efforts: [] },
+      ];
+      yield* withFixture(
+        ({ manager, catalog }) =>
+          Effect.gen(function* () {
+            const summaries = yield* awaitSummaries(
+              manager,
+              (all) => all.length === 1 && all[0]!.probe.status === "ready",
+            );
+            const instanceId = summaries[0]!.connectorInstanceId as ConnectorInstanceId;
+            expect(summaries[0]!.probe.modelCount).toBe(1);
+            yield* Queue.offer(heard, fuller);
+            // Pushed like a landing probe, so the pickers ask again.
+            const pushed = yield* awaitSummaries(manager, (all) => all[0]?.probe.modelCount === 2);
+            expect(pushed[0]!.probe.status).toBe("ready");
+            expect(yield* catalog.models(instanceId)).toEqual(fuller);
+          }),
+        undefined,
+        (definition) => ({
+          ...definition,
+          createInstance: (input) =>
+            Effect.map(definition.createInstance(input), (instance) => ({
+              ...instance,
+              modelUpdates: Stream.fromQueue(heard),
             })),
         }),
       );

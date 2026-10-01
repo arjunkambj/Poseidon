@@ -130,6 +130,9 @@ const NO_EXTENSIONS: ConnectorSummary["extensions"] = {
   mcpServers: false,
 };
 
+const sameModels = (a: ReadonlyArray<ModelOption>, b: ReadonlyArray<ModelOption>): boolean =>
+  JSON.stringify(a) === JSON.stringify(b);
+
 /** A probe gets this long before it's reported as an error. */
 const PROBE_TIMEOUT = Duration.seconds(15);
 
@@ -233,7 +236,14 @@ export class ConnectorManager extends Context.Service<
             yield* Scope.close(scope, Exit.void);
             return null;
           }
-          const { capabilities, extensions } = opened.value;
+          const { capabilities, extensions, modelUpdates } = opened.value;
+          if (modelUpdates !== undefined) {
+            // Closed with the instance, so a list it hears late never lands on
+            // the entry that replaced it.
+            yield* Stream.runForEach(modelUpdates, (models) =>
+              adoptModels(conn.connectorInstanceId, models),
+            ).pipe(Effect.forkIn(scope));
+          }
           yield* Ref.update(declared, (all) =>
             new Map(all).set(conn.connectorInstanceId, {
               capabilities,
@@ -245,6 +255,36 @@ export class ConnectorManager extends Context.Service<
             }),
           );
           return scope;
+        });
+
+      /**
+       * A model list an open instance heard after its probe — the full list
+       * once a harness that first answered with a stand-in has found it. It
+       * replaces the probe's list, stamped as read now, and is pushed like a
+       * landing probe, so the pickers fetch it. Before the probe it waits as
+       * the fallback answer.
+       */
+      const adoptModels = (
+        id: ConnectorInstanceId,
+        models: ReadonlyArray<ModelOption>,
+      ): Effect.Effect<void> =>
+        Effect.gen(function* () {
+          const probedAt = yield* now;
+          const replaced = yield* Ref.modify(probes, (all) => {
+            const probe = all.get(id);
+            if (probe === undefined || sameModels(probe.models, models)) {
+              return [false, all] as const;
+            }
+            return [true, new Map(all).set(id, { ...probe, models, probedAt })] as const;
+          });
+          if (!replaced) {
+            if (!(yield* Ref.get(probes)).has(id)) {
+              yield* Ref.update(fallbackModels, (all) => new Map(all).set(id, models));
+            }
+            return;
+          }
+          yield* forget(fallbackModels, id);
+          yield* publish(yield* store.get);
         });
 
       const forget = <A>(ref: Ref.Ref<ReadonlyMap<string, A>>, id: string): Effect.Effect<void> =>
