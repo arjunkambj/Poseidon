@@ -4,14 +4,7 @@ import type { ConnectorInstanceId } from "@poseidon/contracts/ids";
 import type { ConnectorCapabilities } from "@poseidon/contracts/runtime";
 import { describe, expect, it } from "vitest";
 
-import {
-  settleUltracode,
-  ULTRACODE_OFF_TOOLTIP,
-  ULTRACODE_ON_TOOLTIP,
-  ultracodeOffered,
-  ultracodeOfferedIn,
-  ultracodePatch,
-} from "./ultracode";
+import { settleUltracode, ultracodeOffered, ultracodeOfferedIn, ultracodePatch } from "./ultracode";
 
 const id = (value: string) => value as ConnectorInstanceId;
 
@@ -79,14 +72,6 @@ describe("ultracodePatch", () => {
   it("switches on at xhigh, and off with the effort kept", () => {
     expect(ultracodePatch(true)).toEqual({ ultracode: true, effort: "xhigh" });
     expect(ultracodePatch(false)).toEqual({ ultracode: false });
-  });
-});
-
-describe("the tooltips", () => {
-  it("name the cost while off, and the way out while on", () => {
-    expect(ULTRACODE_OFF_TOOLTIP).toContain("xhigh effort with multi-agent workflows");
-    expect(ULTRACODE_OFF_TOOLTIP).toContain("uses many more tokens");
-    expect(ULTRACODE_ON_TOOLTIP).toBe("Turn off ultracode");
   });
 });
 

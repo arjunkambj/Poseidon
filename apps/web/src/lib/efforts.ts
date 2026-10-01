@@ -30,9 +30,11 @@ export const EFFORT_LABELS: Readonly<Record<Effort, string>> = {
 /**
  * The one-line note a picker shows under a rung that needs one: `ultra`
  * delegates to subagents, and its cost is the reason to pick it on purpose.
+ * The effort menu's Ultracode entry carries a note worded the same way
+ * (`ULTRACODE_NOTE` in `./effort-menu`).
  */
 export const EFFORT_NOTES: Readonly<Partial<Record<Effort, string>>> = {
-  ultra: "Delegates to subagents · uses many more tokens",
+  ultra: "max effort with automatic task delegation · uses many more tokens",
 };
 
 /** `item` with the rung's note as its description, when the rung has one. */

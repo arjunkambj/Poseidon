@@ -3,12 +3,15 @@
  * skills; `model`, `effort` and `mode` open a second level whose pick becomes
  * a `thread.settings.update` patch. Everything the menu can do is expressed as
  * a `SlashAction` so the composer keeps one `onSelect` path. `/effort` and
- * `/mode` offer what the header pickers offer: the model's rungs in the
- * contract's order, and the modes the connector can honour.
+ * `/mode` offer what the header pickers offer: the effort menu's entries
+ * (`effortMenuEntries`) — the model's rungs in the contract's order, then
+ * Ultracode where the model can run it or it is on — and the modes the
+ * connector can honour.
  *
  * A `/model` pick while ultracode is on carries `ultracode: false` when the
  * picked model cannot run it (`ultracodeOffered`), the rule the header's
- * model picker applies; an `/effort` pick is left to the server's rule.
+ * model picker applies; an `/effort` rung picked while it is on is left to
+ * the server's rule, which turns it off.
  *
  * `/compact` is listed only when the thread's bound session declared
  * `capabilities.compaction` (`canCompact`, passed in rather than read from
@@ -40,7 +43,7 @@ import {
   matchesQuery as match,
   type TriggerMenuItem,
 } from "@/components/composer/trigger-menu";
-import { orderEfforts, withNote } from "@/lib/efforts";
+import { effortMenuEntries, effortMenuPatch } from "@/lib/effort-menu";
 import { ultracodeOffered } from "@/lib/ultracode";
 import { RUNTIME_MODE_LABELS, runtimeModeOptions } from "@/lib/runtime-modes";
 import {
@@ -141,19 +144,16 @@ export const slashMenuItems = (input: {
   }
 
   if (level === "effort") {
-    return orderEfforts(efforts)
-      .filter((effort) => match(query, effort))
-      .map((effort) =>
-        withNote(
-          {
-            id: `effort:${effort}`,
-            label: effort,
-            icon: Lightning,
-            action: { type: "settings", patch: { effort } },
-          },
-          effort,
-        ),
-      );
+    const offered = ultracodeOffered(capabilities, efforts === undefined ? undefined : { efforts });
+    return effortMenuEntries(efforts, { offered, on: ultracode })
+      .filter((entry) => match(query, entry.value))
+      .map((entry) => ({
+        id: `effort:${entry.value}`,
+        label: entry.label,
+        ...(entry.description === undefined ? {} : { description: entry.description }),
+        icon: Lightning,
+        action: { type: "settings", patch: effortMenuPatch(entry.value) },
+      }));
   }
 
   if (level === "mode") {

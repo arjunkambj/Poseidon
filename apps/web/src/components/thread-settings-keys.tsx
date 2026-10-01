@@ -10,12 +10,15 @@
  * leaves the key alone, so where plan mode is not on offer Shift+Tab moves the
  * focus as usual. A `restart`-locked knob is left alone too: its picker does
  * not open and its effort does not step.
+ *
+ * The effort steps never land on the costly multi-agent modes, and a step
+ * down from Ultracode turns it off (`effortStepPatch`).
  */
 
 import type { Effort, RuntimeMode } from "@poseidon/contracts/enums";
 import type { ThreadSettingsPatch } from "@poseidon/contracts/orchestration";
 
-import { stepEffort } from "@/lib/efforts";
+import { effortStepPatch } from "@/lib/effort-menu";
 import { nextRuntimeMode } from "@/lib/runtime-modes";
 import { useKeybindingCommand } from "@/lib/shortcuts";
 
@@ -33,6 +36,7 @@ export function ThreadSettingsKeys({
   effort,
   efforts,
   effortLocked,
+  ultracode,
   onChange,
   onOpenModel,
   onOpenEffort,
@@ -45,6 +49,8 @@ export function ThreadSettingsKeys({
   /** The current model's ladder; `undefined` when it states none. */
   readonly efforts: ReadonlyArray<Effort> | undefined;
   readonly effortLocked: boolean;
+  /** Ultracode is on: the effort menu's top entry is the current one. */
+  readonly ultracode: boolean;
   readonly onChange: (patch: ThreadSettingsPatch) => void;
   /** Opens the model picker; a no-op when it cannot open. */
   readonly onOpenModel: () => void;
@@ -59,9 +65,9 @@ export function ThreadSettingsKeys({
   useKeybindingCommand("composer.modelPicker.open", onOpenModel);
   useKeybindingCommand("composer.effortPicker.open", onOpenEffort);
   const step = (direction: 1 | -1) => () => {
-    const next = stepEffort(effort, efforts, direction);
-    if (!effortLocked && next !== effort) {
-      onChange({ effort: next });
+    const patch = effortStepPatch(effort, efforts, ultracode, direction);
+    if (!effortLocked && patch !== null) {
+      onChange(patch);
     }
   };
   useKeybindingCommand("composer.effort.increase", step(1));

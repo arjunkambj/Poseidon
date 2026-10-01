@@ -6,6 +6,7 @@ import type { HarnessCommand } from "@poseidon/contracts/harnessCommands";
 import type { ConnectorCapabilities } from "@poseidon/contracts/runtime";
 
 import { slashMenuItems } from "@/components/composer/slash-menu";
+import { ULTRACODE_NOTE } from "@/lib/effort-menu";
 import { EFFORT_NOTES } from "@/lib/efforts";
 
 const rootItems = (
@@ -140,7 +141,11 @@ describe("slashMenuItems /model", () => {
 });
 
 describe("slashMenuItems /effort", () => {
-  const effortItems = (efforts: ReadonlyArray<Effort> | undefined) =>
+  const effortItems = (
+    efforts: ReadonlyArray<Effort> | undefined,
+    capabilities: Partial<ConnectorCapabilities> | null = null,
+    ultracode = false,
+  ) =>
     slashMenuItems({
       level: "effort",
       query: "",
@@ -148,50 +153,41 @@ describe("slashMenuItems /effort", () => {
       harnessCommands: [],
       models: [],
       efforts,
-      capabilities: null,
+      capabilities: capabilities as ConnectorCapabilities | null,
       canCompact: false,
+      ultracode,
     });
 
   it("offers ultra with its cost note only where the model lists it", () => {
     const listed = effortItems(["high", "max", "ultra"]);
-    expect(listed.map((item) => item.label)).toEqual(["high", "max", "ultra"]);
+    expect(listed.map((item) => item.label)).toEqual(["high", "max", "Ultra"]);
     expect(listed.at(-1)?.description).toBe(EFFORT_NOTES.ultra);
     expect(listed[0]?.description).toBeUndefined();
-    expect(effortItems(["high", "max"]).map((item) => item.label)).not.toContain("ultra");
-    expect(effortItems(undefined).map((item) => item.label)).not.toContain("ultra");
-  });
-});
-
-describe("slashMenuItems /model", () => {
-  const deep = { id: "deep", label: "Deep", family: "Models", efforts: ["high", "xhigh"] };
-  const light = { id: "light", label: "Light", family: "Models", efforts: ["low", "high"] };
-  const patches = (ultracode: boolean | undefined, capabilities: ConnectorCapabilities | null) =>
-    slashMenuItems({
-      level: "model",
-      query: "",
-      skills: [],
-      harnessCommands: [],
-      models: [deep, light] as never,
-      efforts: undefined,
-      capabilities,
-      canCompact: false,
-      ultracode,
-    }).map((item) => (item.action.type === "settings" ? item.action.patch : null));
-  const workflows = { ultracode: true } as ConnectorCapabilities;
-
-  it("switches ultracode off with a model that cannot run it while it is on", () => {
-    expect(patches(true, workflows)).toEqual([
-      { model: "deep" },
-      { model: "light", ultracode: false },
-    ]);
-    expect(patches(true, {} as ConnectorCapabilities)).toEqual([
-      { model: "deep", ultracode: false },
-      { model: "light", ultracode: false },
-    ]);
+    expect(effortItems(["high", "max"]).map((item) => item.label)).not.toContain("Ultra");
+    expect(effortItems(undefined).map((item) => item.label)).not.toContain("Ultra");
   });
 
-  it("names only the model while ultracode is off", () => {
-    expect(patches(false, workflows)).toEqual([{ model: "deep" }, { model: "light" }]);
-    expect(patches(undefined, workflows)).toEqual([{ model: "deep" }, { model: "light" }]);
+  it("tops the ladder with Ultracode where the harness can run it at xhigh", () => {
+    const listed = effortItems(["high", "xhigh", "max"], { ultracode: true });
+    expect(listed.map((item) => item.label)).toEqual(["high", "xhigh", "max", "Ultracode"]);
+    expect(listed.at(-1)?.description).toBe(ULTRACODE_NOTE);
+    expect(listed.at(-1)?.action).toEqual({
+      type: "settings",
+      patch: { ultracode: true, effort: "xhigh" },
+    });
+    expect(listed[1]?.action).toEqual({ type: "settings", patch: { effort: "xhigh" } });
+  });
+
+  it("leaves Ultracode out where it is not offered, unless it is on", () => {
+    const labels = (...args: Parameters<typeof effortItems>) =>
+      effortItems(...args).map((item) => item.label);
+    expect(labels(["high", "xhigh"], {})).not.toContain("Ultracode");
+    expect(labels(["low", "high"], { ultracode: true })).not.toContain("Ultracode");
+    expect(labels(undefined, { ultracode: true })).not.toContain("Ultracode");
+    expect(labels(["low", "high"], { ultracode: true }, true)).toEqual([
+      "low",
+      "high",
+      "Ultracode",
+    ]);
   });
 });
