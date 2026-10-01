@@ -40,7 +40,7 @@ import { resolveBinary } from "./binary";
 import { runClaude, type RunClaude } from "./cli";
 import { childEnv } from "./env";
 import { CLAUDE_KIND } from "./kind";
-import { LEDGER_FILE, makeClaudeMcpServers } from "./mcpServers";
+import { fingerprint, LEDGER_FILE, makeClaudeMcpServers } from "./mcpServers";
 import { parseVersion } from "./probe";
 
 const SCENARIO = "mcp-servers";
@@ -303,10 +303,24 @@ describe("the Claude Code MCP servers extension, recorded", () => {
         "project:hand-project",
       ]);
 
+      // The ledger names what is left of ours by the entry the CLI stored.
+      const claudeJson = NodePath.join(driver.configDir, ".claude.json");
+      const stored = (readJson(claudeJson) as { mcpServers: Record<string, unknown> }).mcpServers;
       const ledger = JSON.parse(
         NodeFS.readFileSync(NodePath.join(driver.configDir, LEDGER_FILE), "utf8"),
       ) as unknown;
-      expect(ledger).toEqual({ user: ["local"], projects: {} });
+      expect(ledger).toEqual({ files: { [claudeJson]: { local: fingerprint(stored.local) } } });
+
+      // A .mcp.json with keys besides mcpServers, which the CLI drops when it
+      // rewrites the file, is refused before the CLI runs.
+      const mcpJson = NodePath.join(driver.workspace, ".mcp.json");
+      NodeFS.writeFileSync(
+        mcpJson,
+        `${JSON.stringify({ $schema: "https://example.invalid/mcp.json", ...(readJson(mcpJson) as object) }, null, 2)}\n`,
+      );
+      const dropsKeys = yield* Effect.flip(mcp.add(project, { ...PROJ, name: "schema" }));
+      expect(dropsKeys.code).toBe("conflict");
+      expect(dropsKeys.message).toContain('"$schema"');
     }),
   );
 });

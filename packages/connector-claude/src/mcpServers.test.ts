@@ -10,6 +10,7 @@ import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import { describe, expect, it } from "@effect/vitest";
+import { ConnectorExtensionFailed } from "@poseidon/connector-sdk/extensions";
 import type { McpServerConfig } from "@poseidon/contracts/connectors";
 import { fixturesRoot } from "@poseidon/testkit/recording";
 import * as Effect from "effect/Effect";
@@ -21,6 +22,7 @@ import {
   addArgs,
   addJson,
   claudeJsonPath,
+  fingerprint,
   LEDGER_FILE,
   makeClaudeMcpServers,
   refusal,
@@ -171,6 +173,25 @@ describe("claudeJsonPath", () => {
     expect(claudeJsonPath({ CLAUDE_CONFIG_DIR: "/c", HOME: "/h" })).toBe("/c/.claude.json");
     expect(claudeJsonPath({ HOME: "/h" })).toBe("/h/.claude.json");
   });
+
+  it("is the legacy .config.json while the config dir holds one, as the CLI decides", () => {
+    const configDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "claude-mcp-legacy-"));
+    NodeFS.writeFileSync(NodePath.join(configDir, ".config.json"), "{}");
+    expect(claudeJsonPath({ CLAUDE_CONFIG_DIR: configDir })).toBe(
+      NodePath.join(configDir, ".config.json"),
+    );
+  });
+});
+
+describe("fingerprint", () => {
+  it("survives key order and empty parts, and changes with the entry", () => {
+    expect(fingerprint({ type: "stdio", command: "true", args: [] })).toBe(
+      fingerprint({ command: "true", type: "stdio" }),
+    );
+    expect(fingerprint({ type: "stdio", command: "true" })).not.toBe(
+      fingerprint({ type: "stdio", command: "false" }),
+    );
+  });
 });
 
 // ── The extension, with no CLI to run ──────────────────────────
@@ -186,12 +207,30 @@ const scratch = () => {
   NodeFS.mkdirSync(workspace);
   const write = (path: string, value: unknown) =>
     NodeFS.writeFileSync(path, typeof value === "string" ? value : JSON.stringify(value));
+  const userPath = NodePath.join(configDir, ".claude.json");
+  const projectPath = NodePath.join(workspace, ".mcp.json");
+  const ledgerPath = NodePath.join(configDir, LEDGER_FILE);
   return {
     configDir,
     workspace,
-    userFile: (value: unknown) => write(NodePath.join(configDir, ".claude.json"), value),
-    projectFile: (value: unknown) => write(NodePath.join(workspace, ".mcp.json"), value),
-    ledger: (value: unknown) => write(NodePath.join(configDir, LEDGER_FILE), value),
+    userPath,
+    projectPath,
+    userFile: (value: unknown) => write(userPath, value),
+    projectFile: (value: unknown) => write(projectPath, value),
+    ledger: (value: unknown) => write(ledgerPath, value),
+    /** A ledger naming each file's entries as Poseidon's, as the extension writes it. */
+    ours: (files: Record<string, Record<string, unknown>>) =>
+      write(ledgerPath, {
+        files: Object.fromEntries(
+          Object.entries(files).map(([path, names]) => [
+            path,
+            Object.fromEntries(
+              Object.entries(names).map(([name, entry]) => [name, fingerprint(entry)]),
+            ),
+          ]),
+        ),
+      }),
+    readLedger: () => JSON.parse(NodeFS.readFileSync(ledgerPath, "utf8")) as unknown,
     extension: (run: RunClaude = never) =>
       makeClaudeMcpServers({
         env: { CLAUDE_CONFIG_DIR: configDir },
@@ -260,13 +299,18 @@ describe("the Claude Code MCP servers extension", () => {
     }),
   );
 
-  it.effect("keeps the ledger per scope and per workspace", () =>
+  it.effect("keeps the ledger per file", () =>
     Effect.gen(function* () {
       const at = scratch();
       at.userFile({ mcpServers: { web: HAND } });
       at.projectFile({ mcpServers: { web: HAND } });
-      // Ours in another workspace's project scope: not in this one's, nor the user's.
-      at.ledger({ user: [], projects: { "/elsewhere": ["web"] } });
+      // Ours in another workspace's .mcp.json, and in another config's
+      // .claude.json (an instance whose config dir is ~/.claude shares the
+      // default one's ledger): neither is this file's.
+      at.ours({
+        "/elsewhere/.mcp.json": { web: HAND },
+        [NodePath.join(at.workspace, ".claude.json")]: { web: HAND },
+      });
       const mcp = at.extension();
       const listed = yield* mcp.list({ workspaceRoot: at.workspace });
       expect(listed.map((server) => server.managed)).toEqual([false, false]);
@@ -274,21 +318,83 @@ describe("the Claude Code MCP servers extension", () => {
         (yield* Effect.flip(mcp.remove({ workspaceRoot: at.workspace }, "project", "web"))).code,
       ).toBe("conflict");
 
-      at.ledger({ user: ["web"], projects: { [at.workspace]: ["web"] } });
+      at.ours({ [at.userPath]: { web: HAND }, [at.projectPath]: { web: HAND } });
       const both = yield* mcp.list({ workspaceRoot: at.workspace });
       expect(both.map((server) => server.managed)).toEqual([true, true]);
     }),
   );
 
-  it.effect("counts an unreadable ledger as empty, so nothing can be removed", () =>
+  it.effect(
+    "counts a name whose entry changed or left the file as the user's, and forgets it",
+    () =>
+      Effect.gen(function* () {
+        const at = scratch();
+        // Poseidon added `web` and `gone`; `web` was then removed and added
+        // again by hand, and `gone` removed by hand.
+        at.userFile({ mcpServers: { web: HAND } });
+        at.ours({
+          [at.userPath]: { web: { type: "http", url: "http://127.0.0.1:9/old" }, gone: HAND },
+        });
+        const mcp = at.extension();
+        const scope = { workspaceRoot: null };
+        expect((yield* mcp.list(scope))[0]?.managed).toBe(false);
+        expect((yield* Effect.flip(mcp.add(scope, WEB))).code).toBe("conflict");
+        expect((yield* Effect.flip(mcp.remove(scope, "user", "web"))).code).toBe("conflict");
+        expect((yield* Effect.flip(mcp.remove(scope, "user", "gone"))).code).toBe("not-found");
+        // Both are dropped, so a later hand-made `gone` is never taken for ours.
+        expect(at.readLedger()).toEqual({ files: {} });
+      }),
+  );
+
+  it.effect("lists nothing as ours from a ledger it cannot read, and writes none over it", () =>
     Effect.gen(function* () {
       const at = scratch();
       at.userFile({ mcpServers: { web: HAND } });
       at.ledger("{ not json");
       const mcp = at.extension();
-      expect((yield* mcp.list({ workspaceRoot: null }))[0]?.managed).toBe(false);
-      expect((yield* Effect.flip(mcp.remove({ workspaceRoot: null }, "user", "web"))).code).toBe(
-        "conflict",
+      const scope = { workspaceRoot: null };
+      expect((yield* mcp.list(scope))[0]?.managed).toBe(false);
+      const remove = yield* Effect.flip(mcp.remove(scope, "user", "web"));
+      expect(remove.code).toBe("conflict");
+      expect(remove.message).toContain(LEDGER_FILE);
+      // Starting a fresh ledger would forget every server it named.
+      expect((yield* Effect.flip(mcp.add(scope, { ...WEB, name: "new" }))).code).toBe("conflict");
+      expect(NodeFS.readFileSync(NodePath.join(at.configDir, LEDGER_FILE), "utf8")).toBe(
+        "{ not json",
+      );
+    }),
+  );
+
+  it.effect("refuses to have the CLI rewrite a .mcp.json with keys it would drop", () =>
+    Effect.gen(function* () {
+      const at = scratch();
+      at.projectFile({ $schema: "https://example.invalid/mcp.json", mcpServers: { theirs: HAND } });
+      const mcp = at.extension();
+      const scope = { workspaceRoot: at.workspace };
+      expect((yield* mcp.list(scope)).map((server) => server.name)).toEqual(["theirs"]);
+      const add = yield* Effect.flip(mcp.add(scope, { ...WEB, scope: "project" }));
+      expect(add.code).toBe("conflict");
+      expect(add.message).toContain('"$schema"');
+    }),
+  );
+
+  it.effect("takes only a file's own keys for names", () =>
+    Effect.gen(function* () {
+      const at = scratch();
+      at.projectFile({ mcpServers: {} });
+      const ran: Array<ReadonlyArray<string>> = [];
+      const run: RunClaude = (args) =>
+        Effect.sync(() => {
+          ran.push(args);
+          return { code: 0, stdout: "", stderr: "" };
+        });
+      const mcp = at.extension(run);
+      const scope = { workspaceRoot: at.workspace };
+      const server = { ...WEB, name: "toString", scope: "project" as const };
+      yield* mcp.add(scope, server);
+      expect(ran).toEqual([addArgs("project", "toString", addJson(server))]);
+      expect((yield* Effect.flip(mcp.remove(scope, "project", "constructor"))).code).toBe(
+        "not-found",
       );
     }),
   );
@@ -298,7 +404,7 @@ describe("the Claude Code MCP servers extension", () => {
       const at = scratch();
       at.userFile('{"mcpServers": {"web": {"command": "true"}}, broken');
       at.projectFile({ mcpServers: { theirs: HAND } });
-      at.ledger({ user: ["web"], projects: {} });
+      at.ours({ [at.userPath]: { web: { command: "true" } } });
       const mcp = at.extension();
       const scope = { workspaceRoot: at.workspace };
       // The project's servers are still listed; the user's cannot be.
@@ -317,34 +423,70 @@ describe("the Claude Code MCP servers extension", () => {
     }),
   );
 
+  /** A runner answering each launch in turn, keeping the argv it was given. */
+  const answering = (answers: ReadonlyArray<Ran | ConnectorExtensionFailed>) => {
+    const ran: Array<ReadonlyArray<string>> = [];
+    const run: RunClaude = (args) =>
+      Effect.suspend(() => {
+        ran.push(args);
+        const answer = answers[ran.length - 1]!;
+        return answer instanceof ConnectorExtensionFailed
+          ? Effect.fail(answer)
+          : Effect.succeed(answer);
+      });
+    return { ran, run };
+  };
+  const OK: Ran = { code: 0, stdout: "", stderr: "" };
+  const BEFORE = { type: "http", url: "http://127.0.0.1:9/old" };
+  const EDIT = [
+    removeArgs("user", "web"),
+    addArgs("user", "web", addJson(WEB)),
+    addArgs("user", "web", JSON.stringify(BEFORE)),
+  ];
+
   it.effect("puts an edited server back as it was when the CLI refuses the new entry", () =>
     Effect.gen(function* () {
       const at = scratch();
-      const before = { type: "http", url: "http://127.0.0.1:9/old" };
-      at.userFile({ mcpServers: { web: before } });
-      at.ledger({ user: ["web"], projects: {} });
-      const ran: Array<ReadonlyArray<string>> = [];
-      const answers: ReadonlyArray<Ran> = [
-        { code: 0, stdout: "", stderr: "" },
-        { code: 1, stdout: "", stderr: "refused" },
-        { code: 0, stdout: "", stderr: "" },
-      ];
-      const run: RunClaude = (args) =>
-        Effect.sync(() => {
-          ran.push(args);
-          return answers[ran.length - 1]!;
-        });
-      const failure = yield* Effect.flip(at.extension(run).add({ workspaceRoot: null }, WEB));
+      at.userFile({ mcpServers: { web: BEFORE } });
+      at.ours({ [at.userPath]: { web: BEFORE } });
+      const cli = answering([OK, { code: 1, stdout: "", stderr: "refused" }, OK]);
+      const failure = yield* Effect.flip(at.extension(cli.run).add({ workspaceRoot: null }, WEB));
       expect(failure).toMatchObject({ code: "invalid", message: "refused" });
-      expect(ran).toEqual([
-        removeArgs("user", "web"),
-        addArgs("user", "web", addJson(WEB)),
-        addArgs("user", "web", JSON.stringify(before)),
+      expect(cli.ran).toEqual(EDIT);
+      expect(at.readLedger()).toEqual({ files: { [at.userPath]: { web: fingerprint(BEFORE) } } });
+    }),
+  );
+
+  it.effect("puts an edited server back when the new entry's add cannot run at all", () =>
+    Effect.gen(function* () {
+      const at = scratch();
+      at.userFile({ mcpServers: { web: BEFORE } });
+      at.ours({ [at.userPath]: { web: BEFORE } });
+      const timedOut = new ConnectorExtensionFailed({ code: "internal", message: "timed out" });
+      const cli = answering([OK, timedOut, OK]);
+      const failure = yield* Effect.flip(at.extension(cli.run).add({ workspaceRoot: null }, WEB));
+      expect(failure).toMatchObject({ code: "internal", message: "timed out" });
+      expect(cli.ran).toEqual(EDIT);
+      expect(at.readLedger()).toEqual({ files: { [at.userPath]: { web: fingerprint(BEFORE) } } });
+    }),
+  );
+
+  it.effect("forgets an edited server that could not be put back", () =>
+    Effect.gen(function* () {
+      const at = scratch();
+      at.userFile({ mcpServers: { web: BEFORE } });
+      at.ours({ [at.userPath]: { web: BEFORE } });
+      const cli = answering([
+        OK,
+        { code: 1, stdout: "", stderr: "refused" },
+        { code: 1, stdout: "", stderr: "refused again" },
       ]);
-      const ledger = JSON.parse(
-        NodeFS.readFileSync(NodePath.join(at.configDir, LEDGER_FILE), "utf8"),
-      ) as unknown;
-      expect(ledger).toEqual({ user: ["web"], projects: {} });
+      const failure = yield* Effect.flip(at.extension(cli.run).add({ workspaceRoot: null }, WEB));
+      expect(failure.code).toBe("internal");
+      expect(failure.message).toContain("refused");
+      expect(failure.message).toContain('"web" could not be put back: refused again');
+      expect(cli.ran).toEqual(EDIT);
+      expect(at.readLedger()).toEqual({ files: {} });
     }),
   );
 });
