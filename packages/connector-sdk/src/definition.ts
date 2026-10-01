@@ -307,6 +307,13 @@ export interface GenerateTextInput {
 // ── Instance and definition ────────────────────────────────────
 
 /**
+ * Whether two model lists say the same thing, row for row — what decides
+ * that a `modelUpdates` list is news, on both sides of the stream.
+ */
+export const sameModels = (a: ReadonlyArray<ModelOption>, b: ReadonlyArray<ModelOption>): boolean =>
+  JSON.stringify(a) === JSON.stringify(b);
+
+/**
  * One configured connector, live. Instances are per configuration, not per
  * thread: a thread gets a `SessionHandle` from an instance, and the registry
  * routes to the instance by id so two differently configured instances of the

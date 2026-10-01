@@ -46,7 +46,7 @@ import type { ConnectorSummary, ModelOption } from "@poseidon/contracts/connecto
 import { probeCanRun } from "@poseidon/contracts/connectors";
 import type { ConnectorCapabilities } from "@poseidon/contracts/runtime";
 import type { ConnectorProbe } from "@poseidon/connector-sdk/definition";
-import { toWireProbe } from "@poseidon/connector-sdk/definition";
+import { sameModels, toWireProbe } from "@poseidon/connector-sdk/definition";
 import type { ConnectorRegistry } from "@poseidon/connector-sdk/registry";
 import type { ConnectorInstanceConfig, Settings } from "@poseidon/contracts/settings";
 import * as Cause from "effect/Cause";
@@ -129,9 +129,6 @@ const NO_EXTENSIONS: ConnectorSummary["extensions"] = {
   plugins: false,
   mcpServers: false,
 };
-
-const sameModels = (a: ReadonlyArray<ModelOption>, b: ReadonlyArray<ModelOption>): boolean =>
-  JSON.stringify(a) === JSON.stringify(b);
 
 /** A probe gets this long before it's reported as an error. */
 const PROBE_TIMEOUT = Duration.seconds(15);

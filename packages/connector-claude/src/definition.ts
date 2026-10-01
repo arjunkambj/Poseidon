@@ -13,12 +13,11 @@ import type {
   ConnectorError,
   StartSessionInput,
 } from "@poseidon/connector-sdk/definition";
-import { SpawnFailed } from "@poseidon/connector-sdk/definition";
+import { sameModels, SpawnFailed } from "@poseidon/connector-sdk/definition";
 import {
   ConnectorExtensionFailed,
   type CommandsExtension,
 } from "@poseidon/connector-sdk/extensions";
-import type { ModelOption } from "@poseidon/contracts/connectors";
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Semaphore from "effect/Semaphore";
@@ -98,9 +97,6 @@ export const ASK_AGAIN_AFTER: ReadonlyArray<Duration.Input> = [
  * and write the CLI's cache for the next try (`readInitialization`).
  */
 export const LINGER = "6 seconds";
-
-const sameModels = (a: ReadonlyArray<ModelOption>, b: ReadonlyArray<ModelOption>): boolean =>
-  JSON.stringify(a) === JSON.stringify(b);
 
 export const makeClaudeConnectorDefinition = (
   options: ClaudeConnectorOptions = {},
