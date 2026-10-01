@@ -25,6 +25,7 @@ import type { ModelOption } from "@poseidon/contracts/connectors";
 import type { HarnessCommand } from "@poseidon/contracts/harnessCommands";
 import type { ConnectorProbe } from "@poseidon/connector-sdk/definition";
 import { ProbeFailed } from "@poseidon/connector-sdk/definition";
+import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 
 import { resolveBinary, terminalCommand, type ResolvedBinary } from "./binary";
@@ -33,7 +34,7 @@ import { toHarnessCommands } from "./commands";
 import type { ClaudeConnectorConfig } from "./configSchema";
 import { childEnv } from "./env";
 import { CLAUDE_KIND } from "./kind";
-import { toModelOptions } from "./models";
+import { isCompiledList, toModelOptions } from "./models";
 import { makeProcessGroup } from "./spawn";
 
 /**
@@ -118,17 +119,49 @@ export interface Initialization {
   /** The CLI's built-in and bundled slash commands (`commands.ts`). */
   readonly commands: ReadonlyArray<HarnessCommand>;
   readonly account?: string;
+  /**
+   * The CLI answered signed in with the list compiled into it rather than its
+   * account's catalog, which had not loaded in time: a later handshake is
+   * likely to list more (docs/claude-code-connector.md, "The probe").
+   */
+  readonly provisional: boolean;
 }
+
+/** The fields of the SDK's `AccountInfo` this reads. */
+interface ClaudeAccountInfo {
+  readonly email?: string;
+  readonly tokenSource?: string;
+  readonly apiKeySource?: string;
+  readonly apiProvider?: string;
+}
+
+/**
+ * Whether the CLI could have listed its account's catalog: it is signed in to
+ * Anthropic's own API. A signed-out or third-party CLI only ever has the
+ * compiled-in list, so its answer is final.
+ */
+const hasCatalog = (account: ClaudeAccountInfo | undefined): boolean =>
+  account !== undefined &&
+  (account.apiProvider === undefined || account.apiProvider === "firstParty") &&
+  ((account.email ?? "") !== "" ||
+    (account.tokenSource !== undefined && account.tokenSource !== "none") ||
+    account.apiKeySource !== undefined);
 
 /**
  * Starts the CLI through the SDK with a prompt that never yields, reads the
  * initialize response, and stops the CLI again — its whole process group,
  * waited for, before this returns.
+ *
+ * `linger` keeps a CLI that answered provisionally running that much longer
+ * before it is stopped, idle: its catalog request is still in flight, and a
+ * request that lands writes the CLI's own cache, which the next handshake
+ * reads at once. Stopped straight away, the request dies with it.
  */
 export const readInitialization = (input: {
   readonly binary: ResolvedBinary;
   readonly env: Record<string, string>;
   readonly cwd: string;
+  readonly linger?: Duration.Input;
 }): Effect.Effect<Initialization, ProbeFailed> =>
   Effect.gen(function* () {
     const group = makeProcessGroup();
@@ -173,7 +206,8 @@ export const readInitialization = (input: {
           models: toModelOptions(init.models),
           commands: toHarnessCommands(init.commands),
           ...(typeof email === "string" && email !== "" ? { account: email } : {}),
-        };
+          provisional: hasCatalog(init.account) && isCompiledList(init.models),
+        } satisfies Initialization;
       },
       catch: (cause) =>
         new ProbeFailed({
@@ -186,6 +220,9 @@ export const readInitialization = (input: {
         orElse: () =>
           Effect.fail(new ProbeFailed({ kind: CLAUDE_KIND, message: "initialize timed out" })),
       }),
+      Effect.tap((found) =>
+        found.provisional && input.linger !== undefined ? Effect.sleep(input.linger) : Effect.void,
+      ),
       Effect.ensuring(release),
     );
   });
@@ -194,11 +231,22 @@ export const readInitialization = (input: {
 
 const detailOf = (result: Ran): string => result.stderr.trim() || result.stdout.trim();
 
+/** What runs the handshake: `readInitialization`, or that and something more. */
+export type Handshake = (
+  input: Parameters<typeof readInitialization>[0],
+) => Effect.Effect<Initialization, ProbeFailed>;
+
 export const probe = (
   config: ClaudeConnectorConfig,
   /** How the binary is found; a test swaps in a narrower search. */
   resolve: (config: ClaudeConnectorConfig) => ResolvedBinary | null = (options) =>
     resolveBinary(options, process.env),
+  /**
+   * How the handshake runs. The definition's also shares the answer with the
+   * instances of this config, and answers a full list it already has in place
+   * of a provisional one (`handshakes.ts`).
+   */
+  handshake: Handshake = readInitialization,
 ): Effect.Effect<ConnectorProbe, ProbeFailed> =>
   Effect.gen(function* () {
     const probedAt = new Date().toISOString();
@@ -242,10 +290,10 @@ export const probe = (
     const authRun = yield* runBinary(binary, ["auth", "status", "--json"], env);
     const status = parseAuthStatus(authRun.stdout);
 
-    const initialization = yield* readInitialization({ binary, env, cwd: NodeOS.tmpdir() }).pipe(
+    const initialization = yield* handshake({ binary, env, cwd: NodeOS.tmpdir() }).pipe(
       Effect.catch((error) => {
         warnings.push(error.message);
-        return Effect.succeed<Initialization>({ models: [], commands: [] });
+        return Effect.succeed<Initialization>({ models: [], commands: [], provisional: false });
       }),
     );
     const account = status.account ?? initialization.account;

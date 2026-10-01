@@ -18,9 +18,12 @@ import {
   ConnectorExtensionFailed,
   type CommandsExtension,
 } from "@poseidon/connector-sdk/extensions";
+import type { ModelOption } from "@poseidon/contracts/connectors";
+import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
-import * as Ref from "effect/Ref";
 import * as Semaphore from "effect/Semaphore";
+import * as Stream from "effect/Stream";
+import * as SubscriptionRef from "effect/SubscriptionRef";
 
 import { resolveBinary, terminalCommand, type ResolvedBinary } from "./binary";
 import { CLAUDE_CAPABILITIES } from "./capabilities";
@@ -28,9 +31,10 @@ import { runClaude } from "./cli";
 import { ClaudeConnectorConfig } from "./configSchema";
 import { childEnv } from "./env";
 import { makeClaudeGenerateText } from "./generateText";
+import { handshakeKey, makeHandshakes, type HandshakeSource } from "./handshakes";
 import { CLAUDE_KIND } from "./kind";
 import { makeClaudeMcpServers } from "./mcpServers";
-import { LOGIN_ARGS, probe as probeBinary, readInitialization, type Initialization } from "./probe";
+import { LOGIN_ARGS, probe as probeBinary, readInitialization, type Handshake } from "./probe";
 import { makeClaudePlugins } from "./plugins";
 import type { SessionLimits } from "./queryOptions";
 import { makeClaudeSession } from "./session";
@@ -72,7 +76,31 @@ export interface ClaudeConnectorOptions {
   readonly limits?: SessionLimits;
   /** The shared agents skills folder; `~/.agents/skills` when omitted. */
   readonly agentsSkillsRoot?: string;
+  /** How a zero-turn handshake runs; a test swaps in answers of its own. */
+  readonly handshake?: Handshake;
 }
+
+/**
+ * When an instance asks again after a provisional answer, counted from the
+ * one before: a few tries over about a minute, each one CLI start that sends
+ * nothing. The CLI waits only briefly for its account's catalog when nothing
+ * is cached, and a busy boot can outlast that wait.
+ */
+export const ASK_AGAIN_AFTER: ReadonlyArray<Duration.Input> = [
+  "2 seconds",
+  "10 seconds",
+  "30 seconds",
+];
+
+/**
+ * How long an asking-again handshake that is still provisional keeps the CLI
+ * idle before stopping it, so the catalog request it has in flight can land
+ * and write the CLI's cache for the next try (`readInitialization`).
+ */
+export const LINGER = "6 seconds";
+
+const sameModels = (a: ReadonlyArray<ModelOption>, b: ReadonlyArray<ModelOption>): boolean =>
+  JSON.stringify(a) === JSON.stringify(b);
 
 export const makeClaudeConnectorDefinition = (
   options: ClaudeConnectorOptions = {},
@@ -82,6 +110,9 @@ export const makeClaudeConnectorDefinition = (
    * run two MCP server writes and their ledger writes on it, at once.
    */
   const writeMutex = Semaphore.makeUnsafe(1);
+  /** The latest handshake per config, which the probe and the instances share. */
+  const handshakes = makeHandshakes();
+  const handshake = options.handshake ?? readInitialization;
   return {
     kind: CLAUDE_KIND,
     metadata: {
@@ -92,7 +123,12 @@ export const makeClaudeConnectorDefinition = (
     },
     configSchema: ClaudeConnectorConfig,
     defaultConfig: () => ({}),
-    probe: (config) => probeBinary(config),
+    probe: (config) =>
+      probeBinary(config, undefined, (input) =>
+        Effect.flatMap(handshake(input), (found) =>
+          handshakes.record(handshakeKey(config), found, "probe"),
+        ),
+      ),
     createInstance: ({ instanceId, config, services }) =>
       Effect.gen(function* () {
         const failed = (message: string) =>
@@ -130,30 +166,58 @@ export const makeClaudeConnectorDefinition = (
           });
 
         /**
-         * One handshake per instance, shared by the model list and the slash
-         * commands: it is a process start. Asks that arrive together wait for
-         * the one in flight. A failed one is not kept, so the next ask tries
-         * again.
+         * One handshake answer per config, shared by the model list and the
+         * slash commands — it is a process start — and with the probe, whose
+         * every run replaces it (`handshakes.ts`). Asks that arrive before any
+         * answer wait for the one in flight. A failed one is not kept, so the
+         * next ask tries again.
          */
-        const initialization = yield* Ref.make<Initialization | null>(null);
-        const oneAtATime = yield* Semaphore.make(1);
-        const initialize = oneAtATime.withPermits(1)(
+        const key = handshakeKey(config);
+        const shared = yield* handshakes.of(key);
+        const ask = (source: HandshakeSource, linger?: Duration.Input) =>
           Effect.gen(function* () {
-            const cached = yield* Ref.get(initialization);
-            if (cached !== null) return cached;
             const { binary, env } = yield* launch;
             if (binary === null) {
               return yield* failed("claude not found on PATH or in the usual install directories");
             }
-            const listed = yield* readInitialization({
+            const found = yield* handshake({
               binary,
               env,
               cwd: NodeOS.tmpdir(),
+              ...(linger === undefined ? {} : { linger }),
             }).pipe(Effect.mapError((error) => failed(error.message)));
-            yield* Ref.set(initialization, listed);
-            return listed;
+            return yield* handshakes.record(key, found, source);
+          });
+        const oneAtATime = yield* Semaphore.make(1);
+        const initialize = oneAtATime.withPermits(1)(
+          Effect.gen(function* () {
+            const current = yield* SubscriptionRef.get(shared);
+            return current !== null ? current.answer : yield* ask("instance");
           }),
         );
+
+        /**
+         * A provisional answer, from the probe or this instance, is asked about
+         * again a bounded number of times, until a full one is heard. Answers
+         * this asking produced do not start it over, so it cannot feed itself.
+         */
+        const askAgain = Effect.gen(function* () {
+          for (const delay of ASK_AGAIN_AFTER) {
+            yield* Effect.sleep(delay);
+            const current = yield* SubscriptionRef.get(shared);
+            if (current !== null && !current.answer.provisional) return;
+            yield* Effect.ignore(ask("retry", LINGER));
+          }
+        });
+        yield* SubscriptionRef.changes(shared).pipe(
+          Stream.filter(
+            (recorded) =>
+              recorded !== null && recorded.answer.provisional && recorded.source !== "retry",
+          ),
+          Stream.runForEach(() => askAgain),
+          Effect.forkScoped,
+        );
+
         const listModels = () => Effect.map(initialize, (listed) => listed.models);
         // The handshake loads no settings (`commands.ts`), so the scope changes nothing.
         const commands: CommandsExtension = {
@@ -186,6 +250,11 @@ export const makeClaudeConnectorDefinition = (
             );
           },
           listModels,
+          modelUpdates: SubscriptionRef.changes(shared).pipe(
+            Stream.filter((recorded) => recorded !== null),
+            Stream.map((recorded) => recorded.answer.models),
+            Stream.changesWith(sameModels),
+          ),
           generateText: makeClaudeGenerateText({ instanceId, launch }),
           extensions: {
             commands,
