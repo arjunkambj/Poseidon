@@ -120,6 +120,13 @@ export interface Initialization {
   readonly commands: ReadonlyArray<HarnessCommand>;
   readonly account?: string;
   /**
+   * The CLI is signed in to Anthropic's own API, the only state in which it
+   * has an account catalog to list. With `account`, it says whose list this
+   * is, so a later answer from another account or sign-in state is never
+   * mistaken for this one (`handshakes.ts`).
+   */
+  readonly signedIn: boolean;
+  /**
    * The CLI answered signed in with the list compiled into it rather than its
    * account's catalog, which had not loaded in time: a later handshake is
    * likely to list more (docs/claude-code-connector.md, "The probe").
@@ -202,11 +209,13 @@ export const readInitialization = (input: {
         });
         const init = await session.initializationResult();
         const email = init.account?.email;
+        const signedIn = hasCatalog(init.account);
         return {
           models: toModelOptions(init.models),
           commands: toHarnessCommands(init.commands),
           ...(typeof email === "string" && email !== "" ? { account: email } : {}),
-          provisional: hasCatalog(init.account) && isCompiledList(init.models),
+          signedIn,
+          provisional: signedIn && isCompiledList(init.models),
         } satisfies Initialization;
       },
       catch: (cause) =>
@@ -243,8 +252,8 @@ export const probe = (
     resolveBinary(options, process.env),
   /**
    * How the handshake runs. The definition's also shares the answer with the
-   * instances of this config, and answers a full list it already has in place
-   * of a provisional one (`handshakes.ts`).
+   * instances of this config, and answers a full list it already has for the
+   * same account in place of a provisional one (`handshakes.ts`).
    */
   handshake: Handshake = readInitialization,
 ): Effect.Effect<ConnectorProbe, ProbeFailed> =>
@@ -293,7 +302,12 @@ export const probe = (
     const initialization = yield* handshake({ binary, env, cwd: NodeOS.tmpdir() }).pipe(
       Effect.catch((error) => {
         warnings.push(error.message);
-        return Effect.succeed<Initialization>({ models: [], commands: [], provisional: false });
+        return Effect.succeed<Initialization>({
+          models: [],
+          commands: [],
+          signedIn: false,
+          provisional: false,
+        });
       }),
     );
     const account = status.account ?? initialization.account;

@@ -7,7 +7,10 @@
  * replaces the answer an instance lists its models and slash commands from,
  * and an instance that asked again replaces the one the next probe falls back
  * on. A provisional answer (the CLI's compiled-in list, `probe.ts`) never
- * replaces a full one; it is kept only while nothing better has been heard.
+ * replaces a full one from the same account; it is kept only while nothing
+ * better has been heard for it. An answer from another account or sign-in
+ * state — after the user signs in, out, or switches — always replaces it: the
+ * old list is not this CLI's any more.
  *
  * Each record says who made it, so an instance can tell a provisional answer
  * it should ask again about from one its own asking again produced.
@@ -32,8 +35,8 @@ export interface Handshakes {
   readonly of: (key: string) => Effect.Effect<SubscriptionRef.SubscriptionRef<Recorded | null>>;
   /**
    * Records what a handshake answered and returns the answer to use: the one
-   * kept, which is the new one unless it is provisional and a full one is
-   * already known.
+   * kept, which is the new one unless it is provisional and a full one from
+   * the same account is already known.
    */
   readonly record: (
     key: string,
@@ -44,6 +47,10 @@ export interface Handshakes {
 
 /** The key one configuration's answers are shared under. */
 export const handshakeKey = (config: unknown): string => JSON.stringify(config ?? {});
+
+/** Whose list an answer is: its account and whether it is signed in at all. */
+export const holderOf = (answer: Initialization): string =>
+  JSON.stringify([answer.signedIn, answer.account ?? null]);
 
 export const makeHandshakes = (): Handshakes => {
   const byKey = new Map<string, SubscriptionRef.SubscriptionRef<Recorded | null>>();
@@ -63,7 +70,10 @@ export const makeHandshakes = (): Handshakes => {
   const record = (key: string, answer: Initialization, source: HandshakeSource) =>
     Effect.flatMap(of(key), (ref) =>
       SubscriptionRef.modify(ref, (current): [Initialization, Recorded | null] =>
-        answer.provisional && current !== null && !current.answer.provisional
+        answer.provisional &&
+        current !== null &&
+        !current.answer.provisional &&
+        holderOf(current.answer) === holderOf(answer)
           ? [current.answer, current]
           : [answer, { answer, source }],
       ),

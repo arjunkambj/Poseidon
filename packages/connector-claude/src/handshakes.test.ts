@@ -21,9 +21,22 @@ import { ASK_AGAIN_AFTER, LINGER, makeClaudeConnectorDefinition } from "./defini
 import { handshakeKey, makeHandshakes } from "./handshakes";
 import type { Handshake, Initialization } from "./probe";
 
-const answer = (labels: ReadonlyArray<string>, provisional: boolean): Initialization => ({
-  models: labels.map((label): ModelOption => ({ id: label, label, family: "Claude", efforts: [] })),
+const row = (label: string, id = label): ModelOption => ({
+  id,
+  label,
+  family: "Claude",
+  efforts: [],
+});
+
+const answer = (
+  labels: ReadonlyArray<string>,
+  provisional: boolean,
+  account: string | null = "user@example.com",
+): Initialization => ({
+  models: labels.map((label) => row(label)),
   commands: [],
+  ...(account === null ? {} : { account }),
+  signedIn: account !== null,
   provisional,
 });
 
@@ -96,6 +109,44 @@ describe("makeHandshakes", () => {
       expect(yield* handshakes.record(handshakeKey({ configDir: "/x" }), COMPILED, "probe")).toBe(
         COMPILED,
       );
+    }),
+  );
+});
+
+describe("an answer from another account or sign-in state", () => {
+  it.effect("replaces a full one even when provisional, and starts the asking again", () =>
+    Effect.gen(function* () {
+      // Signed out the compiled-in list is final; signing in brings a
+      // compiled-in list again, then the new account's catalog.
+      const signedOut = answer(
+        ["Default (Opus 5.5, 1M context)", "Opus 5.5 (1M context)"],
+        false,
+        null,
+      );
+      const { handshake, lingers } = scripted([signedOut, COMPILED, CATALOG]);
+      const { definition, config, instance } = yield* open(handshake, fakeClaude());
+      expect(yield* instance.listModels()).toEqual(signedOut.models);
+      expect((yield* definition.probe(config)).models).toEqual(COMPILED.models);
+      expect(yield* instance.listModels()).toEqual(COMPILED.models);
+      yield* settle;
+      yield* TestClock.adjust(ASK_AGAIN_AFTER[0]!);
+      yield* settle;
+      expect(lingers).toEqual([undefined, undefined, LINGER]);
+      expect(yield* instance.listModels()).toEqual(CATALOG.models);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("keeps nothing of another account's list", () =>
+    Effect.gen(function* () {
+      const handshakes = makeHandshakes();
+      const key = handshakeKey({});
+      const fable = answer(["Fable 5.1 (1M context)"], true);
+      yield* handshakes.record(key, fable, "probe");
+      yield* handshakes.record(key, CATALOG, "retry");
+      const other = answer(["Opus 5.5"], true, "other@example.com");
+      expect(yield* handshakes.record(key, other, "probe")).toBe(other);
+      const otherCatalog = answer(["Opus 5.5", "Sonnet 5"], false, "other@example.com");
+      expect(yield* handshakes.record(key, otherCatalog, "retry")).toBe(otherCatalog);
     }),
   );
 });
