@@ -19,7 +19,6 @@
  *   API, so it costs nothing (`fixtures/claude/probe/`).
  */
 
-import { execFile } from "node:child_process";
 import * as NodeOS from "node:os";
 import { query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { ModelOption } from "@poseidon/contracts/connectors";
@@ -29,6 +28,7 @@ import { ProbeFailed } from "@poseidon/connector-sdk/definition";
 import * as Effect from "effect/Effect";
 
 import { resolveBinary, terminalCommand, type ResolvedBinary } from "./binary";
+import { execClaude, type Ran } from "./cli";
 import { toHarnessCommands } from "./commands";
 import type { ClaudeConnectorConfig } from "./configSchema";
 import { childEnv } from "./env";
@@ -51,42 +51,16 @@ export const INSTALL_COMMAND = "npm install -g @anthropic-ai/claude-code";
 /** How long the zero-turn handshake may take before the probe gives up on it. */
 const INITIALIZE_TIMEOUT = "20 seconds";
 
-interface RunResult {
-  readonly code: number;
-  readonly stdout: string;
-  readonly stderr: string;
-}
-
 const runBinary = (
   binary: ResolvedBinary,
   args: ReadonlyArray<string>,
   env: Record<string, string>,
-): Effect.Effect<RunResult, ProbeFailed> =>
-  Effect.callback<RunResult, ProbeFailed>((resume) => {
-    const child = execFile(
-      binary.command,
-      [...args],
-      // A neutral directory: neither question depends on one, and the server's
-      // own working directory is nothing the CLI needs to see.
-      { cwd: NodeOS.tmpdir(), timeout: 30_000, encoding: "utf8", maxBuffer: 4 * 1024 * 1024, env },
-      (error, stdout, stderr) => {
-        if (error !== null && typeof (error as { code?: unknown }).code !== "number") {
-          resume(
-            Effect.fail(
-              new ProbeFailed({
-                kind: CLAUDE_KIND,
-                message: `${binary.display}: ${error.message}`,
-              }),
-            ),
-          );
-          return;
-        }
-        const code = error === null ? 0 : (error as { code: number }).code;
-        resume(Effect.succeed({ code, stdout, stderr }));
-      },
-    );
-    return Effect.sync(() => child.kill());
-  });
+): Effect.Effect<Ran, ProbeFailed> =>
+  // A neutral directory: neither question depends on one, and the server's
+  // own working directory is nothing the CLI needs to see.
+  execClaude(binary, args, { cwd: NodeOS.tmpdir(), env }).pipe(
+    Effect.mapError((message) => new ProbeFailed({ kind: CLAUDE_KIND, message })),
+  );
 
 // ── output parsing ─────────────────────────────────────────────
 
@@ -218,7 +192,7 @@ export const readInitialization = (input: {
 
 // ── the probe ──────────────────────────────────────────────────
 
-const detailOf = (result: RunResult): string => result.stderr.trim() || result.stdout.trim();
+const detailOf = (result: Ran): string => result.stderr.trim() || result.stdout.trim();
 
 export const probe = (
   config: ClaudeConnectorConfig,

@@ -2,7 +2,8 @@
  * Running the Claude Code CLI for an extension: one short command — `claude
  * mcp add-json …`, `claude mcp remove …` — with the connector's default-deny
  * environment and the instance's `CLAUDE_CONFIG_DIR` (`env.ts`), in the
- * directory the caller names.
+ * directory the caller names. The probe's `--version` and `auth status` run
+ * through the same `execClaude`.
  */
 
 import { execFile } from "node:child_process";
@@ -43,6 +44,40 @@ export const cliError = (ran: Ran): string => {
   return said === "" ? "claude exited without saying why" : said;
 };
 
+/**
+ * Runs `binary <args>` once to the end: what it printed and how it exited,
+ * whatever the code. Fails, with what went wrong, only when it could not be
+ * started or did not exit on its own (the 30 s timeout); an interrupt kills
+ * it. The probe's runs and the extensions' share it.
+ */
+export const execClaude = (
+  binary: ResolvedBinary,
+  args: ReadonlyArray<string>,
+  options: { readonly cwd: string; readonly env: Record<string, string> },
+): Effect.Effect<Ran, string> =>
+  Effect.callback<Ran, string>((resume) => {
+    const child = execFile(
+      binary.command,
+      [...args],
+      {
+        cwd: options.cwd,
+        timeout: 30_000,
+        encoding: "utf8",
+        maxBuffer: 4 * 1024 * 1024,
+        env: options.env,
+      },
+      (error, stdout, stderr) => {
+        if (error !== null && typeof (error as { code?: unknown }).code !== "number") {
+          resume(Effect.fail(`${binary.display}: ${error.message}`));
+          return;
+        }
+        const code = error === null ? 0 : (error as { code: number }).code;
+        resume(Effect.succeed({ code, stdout, stderr }));
+      },
+    );
+    return Effect.sync(() => child.kill());
+  });
+
 export const runClaude =
   (cli: ClaudeCli): RunClaude =>
   (args, cwd) =>
@@ -51,26 +86,7 @@ export const runClaude =
       if (binary === null) {
         return yield* internal("claude not found on PATH or in the usual install directories");
       }
-      const env = cli.env();
-      return yield* Effect.callback<Ran, ConnectorExtensionFailed>((resume) => {
-        const child = execFile(
-          binary.command,
-          [...args],
-          { cwd, timeout: 30_000, encoding: "utf8", env },
-          (error, stdout, stderr) => {
-            if (error !== null && typeof (error as { code?: unknown }).code !== "number") {
-              resume(Effect.fail(internal(`${binary.display}: ${error.message}`)));
-              return;
-            }
-            resume(
-              Effect.succeed({
-                code: error === null ? 0 : (error as { code: number }).code,
-                stdout,
-                stderr,
-              }),
-            );
-          },
-        );
-        return Effect.sync(() => child.kill());
-      });
+      return yield* execClaude(binary, args, { cwd, env: cli.env() }).pipe(
+        Effect.mapError(internal),
+      );
     });
