@@ -50,7 +50,8 @@ instance runs on Claude Code whenever its probe says it can run.
 | `binary.ts`               | which executable `claude` means, and how to spell a command for the user   |
 | `env.ts`                  | the default-deny child environment                                         |
 | `probe.ts`                | `--version`, `auth status --json`, the zero-turn handshake, version floor  |
-| `models.ts`               | the CLI's model rows and their effort ladders                              |
+| `models.ts`               | the CLI's model rows, versioned labels and their effort ladders            |
+| `handshakes.ts`           | the latest handshake per config, shared by the probe and the instances     |
 | `commands.ts`             | the CLI's own slash commands, for the composer's `/` menu                  |
 | `capabilities.ts`         | what a Claude Code session can do, and why                                 |
 | `spawn.ts`                | the SDK's `spawnClaudeCodeProcess`: a process group, and proof it is gone  |
@@ -340,20 +341,94 @@ Signed out the list has five rows. Signed in, the recording account's has
 twelve: `default` (Opus 5.5 there), `opus`, `claude-fable-5-1`, `sonnet`,
 `haiku`, and seven dated or older models, of which `claude-opus-4-6` and
 `claude-sonnet-4-6` offer every rung but `xhigh`.
-`toModelOptions` (`models.ts`) keeps every row, labels it with its display
-name, groups it under "Claude", and keeps the effort rungs Poseidon's ladder
-knows. The row's `description` (for example "Sonnet 5 · Efficient for routine
-tasks · $2/$10 per Mtok") is carried as the model's `description`, which the
-UI shows as secondary text; an absent or blank one is left out. `listModels`
-runs the same handshake once per instance and caches the result, so the model
-picker does not start a CLI every time it opens.
+`toModelOptions` (`models.ts`) keeps every row and its id, groups it under
+"Claude", and keeps the effort rungs Poseidon's ladder knows. The label is the
+row's display name when that names a version ("Opus 5.5"). One that does not
+("Opus", "Fable", "Opus (1M context)") gets the version the row runs as, read
+from its `resolvedModel` (`claude-haiku-4-5-20251001` is Haiku 4.5) or, on a
+build whose rows carry none, from the description's leading "<Name>
+<version>": "Fable 5.1", "Opus 5.5 (1M context)". `default` is labelled with
+what it runs as, "Default (Opus 5.5)", and the CLI's "(recommended)" moves to
+the front of its description. The row's `description` (for example "Sonnet 5
+· Efficient for routine tasks · $2/$10 per Mtok") is carried as the model's
+`description`, which the UI shows as secondary text; an absent or blank one
+is left out. The ids are never rewritten, since threads store them.
+
+### The compiled-in list
+
+The CLI has two model lists. One is its account's catalog, which it fetches
+from Anthropic and caches per account under
+`~/.claude/cache/model-catalog/<org>-<account>-cc.json` (a `version`,
+`fetchedAt`, a `staleAt` about an hour later, and the `catalog`). The other is
+compiled into the binary. The handshake answers from the catalog when it has
+one in hand and from the compiled-in list otherwise. Read off the 2.1.286
+bundle and its `--debug-file` log:
+
+- At startup the CLI reads the cached entry. A headless run such as the SDK
+  handshake uses it even when it is stale, and refreshes it in the
+  background. The debug log then says it is "using served rows (11 rows via
+  cache …)".
+- With nothing cached it fetches the catalog, but waits at most 1.5 seconds
+  for it when headless (1.75 seconds interactive). A fetch that takes longer
+  leaves the whole run on the compiled-in list ("served rows unavailable …;
+  using compiled behavior"). The fetch carries on, and when it lands it writes
+  the cache for the next run. A run stopped before then, as the handshake
+  stops the CLI as soon as it has answered, takes the fetch with it.
+- After a headless fetch fails with nothing cached, later headless runs hold
+  off asking for a while ("nothing cached, and a recent headless request
+  failed, so this run does not ask again").
+- The catalog is off altogether for a CLI that is signed out, on a
+  third-party provider, or run with `CLAUDE_CODE_MODEL_CATALOG=0`, and in
+  those cases the compiled-in list is the answer.
+
+Signed in, the compiled-in list has five rows, `default`, `opus`,
+`claude-fable-5-1[1m]`, `sonnet` and `haiku`, named "Default (recommended)",
+"Opus", "Fable", "Sonnet" and "Haiku". Every row still has a `resolvedModel`
+and a description naming the version, for example "Opus 5.5 · Best for
+everyday, complex tasks". That is the list a zero-turn handshake with
+`CLAUDE_CODE_MODEL_CATALOG=0` printed, and the one a server booted on a
+scratch `POSEIDON_HOME` was given by its boot-time handshakes, which start
+alongside every other harness's probe. Nothing in the run said which rule
+above applied; the 1.5-second wait with no fetch landing in time is the one a
+busy boot can hit. A handshake run by hand afterwards found the cache in
+place and listed all twelve rows. The signed-out recording
+(`fixtures/claude/probe/`) is the same fallback signed out, with "Opus (1M
+context)" in place of "Opus".
+
+A signed-in, first-party answer whose rows other than `default` name no
+version is **provisional** (`Initialization.provisional`, `isCompiledList`).
+Row counts are not compared: a shorter list from the catalog is the
+account's, and is believed.
+
+### Sharing and refreshing the handshake
+
+The probe and every instance opened with the same config share one answer
+(`handshakes.ts`). An instance's model list and slash commands come from the
+latest answer, and every probe replaces it: the boot reconcile's, a refresh,
+"Probe all". A provisional answer never replaces a full one, so a probe that
+caught the CLI on its compiled-in list reports the full list it already had.
+
+A provisional answer, from the probe or the instance, starts the instance
+asking again: at most three more zero-turn handshakes, 2, 10 and 30 seconds
+apart (`ASK_AGAIN_AFTER`), stopping as soon as a full answer is heard. Each of
+those keeps a CLI that is still provisional running, idle, for 6 seconds
+(`LINGER`) before stopping it, so its catalog fetch can land and write the
+cache that the next try reads. Answers this asking produces never start it
+over. Each try is one process that sends nothing, so the asking costs nothing.
+
+The instance reports every new answer's models on `modelUpdates`. The
+connector manager puts that list in place of the probe's, stamps it as read
+then, and pushes the summaries on `connectors.subscribe` as it does for a
+landing probe. The model catalog atom and the per-instance models atom ask
+again on every push, so open pickers move from the five-row list to the full
+one without "Probe all".
 
 `commands` is the CLI's slash commands (the SDK's `SlashCommand`: `name`,
 `description`, `argumentHint`, and `builtin` on Claude Code's own ones). The
 instance's `commands` extension answers them through `connectors.commands.list`
-from the same cached handshake as the models: one CLI start per instance for
-both, and asks that arrive together wait for the one in flight. A failed
-handshake is not cached and answers `ConnectorExtensionFailed` with code
+from the same shared handshake as the models: one CLI start for both, and
+asks that arrive before any answer wait for the one in flight. A failed
+handshake is not kept and answers `ConnectorExtensionFailed` with code
 `internal`. `toHarnessCommands` (`commands.ts`) strips a leading `/`, leaves out
 an empty description or argument hint, drops the CLI's internal rows, and keeps
 one row per name: the built-in one when a row is marked, otherwise the first.
