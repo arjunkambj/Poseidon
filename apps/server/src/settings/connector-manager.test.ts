@@ -25,6 +25,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Context from "effect/Context";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
@@ -163,7 +164,10 @@ const probed = (summaries: ReadonlyArray<ConnectorSummary>) =>
 const openIds = (registry: ConnectorRegistry) =>
   Effect.map(registry.instances, (instances) => instances.map((instance) => instance.instanceId));
 
-/** The models reading the entrypoint hands the engine, for the last-resort seed. */
+/**
+ * A models reading straight from the instances. The entrypoint hands the engine
+ * the catalog's, which answers the same lists from the probes.
+ */
 const connectorModels = (registry: ConnectorRegistry) => (instanceId: ConnectorInstanceId) =>
   registry.instance(instanceId).pipe(
     Effect.flatMap((instance) => instance.listModels()),
@@ -217,6 +221,27 @@ describe("ConnectorManager", () => {
         expect(seeded.probe.installed).toBe(true);
         expect(seeded.probe.authenticated).toBe(true);
         expect(yield* registry.instances).toHaveLength(1);
+      }),
+    ),
+  );
+
+  it.effect("a save that changes no connector pushes no list", () =>
+    withFixture(({ manager, store }) =>
+      Effect.gen(function* () {
+        yield* awaitSummaries(manager, (all) => all.length === 1 && probed(all));
+        // The replayed list, then the next one that says something new.
+        const pushed = yield* manager.changes.pipe(
+          Stream.take(2),
+          Stream.runCollect,
+          Effect.forkChild,
+        );
+        yield* Effect.yieldNow;
+        // Every client refetches every instance's models on a push.
+        yield* store.update({ theme: "dark" });
+        const [conn] = (yield* store.get).connectors;
+        yield* store.update({ connectors: [{ ...conn!, displayName: "Renamed" }] });
+        const lists = Array.from(yield* Fiber.join(pushed));
+        expect(lists.map((list) => list[0]!.displayName)).toEqual(["Fake", "Renamed"]);
       }),
     ),
   );

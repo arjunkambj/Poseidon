@@ -99,6 +99,19 @@ const failedProbe = (message: string, probedAt: string): ConnectorProbe => ({
 /** The wire stand-in for an entry whose first probe has not landed yet. */
 const probingProbe = (probedAt: string) => ({ status: "probing" as const, probedAt });
 
+/**
+ * A summary list as a subscriber reads it. Every settings save and every probe
+ * publishes, and a stand-in is stamped afresh each time, so two lists that say
+ * the same thing would otherwise never compare equal — and each push has every
+ * client refetch every instance's models.
+ */
+const listKey = (list: ReadonlyArray<ConnectorSummary>): string =>
+  JSON.stringify(
+    list.map((summary) =>
+      summary.probe.status === "probing" ? { ...summary, probe: { status: "probing" } } : summary,
+    ),
+  );
+
 interface Entry {
   readonly signature: string;
   readonly scope: Scope.Closeable | null;
@@ -546,7 +559,10 @@ export class ConnectorManager extends Context.Service<
           refresh === true ? Effect.tap(list(true), () => settleDefaultModel) : list(),
         models,
         ready: Deferred.await(registered),
-        changes: Stream.fromPubSub(summaries),
+        changes: Stream.changesWith(
+          Stream.fromPubSub(summaries),
+          (previous, next) => listKey(previous) === listKey(next),
+        ),
       });
     }),
   );
