@@ -595,17 +595,25 @@ export class SettingsStore extends Context.Service<
      */
     readonly freshInstall: boolean;
     /**
-     * True when the `settings` row at boot could not be decoded, so `get`
-     * serves defaults in its place and the first `update` archives it. Nothing
-     * should write at boot then: the row is left for a save the user makes.
+     * True while the `settings` row could not be decoded, so `get` serves
+     * defaults in its place, and until the first `update` archives it. Nothing
+     * should write in that time: the row is left for a save the user makes.
      */
-    readonly unreadable: boolean;
+    readonly unreadable: Effect.Effect<boolean>;
     /**
-     * True when the `settings` row at boot is one a save wrote over an
-     * undecodable row, which it archived. That save stored defaults plus its
-     * own patch — no connectors, and no kinds offered — so the connector
-     * manager reads it as a first run rather than as a user who removed
-     * every connector.
+     * True when the `settings` row at boot could not be decoded, whether or
+     * not a save has replaced it since. That save stores defaults plus its own
+     * patch — no connectors, and no kinds offered — so the connector manager
+     * reads it as a first run rather than as a user who removed every
+     * connector.
+     */
+    readonly unreadableAtBoot: boolean;
+    /**
+     * True when an undecodable row was ever archived, on this boot or any
+     * earlier one: the archive is kept for good. Until the connector upgrade
+     * has offered any kind, it means the document holds only what the save
+     * over that row wrote, which is a first run's, not a user's who removed
+     * every connector. After that it tells the upgrade nothing.
      */
     readonly replacedUnreadable: boolean;
   }
@@ -686,7 +694,8 @@ export class SettingsStore extends Context.Service<
       return SettingsStore.of({
         get: Ref.get(ref).pipe(Effect.flatMap(withRules)),
         freshInstall: loaded.freshInstall,
-        unreadable: loaded.unreadable !== null,
+        unreadable: Effect.map(Ref.get(unreadable), (raw) => raw !== null),
+        unreadableAtBoot: loaded.unreadable !== null,
         replacedUnreadable: loaded.replacedUnreadable,
         update: (patch) =>
           writeMutex.withPermits(1)(

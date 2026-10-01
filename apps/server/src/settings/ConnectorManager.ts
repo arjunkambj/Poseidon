@@ -383,20 +383,22 @@ export class ConnectorManager extends Context.Service<
           if (yield* Ref.get(upgraded)) {
             return false;
           }
-          yield* Ref.set(upgraded, true);
           // The store serves defaults in place of a row it could not decode and
           // keeps that row until a save of the user's archives it. A boot that
           // wrote here would replace it with nobody asking, and a newer build
           // gone back to would find defaults rather than the user's document.
-          if (store.unreadable) {
+          // Not marked done: the value that save emits is upgraded instead, so
+          // this session has connectors without waiting for a restart.
+          if (yield* store.unreadable) {
             return false;
           }
+          yield* Ref.set(upgraded, true);
           const patch = upgradeConnectors(
             settings,
             registry.definitions,
             // A save over an undecodable row stored a document with nothing
             // offered, which is a first run's, not a user's who removed all.
-            store.freshInstall || store.replacedUnreadable,
+            store.freshInstall || store.unreadableAtBoot || store.replacedUnreadable,
             makeConnectorInstanceId,
           );
           if (patch === null) {
@@ -423,7 +425,7 @@ export class ConnectorManager extends Context.Service<
         .withPermits(1)(
           Effect.gen(function* () {
             // Not over a row the store could not decode, as `maybeUpgrade`.
-            if (store.unreadable || (yield* Ref.get(defaultModelSettled))) {
+            if ((yield* store.unreadable) || (yield* Ref.get(defaultModelSettled))) {
               return;
             }
             const settings = yield* store.get;

@@ -49,8 +49,8 @@ const withKeybindingOverrides = (settings: Settings): Settings =>
 /**
  * The document at boot. `freshInstall` when there is no row; `unreadable`
  * holds the raw text of a row that does not decode, which is served as the
- * defaults; `replacedUnreadable` when the row there is one a save wrote over
- * such a row, which it archived.
+ * defaults; `replacedUnreadable` when such a row was archived by a save, on
+ * any boot so far — the archive is never removed.
  */
 export const loadSettingsRow = (sql: SqlClient.SqlClient) =>
   Effect.gen(function* () {

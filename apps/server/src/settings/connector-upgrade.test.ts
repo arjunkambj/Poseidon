@@ -569,7 +569,7 @@ describe("ConnectorManager and the harness rank", () => {
     }),
   );
 
-  it.effect("a save over an undecodable row is seeded on the next boot", () =>
+  it.effect("a save over an undecodable row is seeded in the same session", () =>
     Effect.gen(function* () {
       const filename = databaseFile();
       yield* Effect.scoped(
@@ -584,14 +584,21 @@ describe("ConnectorManager and the harness rank", () => {
         }),
       );
       // The user's save archives the row and stores defaults under its patch:
-      // no connectors, and no kinds offered.
-      yield* withBoot(filename, new Set(), ({ store }) =>
-        Effect.asVoid(store.update({ theme: "dark" })),
+      // no connectors, and no kinds offered. That is a first run's document,
+      // and it is seeded at once rather than on the next boot.
+      const seeded = yield* withBoot(filename, new Set(), ({ store }) =>
+        Effect.andThen(
+          store.update({ theme: "dark" }),
+          awaitSettings(store, (settings) => settings.connectors.length > 0),
+        ),
       );
+      expect(seeded.theme).toBe("dark");
+      expect(seeded.connectors.map((conn) => conn.kind)).toEqual(["claude", "codex", "cmd"]);
+
+      // And the next boot keeps them, as any user's document.
       const next = yield* withBoot(filename, new Set(), ({ manager, store }) =>
         Effect.andThen(manager.list(true), store.get),
       );
-      expect(next.theme).toBe("dark");
       expect(next.connectors.map((conn) => conn.kind)).toEqual(["claude", "codex", "cmd"]);
     }),
   );

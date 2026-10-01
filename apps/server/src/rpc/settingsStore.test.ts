@@ -111,7 +111,7 @@ describe("SettingsStore", () => {
         expect(settings.keybindings).toEqual([]);
         expect(settings.keybindingsFormat).toBe("overrides");
         expect(store.freshInstall).toBe(true);
-        expect(store.unreadable).toBe(false);
+        expect(yield* store.unreadable).toBe(false);
       }),
     ),
   );
@@ -218,8 +218,10 @@ describe("SettingsStore", () => {
         // and permission rules a downgrade would otherwise still find.
         const corrupt = JSON.stringify({ theme: "dark", writtenByANewerBuild: true });
         const { store, sql } = yield* fixture(corrupt);
-        expect(store.unreadable).toBe(true);
+        expect(yield* store.unreadable).toBe(true);
         yield* store.update({ theme: "light" });
+        expect(yield* store.unreadable).toBe(false);
+        expect(store.unreadableAtBoot).toBe(true);
 
         expect(yield* rowJson(sql, "settings.unreadable")).toBe(corrupt);
         const settings = yield* store.get;

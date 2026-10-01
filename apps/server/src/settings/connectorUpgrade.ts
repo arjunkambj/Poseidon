@@ -57,8 +57,10 @@ const byRank = (
 
 /**
  * The patch that brings `settings` up to `shipped`, or null when it is there
- * already. `freshInstall` is whether no settings row existed at boot, or the
- * one there replaced an undecodable row and holds only what that save wrote.
+ * already. `freshInstall` is whether no settings row existed at boot, or one
+ * that could not be decoded was archived by a save, this boot or an earlier
+ * one. It is read only while no kind has been offered, when the document then
+ * holds only what that save wrote.
  */
 export const upgradeConnectors = (
   settings: Settings,
