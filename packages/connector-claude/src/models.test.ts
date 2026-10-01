@@ -108,15 +108,16 @@ describe("toModelOptions", () => {
     expect(labels(COMPILED_SIGNED_IN)).toEqual([
       ["default", "Default (Opus 5.5)"],
       ["opus", "Opus 5.5"],
-      ["claude-fable-5-1[1m]", "Fable 5.1"],
+      ["claude-fable-5-1[1m]", "Fable 5.1 (1M context)"],
       ["sonnet", "Sonnet 5.5"],
       ["haiku", "Haiku 4.5"],
     ]);
-    // Signed out: the version goes after the family, ahead of the context note.
+    // Signed out: the version goes after the family, ahead of the context note,
+    // and the default says it runs with a 1M context window, as its id does.
     expect(labels(recordedModels("probe"))).toEqual([
-      ["default", "Default (Opus 5.5)"],
+      ["default", "Default (Opus 5.5, 1M context)"],
       ["opus[1m]", "Opus 5.5 (1M context)"],
-      ["claude-fable-5-1[1m]", "Fable 5.1"],
+      ["claude-fable-5-1[1m]", "Fable 5.1 (1M context)"],
       ["sonnet", "Sonnet 5"],
       ["haiku", "Haiku 4.5"],
     ]);
@@ -139,7 +140,7 @@ describe("toModelOptions", () => {
         { value: "custom", displayName: "Custom", description: "Something else" },
       ]),
     ).toEqual([
-      ["default", "Default (Opus 4.7)"],
+      ["default", "Default (Opus 4.7, 1M context)"],
       ["sonnet[1m]", "Sonnet 4.6 (1M context)"],
       ["custom", "Custom"],
     ]);

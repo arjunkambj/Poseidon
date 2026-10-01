@@ -59,6 +59,26 @@ const NAMED_IN_DESCRIPTION = /^(?:.*?\bcurrently )?([A-Z][a-z]+ \d+(?:\.\d+)?)\b
 
 const RECOMMENDED = /\(recommended\)/i;
 
+/** A model id the CLI runs with a 1M-token context window: `opus[1m]`, `claude-opus-5-5[1m]`. */
+const ONE_M = /\[1m\]$/i;
+
+/** A name that already says so: "Opus (1M context)". */
+const NAMES_ONE_M = /\b1M\b/i;
+
+/** A description naming a 1M model it stands for: "(currently Opus 4.7 (1M context))". */
+const CURRENTLY_ONE_M = /\bcurrently [A-Z][a-z]+ \d+(?:\.\d+)? \(1M context\)/;
+
+/**
+ * Whether the row runs with a 1M-token context window, by its id, what it
+ * resolves to, or — with no `resolvedModel` — what its description says it
+ * currently stands for.
+ */
+const runsOneM = (info: ClaudeModelInfo): boolean =>
+  ONE_M.test(info.value) ||
+  (info.resolvedModel === undefined
+    ? CURRENTLY_ONE_M.test(info.description ?? "")
+    : ONE_M.test(info.resolvedModel));
+
 /** `claude-haiku-4-5-20251001` → `Haiku 4.5`; anything else → undefined. */
 export const nameOfModelId = (id: string): string | undefined => {
   const match = MODEL_ID.exec(id);
@@ -77,19 +97,27 @@ const runsAs = (info: ClaudeModelInfo): string | undefined =>
  * The row's label: the CLI's name when it carries a version, else the name
  * with the version it runs as put after the family ("Opus (1M context)" →
  * "Opus 5.5 (1M context)"). `default` names what it runs as instead of the
- * CLI's "(recommended)", which `describe` keeps.
+ * CLI's "(recommended)", which `describe` keeps. A row that runs with a 1M
+ * context window says so when its name does not — the compiled-in list's
+ * `claude-fable-5-1[1m]` is plain "Fable" — so it never reads the same as the
+ * catalog's row for the same model without it.
  */
 const labelOf = (info: ClaudeModelInfo): string => {
   const name = info.displayName.trim() === "" ? info.value : info.displayName.trim();
   const versioned = runsAs(info);
+  const oneM = runsOneM(info) && !NAMES_ONE_M.test(name);
   if (info.value === DEFAULT_MODEL) {
-    return versioned === undefined ? name : `Default (${versioned})`;
+    if (versioned === undefined) return name;
+    return oneM ? `Default (${versioned}, 1M context)` : `Default (${versioned})`;
   }
-  if (hasVersion(name) || versioned === undefined) return name;
-  const family = versioned.split(" ")[0]!;
-  return name === family || name.startsWith(`${family} `)
-    ? `${versioned}${name.slice(family.length)}`
-    : name;
+  const withVersion = (): string => {
+    if (hasVersion(name) || versioned === undefined) return name;
+    const family = versioned.split(" ")[0]!;
+    return name === family || name.startsWith(`${family} `)
+      ? `${versioned}${name.slice(family.length)}`
+      : name;
+  };
+  return oneM ? `${withVersion()} (1M context)` : withVersion();
 };
 
 /**

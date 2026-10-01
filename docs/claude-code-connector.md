@@ -349,10 +349,17 @@ from its `resolvedModel` (`claude-haiku-4-5-20251001` is Haiku 4.5) or, on a
 build whose rows carry none, from the description's leading "<Name>
 <version>": "Fable 5.1", "Opus 5.5 (1M context)". `default` is labelled with
 what it runs as, "Default (Opus 5.5)", and the CLI's "(recommended)" moves to
-the front of its description. The row's `description` (for example "Sonnet 5
-· Efficient for routine tasks · $2/$10 per Mtok") is carried as the model's
-`description`, which the UI shows as secondary text; an absent or blank one
-is left out. The ids are never rewritten, since threads store them.
+the front of its description. A row that runs with a 1M context window, by
+its id or `resolvedModel` ending in `[1m]` (or, on a build with no
+`resolvedModel`, a description saying it currently stands for one), says so
+when its name does not: the compiled-in `claude-fable-5-1[1m]`, plain "Fable",
+is "Fable 5.1 (1M context)", and the signed-out `default` is "Default (Opus
+5.5, 1M context)". So it never reads the same as the catalog's
+`claude-fable-5-1`, "Fable 5.1", which is another id. The row's `description`
+(for example "Sonnet 5 · Efficient for routine tasks · $2/$10 per Mtok") is
+carried as the model's `description`, which the UI shows as secondary text; an
+absent or blank one is left out. The ids are never rewritten, since threads
+store them.
 
 ### The compiled-in list
 
