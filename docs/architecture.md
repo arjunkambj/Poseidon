@@ -2060,7 +2060,10 @@ renderer builds every health message from these fields, so it never names a
 harness's commands itself.
 
 A `ConnectorInstance` is one _configured_ connector, live —
-`startSession`, `resumeSession`, `listModels`, plus its capabilities.
+`startSession`, `resumeSession`, `listModels`, plus its capabilities. An
+instance whose model list can change between probes also has `modelUpdates`, a
+stream of each different list it hears, which the connector manager puts in
+place of the probe's and pushes to the pickers.
 `resumeSession` takes the persisted `sessionRef` and an optional `fork`: with
 it, the connector continues that session's conversation in a new harness
 session and leaves the original untouched. Only a connector declaring the

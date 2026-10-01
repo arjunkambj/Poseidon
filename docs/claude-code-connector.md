@@ -412,16 +412,38 @@ account's, and is believed.
 The probe and every instance opened with the same config share one answer
 (`handshakes.ts`). An instance's model list and slash commands come from the
 latest answer, and every probe replaces it: the boot reconcile's, a refresh,
-"Probe all". A provisional answer never replaces a full one, so a probe that
-caught the CLI on its compiled-in list reports the full list it already had.
+"Probe all". A provisional answer never replaces a full one from the same
+account, so a probe that caught the CLI on its compiled-in list reports the
+full list it already had. Each answer says whose it is (`Initialization`'s
+`signedIn` and `account`), and one from another account or sign-in state
+always replaces the kept one: after the user signs in, signs out or switches
+account, the old list, its account and its commands are not this CLI's.
 
-A provisional answer, from the probe or the instance, starts the instance
-asking again: at most three more zero-turn handshakes, 2, 10 and 30 seconds
-apart (`ASK_AGAIN_AFTER`), stopping as soon as a full answer is heard. Each of
-those keeps a CLI that is still provisional running, idle, for 6 seconds
-(`LINGER`) before stopping it, so its catalog fetch can land and write the
-cache that the next try reads. Answers this asking produces never start it
-over. Each try is one process that sends nothing, so the asking costs nothing.
+Ids can differ between the two lists: the compiled-in Fable is
+`claude-fable-5-1[1m]` and the catalog's is `claude-fable-5-1`. When a full
+answer replaces a compiled-in one from the same account, the compiled-in rows
+whose ids the full list lacks are carried over, marked `hidden`, and stay in
+every later answer for that account until it lists them itself. A thread or
+saved default picked from the five-row list keeps its label and effort ladder
+after the swap, and the pickers stop offering the row (Settings → Models can
+still switch it on). The carrying over is in memory only: a thread that
+stored such an id before a restart, whose next boot gets the catalog at once,
+is not in any list, and its trigger shows the id itself, as it does for any
+model no list has. The CLI still runs it.
+
+A provisional answer, from the probe or an instance, starts asking again: at
+most three more zero-turn handshakes, 2, 10 and 30 seconds apart
+(`ASK_AGAIN_AFTER`), stopping as soon as a full answer is heard. Each of those
+keeps a CLI that is still provisional running, idle, for 6 seconds (`LINGER`)
+before stopping it, so its catalog fetch can land and write the cache that
+the next try reads. One round runs per config however many instances share
+it, and answers it produces never start it over. A round that runs out with
+the answer still provisional is not started again for that account, since a
+CLI whose catalog is off for a reason the handshake cannot see (an org policy,
+a fetch the CLI is holding off on) would otherwise cost every probe three more
+CLI starts; a full answer or another account's starts it afresh. Each try is
+one process that sends no message, so it spends no tokens, but it is a CLI
+start like any other.
 
 The instance reports every new answer's models on `modelUpdates`. The
 connector manager puts that list in place of the probe's, stamps it as read

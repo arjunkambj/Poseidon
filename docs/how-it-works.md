@@ -4473,7 +4473,11 @@ read again at its first turn, and a probe that lands in between must not send
 that turn to a harness that has never heard of the model. The lists are the
 catalog's (the latest probe's, else one bounded `listModels()` remembered until
 the next probe), and the engine reads them before it takes its write lock, so
-a create never holds every other write while a harness starts.
+a create never holds every other write while a harness starts. An open
+instance can replace its probed list between probes: a list it hears on its
+`modelUpdates` stream takes the probe's place (`adoptModels`) and is pushed on
+`connectors.subscribe` like a landing probe, and both model atoms ask again on
+every push, so open pickers show it.
 
 The registry's order is the harness rank, and an existing install is brought
 up to it once per boot (`apps/server/src/settings/connectorUpgrade.ts`). A
