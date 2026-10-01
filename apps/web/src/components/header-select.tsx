@@ -96,14 +96,16 @@ export function HeaderSelect({
           )}
         </span>
       </SelectTrigger>
-      <SelectContent align="start" alignItemWithTrigger={false} className="min-w-44">
+      <SelectContent align="start" alignItemWithTrigger={false} className="min-w-56">
         <SelectGroup>
           {items.map((item) => (
             <SelectItem key={item.value} value={item.value} disabled={item.disabled}>
               <span className="flex min-w-0 flex-col">
                 <span className="truncate">{item.label}</span>
                 {item.description === undefined ? null : (
-                  <span className="truncate text-xs text-muted-foreground">{item.description}</span>
+                  <span className="text-xs whitespace-normal text-muted-foreground">
+                    {item.description}
+                  </span>
                 )}
               </span>
             </SelectItem>
