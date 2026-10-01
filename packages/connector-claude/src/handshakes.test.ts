@@ -151,6 +151,29 @@ describe("an answer from another account or sign-in state", () => {
   );
 });
 
+describe("a row only the compiled-in list has", () => {
+  it.effect("is carried over hidden, so a pick from it keeps its name", () =>
+    Effect.gen(function* () {
+      const handshakes = makeHandshakes();
+      const key = handshakeKey({});
+      const compiled: Initialization = {
+        ...COMPILED,
+        models: [...COMPILED.models, row("Fable 5.1 (1M context)", "claude-fable-5-1[1m]")],
+      };
+      const catalog: Initialization = {
+        ...CATALOG,
+        models: [...CATALOG.models, row("Fable 5.1", "claude-fable-5-1")],
+      };
+      yield* handshakes.record(key, compiled, "probe");
+      const carried = { ...row("Fable 5.1 (1M context)", "claude-fable-5-1[1m]"), hidden: true };
+      const expected = [...catalog.models, carried];
+      expect((yield* handshakes.record(key, catalog, "retry")).models).toEqual(expected);
+      // A later full answer for the same account keeps carrying it.
+      expect((yield* handshakes.record(key, catalog, "probe")).models).toEqual(expected);
+    }),
+  );
+});
+
 describe("a provisional model list", () => {
   it.effect("is asked about again until the catalog's list arrives, which is pushed", () =>
     Effect.gen(function* () {
