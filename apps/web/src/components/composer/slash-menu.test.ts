@@ -191,3 +191,37 @@ describe("slashMenuItems /effort", () => {
     ]);
   });
 });
+
+describe("slashMenuItems /model", () => {
+  const deep = { id: "deep", label: "Deep", family: "Models", efforts: ["high", "xhigh"] };
+  const light = { id: "light", label: "Light", family: "Models", efforts: ["low", "high"] };
+  const patches = (ultracode: boolean | undefined, capabilities: ConnectorCapabilities | null) =>
+    slashMenuItems({
+      level: "model",
+      query: "",
+      skills: [],
+      harnessCommands: [],
+      models: [deep, light] as never,
+      efforts: undefined,
+      capabilities,
+      canCompact: false,
+      ultracode,
+    }).map((item) => (item.action.type === "settings" ? item.action.patch : null));
+  const workflows = { ultracode: true } as ConnectorCapabilities;
+
+  it("switches ultracode off with a model that cannot run it while it is on", () => {
+    expect(patches(true, workflows)).toEqual([
+      { model: "deep" },
+      { model: "light", ultracode: false },
+    ]);
+    expect(patches(true, {} as ConnectorCapabilities)).toEqual([
+      { model: "deep", ultracode: false },
+      { model: "light", ultracode: false },
+    ]);
+  });
+
+  it("names only the model while ultracode is off", () => {
+    expect(patches(false, workflows)).toEqual([{ model: "deep" }, { model: "light" }]);
+    expect(patches(undefined, workflows)).toEqual([{ model: "deep" }, { model: "light" }]);
+  });
+});
