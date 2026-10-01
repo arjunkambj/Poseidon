@@ -43,6 +43,7 @@ import * as Effect from "effect/Effect";
 import type * as Clock from "effect/Clock";
 import type * as Scope from "effect/Scope";
 import * as Schema from "effect/Schema";
+import type * as Stream from "effect/Stream";
 
 import type { ConnectorExtensions } from "./extensions";
 import type { SessionPlugin } from "./plugins";
@@ -322,6 +323,14 @@ export interface ConnectorInstance {
     input: ResumeSessionInput,
   ) => Effect.Effect<SessionHandle, ConnectorError, Scope.Scope>;
   readonly listModels: () => Effect.Effect<ReadonlyArray<ModelOption>, ConnectorError>;
+  /**
+   * The model list again whenever the instance hears a different one — a
+   * harness whose first answer was a stand-in finds the full list later, or a
+   * fresh probe replaces what it listed. The server swaps it in for the
+   * instance's probed list and pushes it to the pickers. Absent for a harness
+   * whose list only changes on a probe.
+   */
+  readonly modelUpdates?: Stream.Stream<ReadonlyArray<ModelOption>>;
   /**
    * The harness configuration this instance manages for the Customize page —
    * skills, MCP servers. Absent for a harness that keeps none (`extensions.ts`).
