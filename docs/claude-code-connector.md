@@ -1122,10 +1122,10 @@ What the connector does:
   `workflow_name`) are kept as `event.unmapped` until a recording shows how
   they map ([Subagents](#subagents)).
 
-The switch the user sees is the composer's Ultracode toggle, beside the plan
-toggle, offered where these capabilities carry `ultracode` and the model lists
-`xhigh`; picking a model without `xhigh` while it is on also switches it off
-([how-it-works.md](how-it-works.md), "Ultracode").
+The switch the user sees is the Ultracode entry at the top of the composer's
+effort menu, offered where these capabilities carry `ultracode` and the model
+lists `xhigh`; picking a rung turns it off, and so does picking a model without
+`xhigh` while it is on ([how-it-works.md](how-it-works.md), "Ultracode").
 
 ## Writing one piece of text
 

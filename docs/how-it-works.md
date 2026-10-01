@@ -531,20 +531,21 @@ attachments, as `/clear-draft` does. The settings row under the input
 (`thread-settings-keys.tsx`) answers the rest through the same `onChange` a
 click uses:
 
-| key                           | does                                                                                                                |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `Shift+Tab` (in the composer) | toggle plan mode (§6)                                                                                               |
-| `Mod+Shift+L`                 | next runtime mode the connector offers, in contract order, wrapping (`nextRuntimeMode`)                             |
-| `Mod+Shift+M` / `Mod+Shift+E` | open the model / effort picker                                                                                      |
-| `Mod+Shift+.` / `Mod+Shift+,` | one rung up / down the model's effort ladder, stopping at either end and never stepping onto `ultra` (`stepEffort`) |
+| key                           | does                                                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `Shift+Tab` (in the composer) | toggle plan mode (§6)                                                                                                                 |
+| `Mod+Shift+L`                 | next runtime mode the connector offers, in contract order, wrapping (`nextRuntimeMode`)                                               |
+| `Mod+Shift+M` / `Mod+Shift+E` | open the model / effort picker                                                                                                        |
+| `Mod+Shift+.` / `Mod+Shift+,` | one rung up / down the model's effort ladder, stopping at either end and never stepping onto `ultra` or Ultracode (`effortStepPatch`) |
 
 A picker the connector locks until restart does not open, and a locked effort
 does not step. The plan button's tooltip and the attach button's show their
 current keys.
 
 The row itself (`ThreadSettingsControls` in `header-controls.tsx`) holds, in
-order, the runtime-mode picker, the plan toggle, the Ultracode toggle (§6)
-where it is offered, the model and effort pickers and the context meter. On an
+order, the runtime-mode picker, the plan toggle, the model and effort pickers
+and the context meter. The effort picker also holds Ultracode (§6) and Codex's
+`ultra`. On an
 open thread each pick is a `thread.settings.update`; on the start screen it
 goes into the local settings that `thread.create` carries.
 `use-send-draft.ts` uploads any attachments first (a browser `File` has no
@@ -1658,28 +1659,31 @@ refuses writes.
 ### Ultracode
 
 Ultracode is Claude Code's `xhigh` effort plus standing multi-agent workflow
-orchestration (docs/claude-code-connector.md, "Ultracode"). The composer's
-Ultracode toggle sits beside the plan toggle
-(`apps/web/src/components/ultracode-toggle.tsx`): an icon while off, whose
-tooltip notes that it uses many more tokens, and "Ultracode" while on. It is
-offered only where the instance's capabilities carry `ultracode` and the model
-lists an `xhigh` rung (`ultracodeOffered` in `apps/web/src/lib/ultracode.ts`),
-so never for Codex or Command Code; while it is on it stays drawn anywhere, so
-it can be switched off. It is off by default, per thread, and has no key and no
-Settings default.
+orchestration (docs/claude-code-connector.md, "Ultracode"). It is picked in
+the effort menu, where it is the top entry, "Ultracode", noted as xhigh effort
+with multi-agent workflows that uses many more tokens — the way Codex's `ultra`
+rung tops its own models' ladders as "Ultra" (`effortMenuEntries` in
+`apps/web/src/lib/effort-menu.ts`). It is offered only where the instance's
+capabilities carry `ultracode` and the model lists an `xhigh` rung
+(`ultracodeOffered` in `apps/web/src/lib/ultracode.ts`), so never for Codex or
+Command Code; while it is on it stays listed anywhere, so the menu never hides
+it. While it is on the picker reads "Ultracode" and checks that entry rather
+than `xhigh`. It is off by default, per thread, and has no Settings default.
 
-A click sends `{ ultracode: true, effort: "xhigh" }` or `{ ultracode: false }`
-as a `thread.settings.update`, and the server's rules keep the pair consistent
-(docs/architecture.md, `ThreadSettings.ultracode`), so the effort picker reads
-`xhigh` once it is on. The row passes every other pick through
-`settleUltracode`, which adds `ultracode: false` to an effort pick and to a
-model it is not offered on — the same rules, so the start screen's local
-settings, which reach the server only with `thread.create`, read the same. The
-composer's `/model` rows add `ultracode: false` to such a model too
+Picking it sends `{ ultracode: true, effort: "xhigh" }` as a
+`thread.settings.update`, and the server's rules keep the pair consistent
+(docs/architecture.md, `ThreadSettings.ultracode`). Picking any rung while it
+is on turns it off: the row passes every pick through `settleUltracode`, which
+adds `ultracode: false` to an effort pick and to a model it is not offered on —
+the same rules, so the start screen's local settings, which reach the server
+only with `thread.create`, read the same. The effort keys never step onto it; a
+step down from it sends `{ ultracode: false }`, keeping `xhigh`, and a step up
+stays put. The composer's `/effort` rows list the same entries, and its
+`/model` rows add `ultracode: false` to a model it is not offered on
 (`slashMenuItems` in `apps/web/src/components/composer/slash-menu.tsx`); an
-`/effort` pick is left to the server's rule.
+`/effort` rung picked while it is on is left to the server's rule.
 
-Without the toggle, the word "ultracode" in a prompt opts that one turn into
+Without the menu, the word "ultracode" in a prompt opts that one turn into
 Claude Code's Workflow tool: the CLI's own keyword trigger, which Poseidon
 passes through as plain text.
 
@@ -3029,7 +3033,7 @@ into one lane per model, in tick order:
   instances collides, and the server appends `-2`.
 - The shown effort and runtime mode, each kept only where that model or
   instance accepts it, so the server's default applies instead of a refusal.
-- Ultracode, when the toggle is on, only for the lanes whose instance and
+- Ultracode, when it is on, only for the lanes whose instance and
   model can run it (`ultracodeOfferedIn`); the other lanes start with it off.
 
 `background-start.ts` runs the lanes. Worktree creates go one at a time in lane

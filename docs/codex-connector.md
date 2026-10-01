@@ -724,9 +724,11 @@ types `ReasoningEffort` as an open string "advertised by the model", and marks
 for proactive multi-agent behavior." So a thread at effort `ultra` names it on
 `turn/start` like any other rung, and only on a model whose `model/list` row
 lists it; on another model the rule above runs it at that model's own
-default. The effort keys never step onto it (`stepEffort`), the pickers note
-that it delegates to subagents and uses many more tokens, and Claude Code and
-Command Code list no such rung. `ultra-effort` records one turn at it on
+default. The effort keys never step onto it (`stepEffort`). The effort menu
+and the `/effort` rows list it at the top of the ladder as "Ultra", noted as
+max effort with automatic task delegation that uses many more tokens, the way
+they list Claude Code's Ultracode (`apps/web/src/lib/effort-menu.ts`). Claude
+Code and Command Code list no such rung. `ultra-effort` records one turn at it on
 the default model: `turn/start` names `effort: "ultra"`, the CLI's
 `thread/settings/updated` restates it (with `multiAgentMode` still
 `explicitRequestOnly`), and the one-word prompt delegated nothing. What

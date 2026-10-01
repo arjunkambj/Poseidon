@@ -1044,12 +1044,13 @@ effort and the Settings default); switching it off keeps the effort; and a
 `thread.settings.update` that names an effort but not ultracode, on a thread
 that has it on, switches it off — picking `xhigh` itself included. A
 `model.changed` that reports ultracode is stored as reported, without these
-rules, since it is what the session already did. The composer's Ultracode
-toggle (`apps/web/src/lib/ultracode.ts`) is offered where the instance's
-capabilities carry `ultracode` and the model lists `xhigh`, and applies the
-same rules to New task's local settings before `thread.create`, plus one more:
-a model pick the toggle is not offered on switches ultracode off, from the
-model picker and from the composer's `/model` rows alike.
+rules, since it is what the session already did. The composer's effort menu
+offers an Ultracode entry (`apps/web/src/lib/ultracode.ts`,
+`apps/web/src/lib/effort-menu.ts`) where the instance's capabilities carry
+`ultracode` and the model lists `xhigh`, and applies the same rules to New
+task's local settings before `thread.create`, plus one more: a model pick
+ultracode is not offered on switches it off, from the model picker and from
+the composer's `/model` rows alike.
 
 `ModelOption.hidden` is optional: a connector may list a model it does not want
 offered by default. The settings document's `modelPicker` holds the user's
